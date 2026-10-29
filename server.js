@@ -109,7 +109,7 @@ app.get('/login', async (req, res) => {
   try {
     // Check if any users exist
     const result = await query('SELECT COUNT(*) as count FROM users');
-    userCount = result.rows[0].count;
+    userCount = parseInt(result.rows[0].count, 10);
     needsSetup = userCount === 0;
   } catch (error) {
     console.error('Error checking user count:', error);

@@ -12,12 +12,14 @@ import {
   isEmailAvailable,
 } from '../auth/user.mjs';
 import { validatePassword, validateEmail, validateUsername } from '../auth/validator.mjs';
+import { query } from '../db/connection.mjs';
 
 const router = express.Router();
 
 /**
  * POST /api/auth/register
  * Register a new user
+ * First user is automatically made admin
  */
 router.post('/register', express.json(), async (req, res) => {
   try {
@@ -85,8 +87,25 @@ router.post('/register', express.json(), async (req, res) => {
       });
     }
 
+    // Check if this is the first user
+    const userCountResult = await query('SELECT COUNT(*) as count FROM users');
+    const userCount = parseInt(userCountResult.rows[0].count, 10);
+    const isFirstUser = userCount === 0;
+    
+    console.log('🔍 Register Debug:', { userCount, isFirstUser, countRaw: userCountResult.rows[0].count });
+
     // Create user
-    const user = await createUser(username, email, password, fullName || null);
+    let user = await createUser(username, email, password, fullName || null);
+
+    // If first user, set as admin
+    if (isFirstUser) {
+      console.log('✅ Setting user as admin...');
+      await query(
+        'UPDATE users SET is_admin = true WHERE user_id = $1',
+        [user.user_id]
+      );
+      user.is_admin = true;
+    }
 
     // Set session
     req.session.userId = user.user_id;
@@ -94,12 +113,13 @@ router.post('/register', express.json(), async (req, res) => {
 
     return res.status(201).json({
       status: 'success',
-      message: 'User registered successfully',
+      message: 'User registered successfully' + (isFirstUser ? ' as system admin' : ''),
       user: {
         user_id: user.user_id,
         username: user.username,
         email: user.email,
         full_name: user.full_name,
+        is_admin: user.is_admin || false,
         created_at: user.created_at,
       },
     });
