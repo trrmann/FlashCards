@@ -24,10 +24,10 @@ export async function createFlashcard(
   flashClass = null
 ) {
   const result = await query(
-    `INSERT INTO flashcards (question, answer, created_by, lesson, category, class, is_private)
-     VALUES ($1, $2, $3, $4, $5, $6, true)
+    `INSERT INTO flashcards (user_id, question, answer, created_by, lesson, category, class, is_private)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, true)
      RETURNING flashcard_id, question, answer, lesson, category, class, is_private, created_at`,
-    [question, answer, userId, lesson, category, flashClass]
+    [userId, question, answer, userId, lesson, category, flashClass]
   );
 
   return result.rows[0];
