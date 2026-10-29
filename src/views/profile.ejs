@@ -1,0 +1,24 @@
+<%- include('partials/header') %>
+<main>
+  <h1><%= siteData.getTitle() %></h1>
+  <h2>Welcome to <%= siteData.getName() %><%= siteData.getNameHeadingHelp() %>Flash Card Service!</h2>
+  <p>
+    Our mission is to help <%= siteData.getName() %> study for English Connect.
+  </p>
+  <form>
+    <label name="username">Username</label>
+    <input name="username" type="username">
+    <label name="password">Password</label>
+    <input name="password" type="password">
+    <label name="passwordAgain">Password Again</label>
+    <input name="passwordAgain" type="password">
+    <label name="name">Name</label>
+    <input name="name" type="name">
+  </form>
+  <!--<img
+    class="main-logo"
+    src="/images/cse340-service-network.png"
+    alt="CSE 340 Service Network Logo"
+  />-->
+</main>
+<%- include('partials/footer') %>

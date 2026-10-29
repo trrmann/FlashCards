@@ -1,9 +1,9 @@
 <%- include('partials/header') %>
 <main>
-  <h1><%= title %></h1>
-  <h2>Welcome to Haydee's personal Flash Card Service!</h2>
+  <h1><%= siteData.getTitle() %></h1>
+  <h2>Welcome to <%= siteData.getName() %><%= siteData.getNameHeadingHelp() %>Flash Card Service!</h2>
   <p>
-    Our mission is to help Haydee study for English Connect.
+    Our mission is to help <%= siteData.getName() %> study for English Connect.
   </p>
   <!--<img
     class="main-logo"

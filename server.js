@@ -2,6 +2,8 @@ import express from 'express';
 import { fileURLToPath } from 'url';
 import path from 'path';
 
+import { appSiteData } from "./src/js/appSiteData.js"
+
 // Define the application environment.
 const NODE_ENV = process.env.NODE_ENV?.toLocaleLowerCase() || 'production';
 // Define the port the server will listen on (Fixed: Changed from 'let' to 'const').
@@ -9,6 +11,7 @@ const port = process.env.PORT || 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const siteData = new appSiteData();
 const app = express();
 
 /**
@@ -25,27 +28,40 @@ app.set('views', path.join(__dirname, 'src/views'));
  * (Fixed: Added 'async' to every route handler arrow function)
  */
 app.get('/', async (req, res) => {
-  const siteTitle = "Home - Haydee's personal Flash Card Service.";
-  const title = "Home";
-  res.render('home', { title, siteTitle });
+  siteData.setTitle("Home");
+  res.render('home', { siteData });
 });
 
-/*
-app.get('/organizations', async (req, res) => {
-  const title = "Organizations";
-  res.render('organizations', { title });
+app.get('/practice', async (req, res) => {
+  siteData.setTitle("Practice");
+  res.render('practice', { siteData });
 });
 
-app.get('/categories', async (req, res) => {
-  const title = "Categories";
-  res.render('categories', { title });
+app.get('/quiz', async (req, res) => {
+  siteData.setTitle("Quiz");
+  res.render('quiz', { siteData });
 });
 
-app.get('/projects', async (req, res) => {
-  const title = "Projects";
-  res.render('project', { title });
-}); 
-*/
+app.get('/entries', async (req, res) => {
+  siteData.setTitle("Entries");
+  res.render('entries', { siteData });
+});
+
+app.get('/login', async (req, res) => {
+  siteData.setTitle("Login");
+  res.render('login', { siteData });
+});
+
+app.get('/profile', async (req, res) => {
+  siteData.setTitle("Profile");
+  res.render('profile', { siteData });
+});
+
+app.get('/logout', async (req, res) => {
+  siteData.setTitle("Logout");
+  res.render('logout', { siteData });
+});
+
 app.listen(port, () => {
   console.log(`Server running in ${NODE_ENV} mode on port ${port}`);
 });
