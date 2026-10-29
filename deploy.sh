@@ -279,6 +279,30 @@ run_checks_strict() {
     fi
 }
 
+run_comprehensive_tests() {
+    log INFO "Running comprehensive preview test suite..."
+    log INFO "Tests: Lighthouse, HTML/CSS validation, Memory, Core Web Vitals"
+    
+    cd "${PROJECT_ROOT}"
+    
+    # Run preview tests
+    if npm run test:preview >> "${LOG_FILE}" 2>&1; then
+        log SUCCESS "All preview tests passed"
+        return 0
+    else
+        local test_output=$(npm run test:preview 2>&1)
+        log ERROR "Preview tests failed"
+        echo "" >> "${LOG_FILE}"
+        echo "═════════════════════════════════════════════" >> "${LOG_FILE}"
+        echo "PREVIEW TEST FAILURES:" >> "${LOG_FILE}"
+        echo "═════════════════════════════════════════════" >> "${LOG_FILE}"
+        echo "${test_output}" >> "${LOG_FILE}"
+        echo "═════════════════════════════════════════════" >> "${LOG_FILE}"
+        echo "" >> "${LOG_FILE}"
+        error_exit "Preview tests failed. Check .deployment/last-run.log for detailed results."
+    fi
+}
+
 ################################################################################
 # Environment Deployment Functions
 ################################################################################
@@ -353,10 +377,18 @@ deploy_preview() {
     local max_attempts=30
     local attempt=0
     while [ $attempt -lt $max_attempts ]; do
-        if curl -s http://localhost:${PORT}/api/health > /dev/null 2>&1; then
+        if curl -s http://localhost:${PORT}/ > /dev/null 2>&1; then
             log SUCCESS "Preview server is running"
             log SUCCESS "URL: http://localhost:${PORT}"
             echo "PREVIEW_PID=$pid" >> "${LOG_FILE}"
+            
+            # Give server time to fully initialize
+            sleep 2
+            
+            # Run comprehensive preview tests
+            run_comprehensive_tests
+            
+            # If tests pass, return (server continues running)
             return 0
         fi
         sleep 1

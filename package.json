@@ -16,6 +16,7 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "test:preview": "node src/tests/preview-tests.mjs",
     "dev": "nodemon",
     "start": "node server.js",
     "format": "prettier --write .",
@@ -26,15 +27,20 @@
   },
   "dependencies": {
     "ejs": "^7.0.2",
-    "express": "^5.3.0"
+    "express": "^5.3.0",
+    "node-fetch": "^3.3.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "axe-core": "^4.14.0",
     "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.7",
     "globals": "^17.13.0",
+    "html-validate": "^11.17.0",
+    "lighthouse": "^13.6.0",
     "nodemon": "^3.1.14",
-    "prettier": "^3.9.10"
+    "prettier": "^3.9.10",
+    "puppeteer": "^25.16.0"
   }
 }
