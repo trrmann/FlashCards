@@ -383,4 +383,85 @@ router.get('/shared-by-me', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/entries/metadata/classes
+ * Get all unique class values for the authenticated user
+ */
+router.get('/metadata/classes', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ status: 'error', message: 'Not authenticated' });
+    }
+
+    const result = await query(
+      `SELECT DISTINCT class FROM flashcards 
+       WHERE class IS NOT NULL AND (created_by = $1 OR user_id = $1)
+       ORDER BY class ASC`,
+      [req.session.userId]
+    );
+
+    return res.status(200).json({
+      status: 'success',
+      classes: result.rows.map(row => row.class),
+    });
+  } catch (error) {
+    console.error('Get classes error:', error.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to fetch classes' });
+  }
+});
+
+/**
+ * GET /api/entries/metadata/lessons
+ * Get all unique lesson values for the authenticated user
+ */
+router.get('/metadata/lessons', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ status: 'error', message: 'Not authenticated' });
+    }
+
+    const result = await query(
+      `SELECT DISTINCT lesson FROM flashcards 
+       WHERE lesson IS NOT NULL AND (created_by = $1 OR user_id = $1)
+       ORDER BY lesson ASC`,
+      [req.session.userId]
+    );
+
+    return res.status(200).json({
+      status: 'success',
+      lessons: result.rows.map(row => row.lesson),
+    });
+  } catch (error) {
+    console.error('Get lessons error:', error.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to fetch lessons' });
+  }
+});
+
+/**
+ * GET /api/entries/metadata/categories
+ * Get all unique category values for the authenticated user
+ */
+router.get('/metadata/categories', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ status: 'error', message: 'Not authenticated' });
+    }
+
+    const result = await query(
+      `SELECT DISTINCT category FROM flashcards 
+       WHERE category IS NOT NULL AND (created_by = $1 OR user_id = $1)
+       ORDER BY category ASC`,
+      [req.session.userId]
+    );
+
+    return res.status(200).json({
+      status: 'success',
+      categories: result.rows.map(row => row.category),
+    });
+  } catch (error) {
+    console.error('Get categories error:', error.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to fetch categories' });
+  }
+});
+
 export default router;
