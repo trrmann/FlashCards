@@ -45,6 +45,7 @@ app.use(
 );
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/js', express.static(path.join(__dirname, 'src/js')));
 // Set EJS as the templating engine
 app.set('view engine', 'ejs');
 // Tell Express where to find your templates
