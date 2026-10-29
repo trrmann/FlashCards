@@ -32,7 +32,7 @@ router.post('/', express.json(), async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const { question, answer, lesson } = req.body;
+    const { question, answer, lesson, category, class: flashClass } = req.body;
 
     if (!question || !answer) {
       return res.status(400).json({
@@ -41,7 +41,14 @@ router.post('/', express.json(), async (req, res) => {
       });
     }
 
-    const flashcard = await createFlashcard(req.session.userId, question, answer, lesson || null);
+    const flashcard = await createFlashcard(
+      req.session.userId,
+      question,
+      answer,
+      lesson || null,
+      category || null,
+      flashClass || null
+    );
 
     return res.status(201).json({
       status: 'success',

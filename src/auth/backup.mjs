@@ -109,6 +109,8 @@ export async function rebuildSchema() {
         created_by UUID REFERENCES users(user_id) ON DELETE CASCADE,
         is_private BOOLEAN NOT NULL DEFAULT true,
         lesson VARCHAR(255),
+        category VARCHAR(255),
+        class VARCHAR(255),
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       )

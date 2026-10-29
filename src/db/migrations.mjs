@@ -187,6 +187,28 @@ const migrations = [
       }
     },
   },
+  {
+    name: 'add_class_to_flashcards',
+    description: 'Add class column to track which class flashcards belong to',
+    run: async () => {
+      // Check if column already exists
+      const checkResult = await query(
+        `SELECT column_name FROM information_schema.columns 
+         WHERE table_name = 'flashcards' AND column_name = 'class'`
+      );
+
+      if (checkResult.rows.length > 0) {
+        console.log('✓ Column class already exists');
+        return;
+      }
+
+      // Add the column if it doesn't exist
+      await query(
+        `ALTER TABLE flashcards ADD COLUMN class VARCHAR(255)`
+      );
+      console.log('✓ Added class column to flashcards table');
+    },
+  },
 ];
 
 /**

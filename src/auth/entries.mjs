@@ -10,15 +10,24 @@ import { query } from '../db/connection.mjs';
  * @param {string} userId - User ID who owns the entry
  * @param {string} question - Question text
  * @param {string} answer - Answer text
- * @param {string} lesson - Lesson/category (optional)
+ * @param {string} lesson - Lesson (optional)
+ * @param {string} category - Category (optional)
+ * @param {string} flashClass - Class this belongs to (optional)
  * @returns {Promise<object>} Created flashcard
  */
-export async function createFlashcard(userId, question, answer, lesson = null) {
+export async function createFlashcard(
+  userId,
+  question,
+  answer,
+  lesson = null,
+  category = null,
+  flashClass = null
+) {
   const result = await query(
-    `INSERT INTO flashcards (question, answer, created_by, lesson, is_private)
-     VALUES ($1, $2, $3, $4, true)
-     RETURNING flashcard_id, question, answer, lesson, is_private, created_at`,
-    [question, answer, userId, lesson]
+    `INSERT INTO flashcards (question, answer, created_by, lesson, category, class, is_private)
+     VALUES ($1, $2, $3, $4, $5, $6, true)
+     RETURNING flashcard_id, question, answer, lesson, category, class, is_private, created_at`,
+    [question, answer, userId, lesson, category, flashClass]
   );
 
   return result.rows[0];
@@ -31,7 +40,7 @@ export async function createFlashcard(userId, question, answer, lesson = null) {
  */
 export async function getUserFlashcards(userId) {
   const result = await query(
-    `SELECT flashcard_id, question, answer, lesson, is_private, created_at
+    `SELECT flashcard_id, question, answer, lesson, category, class, is_private, created_at
      FROM flashcards 
      WHERE created_by = $1
      ORDER BY created_at DESC`,
@@ -49,7 +58,7 @@ export async function getUserFlashcards(userId) {
  */
 export async function getFlashcard(flashcardId, userId) {
   const result = await query(
-    `SELECT f.flashcard_id, f.question, f.answer, f.lesson, f.is_private, f.created_by, f.created_at,
+    `SELECT f.flashcard_id, f.question, f.answer, f.lesson, f.category, f.class, f.is_private, f.created_by, f.created_at,
             u.username, u.full_name
      FROM flashcards f
      LEFT JOIN users u ON f.created_by = u.user_id
@@ -84,7 +93,7 @@ export async function updateFlashcard(flashcardId, userId, updates) {
     return null;
   }
 
-  const allowedFields = ['question', 'answer', 'lesson', 'is_private'];
+  const allowedFields = ['question', 'answer', 'lesson', 'category', 'class', 'is_private'];
   const fields = [];
   const values = [];
   let paramCount = 1;
@@ -105,7 +114,7 @@ export async function updateFlashcard(flashcardId, userId, updates) {
 
   const result = await query(
     `UPDATE flashcards SET ${fields.join(', ')} WHERE flashcard_id = $${paramCount}
-     RETURNING flashcard_id, question, answer, lesson, is_private, created_at`,
+     RETURNING flashcard_id, question, answer, lesson, category, class, is_private, created_at`,
     values
   );
 

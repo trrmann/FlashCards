@@ -29,12 +29,32 @@
           </div>
 
           <div class="form-group">
-            <label for="lesson">Lesson/Category:</label>
+            <label for="class">Class:</label>
+            <input
+              type="text"
+              id="class"
+              name="class"
+              placeholder="Optional: e.g., Biology 101, AP Calculus"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="lesson">Lesson (within Class):</label>
             <input
               type="text"
               id="lesson"
               name="lesson"
-              placeholder="Optional: e.g., Math 101, Biology Chapter 3"
+              placeholder="Optional: e.g., Lesson 5, Chapter 3"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="category">Category (Independent):</label>
+            <input
+              type="text"
+              id="category"
+              name="category"
+              placeholder="Optional: e.g., Taxonomy, Photosynthesis, Ecosystems"
             />
           </div>
 
@@ -222,6 +242,26 @@
     border-top: 1px solid #eee;
   }
 
+  .entry-metadata {
+    font-size: 12px;
+    color: #999;
+    font-style: italic;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 5px;
+  }
+
+  .entry-metadata-item {
+    display: flex;
+    gap: 5px;
+  }
+
+  .entry-metadata-label {
+    font-weight: bold;
+    color: #666;
+  }
+
   .entry-lesson {
     font-size: 12px;
     color: #999;
@@ -322,6 +362,8 @@
       const question = document.getElementById('question').value;
       const answer = document.getElementById('answer').value;
       const lesson = document.getElementById('lesson').value;
+      const category = document.getElementById('category').value;
+      const flashClass = document.getElementById('class').value;
       const is_private = document.getElementById('is_private').checked;
 
       try {
@@ -335,6 +377,8 @@
             question,
             answer,
             lesson,
+            category,
+            class: flashClass,
             is_private,
           }),
         });
@@ -380,11 +424,32 @@
               <div class="entry-answer">
                 <strong>Answer:</strong> ${escapeHtml(entry.answer)}
               </div>
-              ${
-                entry.lesson
-                  ? `<div class="entry-lesson">Lesson: ${escapeHtml(entry.lesson)}</div>`
-                  : ''
-              }
+              <div class="entry-metadata">
+                ${
+                  entry.class
+                    ? `<div class="entry-metadata-item">
+                        <span class="entry-metadata-label">Class:</span>
+                        <span>${escapeHtml(entry.class)}</span>
+                      </div>`
+                    : ''
+                }
+                ${
+                  entry.lesson
+                    ? `<div class="entry-metadata-item">
+                        <span class="entry-metadata-label">Lesson:</span>
+                        <span>${escapeHtml(entry.lesson)}</span>
+                      </div>`
+                    : ''
+                }
+                ${
+                  entry.category
+                    ? `<div class="entry-metadata-item">
+                        <span class="entry-metadata-label">Category:</span>
+                        <span>${escapeHtml(entry.category)}</span>
+                      </div>`
+                    : ''
+                }
+              </div>
               <div>
                 <span class="entry-badge ${entry.is_private ? 'private' : ''}">
                   ${entry.is_private ? '🔒 Private' : '🌐 Public'}
@@ -436,6 +501,32 @@
               </div>
               <div class="entry-lesson">
                 Shared by: ${escapeHtml(share.owner_username || 'Unknown')}
+              </div>
+              <div class="entry-metadata">
+                ${
+                  share.class
+                    ? `<div class="entry-metadata-item">
+                        <span class="entry-metadata-label">Class:</span>
+                        <span>${escapeHtml(share.class)}</span>
+                      </div>`
+                    : ''
+                }
+                ${
+                  share.lesson
+                    ? `<div class="entry-metadata-item">
+                        <span class="entry-metadata-label">Lesson:</span>
+                        <span>${escapeHtml(share.lesson)}</span>
+                      </div>`
+                    : ''
+                }
+                ${
+                  share.category
+                    ? `<div class="entry-metadata-item">
+                        <span class="entry-metadata-label">Category:</span>
+                        <span>${escapeHtml(share.category)}</span>
+                      </div>`
+                    : ''
+                }
               </div>
             </div>
             <div class="entry-actions">
