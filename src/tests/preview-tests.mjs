@@ -25,11 +25,7 @@ async function initBrowser() {
     });
     return browser;
   } catch (error) {
-    results.addTest(
-      'Browser Initialization',
-      'FAIL',
-      `Failed to launch browser: ${error.message}`
-    );
+    results.addTest('Browser Initialization', 'FAIL', `Failed to launch browser: ${error.message}`);
     throw error;
   }
 }
@@ -54,18 +50,10 @@ async function testEndpoints() {
       if (response.ok) {
         results.addTest(`Endpoint: ${endpoint.name}`, 'PASS');
       } else {
-        results.addTest(
-          `Endpoint: ${endpoint.name}`,
-          'FAIL',
-          `HTTP ${response.status}`
-        );
+        results.addTest(`Endpoint: ${endpoint.name}`, 'FAIL', `HTTP ${response.status}`);
       }
     } catch (error) {
-      results.addTest(
-        `Endpoint: ${endpoint.name}`,
-        'FAIL',
-        error.message.substring(0, 100)
-      );
+      results.addTest(`Endpoint: ${endpoint.name}`, 'FAIL', error.message.substring(0, 100));
     }
   }
 }
@@ -84,21 +72,13 @@ async function testLighthouse() {
         logLevel: 'error',
         output: 'json',
         port: new URL(browser.wsEndpoint()).port,
-        onlyCategories: [
-          'performance',
-          'accessibility',
-          'best-practices',
-          'seo',
-          'pwa',
-        ],
+        onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo', 'pwa'],
       });
 
       const scores = runnerResult.lhr.categories;
       let pagePassed = true;
 
-      for (const [category, threshold] of Object.entries(
-        TEST_CONFIG.lighthouseThresholds
-      )) {
+      for (const [category, threshold] of Object.entries(TEST_CONFIG.lighthouseThresholds)) {
         const score = scores[category]?.score * 100;
         if (score && score < threshold) {
           results.addTest(
@@ -149,11 +129,7 @@ async function testHTMLValidity() {
         );
       }
     } catch (error) {
-      results.addTest(
-        `HTML Validation: ${endpoint.name}`,
-        'FAIL',
-        error.message.substring(0, 100)
-      );
+      results.addTest(`HTML Validation: ${endpoint.name}`, 'FAIL', error.message.substring(0, 100));
     }
   }
 }
@@ -175,6 +151,7 @@ async function testCSS() {
 
         const cssIssues = await page.evaluate(() => {
           const issues = [];
+          // eslint-disable-next-line no-undef
           const stylesheets = document.styleSheets;
 
           for (let i = 0; i < stylesheets.length; i++) {
@@ -189,12 +166,12 @@ async function testCSS() {
                 if (
                   rule.style &&
                   (rule.style.all === 'inherit' ||
-                    rule.style.width === '100%' && rule.style.height === '100%')
+                    (rule.style.width === '100%' && rule.style.height === '100%'))
                 ) {
                   issues.push(`Potential layout issue in rule ${j}`);
                 }
               }
-            } catch (e) {
+            } catch {
               // Cross-origin stylesheets - expected
             }
           }
@@ -212,11 +189,7 @@ async function testCSS() {
           );
         }
       } catch (error) {
-        results.addTest(
-          `CSS Analysis: ${endpoint.name}`,
-          'FAIL',
-          error.message.substring(0, 100)
-        );
+        results.addTest(`CSS Analysis: ${endpoint.name}`, 'FAIL', error.message.substring(0, 100));
       }
     }
   } finally {
@@ -263,18 +236,10 @@ async function testMemory() {
         if (pagePassed) {
           results.addTest(`Memory Test: ${endpoint.name}`, 'PASS');
         } else {
-          results.addTest(
-            `Memory Test: ${endpoint.name}`,
-            'WARN',
-            warnings.join('; ')
-          );
+          results.addTest(`Memory Test: ${endpoint.name}`, 'WARN', warnings.join('; '));
         }
       } catch (error) {
-        results.addTest(
-          `Memory Test: ${endpoint.name}`,
-          'FAIL',
-          error.message.substring(0, 100)
-        );
+        results.addTest(`Memory Test: ${endpoint.name}`, 'FAIL', error.message.substring(0, 100));
       }
     }
   } finally {
@@ -320,11 +285,7 @@ async function testCoreWebVitals() {
         }
 
         if (hasIssues) {
-          results.addTest(
-            `Core Web Vitals: ${endpoint.name}`,
-            'WARN',
-            issues.join('; ')
-          );
+          results.addTest(`Core Web Vitals: ${endpoint.name}`, 'WARN', issues.join('; '));
         } else {
           results.addTest(`Core Web Vitals: ${endpoint.name}`, 'PASS');
         }
