@@ -11,8 +11,14 @@ import systemRoutes from './src/routes/system.mjs';
 
 // Define the application environment.
 const NODE_ENV = process.env.NODE_ENV?.toLocaleLowerCase() || 'production';
-// Define the port the server will listen on (Fixed: Changed from 'let' to 'const').
-const port = process.env.PORT || 3000;
+// Define the port based on environment
+// For production (Render), support both PORT_PROD and legacy PORT variable
+const portMap = {
+  development: process.env.PORT_DEV || 5000,
+  preview: process.env.PORT_PREVIEW || 4000,
+  production: process.env.PORT_PROD || process.env.PORT || 3000,
+};
+const port = portMap[NODE_ENV] || 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 

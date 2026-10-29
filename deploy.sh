@@ -21,7 +21,9 @@ cd "${PROJECT_ROOT}" || { echo "Failed to change to project directory"; exit 1; 
 LOG_DIR="${PROJECT_ROOT}/.deployment"
 LOG_FILE="${LOG_DIR}/last-run.log"
 RENDER_WAIT_TIME=30  # seconds to wait for Render auto-deploy
-PORT=5000
+PORT_DEV=5000
+PORT_PREVIEW=4000
+PORT_PROD=3000
 
 # Color codes
 RED='\033[0;31m'
@@ -306,12 +308,12 @@ deploy_dev() {
     
     cd "${PROJECT_ROOT}"
     
-    log INFO "Starting development server on localhost:${PORT}..."
+    log INFO "Starting development server on localhost:${PORT_DEV}..."
     
-    # Kill any existing process on PORT
-    if lsof -i :${PORT} &> /dev/null; then
-        log WARN "Process already running on port ${PORT}. Killing..."
-        kill -9 $(lsof -t -i :${PORT}) 2>/dev/null
+    # Kill any existing process on PORT_DEV
+    if lsof -i :${PORT_DEV} &> /dev/null; then
+        log WARN "Process already running on port ${PORT_DEV}. Killing..."
+        kill -9 $(lsof -t -i :${PORT_DEV}) 2>/dev/null
         sleep 1
     fi
     
@@ -326,9 +328,9 @@ deploy_dev() {
     local max_attempts=30
     local attempt=0
     while [ $attempt -lt $max_attempts ]; do
-        if curl -s http://localhost:${PORT}/api/health > /dev/null 2>&1; then
+        if curl -s http://localhost:${PORT_DEV}/api/health > /dev/null 2>&1; then
             log SUCCESS "Development server is running"
-            log SUCCESS "URL: http://localhost:${PORT}"
+            log SUCCESS "URL: http://localhost:${PORT_DEV}"
             echo "DEV_PID=$pid" >> "${LOG_FILE}"
             return 0
         fi
@@ -349,12 +351,12 @@ deploy_preview() {
     # Run strict code verification for preview
     run_checks_strict
     
-    log INFO "Starting preview server on localhost:${PORT}..."
+    log INFO "Starting preview server on localhost:${PORT_PREVIEW}..."
     
-    # Kill any existing process on PORT
-    if lsof -i :${PORT} &> /dev/null; then
-        log WARN "Process already running on port ${PORT}. Killing..."
-        kill -9 $(lsof -t -i :${PORT}) 2>/dev/null
+    # Kill any existing process on PORT_PREVIEW
+    if lsof -i :${PORT_PREVIEW} &> /dev/null; then
+        log WARN "Process already running on port ${PORT_PREVIEW}. Killing..."
+        kill -9 $(lsof -t -i :${PORT_PREVIEW}) 2>/dev/null
         sleep 1
     fi
     
@@ -369,9 +371,9 @@ deploy_preview() {
     local max_attempts=30
     local attempt=0
     while [ $attempt -lt $max_attempts ]; do
-        if curl -s http://localhost:${PORT}/ > /dev/null 2>&1; then
+        if curl -s http://localhost:${PORT_PREVIEW}/ > /dev/null 2>&1; then
             log SUCCESS "Preview server is running"
-            log SUCCESS "URL: http://localhost:${PORT}"
+            log SUCCESS "URL: http://localhost:${PORT_PREVIEW}"
             echo "PREVIEW_PID=$pid" >> "${LOG_FILE}"
             
             # Give server time to fully initialize
@@ -523,24 +525,24 @@ main() {
             
             # Dev
             deploy_dev
-            open_browser "http://localhost:${PORT}" "Development"
+            open_browser "http://localhost:${PORT_DEV}" "Development"
             log INFO "Testing dev environment... Press Enter to continue to preview"
             read -p ""
             
             # Preview
             log INFO "Switching to preview..."
-            if lsof -i :${PORT} &> /dev/null; then
-                kill -9 $(lsof -t -i :${PORT}) 2>/dev/null
+            if lsof -i :${PORT_DEV} &> /dev/null; then
+                kill -9 $(lsof -t -i :${PORT_DEV}) 2>/dev/null
                 sleep 2
             fi
             deploy_preview
-            open_browser "http://localhost:${PORT}" "Preview"
+            open_browser "http://localhost:${PORT_PREVIEW}" "Preview"
             log INFO "Testing preview environment... Press Enter to continue to production"
             read -p ""
             
             # Prod
-            if lsof -i :${PORT} &> /dev/null; then
-                kill -9 $(lsof -t -i :${PORT}) 2>/dev/null
+            if lsof -i :${PORT_PREVIEW} &> /dev/null; then
+                kill -9 $(lsof -t -i :${PORT_PREVIEW}) 2>/dev/null
                 sleep 1
             fi
             deploy_prod
