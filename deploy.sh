@@ -574,11 +574,11 @@ main() {
     case $env in
         -dev)
             deploy_dev
-            open_browser "http://localhost:${PORT}" "Development"
+            open_browser "http://localhost:${PORT_DEV}" "Development"
             ;;
         -preview)
             deploy_preview
-            open_browser "http://localhost:${PORT}" "Preview"
+            open_browser "http://localhost:${PORT_PREVIEW}" "Preview"
             ;;
         -prod)
             deploy_prod
