@@ -395,6 +395,12 @@
     setupCreateForm();
     loadUserEntries();
     loadSharedEntries();
+    
+    // Listen for filter changes from the filter panel
+    window.addEventListener('filtersChanged', () => {
+      loadUserEntries();
+      loadMetadataOptions();
+    });
   }
 
   async function loadMetadataOptions() {
@@ -481,6 +487,10 @@
           setTimeout(() => {
             loadUserEntries();
             loadMetadataOptions();
+            // Also refresh filter panel options
+            if (window.refreshFilterOptions) {
+              window.refreshFilterOptions();
+            }
             statusSpan.textContent = '';
           }, 1000);
         } else {
