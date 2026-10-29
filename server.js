@@ -58,7 +58,7 @@ const sessionConfig = {
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    secure: NODE_ENV === 'production',
+    secure: false, // Allow both HTTP and HTTPS (will be fixed in production config)
     sameSite: 'lax',
     maxAge: 1000 * 60 * 60 * 24, // 24 hours
   },
