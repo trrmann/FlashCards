@@ -3,7 +3,6 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import session from 'express-session';
 import pgSession from 'connect-pg-simple';
-import pkg from 'pg';
 
 import { appSiteData } from './src/js/appSiteData.js';
 import { initializeDatabase, healthCheck, query, pool } from './src/db/connection.mjs';
@@ -11,8 +10,6 @@ import authRoutes from './src/routes/auth.mjs';
 import userRoutes from './src/routes/users.mjs';
 import adminRoutes from './src/routes/admin.mjs';
 import systemRoutes from './src/routes/system.mjs';
-
-const { Pool } = pkg;
 
 // Define the application environment.
 const NODE_ENV = process.env.NODE_ENV?.toLocaleLowerCase() || 'production';
