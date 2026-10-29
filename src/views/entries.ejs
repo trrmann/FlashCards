@@ -470,11 +470,17 @@
           statusSpan.textContent = '✓ Flashcard created!';
           statusSpan.className = 'success';
           form.reset();
+          
+          // Restore default values after reset
+          document.getElementById('class').value = 'English Connect';
+          document.getElementById('lesson').value = 'Week 01';
+          document.getElementById('category').value = 'vocabulary';
           document.getElementById('is_private').checked = true;
 
-          // Reload entries
+          // Reload entries and metadata options
           setTimeout(() => {
             loadUserEntries();
+            loadMetadataOptions();
             statusSpan.textContent = '';
           }, 1000);
         } else {

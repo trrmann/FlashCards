@@ -91,7 +91,7 @@ router.get('/', async (req, res) => {
       status: 'success',
       count: flashcards.length,
       filters: Object.keys(filters).length > 0 ? filters : null,
-      flashcards,
+      entries: flashcards,
     });
   } catch (error) {
     console.error('Get entries error:', error.message);
