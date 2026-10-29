@@ -7,11 +7,13 @@ The production deployment script now automatically handles code formatting issue
 ## Problem Solved
 
 **Before:** If any file was auto-formatted during development, the production deployment would fail:
+
 ```
 [✗] Please commit and push changes before deploying to production
 ```
 
 This required manual intervention:
+
 ```bash
 git add .
 git commit -m "Your message"
@@ -20,6 +22,7 @@ bash deploy.sh -prod  # retry
 ```
 
 **After:** One simple command handles everything:
+
 ```bash
 bash deploy.sh -prod
 ```
@@ -37,10 +40,11 @@ When you run `bash deploy.sh -prod`, the script now:
 ## Workflow Comparison
 
 ### Old Workflow (4-5 steps)
+
 ```
 1. bash deploy.sh -prod
    ❌ FAILS: "Please commit and push changes"
-   
+
 2. git add .
 3. git commit -m "Auto-format code"
 4. git push origin main
@@ -49,6 +53,7 @@ When you run `bash deploy.sh -prod`, the script now:
 ```
 
 ### New Workflow (1 step)
+
 ```
 1. bash deploy.sh -prod
    ✅ SUCCESS: Deployed
@@ -66,11 +71,11 @@ npm run format
 // 2. Check for changes
 git diff-index --quiet HEAD --
 if (changes detected) {
-  
+
   // 3. Auto-commit formatting
   git add .
   git commit -m "build: Auto-format code before production deployment"
-  
+
   log.info("Formatting changes committed")
 }
 
@@ -97,16 +102,16 @@ Clear, descriptive, and searchable in git history.
 
 Prettier automatically formats these file types:
 
-| File Type | Examples | Note |
-|---|---|---|
-| **Markdown** | `.md` | Documentation files |
-| **JavaScript** | `.js`, `.mjs` | Node.js and ES modules |
-| **React/JSX** | `.jsx` | React components |
-| **TypeScript** | `.ts`, `.tsx` | TypeScript files |
-| **JSON** | `.json` | Configuration files |
-| **CSS** | `.css`, `.scss` | Stylesheets |
-| **YAML** | `.yml`, `.yaml` | Configuration files |
-| **HTML** | `.html` | HTML templates |
+| File Type      | Examples        | Note                   |
+| -------------- | --------------- | ---------------------- |
+| **Markdown**   | `.md`           | Documentation files    |
+| **JavaScript** | `.js`, `.mjs`   | Node.js and ES modules |
+| **React/JSX**  | `.jsx`          | React components       |
+| **TypeScript** | `.ts`, `.tsx`   | TypeScript files       |
+| **JSON**       | `.json`         | Configuration files    |
+| **CSS**        | `.css`, `.scss` | Stylesheets            |
+| **YAML**       | `.yml`, `.yaml` | Configuration files    |
+| **HTML**       | `.html`         | HTML templates         |
 
 All of these are handled automatically by the deploy script.
 
@@ -158,26 +163,31 @@ $ bash deploy.sh -prod
 ## Benefits
 
 ✅ **No Manual Git Steps**
+
 - No need to manually commit formatting changes
 - No need to manually push formatting commits
 - No need to re-run deploy if formatting detected
 
 ✅ **Deployment Always Works**
+
 - Deploy command never fails due to formatting
 - Can be run from any directory
 - Works reliably every time
 
 ✅ **Clean Code**
+
 - All production code is properly formatted
 - Consistent code style across all files
 - No formatting drift between commits
 
 ✅ **Clear Commit History**
+
 - Formatting commits are clearly labeled with `build:` prefix
 - Easy to identify auto-generated vs. manual commits
 - Can filter git history by `build:` commits if needed
 
 ✅ **No Workarounds**
+
 - No manual git commands required
 - No skipping deploy and doing it manually
 - No confusion about which step to run
@@ -278,16 +288,19 @@ fi
 ### Error Handling
 
 If formatting fails:
+
 ```
 error_exit "Code formatting failed. Check .deployment/last-run.log for details."
 ```
 
 If committing fails:
+
 ```
 error_exit "Failed to commit formatting changes. Check git status."
 ```
 
 If pushing fails:
+
 ```
 error_exit "git push failed. Check your branch and remote."
 ```
@@ -308,7 +321,7 @@ The auto-formatting feature in the deploy script:
 ✅ Ensures code is properly formatted  
 ✅ Works seamlessly and automatically  
 ✅ Provides clear commit history  
-✅ Removes friction from production deployments  
+✅ Removes friction from production deployments
 
 **Result:** You can focus on development while the deploy script handles formatting automatically.
 
