@@ -55,7 +55,7 @@ export async function findUserByEmail(email) {
  */
 export async function findUserById(userId) {
   const result = await query(
-    'SELECT user_id, username, email, full_name, created_at, updated_at FROM users WHERE user_id = $1',
+    'SELECT user_id, username, email, full_name, is_admin, status, created_at, updated_at FROM users WHERE user_id = $1',
     [userId]
   );
   return result.rows[0] || null;
@@ -70,7 +70,7 @@ export async function findUserById(userId) {
 export async function authenticateUser(username, password) {
   const user = await findUserByUsername(username);
 
-  if (!user) {
+  if (!user || user.status !== 'active') {
     return null;
   }
 
@@ -115,11 +115,92 @@ export async function updateUserProfile(userId, updates) {
 
   const result = await query(
     `UPDATE users SET ${fields.join(', ')} WHERE user_id = $${paramCount} 
-     RETURNING user_id, username, email, full_name, created_at, updated_at`,
+     RETURNING user_id, username, email, full_name, is_admin, status, created_at, updated_at`,
     values
   );
 
   return result.rows[0];
+}
+
+/**
+ * Get all users (admin only)
+ * @returns {Promise<array>} Array of all users without passwords
+ */
+export async function getAllUsers() {
+  const result = await query(
+    'SELECT user_id, username, email, full_name, is_admin, status, created_at FROM users ORDER BY created_at'
+  );
+  return result.rows;
+}
+
+/**
+ * Disable a user (admin only)
+ * @param {string} userId - User ID to disable
+ * @returns {Promise<object>} Updated user object
+ */
+export async function disableUser(userId) {
+  const result = await query(
+    'UPDATE users SET status = $1 WHERE user_id = $2 RETURNING user_id, username, email, full_name, is_admin, status, created_at',
+    ['disabled', userId]
+  );
+  return result.rows[0];
+}
+
+/**
+ * Enable a user (admin only)
+ * @param {string} userId - User ID to enable
+ * @returns {Promise<object>} Updated user object
+ */
+export async function enableUser(userId) {
+  const result = await query(
+    'UPDATE users SET status = $1 WHERE user_id = $2 RETURNING user_id, username, email, full_name, is_admin, status, created_at',
+    ['active', userId]
+  );
+  return result.rows[0];
+}
+
+/**
+ * Delete a user and all related data (admin only)
+ * Cascades delete to all related tables
+ * @param {string} userId - User ID to delete
+ * @returns {Promise<boolean>} True if deletion successful
+ */
+export async function deleteUser(userId) {
+  const client = await (await import('../db/connection.mjs')).getClient();
+
+  try {
+    await client.query('BEGIN');
+
+    // Delete in order of foreign key dependencies
+    await client.query('DELETE FROM import_export_logs WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM quiz_results WHERE user_id = $1', [userId]);
+    await client.query(
+      'DELETE FROM quiz_questions WHERE quiz_id IN (SELECT quiz_id FROM quizzes WHERE user_id = $1)',
+      [userId]
+    );
+    await client.query('DELETE FROM quizzes WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM leitner_boxes WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM flashcards WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM users WHERE user_id = $1', [userId]);
+
+    await client.query('COMMIT');
+    return true;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Check if user is admin
+ * @param {string} userId - User ID
+ * @returns {Promise<boolean>} True if user is admin
+ */
+export async function isAdmin(userId) {
+  const result = await query('SELECT is_admin FROM users WHERE user_id = $1', [userId]);
+  return result.rows.length > 0 && result.rows[0].is_admin;
 }
 
 /**

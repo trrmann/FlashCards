@@ -7,6 +7,7 @@ import { appSiteData } from './src/js/appSiteData.js';
 import { initializeDatabase, healthCheck, query } from './src/db/connection.mjs';
 import authRoutes from './src/routes/auth.mjs';
 import userRoutes from './src/routes/users.mjs';
+import adminRoutes from './src/routes/admin.mjs';
 import systemRoutes from './src/routes/system.mjs';
 
 // Define the application environment.
@@ -55,15 +56,26 @@ app.set('views', path.join(__dirname, 'src/views'));
  */
 
 // Middleware to populate user info on every page
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   if (req.session.userId) {
     res.locals.userId = req.session.userId;
     res.locals.username = req.session.username;
     res.locals.isLoggedIn = true;
+
+    try {
+      const user = await query('SELECT is_admin FROM users WHERE user_id = $1', [
+        req.session.userId,
+      ]);
+      res.locals.isAdmin = user.rows.length > 0 && user.rows[0].is_admin;
+    } catch (error) {
+      console.error('Error checking admin status:', error.message);
+      res.locals.isAdmin = false;
+    }
   } else {
     res.locals.userId = null;
     res.locals.username = null;
     res.locals.isLoggedIn = false;
+    res.locals.isAdmin = false;
   }
   next();
 });
@@ -114,7 +126,11 @@ app.get('/login', async (req, res) => {
 
 app.get('/profile', async (req, res) => {
   siteData.setTitle('Profile');
-  res.render('profile', { siteData });
+  res.render('profile', {
+    siteData,
+    isAdmin: res.locals.isAdmin || false,
+    currentUserId: req.session.userId,
+  });
 });
 
 app.get('/logout', async (req, res) => {
@@ -134,6 +150,9 @@ app.use('/api/auth', authRoutes);
 
 // User routes
 app.use('/api/users', userRoutes);
+
+// Admin routes
+app.use('/api/admin', adminRoutes);
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {

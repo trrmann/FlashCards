@@ -2,23 +2,230 @@
 <main>
   <h1><%= siteData.getTitle() %></h1>
   <h2>Welcome to <%= siteData.getName() %><%= siteData.getNameHeadingHelp() %>Flash Card Service!</h2>
-  <p>
-    Our mission is to help <%= siteData.getName() %> study for English Connect.
-  </p>
-  <form>
-    <label name="username">Username</label>
-    <input name="username" type="username">
-    <label name="password">Password</label>
-    <input name="password" type="password">
-    <label name="passwordAgain">Password Again</label>
-    <input name="passwordAgain" type="password">
-    <label name="name">Name</label>
-    <input name="name" type="name">
-  </form>
-  <!--<img
-    class="main-logo"
-    src="/images/cse340-service-network.png"
-    alt="CSE 340 Service Network Logo"
-  />-->
+  <p>Our mission is to help <%= siteData.getName() %> study for English Connect.</p>
+
+  <!-- User Profile Section -->
+  <section class="profile-section">
+    <h2>Your Profile</h2>
+    <form id="profileForm">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" disabled />
+        <small>Username cannot be changed</small>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" required />
+      </div>
+
+      <div class="form-group">
+        <label for="fullName">Full Name</label>
+        <input id="fullName" name="fullName" type="text" />
+      </div>
+
+      <div class="form-group">
+        <label for="accountStatus">Account Status</label>
+        <input id="accountStatus" name="accountStatus" type="text" disabled />
+      </div>
+
+      <button type="submit" id="updateProfileBtn">Update Profile</button>
+    </form>
+    <div id="profileStatus"></div>
+  </section>
+
+  <!-- Admin Section (only visible to admins) -->
+  <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+    <section class="admin-section">
+      <h2>Admin: User Management</h2>
+      <p>Manage all users in the system</p>
+
+      <div id="usersList">
+        <p>Loading users...</p>
+      </div>
+    </section>
+  <% } %>
+
+  <script>
+    // Fetch and populate user profile
+    async function loadProfile() {
+      try {
+        const response = await fetch('/api/users/profile');
+        const data = await response.json();
+
+        if (data.status === 'success') {
+          const user = data.user;
+          document.getElementById('username').value = user.username;
+          document.getElementById('email').value = user.email || '';
+          document.getElementById('fullName').value = user.full_name || '';
+          document.getElementById('accountStatus').value = user.status || 'active';
+
+          // Store original data for comparison
+          window.originalUser = user;
+        } else {
+          document.getElementById('profileStatus').innerHTML =
+            `<p class="error">Failed to load profile: ${data.message}</p>`;
+        }
+      } catch (error) {
+        document.getElementById('profileStatus').innerHTML =
+          `<p class="error">Error loading profile: ${error.message}</p>`;
+      }
+    }
+
+    // Update profile
+    document.getElementById('profileForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById('email').value;
+      const fullName = document.getElementById('fullName').value;
+      const statusDiv = document.getElementById('profileStatus');
+
+      try {
+        const response = await fetch('/api/users/profile', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, fullName }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          statusDiv.innerHTML = '<p class="success">Profile updated successfully!</p>';
+          // Update original data
+          window.originalUser = data.user;
+        } else {
+          statusDiv.innerHTML = `<p class="error">Update failed: ${data.message}</p>`;
+        }
+      } catch (error) {
+        statusDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+      }
+    });
+
+    // Load admin users list
+    async function loadAdminUsersList() {
+      const adminSection = document.querySelector('.admin-section');
+      if (!adminSection) return; // Not admin
+
+      try {
+        const response = await fetch('/api/admin/users');
+        const data = await response.json();
+
+        if (data.status === 'success') {
+          const usersList = document.getElementById('usersList');
+          let html = '<table class="admin-users-table"><thead><tr>';
+          html += '<th>Username</th><th>Email</th><th>Full Name</th><th>Status</th><th>Admin</th><th>Actions</th></tr></thead><tbody>';
+
+          data.users.forEach((user) => {
+            const isCurrentUser = window.currentUserId === user.user_id;
+            const isAdmin = user.is_admin ? '✓' : '–';
+            const status = user.status || 'active';
+            const actionDisabled = isCurrentUser ? 'disabled' : '';
+
+            html += `<tr>`;
+            html += `<td>${user.username}</td>`;
+            html += `<td>${user.email}</td>`;
+            html += `<td>${user.full_name || '–'}</td>`;
+            html += `<td><span class="status-badge ${status}">${status}</span></td>`;
+            html += `<td>${isAdmin}</td>`;
+            html += `<td>`;
+
+            if (!isCurrentUser) {
+              if (status === 'active') {
+                html += `<button onclick="disableUser('${user.user_id}')">Disable</button>`;
+              } else {
+                html += `<button onclick="enableUser('${user.user_id}')">Enable</button>`;
+              }
+              html += `<button onclick="deleteUser('${user.user_id}', '${user.username}')" class="btn-danger">Delete</button>`;
+            } else {
+              html += '<span class="text-muted">Current User</span>';
+            }
+
+            html += `</td></tr>`;
+          });
+
+          html += '</tbody></table>';
+          usersList.innerHTML = html;
+        } else {
+          document.getElementById('usersList').innerHTML =
+            `<p class="error">Failed to load users: ${data.message}</p>`;
+        }
+      } catch (error) {
+        document.getElementById('usersList').innerHTML =
+          `<p class="error">Error loading users: ${error.message}</p>`;
+      }
+    }
+
+    // Admin actions
+    async function disableUser(userId) {
+      if (!confirm('Are you sure you want to disable this user?')) return;
+
+      try {
+        const response = await fetch(`/api/admin/users/${userId}/disable`, {
+          method: 'POST',
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          alert('User disabled successfully');
+          loadAdminUsersList();
+        } else {
+          alert(`Failed: ${data.message}`);
+        }
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
+
+    async function enableUser(userId) {
+      if (!confirm('Are you sure you want to enable this user?')) return;
+
+      try {
+        const response = await fetch(`/api/admin/users/${userId}/enable`, {
+          method: 'POST',
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          alert('User enabled successfully');
+          loadAdminUsersList();
+        } else {
+          alert(`Failed: ${data.message}`);
+        }
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
+
+    async function deleteUser(userId, username) {
+      if (!confirm(`Are you sure you want to DELETE user "${username}"? This action cannot be undone.`)) return;
+
+      try {
+        const response = await fetch(`/api/admin/users/${userId}`, {
+          method: 'DELETE',
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          alert('User deleted successfully');
+          loadAdminUsersList();
+        } else {
+          alert(`Failed: ${data.message}`);
+        }
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      loadProfile();
+      loadAdminUsersList();
+    });
+  </script>
 </main>
 <%- include('partials/footer') %>
