@@ -1,0 +1,311 @@
+<% if (isLoggedIn) { %>
+  <div class="filter-panel">
+    <div class="filter-header">
+      <h3>📊 Study Filters</h3>
+      <button class="filter-toggle" id="filter-toggle">
+        <span class="toggle-icon">▼</span>
+      </button>
+    </div>
+    
+    <div class="filter-content" id="filter-content" style="display: none;">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label for="filter-class">Class:</label>
+          <input
+            type="text"
+            id="filter-class"
+            list="filter-class-options"
+            placeholder="All classes"
+            autocomplete="off"
+          />
+          <datalist id="filter-class-options"></datalist>
+        </div>
+
+        <div class="filter-group">
+          <label for="filter-lesson">Lesson:</label>
+          <input
+            type="text"
+            id="filter-lesson"
+            list="filter-lesson-options"
+            placeholder="All lessons"
+            autocomplete="off"
+          />
+          <datalist id="filter-lesson-options"></datalist>
+        </div>
+
+        <div class="filter-group">
+          <label for="filter-category">Category:</label>
+          <input
+            type="text"
+            id="filter-category"
+            list="filter-category-options"
+            placeholder="All categories"
+            autocomplete="off"
+          />
+          <datalist id="filter-category-options"></datalist>
+        </div>
+
+        <div class="filter-actions">
+          <button class="btn btn-primary btn-sm" id="apply-filters">Apply Filters</button>
+          <button class="btn btn-secondary btn-sm" id="clear-filters">Clear All</button>
+        </div>
+      </div>
+
+      <div class="filter-status" id="filter-status" style="display: none;">
+        <span id="active-filters"></span>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .filter-panel {
+      background: #f8f9fa;
+      border-bottom: 2px solid #e9ecef;
+      padding: 0;
+      margin: 0;
+    }
+
+    .filter-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      cursor: pointer;
+    }
+
+    .filter-header h3 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: #495057;
+    }
+
+    .filter-toggle {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      font-size: 12px;
+      color: #6c757d;
+      transition: transform 0.2s;
+    }
+
+    .filter-toggle.open .toggle-icon {
+      transform: rotate(180deg);
+    }
+
+    .filter-content {
+      padding: 15px 20px;
+      background: #ffffff;
+      border-top: 1px solid #e9ecef;
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      flex: 1;
+      min-width: 180px;
+    }
+
+    .filter-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #495057;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .filter-group input {
+      padding: 8px 12px;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    .filter-group input:focus {
+      outline: none;
+      border-color: #007bff;
+      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    }
+
+    .filter-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-sm {
+      padding: 8px 12px;
+      font-size: 12px;
+      min-width: auto;
+    }
+
+    .filter-status {
+      margin-top: 10px;
+      padding: 8px 12px;
+      background: #e7f3ff;
+      border-left: 3px solid #007bff;
+      border-radius: 2px;
+      font-size: 12px;
+      color: #004085;
+    }
+
+    @media (max-width: 768px) {
+      .filter-row {
+        flex-direction: column;
+      }
+
+      .filter-group {
+        width: 100%;
+      }
+
+      .filter-actions {
+        width: 100%;
+      }
+
+      .filter-actions button {
+        flex: 1;
+      }
+    }
+  </style>
+
+  <script>
+    // Filter state management
+    let filterState = {
+      class: null,
+      lesson: null,
+      category: null,
+    };
+
+    // Toggle filter panel visibility
+    const filterToggle = document.getElementById('filter-toggle');
+    const filterContent = document.getElementById('filter-content');
+
+    filterToggle.addEventListener('click', () => {
+      const isHidden = filterContent.style.display === 'none';
+      filterContent.style.display = isHidden ? 'block' : 'none';
+      filterToggle.classList.toggle('open', isHidden);
+    });
+
+    // Load filter options
+    async function loadFilterOptions() {
+      try {
+        const [classRes, lessonRes, categoryRes] = await Promise.all([
+          fetch('/api/entries/metadata/classes'),
+          fetch('/api/entries/metadata/lessons'),
+          fetch('/api/entries/metadata/categories'),
+        ]);
+
+        const classData = await classRes.json();
+        const lessonData = await lessonRes.json();
+        const categoryData = await categoryRes.json();
+
+        if (classData.status === 'success' && classData.classes) {
+          const classDatalist = document.getElementById('filter-class-options');
+          classDatalist.innerHTML = classData.classes
+            .map(cls => `<option value="${escapeHtml(cls)}" />`)
+            .join('');
+        }
+
+        if (lessonData.status === 'success' && lessonData.lessons) {
+          const lessonDatalist = document.getElementById('filter-lesson-options');
+          lessonDatalist.innerHTML = lessonData.lessons
+            .map(lesson => `<option value="${escapeHtml(lesson)}" />`)
+            .join('');
+        }
+
+        if (categoryData.status === 'success' && categoryData.categories) {
+          const categoryDatalist = document.getElementById('filter-category-options');
+          categoryDatalist.innerHTML = categoryData.categories
+            .map(cat => `<option value="${escapeHtml(cat)}" />`)
+            .join('');
+        }
+      } catch (error) {
+        console.error('Error loading filter options:', error);
+      }
+    }
+
+    // Apply filters
+    document.getElementById('apply-filters').addEventListener('click', () => {
+      filterState.class = document.getElementById('filter-class').value || null;
+      filterState.lesson = document.getElementById('filter-lesson').value || null;
+      filterState.category = document.getElementById('filter-category').value || null;
+
+      // Store in session/localStorage
+      sessionStorage.setItem('studyFilters', JSON.stringify(filterState));
+
+      // Update status display
+      updateFilterStatus();
+
+      // Dispatch custom event for other components to listen to
+      window.dispatchEvent(new CustomEvent('filtersChanged', { detail: filterState }));
+
+      console.log('Filters applied:', filterState);
+    });
+
+    // Clear filters
+    document.getElementById('clear-filters').addEventListener('click', () => {
+      filterState = { class: null, lesson: null, category: null };
+      document.getElementById('filter-class').value = '';
+      document.getElementById('filter-lesson').value = '';
+      document.getElementById('filter-category').value = '';
+
+      sessionStorage.setItem('studyFilters', JSON.stringify(filterState));
+      updateFilterStatus();
+
+      window.dispatchEvent(new CustomEvent('filtersChanged', { detail: filterState }));
+
+      console.log('Filters cleared');
+    });
+
+    // Update filter status display
+    function updateFilterStatus() {
+      const statusDiv = document.getElementById('filter-status');
+      const activeFilterSpan = document.getElementById('active-filters');
+
+      const activeFilters = [];
+      if (filterState.class) activeFilters.push(`Class: ${escapeHtml(filterState.class)}`);
+      if (filterState.lesson) activeFilters.push(`Lesson: ${escapeHtml(filterState.lesson)}`);
+      if (filterState.category) activeFilters.push(`Category: ${escapeHtml(filterState.category)}`);
+
+      if (activeFilters.length > 0) {
+        activeFilterSpan.textContent = `Active filters: ${activeFilters.join(' • ')}`;
+        statusDiv.style.display = 'block';
+      } else {
+        statusDiv.style.display = 'none';
+      }
+    }
+
+    // Initialize on page load
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadFilterOptions);
+    } else {
+      loadFilterOptions();
+    }
+
+    // Restore filters from session storage
+    function restoreFilters() {
+      const stored = sessionStorage.getItem('studyFilters');
+      if (stored) {
+        filterState = JSON.parse(stored);
+        document.getElementById('filter-class').value = filterState.class || '';
+        document.getElementById('filter-lesson').value = filterState.lesson || '';
+        document.getElementById('filter-category').value = filterState.category || '';
+        updateFilterStatus();
+      }
+    }
+
+    restoreFilters();
+
+    // Export filter state globally
+    window.getStudyFilters = () => filterState;
+  </script>
+<% } %>

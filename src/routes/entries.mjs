@@ -7,6 +7,7 @@ import express from 'express';
 import {
   createFlashcard,
   getUserFlashcards,
+  getUserFlashcardsFiltered,
   getFlashcard,
   updateFlashcard,
   deleteFlashcard,
@@ -63,7 +64,8 @@ router.post('/', express.json(), async (req, res) => {
 
 /**
  * GET /api/entries
- * Get all entries for the authenticated user
+ * Get all entries for the authenticated user (with optional filters)
+ * Query params: ?class=Biology101&lesson=Lesson5&category=Taxonomy
  */
 router.get('/', async (req, res) => {
   try {
@@ -71,11 +73,24 @@ router.get('/', async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const flashcards = await getUserFlashcards(req.session.userId);
+    // Extract filter parameters from query string
+    const filters = {};
+    if (req.query.class) filters.class = req.query.class;
+    if (req.query.lesson) filters.lesson = req.query.lesson;
+    if (req.query.category) filters.category = req.query.category;
+
+    // Use filtered query if filters provided, otherwise get all
+    let flashcards;
+    if (Object.keys(filters).length > 0) {
+      flashcards = await getUserFlashcardsFiltered(req.session.userId, filters);
+    } else {
+      flashcards = await getUserFlashcards(req.session.userId);
+    }
 
     return res.status(200).json({
       status: 'success',
       count: flashcards.length,
+      filters: Object.keys(filters).length > 0 ? filters : null,
       flashcards,
     });
   } catch (error) {
@@ -461,6 +476,133 @@ router.get('/metadata/categories', async (req, res) => {
   } catch (error) {
     console.error('Get categories error:', error.message);
     return res.status(500).json({ status: 'error', message: 'Failed to fetch categories' });
+  }
+});
+
+/**
+ * GET /api/entries/export
+ * Export user's entries as JSON
+ * Query params: ?class=Biology101&lesson=Lesson5&category=Taxonomy (optional for filtered export)
+ */
+router.get('/export', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ status: 'error', message: 'Not authenticated' });
+    }
+
+    // Extract filter parameters
+    const filters = {};
+    if (req.query.class) filters.class = req.query.class;
+    if (req.query.lesson) filters.lesson = req.query.lesson;
+    if (req.query.category) filters.category = req.query.category;
+
+    // Get entries
+    let flashcards;
+    if (Object.keys(filters).length > 0) {
+      flashcards = await getUserFlashcardsFiltered(req.session.userId, filters);
+    } else {
+      flashcards = await getUserFlashcards(req.session.userId);
+    }
+
+    // Create export object
+    const exportData = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      exportedBy: req.session.username || req.session.userId,
+      filters: Object.keys(filters).length > 0 ? filters : null,
+      count: flashcards.length,
+      entries: flashcards.map(card => ({
+        question: card.question,
+        answer: card.answer,
+        lesson: card.lesson,
+        category: card.category,
+        class: card.class,
+        is_private: card.is_private,
+      })),
+    };
+
+    // Send as downloadable JSON file
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="flashcards-export-${Date.now()}.json"`);
+    return res.status(200).send(JSON.stringify(exportData, null, 2));
+  } catch (error) {
+    console.error('Export entries error:', error.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to export entries' });
+  }
+});
+
+/**
+ * POST /api/entries/import
+ * Import entries from JSON file
+ * Body: { entries: [...] }
+ */
+router.post('/import', express.json({ limit: '50mb' }), async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ status: 'error', message: 'Not authenticated' });
+    }
+
+    const { entries } = req.body;
+
+    if (!Array.isArray(entries)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid import format. Expected array of entries.',
+      });
+    }
+
+    if (entries.length === 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'No entries to import.',
+      });
+    }
+
+    // Validate entries
+    const validEntries = entries.filter(entry => {
+      return entry.question && entry.answer && typeof entry.question === 'string' && typeof entry.answer === 'string';
+    });
+
+    if (validEntries.length === 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'No valid entries found. Each entry must have question and answer fields.',
+      });
+    }
+
+    // Import entries
+    const importedCards = [];
+    const errors = [];
+
+    for (const entry of validEntries) {
+      try {
+        const card = await createFlashcard(
+          req.session.userId,
+          entry.question,
+          entry.answer,
+          entry.lesson || null,
+          entry.category || null,
+          entry.class || null
+        );
+        importedCards.push(card);
+      } catch (error) {
+        errors.push({
+          question: entry.question.substring(0, 50),
+          error: error.message,
+        });
+      }
+    }
+
+    return res.status(201).json({
+      status: 'success',
+      message: `Imported ${importedCards.length} entries successfully`,
+      count: importedCards.length,
+      errors: errors.length > 0 ? errors : null,
+      imported: importedCards,
+    });
+  } catch (error) {
+    console.error('Import entries error:', error.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to import entries' });
   }
 });
 

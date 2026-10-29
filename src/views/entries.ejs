@@ -88,7 +88,18 @@
 
       <!-- Entries List -->
       <div class="entries-list-section">
-        <h2>Your Flashcards</h2>
+        <div class="entries-header">
+          <h2>Your Flashcards</h2>
+          <div class="entries-actions">
+            <button class="btn btn-secondary" id="export-btn" title="Export all entries or filtered selection">
+              📥 Export
+            </button>
+            <button class="btn btn-secondary" id="import-btn" title="Import entries from JSON file">
+              📤 Import
+            </button>
+            <input type="file" id="import-file-input" style="display: none;" accept=".json" />
+          </div>
+        </div>
         <div id="entries-list" class="entries-list">
           <p class="loading">Loading your flashcards...</p>
         </div>
@@ -123,6 +134,27 @@
     border-radius: 8px;
     padding: 20px;
     margin-bottom: 20px;
+  }
+
+  .entries-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .entries-header h2 {
+    margin: 0;
+  }
+
+  .entries-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .entries-actions .btn {
+    padding: 8px 16px;
+    font-size: 13px;
   }
 
   .entry-form {
@@ -457,7 +489,17 @@
     const list = document.getElementById('entries-list');
 
     try {
-      const response = await fetch('/api/entries');
+      // Get current filters from header
+      const filters = window.getStudyFilters ? window.getStudyFilters() : {};
+      
+      // Build query string from filters
+      const queryParams = new URLSearchParams();
+      if (filters.class) queryParams.append('class', filters.class);
+      if (filters.lesson) queryParams.append('lesson', filters.lesson);
+      if (filters.category) queryParams.append('category', filters.category);
+
+      const url = `/api/entries${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const response = await fetch(url);
       const data = await response.json();
 
       if (data.status === 'success' && data.entries && data.entries.length > 0) {
@@ -656,6 +698,98 @@
       alert('Error: ' + error.message);
     }
   }
+
+  // Export entries
+  document.getElementById('export-btn').addEventListener('click', async () => {
+    try {
+      // Get current filters
+      const filters = window.getStudyFilters ? window.getStudyFilters() : {};
+      
+      // Build query string
+      const queryParams = new URLSearchParams();
+      if (filters.class) queryParams.append('class', filters.class);
+      if (filters.lesson) queryParams.append('lesson', filters.lesson);
+      if (filters.category) queryParams.append('category', filters.category);
+
+      const url = `/api/entries/export${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      
+      // Trigger download
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.status === 'error') {
+        alert('Error: ' + data.message);
+        return;
+      }
+
+      // Create blob and download
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `flashcards-${Date.now()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(downloadUrl);
+
+      alert(`✓ Exported ${data.count} flashcards`);
+    } catch (error) {
+      alert('Export failed: ' + error.message);
+    }
+  });
+
+  // Import entries
+  document.getElementById('import-btn').addEventListener('click', () => {
+    document.getElementById('import-file-input').click();
+  });
+
+  document.getElementById('import-file-input').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const fileContent = await file.text();
+      const importData = JSON.parse(fileContent);
+
+      if (!Array.isArray(importData.entries) && !Array.isArray(importData)) {
+        alert('Invalid file format. Expected JSON with entries array.');
+        return;
+      }
+
+      const entries = Array.isArray(importData) ? importData : importData.entries;
+
+      if (entries.length === 0) {
+        alert('No entries found in file.');
+        return;
+      }
+
+      if (!confirm(`Import ${entries.length} flashcards? This will add them to your entries.`)) {
+        return;
+      }
+
+      // Send import request
+      const response = await fetch('/api/entries/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entries }),
+      });
+
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        alert(`✓ Successfully imported ${data.count} flashcards!`);
+        loadUserEntries();
+      } else {
+        alert('Error: ' + data.message);
+      }
+    } catch (error) {
+      alert('Import failed: ' + error.message);
+    } finally {
+      // Reset file input
+      e.target.value = '';
+    }
+  });
 
   function escapeHtml(text) {
     const map = {

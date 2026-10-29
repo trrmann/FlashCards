@@ -51,6 +51,43 @@ export async function getUserFlashcards(userId) {
 }
 
 /**
+ * Get user's flashcards filtered by class, lesson, and/or category
+ * @param {string} userId - User ID
+ * @param {object} filters - { class: string, lesson: string, category: string }
+ * @returns {Promise<array>} Array of filtered flashcards
+ */
+export async function getUserFlashcardsFiltered(userId, filters = {}) {
+  let sql = `SELECT flashcard_id, question, answer, lesson, category, class, is_private, created_at
+             FROM flashcards 
+             WHERE created_by = $1`;
+  const params = [userId];
+  let paramIndex = 2;
+
+  if (filters.class) {
+    sql += ` AND class = $${paramIndex}`;
+    params.push(filters.class);
+    paramIndex += 1;
+  }
+
+  if (filters.lesson) {
+    sql += ` AND lesson = $${paramIndex}`;
+    params.push(filters.lesson);
+    paramIndex += 1;
+  }
+
+  if (filters.category) {
+    sql += ` AND category = $${paramIndex}`;
+    params.push(filters.category);
+    paramIndex += 1;
+  }
+
+  sql += ` ORDER BY created_at DESC`;
+
+  const result = await query(sql, params);
+  return result.rows;
+}
+
+/**
  * Get a specific flashcard
  * @param {string} flashcardId - Flashcard ID
  * @param {string} userId - User ID (to check ownership/sharing)
