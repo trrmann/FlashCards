@@ -180,7 +180,16 @@ async function initializeDatabase() {
 
     // Execute all SQL
     for (let i = 0; i < allSQL.length; i++) {
-      const sqlName = ['Extensions', 'Users Table', 'Flashcards Table', 'Leitner Boxes Table', 'Quizzes Table', 'Quiz Questions Table', 'Quiz Results Table', 'Import/Export Logs Table'][i];
+      const sqlName = [
+        'Extensions',
+        'Users Table',
+        'Flashcards Table',
+        'Leitner Boxes Table',
+        'Quizzes Table',
+        'Quiz Questions Table',
+        'Quiz Results Table',
+        'Import/Export Logs Table',
+      ][i];
 
       try {
         process.stdout.write(`[${i + 1}/${allSQL.length}] ${sqlName}... `);

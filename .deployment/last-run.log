@@ -1,102 +1,96 @@
 ╔════════════════════════════════════════════════════════════════╗
 ║  FlashCards Deployment
 ║  Environment: -preview
-║  Started: Thu Oct 29 01:14:22 PM EDT 2026
+║  Started: Thu Oct 29 01:27:57 PM EDT 2026
 ╚════════════════════════════════════════════════════════════════╝
 
-[2026-10-29 13:14:22] [INFO] FlashCards Deployment Starting
-[2026-10-29 13:14:22] [INFO] Environment: -preview
-[2026-10-29 13:14:22] [INFO] Checking prerequisites...
-[2026-10-29 13:14:22] [SUCCESS] All prerequisites met
-[2026-10-29 13:14:22] [INFO] Checking git status...
-[2026-10-29 13:14:22] [INFO] Current branch: main
-[2026-10-29 13:14:22] [WARN] Uncommitted changes detected
- .deployment/last-run.log       |  78 +++----------------------
- CODE_QUALITY.md                |  77 ++++++++++++++++++++-----
- DEPLOY_QUICK_REFERENCE.md      |   1 +
- FIREFOX_TESTING.md             | 127 +++++++++++++++++++++++++----------------
- FIREFOX_TESTING_QUICK_SETUP.md | 102 ++++++++++++++++++++-------------
- TESTING_INDEX.md               |  95 +++++++++++++++++++++++-------
- TESTING_PREVIEW.md             |  71 +++++++++++++++++++----
- TESTING_QUICK_REFERENCE.md     |  26 ++++++---
- W3C_QUICK_ANSWER.md            |  23 ++++++--
- W3C_VALIDATION_STATUS.md       | 112 ++++++++++++++++++++++--------------
- src/tests/test-config.mjs      |   3 +-
- 11 files changed, 451 insertions(+), 264 deletions(-)
-[2026-10-29 13:14:22] [INFO] Checking npm dependencies...
-[2026-10-29 13:14:22] [SUCCESS] Dependencies ready
-[2026-10-29 13:14:22] [INFO] Running code checks...
-[2026-10-29 13:14:24] [INFO] Running linter...
+[2026-10-29 13:27:57] [INFO] FlashCards Deployment Starting
+[2026-10-29 13:27:57] [INFO] Environment: -preview
+[2026-10-29 13:27:57] [INFO] Checking prerequisites...
+[2026-10-29 13:27:57] [SUCCESS] All prerequisites met
+[2026-10-29 13:27:57] [INFO] Checking git status...
+[2026-10-29 13:27:57] [INFO] Current branch: main
+[2026-10-29 13:27:57] [WARN] Uncommitted changes detected
+ .deployment/last-run.log | 130 +++--------------------------------------------
+ scripts/init-db.mjs      |  11 +++-
+ server.js                |  19 ++++++-
+ 3 files changed, 36 insertions(+), 124 deletions(-)
+[2026-10-29 13:27:57] [INFO] Checking npm dependencies...
+[2026-10-29 13:27:57] [SUCCESS] Dependencies ready
+[2026-10-29 13:27:57] [INFO] Running code checks...
+[2026-10-29 13:27:59] [INFO] Running linter...
 
 > FlashCards@1.0.0 lint
 > eslint . --ext .js,.mjs
 
 
-[2026-10-29 13:14:25] [INFO] ==========================================
-[2026-10-29 13:14:25] [INFO] DEPLOYING TO: Preview (Local)
-[2026-10-29 13:14:25] [INFO] ==========================================
-[2026-10-29 13:14:25] [INFO] Running strict code verification (format + lint)...
-[2026-10-29 13:14:25] [INFO] Formatting code...
+[2026-10-29 13:28:01] [INFO] ==========================================
+[2026-10-29 13:28:01] [INFO] DEPLOYING TO: Preview (Local)
+[2026-10-29 13:28:01] [INFO] ==========================================
+[2026-10-29 13:28:01] [INFO] Running strict code verification (format + lint)...
+[2026-10-29 13:28:01] [INFO] Formatting code...
 
 > FlashCards@1.0.0 format
 > prettier --write .
 
-.prettierrc.json 50ms (unchanged)
-CODE_QUALITY.md 252ms (unchanged)
-DEPLOY_ACCESSIBILITY.md 33ms (unchanged)
-DEPLOY_QUICK_REFERENCE.md 51ms (unchanged)
-DEPLOY.md 66ms (unchanged)
-documents/API_ENDPOINTS.md 179ms (unchanged)
-documents/ARCHITECTURE.md 59ms (unchanged)
-documents/DATABASE_SCHEMA.md 61ms (unchanged)
-documents/DEPLOYMENT_STRATEGY.md 178ms (unchanged)
-documents/DEV_ENVIRONMENT_SETUP.md 163ms (unchanged)
-documents/LEITNER_SYSTEM.md 107ms (unchanged)
-documents/MULTI_APP_ARCHITECTURE.md 98ms (unchanged)
-documents/PROJECT_STRUCTURE.md 25ms (unchanged)
-documents/QUICK_REFERENCE.md 108ms (unchanged)
-documents/README.md 132ms (unchanged)
-documents/ROADMAP.md 104ms (unchanged)
-documents/TESTING_STRATEGY.md 186ms (unchanged)
-ENVIRONMENTS.md 21ms (unchanged)
-eslint.config.js 9ms (unchanged)
-FIREFOX_TESTING_QUICK_SETUP.md 65ms (unchanged)
-FIREFOX_TESTING.md 71ms (unchanged)
+.prettierrc.json 33ms (unchanged)
+CODE_QUALITY.md 222ms (unchanged)
+DEPLOY_ACCESSIBILITY.md 26ms (unchanged)
+DEPLOY_QUICK_REFERENCE.md 40ms (unchanged)
+DEPLOY.md 46ms (unchanged)
+documents/API_ENDPOINTS.md 145ms (unchanged)
+documents/ARCHITECTURE.md 60ms (unchanged)
+documents/DATABASE_SCHEMA.md 57ms (unchanged)
+documents/DEPLOYMENT_STRATEGY.md 191ms (unchanged)
+documents/DEV_ENVIRONMENT_SETUP.md 123ms (unchanged)
+documents/LEITNER_SYSTEM.md 168ms (unchanged)
+documents/MULTI_APP_ARCHITECTURE.md 53ms (unchanged)
+documents/PROJECT_STRUCTURE.md 26ms (unchanged)
+documents/QUICK_REFERENCE.md 63ms (unchanged)
+documents/README.md 100ms (unchanged)
+documents/ROADMAP.md 93ms (unchanged)
+documents/TESTING_STRATEGY.md 169ms (unchanged)
+ENVIRONMENTS.md 22ms (unchanged)
+eslint.config.js 6ms (unchanged)
+FIREFOX_TESTING_QUICK_SETUP.md 41ms (unchanged)
+FIREFOX_TESTING.md 54ms (unchanged)
 FlashCards.code-workspace 2ms (unchanged)
 nodemon.json 1ms (unchanged)
 package.json 3ms (unchanged)
-public/css/core.css 63ms (unchanged)
-public/css/desktop.css 9ms (unchanged)
+public/css/core.css 56ms (unchanged)
+public/css/desktop.css 11ms (unchanged)
 public/css/laptop.css 4ms (unchanged)
-public/css/mobile.css 14ms (unchanged)
-public/css/styles.css 7ms (unchanged)
-public/css/tablet.css 5ms (unchanged)
-README_START_HERE.md 45ms (unchanged)
-server.js 22ms (unchanged)
-SETUP_CHECKLIST.md 114ms (unchanged)
-SETUP_GUIDE_INDEX.md 54ms (unchanged)
-SETUP_QUICK_START.md 44ms (unchanged)
+public/css/mobile.css 12ms (unchanged)
+public/css/styles.css 9ms (unchanged)
+public/css/tablet.css 7ms (unchanged)
+README_START_HERE.md 39ms (unchanged)
+scripts/init-db.mjs 19ms (unchanged)
+server.js 14ms (unchanged)
+SETUP_CHECKLIST.md 57ms (unchanged)
+SETUP_GUIDE_INDEX.md 50ms (unchanged)
+SETUP_QUICK_START.md 45ms (unchanged)
+src/db/connection.mjs 11ms (unchanged)
 src/js/appSiteData.js 2ms (unchanged)
-src/js/modules/appSiteData.mjs 10ms (unchanged)
-src/tests/preview-tests.mjs 55ms (unchanged)
-src/tests/test-config.mjs 41ms (unchanged)
-TESTING_INDEX.md 111ms (unchanged)
-TESTING_PREVIEW.md 42ms (unchanged)
-TESTING_QUICK_REFERENCE.md 19ms (unchanged)
-W3C_QUICK_ANSWER.md 20ms (unchanged)
-W3C_VALIDATION_STATUS.md 82ms (unchanged)
-[2026-10-29 13:14:29] [SUCCESS] Code formatted successfully
-[2026-10-29 13:14:29] [INFO] Verifying code with linter...
+src/js/modules/appSiteData.mjs 7ms (unchanged)
+src/tests/preview-tests.mjs 49ms (unchanged)
+src/tests/test-config.mjs 13ms (unchanged)
+TESTING_INDEX.md 59ms (unchanged)
+TESTING_PREVIEW.md 53ms (unchanged)
+TESTING_QUICK_REFERENCE.md 18ms (unchanged)
+W3C_QUICK_ANSWER.md 15ms (unchanged)
+W3C_VALIDATION_STATUS.md 71ms (unchanged)
+[2026-10-29 13:28:04] [SUCCESS] Code formatted successfully
+[2026-10-29 13:28:04] [INFO] Verifying code with linter...
 
 > FlashCards@1.0.0 lint
 > eslint . --ext .js,.mjs
 
-[2026-10-29 13:14:31] [SUCCESS] Code verification passed
-[2026-10-29 13:14:31] [INFO] Starting preview server on localhost:5000...
-[2026-10-29 13:14:31] [WARN] Process already running on port 5000. Killing...
+[2026-10-29 13:28:05] [SUCCESS] Code verification passed
+[2026-10-29 13:28:05] [INFO] Starting preview server on localhost:5000...
+[2026-10-29 13:28:05] [WARN] Process already running on port 5000. Killing...
 [31m[nodemon] app crashed - waiting for file changes before starting...[39m
-[2026-10-29 13:14:32] [INFO] Server PID: 151111
-[2026-10-29 13:14:32] [INFO] Waiting for server to start...
+[2026-10-29 13:28:06] [INFO] Server PID: 159894
+[2026-10-29 13:28:06] [INFO] Waiting for server to start...
 
 > FlashCards@1.0.0 dev
 > nodemon
@@ -106,22 +100,30 @@ W3C_VALIDATION_STATUS.md 82ms (unchanged)
 [33m[nodemon] watching path(s): *.*[39m
 [33m[nodemon] watching extensions: js,css,ejs,env[39m
 [32m[nodemon] starting `node --env-file=.env server.js`[39m
+◇ injected env (0) from .env
 Server running in preview mode on port 5000
-[2026-10-29 13:14:33] [SUCCESS] Preview server is running
-[2026-10-29 13:14:33] [SUCCESS] URL: http://localhost:5000
-PREVIEW_PID=151111
-[2026-10-29 13:14:35] [INFO] Running comprehensive preview test suite...
-[2026-10-29 13:14:35] [INFO] Tests: Lighthouse, HTML/CSS validation, Memory, Core Web Vitals
+✅ Database connected: dpg-dbhnuks9v7es73beg8mg-a.virginia-postgres.render.com
+[2026-10-29 13:28:07] [SUCCESS] Preview server is running
+[2026-10-29 13:28:07] [SUCCESS] URL: http://localhost:5000
+PREVIEW_PID=159894
+[2026-10-29 13:28:09] [INFO] Running comprehensive preview test suite...
+[2026-10-29 13:28:09] [INFO] Tests: Lighthouse, HTML/CSS validation, Memory, Core Web Vitals
 
 > FlashCards@1.0.0 test:preview
 > node src/tests/preview-tests.mjs
 
-[2026-10-29 13:14:39] [SUCCESS] All preview tests passed
-[2026-10-29 13:14:39] [INFO] Opening browser for Preview testing at http://localhost:5000...
+[32m[nodemon] clean exit - waiting for changes before restart[39m
+[32m[nodemon] clean exit - waiting for changes before restart[39m
+[32m[nodemon] clean exit - waiting for changes before restart[39m
+[32m[nodemon] clean exit - waiting for changes before restart[39m
+[2026-10-29 13:28:11] [SUCCESS] All preview tests passed
+[2026-10-29 13:28:11] [INFO] Opening browser for Preview testing at http://localhost:5000...
+[32m[nodemon] clean exit - waiting for changes before restart[39m
 
 ╔════════════════════════════════════════════════════════════════╗
 ║  Deployment Completed
-║  Completed: Thu Oct 29 01:14:40 PM EDT 2026
+║  Completed: Thu Oct 29 01:28:12 PM EDT 2026
 ╚════════════════════════════════════════════════════════════════╝
-[2026-10-29 13:14:40] [SUCCESS] Deployment completed successfully
-[2026-10-29 13:14:40] [INFO] Full log available: /home/tmann/Documents/Projects/FlashCards/.deployment/last-run.log
+[2026-10-29 13:28:12] [SUCCESS] Deployment completed successfully
+[2026-10-29 13:28:12] [INFO] Full log available: /home/tmann/Documents/Projects/FlashCards/.deployment/last-run.log
+Executed query { text: 'SELECT 1 as status', duration: 20, rows: 1 }

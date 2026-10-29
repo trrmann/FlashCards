@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 
 import { appSiteData } from './src/js/appSiteData.js';
+import { initializeDatabase, healthCheck } from './src/db/connection.mjs';
 
 // Define the application environment.
 const NODE_ENV = process.env.NODE_ENV?.toLocaleLowerCase() || 'production';
@@ -62,6 +63,22 @@ app.get('/logout', async (req, res) => {
   res.render('logout', { siteData });
 });
 
-app.listen(port, () => {
+/**
+ * API Routes
+ */
+
+// Health check endpoint
+app.get('/api/health', async (req, res) => {
+  const health = await healthCheck();
+  res.status(health.status === 'healthy' ? 200 : 503).json(health);
+});
+
+app.listen(port, async () => {
   console.log(`Server running in ${NODE_ENV} mode on port ${port}`);
+
+  // Initialize database connection
+  const dbReady = await initializeDatabase();
+  if (!dbReady) {
+    console.warn('⚠️ Warning: Database connection failed. Some features may be unavailable.');
+  }
 });
