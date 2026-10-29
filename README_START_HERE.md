@@ -158,6 +158,15 @@ Follow the 10-phase roadmap, starting with Phase 2 (Authentication)
 - [documents/API_ENDPOINTS.md](./documents/API_ENDPOINTS.md) - 35+ endpoints
 - [documents/TESTING_STRATEGY.md](./documents/TESTING_STRATEGY.md) - Jest tests
 
+### Testing & Deployment
+
+- [TESTING_INDEX.md](./TESTING_INDEX.md) - Complete testing guide index
+- [TESTING_PREVIEW.md](./TESTING_PREVIEW.md) - Preview environment testing
+- [TESTING_QUICK_REFERENCE.md](./TESTING_QUICK_REFERENCE.md) - Quick testing commands
+- [CODE_QUALITY.md](./CODE_QUALITY.md) - Linting and formatting
+- [DEPLOY.md](./DEPLOY.md) - Deployment guide (dev/preview/prod)
+- [DEPLOY_QUICK_REFERENCE.md](./DEPLOY_QUICK_REFERENCE.md) - Deployment one-liners
+
 ### Reference
 
 - [documents/QUICK_REFERENCE.md](./documents/QUICK_REFERENCE.md) - Common commands
