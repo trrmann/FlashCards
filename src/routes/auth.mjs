@@ -91,15 +91,12 @@ router.post('/register', express.json(), async (req, res) => {
     const userCountResult = await query('SELECT COUNT(*) as count FROM users');
     const userCount = parseInt(userCountResult.rows[0].count, 10);
     const isFirstUser = userCount === 0;
-    
-    console.log('🔍 Register Debug:', { userCount, isFirstUser, countRaw: userCountResult.rows[0].count });
 
     // Create user
     let user = await createUser(username, email, password, fullName || null);
 
     // If first user, set as admin
     if (isFirstUser) {
-      console.log('✅ Setting user as admin...');
       await query(
         'UPDATE users SET is_admin = true WHERE user_id = $1',
         [user.user_id]

@@ -34,6 +34,33 @@
     <div id="profileStatus"></div>
   </section>
 
+  <!-- Change Password Section -->
+  <section class="profile-section">
+    <h2>Change Password</h2>
+    <form id="changePasswordForm">
+      <div class="form-group">
+        <label for="newPassword">New Password</label>
+        <input id="newPassword" name="newPassword" type="password" required />
+        <small>Password requirements:</small>
+        <ul style="font-size: 0.9em; margin: 5px 0 0 20px; padding: 0;">
+          <li>At least 8 characters</li>
+          <li>At least one uppercase letter (A-Z)</li>
+          <li>At least one lowercase letter (a-z)</li>
+          <li>At least one number (0-9)</li>
+          <li>At least one special character (!@#$%^&*)</li>
+        </ul>
+      </div>
+
+      <div class="form-group">
+        <label for="confirmPassword">Confirm New Password</label>
+        <input id="confirmPassword" name="confirmPassword" type="password" required />
+      </div>
+
+      <button type="submit" id="changePasswordBtn">Change Password</button>
+    </form>
+    <div id="passwordStatus"></div>
+  </section>
+
   <!-- Admin Section (only visible to admins) -->
   <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
     <section class="admin-section">
@@ -97,6 +124,46 @@
           window.originalUser = data.user;
         } else {
           statusDiv.innerHTML = `<p class="error">Update failed: ${data.message}</p>`;
+        }
+      } catch (error) {
+        statusDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+      }
+    });
+
+    // Change password handler
+    document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      const statusDiv = document.getElementById('passwordStatus');
+
+      // Validate passwords match
+      if (newPassword !== confirmPassword) {
+        statusDiv.innerHTML = '<p class="error">Passwords do not match</p>';
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/users/password', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ password: newPassword }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          statusDiv.innerHTML = '<p class="success">Password changed successfully!</p>';
+          // Clear the form
+          document.getElementById('changePasswordForm').reset();
+          setTimeout(() => {
+            statusDiv.innerHTML = '';
+          }, 3000);
+        } else {
+          statusDiv.innerHTML = `<p class="error">Failed: ${data.message}</p>`;
         }
       } catch (error) {
         statusDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;

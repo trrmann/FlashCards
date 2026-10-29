@@ -5,7 +5,8 @@
 
 import express from 'express';
 import { findUserById, updateUserProfile } from '../auth/user.mjs';
-import { validateEmail } from '../auth/validator.mjs';
+import { validateEmail, validatePassword, hashPassword } from '../auth/validator.mjs';
+import { query } from '../db/connection.mjs';
 
 const router = express.Router();
 
@@ -102,6 +103,61 @@ router.put('/profile', requireAuth, express.json(), async (req, res) => {
     return res.status(500).json({
       status: 'error',
       message: 'Failed to update profile',
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * PUT /api/users/password
+ * Change current user's password
+ */
+router.put('/password', requireAuth, express.json(), async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Password is required',
+      });
+    }
+
+    // Validate password
+    const validation = validatePassword(password);
+    if (!validation.valid) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Password does not meet requirements',
+        errors: validation.errors,
+      });
+    }
+
+    // Hash new password
+    const passwordHash = await hashPassword(password);
+
+    // Update password in database
+    const result = await query(
+      'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE user_id = $2 RETURNING user_id, username, email',
+      [passwordHash, req.session.userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found',
+      });
+    }
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Password changed successfully',
+    });
+  } catch (error) {
+    console.error('Change password error:', error.message);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to change password',
       error: error.message,
     });
   }
