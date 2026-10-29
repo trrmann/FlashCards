@@ -1,9 +1,12 @@
 import express from 'express';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import session from 'express-session';
 
 import { appSiteData } from './src/js/appSiteData.js';
 import { initializeDatabase, healthCheck } from './src/db/connection.mjs';
+import authRoutes from './src/routes/auth.mjs';
+import userRoutes from './src/routes/users.mjs';
 
 // Define the application environment.
 const NODE_ENV = process.env.NODE_ENV?.toLocaleLowerCase() || 'production';
@@ -18,6 +21,21 @@ const app = express();
 /**
  * Configure Express middleware.
  */
+
+// Session configuration
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'flashcards-dev-secret-change-in-production',
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 1000 * 60 * 60 * 24, // 24 hours
+    },
+  })
+);
+
 app.use(express.static(path.join(__dirname, 'public')));
 // Set EJS as the templating engine
 app.set('view engine', 'ejs');
@@ -66,6 +84,12 @@ app.get('/logout', async (req, res) => {
 /**
  * API Routes
  */
+
+// Authentication routes
+app.use('/api/auth', authRoutes);
+
+// User routes
+app.use('/api/users', userRoutes);
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
