@@ -38,12 +38,19 @@ console.log('══════════════════════�
 const siteData = new appSiteData();
 const app = express();
 
+// Trust the reverse proxy (Render/Cloudflare) for secure cookie handling
+// This ensures X-Forwarded-Proto: https is properly recognized
+app.set('trust proxy', 1);
+
 /**
  * Configure Express middleware.
  */
 
 // Session configuration with PostgreSQL store for persistence across restarts
 const PgSession = pgSession(session);
+
+// In production, use secure cookies if behind HTTPS proxy. In dev, allow HTTP.
+const isSecure = NODE_ENV === 'production';
 
 const sessionConfig = {
   store: new PgSession({
@@ -58,7 +65,7 @@ const sessionConfig = {
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    secure: false, // Allow both HTTP and HTTPS (will be fixed in production config)
+    secure: isSecure,
     sameSite: 'lax',
     maxAge: 1000 * 60 * 60 * 24, // 24 hours
   },
