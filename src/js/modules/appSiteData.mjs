@@ -1,7 +1,6 @@
 export class appSiteData {
   title;
   name;
-  nameHeadingHelp;
   userId;
   userFullName;
   isLoggedIn;
@@ -16,11 +15,6 @@ export class appSiteData {
   init(title, name) {
     this.setTitle(title);
     this.setName(name);
-    if (name === '') {
-      this.setNameHeadingHelp('the ');
-    } else {
-      this.setNameHeadingHelp("' personal ");
-    }
   }
 
   getTitle() {
@@ -40,11 +34,11 @@ export class appSiteData {
   }
 
   getNameHeadingHelp() {
-    return this.nameHeadingHelp;
-  }
-
-  setNameHeadingHelp(nameHeadingHelp) {
-    this.nameHeadingHelp = nameHeadingHelp;
+    if (this.getName() === '') {
+      return 'the ';
+    } else {
+      return `' personal `;
+    }
   }
 
   getSiteTitle() {
