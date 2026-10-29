@@ -12,6 +12,7 @@ import userRoutes from './src/routes/users.mjs';
 import adminRoutes from './src/routes/admin.mjs';
 import systemRoutes from './src/routes/system.mjs';
 import navigationRoutes from './src/routes/navigation.mjs';
+import entriesRoutes from './src/routes/entries.mjs';
 
 // Define the application environment.
 const NODE_ENV = process.env.NODE_ENV?.toLocaleLowerCase() || 'production';
@@ -197,6 +198,9 @@ app.use('/api/users', userRoutes);
 
 // Navigation routes (page tracking, history)
 app.use('/api/navigation', navigationRoutes);
+
+// Entries/Flashcards routes (CRUD and sharing)
+app.use('/api/entries', entriesRoutes);
 
 // Admin routes
 app.use('/api/admin', adminRoutes);
