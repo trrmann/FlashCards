@@ -4,7 +4,7 @@ import path from 'path';
 import session from 'express-session';
 
 import { appSiteData } from './src/js/appSiteData.js';
-import { initializeDatabase, healthCheck } from './src/db/connection.mjs';
+import { initializeDatabase, healthCheck, query } from './src/db/connection.mjs';
 import authRoutes from './src/routes/auth.mjs';
 import userRoutes from './src/routes/users.mjs';
 import systemRoutes from './src/routes/system.mjs';
@@ -53,6 +53,21 @@ app.set('views', path.join(__dirname, 'src/views'));
  * Define routes for the application
  * (Fixed: Added 'async' to every route handler arrow function)
  */
+
+// Middleware to populate user info on every page
+app.use((req, res, next) => {
+  if (req.session.userId) {
+    res.locals.userId = req.session.userId;
+    res.locals.username = req.session.username;
+    res.locals.isLoggedIn = true;
+  } else {
+    res.locals.userId = null;
+    res.locals.username = null;
+    res.locals.isLoggedIn = false;
+  }
+  next();
+});
+
 app.get('/', async (req, res) => {
   siteData.setTitle('Home');
   res.render('home', { siteData });
@@ -75,7 +90,26 @@ app.get('/entries', async (req, res) => {
 
 app.get('/login', async (req, res) => {
   siteData.setTitle('Login');
-  res.render('login', { siteData });
+
+  let needsSetup;
+  let userCount = 0;
+
+  try {
+    // Check if any users exist
+    const result = await query('SELECT COUNT(*) as count FROM users');
+    userCount = result.rows[0].count;
+    needsSetup = userCount === 0;
+  } catch (error) {
+    console.error('Error checking user count:', error);
+    // If we can't check, assume setup is not needed
+    needsSetup = false;
+  }
+
+  res.render('login', {
+    siteData,
+    needsSetup,
+    userCount,
+  });
 });
 
 app.get('/profile', async (req, res) => {

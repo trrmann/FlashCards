@@ -2,14 +2,47 @@
 <main>
   <h1><%= siteData.getTitle() %></h1>
   <h2>Welcome to <%= siteData.getName() %><%= siteData.getNameHeadingHelp() %>Flash Card Service!</h2>
-  <p>
-    Our mission is to help <%= siteData.getName() %> study for English Connect.
-  </p>
-    <input name="logout" value="Logout" type="button">
-  <!--<img
-    class="main-logo"
-    src="/images/cse340-service-network.png"
-    alt="CSE 340 Service Network Logo"
-  />-->
+  <p>Our mission is to help <%= siteData.getName() %> study for English Connect.</p>
+
+  <div class="logout-container">
+    <p>Are you sure you want to logout?</p>
+    <button id="confirmLogout" class="btn-danger">Confirm Logout</button>
+    <button id="cancelLogout" class="btn-secondary">Cancel</button>
+  </div>
+
+  <div id="logoutStatus"></div>
+
+  <script>
+    document.getElementById('confirmLogout').addEventListener('click', async () => {
+      try {
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          document.getElementById('logoutStatus').innerHTML =
+            '<p class="success">Logged out successfully! Redirecting...</p>';
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1500);
+        } else {
+          document.getElementById('logoutStatus').innerHTML =
+            `<p class="error">Logout failed: ${data.message}</p>`;
+        }
+      } catch (error) {
+        document.getElementById('logoutStatus').innerHTML =
+          `<p class="error">An error occurred: ${error.message}</p>`;
+      }
+    });
+
+    document.getElementById('cancelLogout').addEventListener('click', () => {
+      window.location.href = '/profile';
+    });
+  </script>
 </main>
 <%- include('partials/footer') %>

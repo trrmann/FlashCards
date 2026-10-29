@@ -2,19 +2,137 @@
 <main>
   <h1><%= siteData.getTitle() %></h1>
   <h2>Welcome to <%= siteData.getName() %><%= siteData.getNameHeadingHelp() %>Flash Card Service!</h2>
-  <p>
-    Our mission is to help <%= siteData.getName() %> study for English Connect.
-  </p>
-    <label name="username">Username</label>
-    <input name="username" type="username">
-    <label name="password">Password</label>
-    <input name="password" type="password">
-    <input name="login" value="Login" type="button">
-  </form>
-  <!--<img
-    class="main-logo"
-    src="/images/cse340-service-network.png"
-    alt="CSE 340 Service Network Logo"
-  />-->
+  <p>Our mission is to help <%= siteData.getName() %> study for English Connect.</p>
+
+  <!-- Check if no users exist and show registration form -->
+  <% if (typeof needsSetup !== 'undefined' && needsSetup) { %>
+    <div class="alert alert-info">
+      <h3>First User Setup</h3>
+      <p>Welcome! This is your first time using FlashCards. Please create your administrator account.</p>
+    </div>
+
+    <div class="login-container">
+      <h2>Create Your Account</h2>
+      <form id="registerForm">
+        <div class="form-group">
+          <label for="regUsername">Username</label>
+          <input id="regUsername" name="username" type="text" required />
+        </div>
+
+        <div class="form-group">
+          <label for="regEmail">Email</label>
+          <input id="regEmail" name="email" type="email" required />
+        </div>
+
+        <div class="form-group">
+          <label for="regFullName">Full Name (optional)</label>
+          <input id="regFullName" name="fullName" type="text" />
+        </div>
+
+        <div class="form-group">
+          <label for="regPassword">Password</label>
+          <input id="regPassword" name="password" type="password" required />
+        </div>
+
+        <div class="form-group">
+          <label for="regPasswordConfirm">Confirm Password</label>
+          <input id="regPasswordConfirm" name="passwordConfirm" type="password" required />
+        </div>
+
+        <button type="submit" id="registerBtn">Create Account</button>
+      </form>
+
+      <div id="registerStatus"></div>
+    </div>
+
+    <script>
+      document.getElementById('registerForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const username = document.getElementById('regUsername').value;
+        const email = document.getElementById('regEmail').value;
+        const fullName = document.getElementById('regFullName').value || null;
+        const password = document.getElementById('regPassword').value;
+        const passwordConfirm = document.getElementById('regPasswordConfirm').value;
+        const statusDiv = document.getElementById('registerStatus');
+
+        try {
+          const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, email, fullName, password, passwordConfirm }),
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            statusDiv.innerHTML = '<p class="success">Account created! Redirecting to your profile...</p>';
+            setTimeout(() => {
+              window.location.href = '/profile';
+            }, 2000);
+          } else {
+            statusDiv.innerHTML = `<p class="error">Registration failed: ${data.message}</p>`;
+          }
+        } catch (error) {
+          statusDiv.innerHTML = `<p class="error">An error occurred: ${error.message}</p>`;
+        }
+      });
+    </script>
+  <% } else { %>
+    <!-- Normal login form -->
+    <div class="login-container">
+      <h2>Login</h2>
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input id="username" name="username" type="text" required />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" required />
+        </div>
+
+        <button type="submit" id="loginBtn">Login</button>
+      </form>
+
+      <div id="loginStatus"></div>
+    </div>
+
+    <script>
+      document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const statusDiv = document.getElementById('loginStatus');
+
+        try {
+          const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password }),
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            statusDiv.innerHTML = '<p class="success">Login successful! Redirecting...</p>';
+            setTimeout(() => {
+              window.location.href = '/profile';
+            }, 1000);
+          } else {
+            statusDiv.innerHTML = `<p class="error">Login failed: ${data.message}</p>`;
+          }
+        } catch (error) {
+          statusDiv.innerHTML = `<p class="error">An error occurred: ${error.message}</p>`;
+        }
+      });
+    </script>
+  <% } %>
 </main>
 <%- include('partials/footer') %>

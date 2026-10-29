@@ -11,13 +11,23 @@
   <body>
     <nav>
       <ul>
+        <!-- Home - Always visible -->
         <li><a href="/">Home</a></li>
-        <li><a href="/practice">Practice</a></li>
-        <li><a href="/quiz">Quiz</a></li>
-        <li><a href="/entries">Entries</a></li>
-        <li><a href="/login">Login</a></li>
-        <li><a href="/profile">Profile</a></li>
-        <li><a href="/logout">Logout</a></li>
+
+        <!-- Navigation when user is logged in -->
+        <% if (isLoggedIn) { %>
+          <li><a href="/practice">Practice</a></li>
+          <li><a href="/quiz">Quiz</a></li>
+          <li><a href="/entries">Entries</a></li>
+          <li><a href="/profile">Profile</a></li>
+          <li><a href="/logout">Logout</a></li>
+          <li class="user-info">
+            <span class="username"><%= username %></span>
+          </li>
+        <% } else { %>
+          <!-- Navigation when user is NOT logged in -->
+          <li><a href="/login">Login</a></li>
+        <% } %>
       </ul>
     </nav>
   </body>
