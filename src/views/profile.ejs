@@ -131,6 +131,9 @@
   </div>
 
   <script>
+    // Initialize with server-side values
+    window.currentUserId = '<%= typeof currentUserId !== "undefined" ? currentUserId : "" %>';
+
     // Fetch and populate user profile
     async function loadProfile() {
       try {
