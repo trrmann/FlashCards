@@ -489,12 +489,9 @@
             loadMetadataOptions();
             // Also refresh filter panel options
             if (window.refreshFilterOptions) {
-              console.log('🔄 Refreshing filter panel options...');
               window.refreshFilterOptions().catch(err => {
                 console.error('Error refreshing filter options:', err);
               });
-            } else {
-              console.warn('⚠️ window.refreshFilterOptions not available');
             }
             statusSpan.textContent = '';
           }, 1000);

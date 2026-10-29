@@ -210,7 +210,6 @@
     // Load filter options
     async function loadFilterOptions() {
       try {
-        console.log('📚 Loading filter options...');
         const [classRes, lessonRes, categoryRes] = await Promise.all([
           fetch('/api/entries/metadata/classes'),
           fetch('/api/entries/metadata/lessons'),
@@ -220,12 +219,6 @@
         const classData = await classRes.json();
         const lessonData = await lessonRes.json();
         const categoryData = await categoryRes.json();
-
-        console.log('✅ Metadata loaded:', {
-          classes: classData.classes?.length || 0,
-          lessons: lessonData.lessons?.length || 0,
-          categories: categoryData.categories?.length || 0,
-        });
 
         if (classData.status === 'success' && classData.classes) {
           const classDatalist = document.getElementById('filter-class-options');
@@ -239,7 +232,6 @@
           lessonDatalist.innerHTML = lessonData.lessons
             .map(lesson => `<option value="${escapeHtml(lesson)}" />`)
             .join('');
-          console.log('📝 Updated lessons options:', lessonData.lessons);
         }
 
         if (categoryData.status === 'success' && categoryData.categories) {
@@ -249,7 +241,7 @@
             .join('');
         }
       } catch (error) {
-        console.error('❌ Error loading filter options:', error);
+        console.error('Error loading filter options:', error);
       }
     }
 
