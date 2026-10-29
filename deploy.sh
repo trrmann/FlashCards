@@ -20,7 +20,7 @@ cd "${PROJECT_ROOT}" || { echo "Failed to change to project directory"; exit 1; 
 
 LOG_DIR="${PROJECT_ROOT}/.deployment"
 LOG_FILE="${LOG_DIR}/last-run.log"
-RENDER_WAIT_TIME=30  # seconds to wait for Render auto-deploy
+RENDER_WAIT_TIME=60  # seconds to wait for Render auto-deploy
 PORT_DEV=5000
 PORT_PREVIEW=4000
 PORT_PROD=3000
@@ -441,7 +441,7 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>" >> "${LOG_
     fi
     
     log SUCCESS "Code pushed to GitHub"
-    log INFO "Waiting ${RENDER_WAIT_TIME} seconds for Render auto-deploy..."
+    log INFO "Waiting ${RENDER_WAIT_TIME} seconds for Render auto-deploy to start..."
     
     # Wait for Render to deploy
     for i in $(seq 1 $RENDER_WAIT_TIME); do
@@ -452,8 +452,34 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>" >> "${LOG_
     
     log INFO "Render should be deploying now"
     
+    # Now check if the site is actually responding
     if [ -n "$render_url" ]; then
-        log INFO "Waiting for Render to be ready (this can take 30-60 seconds)..."
+        log INFO "Checking if Render deployment is complete..."
+        local health_check_attempts=0
+        local max_health_checks=30
+        local site_ready=false
+        
+        while [ $health_check_attempts -lt $max_health_checks ]; do
+            if curl -sf "${render_url}/" > /dev/null 2>&1; then
+                log SUCCESS "Production site is responding!"
+                site_ready=true
+                break
+            fi
+            
+            health_check_attempts=$((health_check_attempts + 1))
+            if [ $((health_check_attempts % 5)) -eq 0 ]; then
+                log INFO "Still waiting for Render... ($health_check_attempts/$max_health_checks)"
+            fi
+            echo -n "."
+            sleep 2
+        done
+        echo ""
+        
+        if [ "$site_ready" = false ]; then
+            log WARN "Render may still be deploying. Site not responding after $((max_health_checks * 2)) seconds."
+            log INFO "Check Render Dashboard: https://dashboard.render.com"
+        fi
+        
         log INFO "Opening $render_url"
         open_browser "$render_url" "Production"
     else
