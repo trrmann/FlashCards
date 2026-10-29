@@ -32,11 +32,12 @@
 
 ### `./deploy.sh -preview`
 
-- ✅ Same as `-dev` but used for final testing
+- ✅ **Runs code verification** (format + lint) - ABORTS if fails!
 - ✅ Starts server on `http://localhost:5000`
 - ✅ Opens browser automatically when ready
 - ✅ Uses remote Render PostgreSQL database
 - ℹ️ **For:** Final local testing before production commit
+- 📋 **See:** [CODE_QUALITY.md](./CODE_QUALITY.md) for formatting/linting details
 
 ### `./deploy.sh -prod`
 
@@ -87,6 +88,37 @@ git commit -m "Your message"
 ```bash
 ./deploy.sh -all
 ```
+
+## Code Quality & Verification
+
+The preview environment automatically verifies code quality!
+
+### Manual Code Quality Commands
+
+```bash
+# Format code
+npm run format
+
+# Check code with linter
+npm run lint
+
+# Auto-fix fixable issues
+npm run lint:fix
+
+# Full verification (format + lint)
+npm run verify
+```
+
+### Preview Environment Verification
+
+When you run `./deploy.sh -preview`:
+1. ✅ Formats code with Prettier
+2. ✅ Verifies with ESLint
+3. ❌ **Aborts if linting fails** - Code must pass quality checks
+
+This ensures preview environment only runs quality code.
+
+📋 **Full Details:** See [CODE_QUALITY.md](./CODE_QUALITY.md)
 
 ## Understanding the Log
 
