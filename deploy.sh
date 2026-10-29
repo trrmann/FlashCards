@@ -11,9 +11,14 @@
 
 set -o pipefail
 
-# Script configuration
+# Script configuration - find project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOG_DIR="${SCRIPT_DIR}/.deployment"
+PROJECT_ROOT="${SCRIPT_DIR}"
+
+# Change to project root directory (allows script to run from anywhere)
+cd "${PROJECT_ROOT}" || { echo "Failed to change to project directory"; exit 1; }
+
+LOG_DIR="${PROJECT_ROOT}/.deployment"
 LOG_FILE="${LOG_DIR}/last-run.log"
 RENDER_WAIT_TIME=30  # seconds to wait for Render auto-deploy
 PORT=5000
@@ -166,12 +171,12 @@ check_prerequisites() {
     check_prerequisite "git" "git not found. Please install git"
     
     # Check .env file exists
-    if [ ! -f "${SCRIPT_DIR}/.env" ]; then
+    if [ ! -f "${PROJECT_ROOT}/.env" ]; then
         error_exit ".env file not found in project root. Run setup first."
     fi
     
     # Check server.js exists
-    if [ ! -f "${SCRIPT_DIR}/server.js" ]; then
+    if [ ! -f "${PROJECT_ROOT}/server.js" ]; then
         error_exit "server.js not found in project root."
     fi
     
@@ -185,7 +190,7 @@ check_prerequisites() {
 check_git_status() {
     log INFO "Checking git status..."
     
-    cd "${SCRIPT_DIR}"
+    cd "${PROJECT_ROOT}"
     
     # Get current branch
     local branch=$(git rev-parse --abbrev-ref HEAD 2>&1)
@@ -209,7 +214,7 @@ check_git_status() {
 check_dependencies() {
     log INFO "Checking npm dependencies..."
     
-    cd "${SCRIPT_DIR}"
+    cd "${PROJECT_ROOT}"
     
     if [ ! -d "node_modules" ]; then
         log WARN "node_modules not found. Running npm install..."
@@ -226,7 +231,7 @@ check_dependencies() {
 run_checks() {
     log INFO "Running code checks..."
     
-    cd "${SCRIPT_DIR}"
+    cd "${PROJECT_ROOT}"
     
     # Check if linter is configured
     if npm run lint &> /dev/null; then
@@ -255,7 +260,7 @@ deploy_dev() {
     log INFO "DEPLOYING TO: Development (Local)"
     log INFO "=========================================="
     
-    cd "${SCRIPT_DIR}"
+    cd "${PROJECT_ROOT}"
     
     log INFO "Starting development server on localhost:${PORT}..."
     
@@ -295,7 +300,7 @@ deploy_preview() {
     log INFO "DEPLOYING TO: Preview (Local)"
     log INFO "=========================================="
     
-    cd "${SCRIPT_DIR}"
+    cd "${PROJECT_ROOT}"
     
     log INFO "Starting preview server on localhost:${PORT}..."
     
@@ -335,7 +340,7 @@ deploy_prod() {
     log INFO "DEPLOYING TO: Production (Render)"
     log INFO "=========================================="
     
-    cd "${SCRIPT_DIR}"
+    cd "${PROJECT_ROOT}"
     
     # Check if git is clean (warn but don't block)
     if ! git diff-index --quiet HEAD --; then
