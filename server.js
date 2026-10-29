@@ -2,13 +2,17 @@ import express from 'express';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import session from 'express-session';
+import pgSession from 'connect-pg-simple';
+import pkg from 'pg';
 
 import { appSiteData } from './src/js/appSiteData.js';
-import { initializeDatabase, healthCheck, query } from './src/db/connection.mjs';
+import { initializeDatabase, healthCheck, query, pool } from './src/db/connection.mjs';
 import authRoutes from './src/routes/auth.mjs';
 import userRoutes from './src/routes/users.mjs';
 import adminRoutes from './src/routes/admin.mjs';
 import systemRoutes from './src/routes/system.mjs';
+
+const { Pool } = pkg;
 
 // Define the application environment.
 const NODE_ENV = process.env.NODE_ENV?.toLocaleLowerCase() || 'production';
@@ -30,15 +34,25 @@ const app = express();
  * Configure Express middleware.
  */
 
-// Session configuration
+// Session configuration with PostgreSQL store for persistence across restarts
+const PgSession = pgSession(session);
+
 app.use(
   session({
+    store: new PgSession({
+      pool: pool,
+      tableName: 'session',
+      errorLog: (error) => {
+        console.error('Session store error:', error);
+      },
+    }),
     secret: process.env.SESSION_SECRET || 'flashcards-dev-secret-change-in-production',
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       maxAge: 1000 * 60 * 60 * 24, // 24 hours
     },
   })
