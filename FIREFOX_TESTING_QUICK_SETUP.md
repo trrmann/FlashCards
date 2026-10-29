@@ -8,21 +8,24 @@ Quick-start guide for adding Firefox validation to your test suite.
 ✅ **Firefox Performance Profiling** via WebDriver  
 ✅ **Network Throttling Tests** (3G, 4G, offline)  
 ✅ **WCAG 2.1 Compliance** checking  
-✅ **Cross-browser validation** (Chrome + Firefox)  
+✅ **Cross-browser validation** (Chrome + Firefox)
 
 ## Installation (5 minutes)
 
 ### 1. Install Packages
+
 ```bash
 npm install --save-dev geckodriver axe-webdriverjs webdriverio
 ```
 
 This installs:
+
 - `geckodriver` - Firefox WebDriver server
 - `axe-webdriverjs` - Accessibility auditor
 - `webdriverio` - Browser automation framework
 
 ### 2. Verify Installation
+
 ```bash
 # Check GeckoDriver is available
 npx geckodriver --version
@@ -34,6 +37,7 @@ npx geckodriver --version
 ## Files to Create
 
 ### 1. Firefox Configuration
+
 Create `src/tests/firefox-config.mjs`:
 
 ```javascript
@@ -41,27 +45,27 @@ export const FIREFOX_CONFIG = {
   browser: {
     name: 'Firefox',
     port: 4444,
-    headless: true
+    headless: true,
   },
-  
+
   accessibility: {
     enabled: true,
     standards: ['wcag2aa', 'wcag2aaa'],
     maxViolations: 0,
-    timeout: 30000
+    timeout: 30000,
   },
 
   performance: {
     enabled: true,
     thresholds: {
-      domContentLoaded: 2000,  // ms
-      loadComplete: 3000,      // ms
-    }
+      domContentLoaded: 2000, // ms
+      loadComplete: 3000, // ms
+    },
   },
 
   network: {
     enabled: true,
-    profiles: ['4g', 'slow-3g', 'offline']
+    profiles: ['4g', 'slow-3g', 'offline'],
   },
 
   endpoints: [
@@ -71,12 +75,13 @@ export const FIREFOX_CONFIG = {
     { url: '/entries', name: 'Entries' },
     { url: '/login', name: 'Login' },
     { url: '/profile', name: 'Profile' },
-    { url: '/logout', name: 'Logout' }
-  ]
+    { url: '/logout', name: 'Logout' },
+  ],
 };
 ```
 
 ### 2. Firefox Accessibility Tests
+
 Create `src/tests/firefox-accessibility-tests.mjs`:
 
 ```javascript
@@ -98,9 +103,9 @@ class FirefoxA11yTester {
         browserName: 'firefox',
         'moz:firefoxOptions': {
           headless: FIREFOX_CONFIG.browser.headless,
-          args: ['--no-sandbox', '--disable-dev-shm-usage']
-        }
-      }
+          args: ['--no-sandbox', '--disable-dev-shm-usage'],
+        },
+      },
     });
   }
 
@@ -108,12 +113,15 @@ class FirefoxA11yTester {
     try {
       const url = `http://localhost:5000${endpoint.url}`;
       await this.browser.navigateTo(url);
-      
+
       // Wait for page to load
-      await this.browser.waitUntil(async () => {
-        const state = await this.browser.execute(() => document.readyState);
-        return state === 'complete';
-      }, { timeout: 10000 });
+      await this.browser.waitUntil(
+        async () => {
+          const state = await this.browser.execute(() => document.readyState);
+          return state === 'complete';
+        },
+        { timeout: 10000 }
+      );
 
       // Run axe accessibility audit
       const results = await new AxeBuilder({ client: this.browser })
@@ -127,7 +135,7 @@ class FirefoxA11yTester {
         passes: results.passes || [],
         incomplete: results.incomplete || [],
         violations_count: (results.violations || []).length,
-        passes_count: (results.passes || []).length
+        passes_count: (results.passes || []).length,
       };
     } catch (error) {
       console.error(`Error testing ${endpoint.name}:`, error.message);
@@ -136,7 +144,7 @@ class FirefoxA11yTester {
         url: endpoint.url,
         error: error.message,
         violations_count: -1,
-        passes_count: -1
+        passes_count: -1,
       };
     }
   }
@@ -151,22 +159,24 @@ class FirefoxA11yTester {
     for (const endpoint of FIREFOX_CONFIG.endpoints) {
       process.stdout.write(`Testing ${endpoint.name}... `);
       const result = await this.testEndpoint(endpoint);
-      
+
       if (result.error) {
         console.log(`❌ ERROR: ${result.error}`);
       } else {
         const status = result.violations_count === 0 ? '✅' : '⚠️';
-        console.log(`${status} ${result.violations_count} violations, ${result.passes_count} passes`);
-        
+        console.log(
+          `${status} ${result.violations_count} violations, ${result.passes_count} passes`
+        );
+
         if (result.violations_count > 0) {
-          result.violations.forEach(v => {
+          result.violations.forEach((v) => {
             console.log(`  ❌ ${v.id}: ${v.description}`);
             console.log(`     Impact: ${v.impact}`);
             console.log(`     Help: ${v.help}`);
           });
         }
       }
-      
+
       this.results.push(result);
     }
 
@@ -205,23 +215,23 @@ Update `deploy.sh` to run Firefox tests:
 ```bash
 run_firefox_tests() {
   echo "[INFO] Starting Firefox accessibility testing..."
-  
+
   # Start GeckoDriver
   geckodriver --port 4444 > /tmp/geckodriver.log 2>&1 &
   GECKO_PID=$!
-  
+
   # Wait for GeckoDriver to be ready
   sleep 2
-  
+
   # Run Firefox tests
   node src/tests/firefox-accessibility-tests.mjs >> "$LOG_FILE" 2>&1
-  
+
   if [ $? -ne 0 ]; then
     echo "[FAIL] Firefox accessibility tests failed" >> "$LOG_FILE"
     kill $GECKO_PID 2>/dev/null
     return 1
   fi
-  
+
   # Clean up GeckoDriver
   kill $GECKO_PID 2>/dev/null
   echo "[SUCCESS] Firefox tests completed" >> "$LOG_FILE"
@@ -234,12 +244,12 @@ Then add to preview deployment in `deploy.sh`:
 ```bash
 if [ "$ENV" = "preview" ]; then
   # ... existing format/lint checks ...
-  
+
   # Run comprehensive tests
   echo "[INFO] Running comprehensive test suite..."
   run_firefox_tests    # Add this
   run_comprehensive_tests  # Existing Lighthouse tests
-  
+
   if [ $? -ne 0 ]; then
     echo "Tests failed. See log for details:"
     tail -50 "$LOG_FILE"
@@ -251,6 +261,7 @@ fi
 ## Update package.json
 
 Add scripts:
+
 ```json
 {
   "scripts": {
@@ -263,16 +274,19 @@ Add scripts:
 ## Testing It
 
 ### 1. Start dev server in one terminal
+
 ```bash
 ./deploy.sh -dev
 ```
 
 ### 2. Test Firefox in another terminal
+
 ```bash
 npm run test:firefox
 ```
 
 Should output:
+
 ```
 ╔════════════════════════════════════════════════╗
 ║ FIREFOX ACCESSIBILITY TESTS (axe audit)       ║
@@ -303,11 +317,12 @@ Testing Quiz... ✅ 0 violations, 16 passes
 ✅ Keyboard navigation  
 ✅ Form labels  
 ✅ Alt text for images  
-✅ Heading structure  
+✅ Heading structure
 
 ## Troubleshooting
 
 ### GeckoDriver won't start
+
 ```bash
 # Check if Firefox is installed
 firefox --version
@@ -320,14 +335,17 @@ geckodriver --port 4444
 ```
 
 ### Tests timeout
+
 Increase timeout in `firefox-config.mjs`:
+
 ```javascript
 accessibility: {
-  timeout: 60000  // 60 seconds instead of 30
+  timeout: 60000; // 60 seconds instead of 30
 }
 ```
 
 ### axe-webdriverjs errors
+
 ```bash
 # Reinstall packages
 rm -rf node_modules package-lock.json
@@ -340,23 +358,25 @@ DEBUG=* npm run test:firefox
 ## What's Next
 
 This adds:
+
 1. ✅ Firefox accessibility testing (WCAG compliance)
 2. ✅ Cross-browser validation (Chrome + Firefox)
 3. ✅ Detailed accessibility reports
 
 Optionally add later:
+
 - Firefox performance profiling (CPU/memory)
 - Network throttling tests (3G/4G)
 - Firefox-specific rendering checks
 
 ## Summary
 
-| Item | Time | Impact |
-|------|------|--------|
-| Installation | 2 min | ~15 new packages |
-| Config file | 3 min | `firefox-config.mjs` |
-| Test file | 10 min | `firefox-accessibility-tests.mjs` |
-| Deploy integration | 5 min | Update `deploy.sh` |
-| **Total** | **20 min** | Deep accessibility testing |
+| Item               | Time       | Impact                            |
+| ------------------ | ---------- | --------------------------------- |
+| Installation       | 2 min      | ~15 new packages                  |
+| Config file        | 3 min      | `firefox-config.mjs`              |
+| Test file          | 10 min     | `firefox-accessibility-tests.mjs` |
+| Deploy integration | 5 min      | Update `deploy.sh`                |
+| **Total**          | **20 min** | Deep accessibility testing        |
 
 Ready? Run the installation steps above!

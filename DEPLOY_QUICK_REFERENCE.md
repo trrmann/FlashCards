@@ -112,6 +112,7 @@ npm run verify
 ### Preview Environment Verification
 
 When you run `./deploy.sh -preview`:
+
 1. ✅ Formats code with Prettier
 2. ✅ Verifies with ESLint
 3. ❌ **Aborts if linting fails** - Code must pass quality checks

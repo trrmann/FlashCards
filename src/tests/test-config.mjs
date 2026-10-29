@@ -135,8 +135,7 @@ export class TestResults {
         });
     }
 
-    output +=
-      '\n' + (summary.success ? '✅ ALL TESTS PASSED' : '❌ TESTS FAILED');
+    output += '\n' + (summary.success ? '✅ ALL TESTS PASSED' : '❌ TESTS FAILED');
     output += '\n';
 
     return output;

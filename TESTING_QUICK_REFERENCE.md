@@ -16,28 +16,35 @@ npm run test:preview
 ## What Gets Tested in Preview
 
 ✅ **7 Endpoints**
+
 - Home, Practice, Quiz, Entries, Login, Profile, Logout
 
 ✅ **Lighthouse** (Performance, Accessibility, Best Practices, SEO, PWA)
+
 - Min thresholds: Performance 50, Accessibility 80, Best Practices 80, SEO 80, PWA 50
 
 ✅ **HTML Validation** (HTML5 standards)
+
 - Checks all pages for invalid markup
 
 ✅ **CSS Analysis** (Chrome DevTools)
+
 - Detects layout and styling issues
 
 ✅ **Memory Tests** (Memory leak detection)
+
 - Max heap: 500MB
 - Max external: 100MB
 
 ✅ **Core Web Vitals** (User experience metrics)
+
 - First Contentful Paint < 2500ms
 - Time to Interactive < 5000ms
 
 ## Test Results
 
 ### All Pass ✅
+
 ```
 ./deploy.sh -preview
 → Format ✓
@@ -48,6 +55,7 @@ npm run test:preview
 ```
 
 ### Tests Fail ❌
+
 ```
 ./deploy.sh -preview
 → Format ✓
@@ -77,16 +85,19 @@ grep "WARN" .deployment/last-run.log
 ## Typical Flow
 
 1. **Write code**
+
    ```bash
    # Edit files...
    ```
 
 2. **Format & Verify**
+
    ```bash
    npm run verify
    ```
 
 3. **Test on preview**
+
    ```bash
    ./deploy.sh -preview
    ```
@@ -110,13 +121,13 @@ grep "WARN" .deployment/last-run.log
 
 ## Common Test Failures
 
-| Issue | Fix |
-|-------|-----|
-| Server won't start | Check .deployment/last-run.log for errors |
-| Lighthouse low score | Optimize performance (images, JS, CSS) |
-| Memory too high | Find and fix memory leaks |
-| HTML validation errors | Check template syntax |
-| CSS analysis issues | Review stylesheet rules |
+| Issue                  | Fix                                       |
+| ---------------------- | ----------------------------------------- |
+| Server won't start     | Check .deployment/last-run.log for errors |
+| Lighthouse low score   | Optimize performance (images, JS, CSS)    |
+| Memory too high        | Find and fix memory leaks                 |
+| HTML validation errors | Check template syntax                     |
+| CSS analysis issues    | Review stylesheet rules                   |
 
 ## Configuration
 
@@ -140,6 +151,7 @@ memoryThresholds: {
 ## Test Timing
 
 Total time: **2-3 minutes**
+
 - Endpoint tests: 10-20s
 - Lighthouse: 60-90s
 - HTML validation: 5-10s

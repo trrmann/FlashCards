@@ -9,6 +9,7 @@ Firefox provides multiple testing and validation capabilities that complement Ch
 ## Firefox DevTools Available for Automated Testing
 
 ### 1. **Firefox Accessibility Inspector** ✅
+
 - **What:** Validates accessibility tree and ARIA attributes
 - **Why:** Ensures compliance with WCAG standards
 - **Validates:**
@@ -21,6 +22,7 @@ Firefox provides multiple testing and validation capabilities that complement Ch
 **Automated Testing Option:** Yes - via WebDriver + Firefox
 
 ### 2. **Firefox Performance Profiler** ✅
+
 - **What:** CPU and memory profiling
 - **Why:** Detect performance bottlenecks
 - **Metrics:**
@@ -32,6 +34,7 @@ Firefox provides multiple testing and validation capabilities that complement Ch
 **Automated Testing Option:** Limited - via WebDriver
 
 ### 3. **Firefox Network Monitor** ✅
+
 - **What:** Network request inspection
 - **Why:** Identify slow endpoints
 - **Validates:**
@@ -43,6 +46,7 @@ Firefox provides multiple testing and validation capabilities that complement Ch
 **Automated Testing Option:** Yes - via WebDriver Protocol
 
 ### 4. **Firefox Responsive Design Mode** ✅
+
 - **What:** Multi-device testing
 - **Why:** Verify mobile responsiveness
 - **Tests:**
@@ -54,6 +58,7 @@ Firefox provides multiple testing and validation capabilities that complement Ch
 **Automated Testing Option:** Yes - via WebDriver + viewport control
 
 ### 5. **Firefox Inspector (HTML/CSS)** ✅
+
 - **What:** DOM and CSS validation
 - **Why:** Verify correct markup
 - **Validates:**
@@ -68,25 +73,27 @@ Firefox provides multiple testing and validation capabilities that complement Ch
 
 ## Current Test Coverage vs Firefox
 
-| Test | Chrome (Lighthouse) | Firefox Available | Needed? |
-|------|---------------------|-------------------|---------|
-| **Performance** | ✅ Covered | ✅ Yes (Profiler) | Recommended |
-| **Accessibility** | ✅ Covered | ✅ Yes (Inspector) | Recommended |
-| **HTML/CSS Validation** | ⚠️ Limited | ✅ Yes (Inspector) | Already covered (html-validate) |
-| **Network Analysis** | ✅ Covered | ✅ Yes (Monitor) | Optional |
-| **Mobile Responsive** | ✅ Covered | ✅ Yes (RDM) | Already covered (Lighthouse) |
-| **Memory Leaks** | ✅ Covered | ✅ Yes (Profiler) | Already covered |
+| Test                    | Chrome (Lighthouse) | Firefox Available  | Needed?                         |
+| ----------------------- | ------------------- | ------------------ | ------------------------------- |
+| **Performance**         | ✅ Covered          | ✅ Yes (Profiler)  | Recommended                     |
+| **Accessibility**       | ✅ Covered          | ✅ Yes (Inspector) | Recommended                     |
+| **HTML/CSS Validation** | ⚠️ Limited          | ✅ Yes (Inspector) | Already covered (html-validate) |
+| **Network Analysis**    | ✅ Covered          | ✅ Yes (Monitor)   | Optional                        |
+| **Mobile Responsive**   | ✅ Covered          | ✅ Yes (RDM)       | Already covered (Lighthouse)    |
+| **Memory Leaks**        | ✅ Covered          | ✅ Yes (Profiler)  | Already covered                 |
 
 ---
 
 ## Recommended Firefox Tools to Add
 
 ### Priority 1: **Accessibility Testing with axe-firefox**
+
 ```bash
 npm install --save-dev axe-webdriverjs geckodriver
 ```
 
 **What it does:**
+
 - Runs accessibility audit using Deque's axe library
 - Compatible with Firefox WebDriver
 - Checks for WCAG 2.1 compliance
@@ -95,11 +102,13 @@ npm install --save-dev axe-webdriverjs geckodriver
 **Integration:** Add to `preview-tests.mjs`
 
 ### Priority 2: **Firefox Performance Profiling**
+
 ```bash
 npm install --save-dev firefox-performance-profiler
 ```
 
 **What it does:**
+
 - Profiles CPU and memory performance
 - Compares against baseline
 - Identifies bottlenecks
@@ -108,12 +117,14 @@ npm install --save-dev firefox-performance-profiler
 **Integration:** Add to `preview-tests.mjs` (complementary to Lighthouse)
 
 ### Priority 3: **Network Throttling Analysis**
+
 ```bash
 npm install --save-dev
 # WebDriver already has throttling capability
 ```
 
 **What it does:**
+
 - Tests on simulated network conditions (Fast 3G, Slow 3G, Offline)
 - Measures performance under poor conditions
 - Validates progressive enhancement
@@ -125,6 +136,7 @@ npm install --save-dev
 ## Implementation Plan
 
 ### Phase 1: Add Accessibility Testing with axe (Recommended)
+
 **File:** `src/tests/firefox-accessibility-tests.mjs`
 
 ```javascript
@@ -140,9 +152,9 @@ async function testAccessibilityWithFirefox(endpoints) {
       browserName: 'firefox',
       'moz:firefoxOptions': {
         headless: true,
-        args: ['--no-sandbox']
-      }
-    }
+        args: ['--no-sandbox'],
+      },
+    },
   });
 
   const results = [];
@@ -154,11 +166,11 @@ async function testAccessibilityWithFirefox(endpoints) {
     });
 
     const a11yResults = await axe(browser);
-    
+
     results.push({
       endpoint: endpoint.name,
       violations: a11yResults.violations,
-      passes: a11yResults.passes
+      passes: a11yResults.passes,
     });
   }
 
@@ -168,6 +180,7 @@ async function testAccessibilityWithFirefox(endpoints) {
 ```
 
 **Integration in deploy.sh:**
+
 ```bash
 run_firefox_accessibility_tests() {
   echo "[INFO] Running Firefox accessibility tests..."
@@ -177,6 +190,7 @@ run_firefox_accessibility_tests() {
 ```
 
 ### Phase 2: Add Performance Profiling
+
 **File:** `src/tests/firefox-performance-tests.mjs`
 
 ```javascript
@@ -187,29 +201,29 @@ async function testPerformanceWithFirefox(endpoints) {
     capabilities: {
       browserName: 'firefox',
       'moz:firefoxOptions': {
-        headless: true
-      }
-    }
+        headless: true,
+      },
+    },
   });
 
   const results = [];
 
   for (const endpoint of endpoints) {
     await browser.navigateTo(`http://localhost:5000${endpoint.url}`);
-    
+
     // Get Firefox performance metrics
     const timing = await browser.execute(() => {
       const perf = window.performance.getEntriesByType('navigation')[0];
       return {
         domContentLoaded: perf.domContentLoadedEventEnd - perf.domContentLoadedEventStart,
         loadComplete: perf.loadEventEnd - perf.loadEventStart,
-        responseTime: perf.responseEnd - perf.responseStart
+        responseTime: perf.responseEnd - perf.responseStart,
       };
     });
 
     results.push({
       endpoint: endpoint.name,
-      ...timing
+      ...timing,
     });
   }
 
@@ -219,6 +233,7 @@ async function testPerformanceWithFirefox(endpoints) {
 ```
 
 ### Phase 3: Add Network Throttling Tests
+
 Integrate with existing Puppeteer tests but add Firefox variant:
 
 ```javascript
@@ -226,7 +241,7 @@ Integrate with existing Puppeteer tests but add Firefox variant:
 const networkProfiles = [
   { name: 'Fast 3G', download: 1.6, upload: 0.75 },
   { name: 'Slow 3G', download: 0.4, upload: 0.05 },
-  { name: 'Offline', download: 0, upload: 0 }
+  { name: 'Offline', download: 0, upload: 0 },
 ];
 
 for (const profile of networkProfiles) {
@@ -241,11 +256,13 @@ for (const profile of networkProfiles) {
 ## Installation Steps
 
 ### Step 1: Install Firefox WebDriver Tools
+
 ```bash
 npm install --save-dev geckodriver axe-webdriverjs webdriverio
 ```
 
 ### Step 2: Start GeckoDriver Service
+
 In `deploy.sh` preview function, before running tests:
 
 ```bash
@@ -264,6 +281,7 @@ kill $GECKO_PID
 ```
 
 ### Step 3: Add to package.json
+
 ```json
 {
   "scripts": {
@@ -283,28 +301,31 @@ kill $GECKO_PID
 ## Firefox vs Chrome Coverage
 
 ### Chrome Lighthouse (Current)
+
 ✅ Performance metrics  
 ✅ Accessibility basic  
 ✅ Best Practices  
 ✅ SEO  
 ✅ PWA  
 ❌ Deep accessibility validation (WCAG 2.1 AA/AAA)  
-❌ Keyboard navigation verification  
+❌ Keyboard navigation verification
 
 ### Firefox Tests (Proposed)
+
 ✅ Deep accessibility (axe audit)  
 ✅ Keyboard navigation  
 ✅ WCAG 2.1 compliance  
 ✅ Contrast ratio validation  
 ✅ ARIA attribute verification  
 ✅ Performance profiling  
-✅ Network analysis under throttling  
+✅ Network analysis under throttling
 
 ---
 
 ## Why Both Chrome & Firefox?
 
 ### Chrome Lighthouse Strengths
+
 - Full-page performance audit
 - SEO optimization recommendations
 - PWA compliance check
@@ -312,28 +333,32 @@ kill $GECKO_PID
 - Large ecosystem of tools
 
 ### Firefox Strengths
+
 - **Better accessibility testing** - axe library is comprehensive
 - **Network protocol closer to real Firefox users** - GeckoDriver is official Mozilla tool
 - **Different rendering engine** - Catches cross-browser issues
 - **Open source** - More transparent about what's tested
 
 ### Combined Benefits
+
 ✅ Catch issues Lighthouse misses  
 ✅ Verify cross-browser compatibility  
 ✅ Ensure deep accessibility compliance  
 ✅ Test under real Firefox rendering  
-✅ Validate network resilience  
+✅ Validate network resilience
 
 ---
 
 ## Test Execution Flow
 
 ### Current (Chrome Only)
+
 ```
 Format → Lint → Start Server → Lighthouse Tests → HTML Validation → Memory Tests
 ```
 
 ### With Firefox
+
 ```
 Format → Lint → Start Server + GeckoDriver
   ├─ Lighthouse Tests (Chrome)
@@ -351,6 +376,7 @@ Format → Lint → Start Server + GeckoDriver
 ## Configuration
 
 ### Firefox Test Config
+
 Create `src/tests/firefox-config.mjs`:
 
 ```javascript
@@ -358,33 +384,33 @@ export const FIREFOX_CONFIG = {
   browser: {
     name: 'Firefox',
     path: 'geckodriver',
-    port: 4444
+    port: 4444,
   },
-  
+
   accessibility: {
     standards: ['wcag2aa', 'wcag2aaa'],
     timeout: 30000,
     thresholds: {
-      violations: 0,        // No violations allowed
-      warnings: 10          // Allow some warnings
-    }
+      violations: 0, // No violations allowed
+      warnings: 10, // Allow some warnings
+    },
   },
 
   performance: {
     thresholds: {
-      domContentLoaded: 2000,  // ms
-      loadComplete: 3000,      // ms
-      responseTime: 500        // ms
-    }
+      domContentLoaded: 2000, // ms
+      loadComplete: 3000, // ms
+      responseTime: 500, // ms
+    },
   },
 
   network: {
     throttleProfiles: [
       { name: 'Fast 3G', speed: 'fast' },
       { name: 'Slow 3G', speed: 'slow' },
-      { name: 'Offline', speed: 'offline' }
-    ]
-  }
+      { name: 'Offline', speed: 'offline' },
+    ],
+  },
 };
 ```
 
@@ -397,24 +423,24 @@ Update `deploy.sh`:
 ```bash
 run_firefox_tests() {
   echo "[INFO] Starting GeckoDriver for Firefox testing..."
-  
+
   # Start GeckoDriver
   geckodriver --port 4444 > /tmp/geckodriver.log 2>&1 &
   GECKO_PID=$!
-  
+
   # Wait for GeckoDriver to be ready
   sleep 2
-  
+
   # Run Firefox tests
   echo "[INFO] Running Firefox accessibility tests..."
   node src/tests/firefox-accessibility-tests.mjs
-  
+
   echo "[INFO] Running Firefox performance tests..."
   node src/tests/firefox-performance-tests.mjs
-  
+
   # Clean up
   kill $GECKO_PID 2>/dev/null
-  
+
   echo "[SUCCESS] Firefox tests completed"
 }
 ```
@@ -425,29 +451,32 @@ run_firefox_tests() {
 
 ### What to Add for Firefox Testing:
 
-| Tool | Package | Purpose | Priority |
-|------|---------|---------|----------|
-| **axe Accessibility** | `axe-webdriverjs` | WCAG compliance | HIGH |
-| **GeckoDriver** | `geckodriver` | Firefox WebDriver | HIGH |
-| **WebDriver I/O** | `webdriverio` | Automation framework | HIGH |
-| **Firefox Profiler** | Built-in API | Performance metrics | MEDIUM |
-| **Network Throttling** | WebDriver API | Network conditions | MEDIUM |
+| Tool                   | Package           | Purpose              | Priority |
+| ---------------------- | ----------------- | -------------------- | -------- |
+| **axe Accessibility**  | `axe-webdriverjs` | WCAG compliance      | HIGH     |
+| **GeckoDriver**        | `geckodriver`     | Firefox WebDriver    | HIGH     |
+| **WebDriver I/O**      | `webdriverio`     | Automation framework | HIGH     |
+| **Firefox Profiler**   | Built-in API      | Performance metrics  | MEDIUM   |
+| **Network Throttling** | WebDriver API     | Network conditions   | MEDIUM   |
 
 ### Minimal Setup (High Priority Only):
+
 ```bash
 npm install --save-dev geckodriver axe-webdriverjs webdriverio
 ```
 
 Then add:
+
 1. `src/tests/firefox-accessibility-tests.mjs` - Accessibility audits
 2. `src/tests/firefox-config.mjs` - Configuration
 3. Update `deploy.sh` - Integration into preview
 
 ### Result:
+
 ✅ Firefox accessibility testing  
 ✅ Cross-browser validation  
 ✅ WCAG 2.1 AA compliance verification  
-✅ Real Firefox rendering validation  
+✅ Real Firefox rendering validation
 
 **Total Additional Time:** ~60-90 seconds per preview deployment
 

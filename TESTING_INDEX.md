@@ -5,6 +5,7 @@ Complete guide to testing and quality assurance in the FlashCards project.
 ## Quick Start
 
 New to testing? Start here:
+
 - **5-minute quickstart:** [TESTING_QUICK_REFERENCE.md](./TESTING_QUICK_REFERENCE.md)
 - **Full guide:** [TESTING_PREVIEW.md](./TESTING_PREVIEW.md)
 - **Firefox testing:** [FIREFOX_TESTING_QUICK_SETUP.md](./FIREFOX_TESTING_QUICK_SETUP.md) (cross-browser validation)
@@ -12,9 +13,11 @@ New to testing? Start here:
 ## Testing Levels
 
 ### 1. **Local Development (Dev)**
+
 ```bash
 ./deploy.sh -dev
 ```
+
 - **Purpose:** Active development, quick iteration
 - **Tests:** Basic checks only (format, lint warnings)
 - **Aborts on failure:** ❌ No
@@ -25,9 +28,11 @@ New to testing? Start here:
 **When to use:** Daily development, testing features locally
 
 ### 2. **Preview Testing (Preview)**
+
 ```bash
 ./deploy.sh -preview
 ```
+
 - **Purpose:** Quality gate before committing
 - **Tests:** Format → Lint (strict) → Full test suite
 - **Aborts on failure:** ✅ Yes
@@ -38,6 +43,7 @@ New to testing? Start here:
 **When to use:** Before committing, validating changes, checking performance
 
 **Test suite includes:**
+
 - ✅ Endpoint connectivity (all 7 pages)
 - ✅ Lighthouse audits (Performance, Accessibility, Best Practices, SEO, PWA)
 - ✅ HTML validation (all pages)
@@ -47,9 +53,11 @@ New to testing? Start here:
 - ✅ Firefox accessibility testing (optional - WCAG compliance via axe)
 
 ### 3. **Production Deployment (Prod)**
+
 ```bash
 ./deploy.sh -prod
 ```
+
 - **Purpose:** Deploy to live Render server
 - **Tests:** Basic checks only (format, lint warnings)
 - **Aborts on failure:** ❌ No
@@ -60,9 +68,11 @@ New to testing? Start here:
 **When to use:** Release to production after preview passes
 
 ### 4. **All Environments**
+
 ```bash
 ./deploy.sh -all
 ```
+
 - **Runs:** Dev → Preview → Prod in order
 - **Stops on failure:** Preview failure aborts further deployments
 - **Time:** ~5-6 minutes total
@@ -70,12 +80,14 @@ New to testing? Start here:
 ## Test Categories
 
 ### Endpoint Connectivity
+
 - **What:** HTTP 200 validation for all routes
 - **Why:** Ensures server responds to requests
 - **Files:** 7 pages (Home, Practice, Quiz, Entries, Login, Profile, Logout)
 - **Duration:** 10-20s
 
 ### Lighthouse Audits
+
 - **What:** Google Lighthouse comprehensive audits
 - **Metrics tested:**
   - Performance (score > 50)
@@ -87,18 +99,21 @@ New to testing? Start here:
 - **Duration:** 60-90s
 
 ### HTML Validation
+
 - **What:** HTML5 standards validation
 - **Detects:** Invalid elements, bad attributes, structure errors
 - **Files:** All 7 pages validated
 - **Duration:** 5-10s
 
 ### CSS Analysis
+
 - **What:** Chrome DevTools CSS inspection
 - **Detects:** Layout problems, styling issues
 - **Files:** All 7 pages analyzed
 - **Duration:** 10-15s
 
 ### Memory Tests
+
 - **What:** Memory leak detection
 - **Thresholds:**
   - JavaScript Heap: max 500 MB
@@ -107,6 +122,7 @@ New to testing? Start here:
 - **Duration:** 15-25s
 
 ### Core Web Vitals
+
 - **What:** Google user experience metrics
 - **Metrics:**
   - First Contentful Paint (FCP) < 2500ms
@@ -115,6 +131,7 @@ New to testing? Start here:
 - **Duration:** 10-15s
 
 ### Firefox Accessibility Testing (Optional)
+
 - **What:** axe accessibility audit with Firefox WebDriver
 - **Why:** Deep WCAG compliance verification
 - **Validates:**
@@ -131,12 +148,14 @@ New to testing? Start here:
 ## Code Quality Tools
 
 ### Prettier (Code Formatter)
+
 ```bash
 npm run format        # Auto-fix formatting
 npm run format:check  # Check without fixing
 ```
 
 **What it fixes:**
+
 - Indentation (2 spaces)
 - Quote style (single quotes)
 - Line length (100 chars)
@@ -145,12 +164,14 @@ npm run format:check  # Check without fixing
 **When:** Automatically runs on preview deployment
 
 ### ESLint (Code Linter)
+
 ```bash
 npm run lint          # Check for issues
 npm run lint:fix      # Auto-fix issues
 ```
 
 **What it checks:**
+
 - Best practices
 - Common errors
 - Code style consistency
@@ -159,11 +180,13 @@ npm run lint:fix      # Auto-fix issues
 **When:** Automatically runs on preview deployment (strict mode)
 
 ### Verify Script
+
 ```bash
 npm run verify        # Run format then lint check
 ```
 
 **Equivalent to:**
+
 1. Format code
 2. Check linting
 3. Report issues
@@ -173,10 +196,13 @@ npm run verify        # Run format then lint check
 ## Troubleshooting Tests
 
 ### Tests Fail: Server Won't Start
+
 ```
 [ERROR] Failed to start server on port 5000
 ```
+
 **Debug:**
+
 ```bash
 tail -100 .deployment/last-run.log  # Check error message
 npm install                          # Ensure dependencies
@@ -184,11 +210,14 @@ npm install                          # Ensure dependencies
 ```
 
 ### Tests Fail: Lighthouse Score Too Low
+
 ```
 WARN: Lighthouse performance: Home
 Score: 45 (threshold: 50)
 ```
+
 **Fix:**
+
 - Optimize images (use modern formats)
 - Minimize JavaScript
 - Enable gzip compression
@@ -196,22 +225,28 @@ Score: 45 (threshold: 50)
 - Check for render-blocking resources
 
 ### Tests Warn: Memory Too High
+
 ```
 WARN: Memory Test: Practice
 Heap: 520MB (max: 500MB)
 ```
+
 **Investigate:**
+
 - Check for unbounded arrays
 - Verify event listeners cleaned up
 - Look for circular references
 - Profile with Chrome DevTools
 
 ### Tests Fail: HTML Invalid
+
 ```
 WARN: HTML Validation: Quiz
 5 validation error(s)
 ```
+
 **Fix in templates:**
+
 - Close all HTML tags
 - Fix deprecated elements
 - Add required attributes
@@ -220,14 +255,18 @@ WARN: HTML Validation: Quiz
 ## Continuous Integration
 
 ### GitHub Integration
+
 Tests run as part of `./deploy.sh -preview`:
+
 - ✅ Code formatting validated
 - ✅ Linting enforced
 - ✅ All 6 test suites executed
 - ✅ Deployment aborted if failures
 
 ### Pre-commit Best Practice
+
 Before committing:
+
 ```bash
 npm run verify                 # Format + lint check
 ./deploy.sh -preview          # Full test suite
@@ -238,6 +277,7 @@ git commit -m "Your message"
 ## Configuration
 
 ### Adjust Thresholds
+
 Edit `src/tests/test-config.mjs`:
 
 ```javascript
@@ -258,16 +298,18 @@ memoryThresholds: {
 ```
 
 ### Core Web Vitals
+
 Edit `src/tests/preview-tests.mjs`:
 
 ```javascript
 const webVitalThresholds = {
-  'First Contentful Paint': 2500,     // ms
-  'Time to Interactive': 5000,        // ms
-}
+  'First Contentful Paint': 2500, // ms
+  'Time to Interactive': 5000, // ms
+};
 ```
 
 ### Add/Remove Endpoints
+
 Edit `src/tests/test-config.mjs`:
 
 ```javascript
@@ -275,35 +317,36 @@ endpoints: [
   { url: '/', name: 'Home' },
   { url: '/practice', name: 'Practice' },
   // Add new endpoints here
-]
+];
 ```
 
 ## Test Files
 
-| File | Purpose |
-|------|---------|
-| `src/tests/test-config.mjs` | Configuration, results tracking, test endpoints |
-| `src/tests/preview-tests.mjs` | Complete test suite implementation |
-| `.deployment/last-run.log` | Test results and deployment log |
-| `eslint.config.js` | Linting rules (Node.js + ES2024) |
-| `.prettierrc.json` | Formatting rules |
-| `package.json` | npm scripts and dependencies |
-| `deploy.sh` | Deployment automation with testing |
+| File                          | Purpose                                         |
+| ----------------------------- | ----------------------------------------------- |
+| `src/tests/test-config.mjs`   | Configuration, results tracking, test endpoints |
+| `src/tests/preview-tests.mjs` | Complete test suite implementation              |
+| `.deployment/last-run.log`    | Test results and deployment log                 |
+| `eslint.config.js`            | Linting rules (Node.js + ES2024)                |
+| `.prettierrc.json`            | Formatting rules                                |
+| `package.json`                | npm scripts and dependencies                    |
+| `deploy.sh`                   | Deployment automation with testing              |
 
 ## Documentation Files
 
-| File | Purpose |
-|------|---------|
-| `TESTING_PREVIEW.md` | Complete preview testing guide |
+| File                         | Purpose                          |
+| ---------------------------- | -------------------------------- |
+| `TESTING_PREVIEW.md`         | Complete preview testing guide   |
 | `TESTING_QUICK_REFERENCE.md` | Quick reference for common tasks |
-| `CODE_QUALITY.md` | Linting and formatting guide |
-| `TESTING_STRATEGY.md` | High-level testing approach |
-| `DEPLOY.md` | Deployment guide with all modes |
-| `ENVIRONMENTS.md` | Dev, preview, prod architecture |
+| `CODE_QUALITY.md`            | Linting and formatting guide     |
+| `TESTING_STRATEGY.md`        | High-level testing approach      |
+| `DEPLOY.md`                  | Deployment guide with all modes  |
+| `ENVIRONMENTS.md`            | Dev, preview, prod architecture  |
 
 ## Performance Expectations
 
 ### Test Timing
+
 - **Endpoint tests:** 10-20 seconds
 - **Lighthouse audits:** 60-90 seconds
 - **HTML validation:** 5-10 seconds
@@ -313,6 +356,7 @@ endpoints: [
 - **Total suite:** 2-3 minutes
 
 ### Server Response Times
+
 - Page load: < 500ms
 - API endpoints: < 200ms
 - Redirect: < 100ms
@@ -320,6 +364,7 @@ endpoints: [
 ## Common Workflows
 
 ### After Feature Implementation
+
 ```bash
 # 1. Test locally
 ./deploy.sh -dev
@@ -340,6 +385,7 @@ git push
 ```
 
 ### Debugging a Test Failure
+
 ```bash
 # 1. Check deployment log
 tail -100 .deployment/last-run.log
@@ -360,6 +406,7 @@ tail -100 .deployment/last-run.log
 ```
 
 ### Performance Optimization
+
 ```bash
 # 1. Identify slow tests
 grep "Lighthouse\|WARN\|Performance" .deployment/last-run.log
@@ -379,11 +426,13 @@ grep "Lighthouse\|WARN\|Performance" .deployment/last-run.log
 ## Next Steps
 
 1. **Run preview tests:**
+
    ```bash
    ./deploy.sh -preview
    ```
 
 2. **Review results:**
+
    ```bash
    cat .deployment/last-run.log
    ```
@@ -412,19 +461,21 @@ grep "Lighthouse\|WARN\|Performance" .deployment/last-run.log
 ## Chrome vs Firefox Testing
 
 ### Chrome Lighthouse (Built-in)
+
 ✅ Performance audits  
 ✅ Accessibility (basic)  
 ✅ Best practices  
 ✅ SEO optimization  
 ✅ PWA compliance  
-✅ Core Web Vitals  
+✅ Core Web Vitals
 
 ### Firefox Testing (Optional Add-on)
+
 ✅ Deep accessibility (axe audit)  
 ✅ WCAG 2.0 AA/AAA compliance  
 ✅ Keyboard navigation  
 ✅ ARIA validation  
-✅ Cross-browser verification  
+✅ Cross-browser verification
 
 **Recommendation:** Use both for comprehensive coverage. Start with Chrome Lighthouse, then add Firefox for accessibility compliance when needed.
 
