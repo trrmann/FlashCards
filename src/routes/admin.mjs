@@ -5,13 +5,17 @@
 
 import express from 'express';
 import {
+  createUser,
   getAllUsers,
   findUserById,
   disableUser,
   enableUser,
   deleteUser,
   isAdmin,
+  isUsernameAvailable,
+  isEmailAvailable,
 } from '../auth/user.mjs';
+import { validatePassword, validateEmail, validateUsername } from '../auth/validator.mjs';
 
 const router = express.Router();
 
@@ -60,6 +64,91 @@ router.get('/users', requireAuth, requireAdmin, async (req, res) => {
     return res.status(500).json({
       status: 'error',
       message: 'Failed to retrieve users',
+    });
+  }
+});
+
+/**
+ * POST /api/admin/users
+ * Create a new user (admin only)
+ */
+router.post('/users', requireAuth, requireAdmin, express.json(), async (req, res) => {
+  try {
+    const { username, email, password, fullName } = req.body;
+
+    // Validate required fields
+    if (!username || !email || !password) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Missing required fields: username, email, password',
+      });
+    }
+
+    const errors = [];
+
+    // Validate username
+    const usernameValidation = validateUsername(username);
+    if (!usernameValidation.valid) {
+      errors.push(...usernameValidation.errors);
+    }
+
+    // Validate email
+    if (!validateEmail(email)) {
+      errors.push('Invalid email address');
+    }
+
+    // Validate password
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      errors.push(...passwordValidation.errors);
+    }
+
+    if (errors.length > 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Validation failed',
+        errors,
+      });
+    }
+
+    // Check if username is available
+    const usernameAvailable = await isUsernameAvailable(username);
+    if (!usernameAvailable) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Username is already taken',
+      });
+    }
+
+    // Check if email is available
+    const emailAvailable = await isEmailAvailable(email);
+    if (!emailAvailable) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Email is already registered',
+      });
+    }
+
+    // Create user
+    const user = await createUser(username, email, password, fullName || null);
+
+    return res.status(201).json({
+      status: 'success',
+      message: 'User created successfully',
+      user: {
+        user_id: user.user_id,
+        username: user.username,
+        email: user.email,
+        full_name: user.full_name,
+        created_at: user.created_at,
+      },
+    });
+  } catch (error) {
+    console.error('Create user error:', error.message);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to create user',
+      error: error.message,
     });
   }
 });
