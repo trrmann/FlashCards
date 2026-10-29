@@ -734,14 +734,17 @@
 
       const url = `/api/entries/export${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
       
-      // Trigger download
+      // Fetch the export data
       const response = await fetch(url);
-      const data = await response.json();
-
-      if (data.status === 'error') {
-        alert('Error: ' + data.message);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        alert('Error: ' + (errorData.message || 'Failed to export entries'));
         return;
       }
+
+      // Get the JSON data
+      const data = await response.json();
 
       // Create blob and download
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -756,6 +759,7 @@
 
       alert(`✓ Exported ${data.count} flashcards`);
     } catch (error) {
+      console.error('Export error:', error);
       alert('Export failed: ' + error.message);
     }
   });
