@@ -1,14 +1,535 @@
 <%- include('partials/header') %>
 <main>
-  <h1><%= siteData.getTitle() %></h1>
-  <h2>Welcome to <%= siteData.getName() %><%= siteData.getNameHeadingHelp() %>Flash Card Service!</h2>
-  <p>
-    Our mission is to help <%= siteData.getName() %> study for English Connect.
-  </p>
-  <!--<img
-    class="main-logo"
-    src="/images/cse340-service-network.png"
-    alt="CSE 340 Service Network Logo"
-  />-->
+  <div class="entries-container">
+    <h1>My Flashcards</h1>
+
+    <% if (isLoggedIn) { %>
+      <!-- Create New Entry Form -->
+      <div class="entry-form-section">
+        <h2>Create New Flashcard</h2>
+        <form id="create-entry-form" class="entry-form">
+          <div class="form-group">
+            <label for="question">Question:</label>
+            <textarea
+              id="question"
+              name="question"
+              placeholder="Enter the question or front of the flashcard..."
+              required
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="answer">Answer:</label>
+            <textarea
+              id="answer"
+              name="answer"
+              placeholder="Enter the answer or back of the flashcard..."
+              required
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="lesson">Lesson/Category:</label>
+            <input
+              type="text"
+              id="lesson"
+              name="lesson"
+              placeholder="Optional: e.g., Math 101, Biology Chapter 3"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="is_private">
+              <input
+                type="checkbox"
+                id="is_private"
+                name="is_private"
+                checked
+              />
+              Keep Private (not visible to other users)
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Create Flashcard</button>
+            <span id="form-status"></span>
+          </div>
+        </form>
+      </div>
+
+      <!-- Entries List -->
+      <div class="entries-list-section">
+        <h2>Your Flashcards</h2>
+        <div id="entries-list" class="entries-list">
+          <p class="loading">Loading your flashcards...</p>
+        </div>
+      </div>
+
+      <!-- Shared with Me Section -->
+      <div class="shared-entries-section" style="display: none;">
+        <h2>Shared with Me</h2>
+        <div id="shared-entries-list" class="entries-list">
+          <p class="loading">Loading shared flashcards...</p>
+        </div>
+      </div>
+
+    <% } else { %>
+      <p>Please <a href="/login">log in</a> to manage your flashcards.</p>
+    <% } %>
+  </div>
 </main>
+
+<style>
+  .entries-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  .entry-form-section,
+  .entries-list-section,
+  .shared-entries-section {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .entry-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .form-group label {
+    font-weight: bold;
+    font-size: 14px;
+  }
+
+  .form-group textarea,
+  .form-group input[type="text"] {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+    min-height: 80px;
+  }
+
+  .form-group input[type="text"] {
+    min-height: auto;
+  }
+
+  .form-group label input[type="checkbox"] {
+    margin-right: 8px;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+  }
+
+  .btn-primary {
+    background: #007bff;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #0056b3;
+  }
+
+  .btn-secondary {
+    background: #6c757d;
+    color: white;
+  }
+
+  .btn-secondary:hover {
+    background: #545b62;
+  }
+
+  .btn-danger {
+    background: #dc3545;
+    color: white;
+  }
+
+  .btn-danger:hover {
+    background: #c82333;
+  }
+
+  #form-status {
+    font-size: 14px;
+    padding-left: 10px;
+  }
+
+  #form-status.success {
+    color: #28a745;
+  }
+
+  #form-status.error {
+    color: #dc3545;
+  }
+
+  .entries-list {
+    display: grid;
+    gap: 15px;
+  }
+
+  .entry-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 15px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 15px;
+  }
+
+  .entry-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .entry-question {
+    font-weight: bold;
+    font-size: 15px;
+    color: #333;
+  }
+
+  .entry-answer {
+    color: #666;
+    font-size: 14px;
+    margin-left: 20px;
+    padding-top: 5px;
+    border-top: 1px solid #eee;
+  }
+
+  .entry-lesson {
+    font-size: 12px;
+    color: #999;
+    font-style: italic;
+  }
+
+  .entry-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+  }
+
+  .entry-actions button {
+    padding: 6px 12px;
+    font-size: 12px;
+    min-width: 80px;
+  }
+
+  .entry-badge {
+    display: inline-block;
+    background: #e9ecef;
+    color: #495057;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
+  }
+
+  .entry-badge.private {
+    background: #f8d7da;
+    color: #721c24;
+  }
+
+  .entry-badge.shared {
+    background: #d1ecf1;
+    color: #0c5460;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #999;
+  }
+
+  .empty-state p {
+    margin: 10px 0;
+  }
+
+  .loading {
+    text-align: center;
+    color: #999;
+    padding: 20px;
+  }
+
+  .error {
+    color: #dc3545;
+    padding: 10px;
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
+    margin-bottom: 15px;
+  }
+
+  .success {
+    color: #155724;
+    padding: 10px;
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-radius: 4px;
+    margin-bottom: 15px;
+  }
+</style>
+
+<script>
+  // Check if user is logged in
+  const isLoggedIn = <%= isLoggedIn ? 'true' : 'false' %>;
+
+  if (isLoggedIn) {
+    document.addEventListener('DOMContentLoaded', () => {
+      initializeEntriesPage();
+    });
+  }
+
+  function initializeEntriesPage() {
+    setupCreateForm();
+    loadUserEntries();
+    loadSharedEntries();
+  }
+
+  function setupCreateForm() {
+    const form = document.getElementById('create-entry-form');
+    const statusSpan = document.getElementById('form-status');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const question = document.getElementById('question').value;
+      const answer = document.getElementById('answer').value;
+      const lesson = document.getElementById('lesson').value;
+      const is_private = document.getElementById('is_private').checked;
+
+      try {
+        statusSpan.textContent = 'Creating...';
+        statusSpan.className = '';
+
+        const response = await fetch('/api/entries', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question,
+            answer,
+            lesson,
+            is_private,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+          statusSpan.textContent = '✓ Flashcard created!';
+          statusSpan.className = 'success';
+          form.reset();
+          document.getElementById('is_private').checked = true;
+
+          // Reload entries
+          setTimeout(() => {
+            loadUserEntries();
+            statusSpan.textContent = '';
+          }, 1000);
+        } else {
+          statusSpan.textContent = 'Error: ' + data.message;
+          statusSpan.className = 'error';
+        }
+      } catch (error) {
+        statusSpan.textContent = 'Error: ' + error.message;
+        statusSpan.className = 'error';
+      }
+    });
+  }
+
+  async function loadUserEntries() {
+    const list = document.getElementById('entries-list');
+
+    try {
+      const response = await fetch('/api/entries');
+      const data = await response.json();
+
+      if (data.status === 'success' && data.entries && data.entries.length > 0) {
+        list.innerHTML = data.entries
+          .map(
+            (entry) => `
+          <div class="entry-card">
+            <div class="entry-content">
+              <div class="entry-question">${escapeHtml(entry.question)}</div>
+              <div class="entry-answer">
+                <strong>Answer:</strong> ${escapeHtml(entry.answer)}
+              </div>
+              ${
+                entry.lesson
+                  ? `<div class="entry-lesson">Lesson: ${escapeHtml(entry.lesson)}</div>`
+                  : ''
+              }
+              <div>
+                <span class="entry-badge ${entry.is_private ? 'private' : ''}">
+                  ${entry.is_private ? '🔒 Private' : '🌐 Public'}
+                </span>
+              </div>
+            </div>
+            <div class="entry-actions">
+              <button class="btn btn-secondary" onclick="editEntry('${entry.flashcard_id}')">
+                Edit
+              </button>
+              <button class="btn btn-primary" onclick="shareEntry('${entry.flashcard_id}')">
+                Share
+              </button>
+              <button class="btn btn-danger" onclick="deleteEntry('${entry.flashcard_id}')">
+                Delete
+              </button>
+            </div>
+          </div>
+        `
+          )
+          .join('');
+      } else {
+        list.innerHTML =
+          '<div class="empty-state"><p>No flashcards yet.</p><p>Create your first flashcard above!</p></div>';
+      }
+    } catch (error) {
+      list.innerHTML = '<div class="error">Error loading flashcards: ' + error.message + '</div>';
+    }
+  }
+
+  async function loadSharedEntries() {
+    const section = document.querySelector('.shared-entries-section');
+    const list = document.getElementById('shared-entries-list');
+
+    try {
+      const response = await fetch('/api/entries/shares/accepted');
+      const data = await response.json();
+
+      if (data.status === 'success' && data.shares && data.shares.length > 0) {
+        section.style.display = 'block';
+        list.innerHTML = data.shares
+          .map(
+            (share) => `
+          <div class="entry-card">
+            <div class="entry-content">
+              <div class="entry-question">${escapeHtml(share.question)}</div>
+              <div class="entry-answer">
+                <strong>Answer:</strong> ${escapeHtml(share.answer)}
+              </div>
+              <div class="entry-lesson">
+                Shared by: ${escapeHtml(share.owner_username || 'Unknown')}
+              </div>
+            </div>
+            <div class="entry-actions">
+              <button class="btn btn-danger" onclick="rejectShare('${share.share_id}')">
+                Remove
+              </button>
+            </div>
+          </div>
+        `
+          )
+          .join('');
+      }
+    } catch (error) {
+      console.error('Error loading shared entries:', error);
+    }
+  }
+
+  function editEntry(entryId) {
+    alert('Edit feature coming soon!');
+  }
+
+  function shareEntry(entryId) {
+    const username = prompt('Enter username to share with:');
+    if (!username) return;
+
+    fetch(`/api/entries/${entryId}/share`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === 'success') {
+          alert('Shared with ' + username);
+          loadUserEntries();
+        } else {
+          alert('Error: ' + data.message);
+        }
+      })
+      .catch((err) => alert('Error: ' + err.message));
+  }
+
+  async function deleteEntry(entryId) {
+    if (!confirm('Are you sure you want to delete this flashcard?')) return;
+
+    try {
+      const response = await fetch(`/api/entries/${entryId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        alert('Flashcard deleted');
+        loadUserEntries();
+      } else {
+        alert('Error: ' + data.message);
+      }
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
+  }
+
+  async function rejectShare(shareId) {
+    if (!confirm('Remove this shared flashcard from your list?')) return;
+
+    try {
+      const response = await fetch(`/api/entries/shares/${shareId}/reject`, {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        alert('Removed from shared list');
+        loadSharedEntries();
+      } else {
+        alert('Error: ' + data.message);
+      }
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
+  }
+
+  function escapeHtml(text) {
+    const map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;',
+    };
+    return text.replace(/[&<>"']/g, (m) => map[m]);
+  }
+</script>
+
 <%- include('partials/footer') %>

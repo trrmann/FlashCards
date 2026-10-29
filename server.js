@@ -142,7 +142,7 @@ app.get('/quiz', async (req, res) => {
 
 app.get('/entries', async (req, res) => {
   siteData.setTitle('Entries');
-  res.render('entries', { siteData });
+  res.render('entries', { siteData, isLoggedIn: !!req.session.userId });
 });
 
 app.get('/login', async (req, res) => {
