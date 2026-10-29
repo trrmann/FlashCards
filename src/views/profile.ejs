@@ -122,7 +122,9 @@
     // Fetch and populate user profile
     async function loadProfile() {
       try {
-        const response = await fetch('/api/users/profile');
+        const response = await fetch('/api/users/profile', {
+          credentials: 'include',
+        });
         const data = await response.json();
 
         if (data.status === 'success') {
@@ -158,6 +160,7 @@
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: 'include',
           body: JSON.stringify({ email, fullName }),
         });
 
@@ -195,6 +198,7 @@
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: 'include',
           body: JSON.stringify({ password: newPassword }),
         });
 
@@ -221,7 +225,9 @@
       if (!adminSection) return; // Not admin
 
       try {
-        const response = await fetch('/api/admin/users');
+        const response = await fetch('/api/admin/users', {
+          credentials: 'include',
+        });
         const data = await response.json();
 
         if (data.status === 'success') {
@@ -293,6 +299,7 @@
             headers: {
               'Content-Type': 'application/json',
             },
+            credentials: 'include',
             body: JSON.stringify({ username, email, fullName, password }),
           });
 
