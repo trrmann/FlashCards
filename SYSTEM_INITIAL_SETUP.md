@@ -11,6 +11,7 @@ The system includes special endpoints to handle the initial setup scenario when 
 Check if the system needs initial setup (no users exist).
 
 **Response (200 OK):**
+
 ```json
 {
   "status": "success",
@@ -21,6 +22,7 @@ Check if the system needs initial setup (no users exist).
 ```
 
 **When needsSetup is true:**
+
 ```json
 {
   "status": "success",
@@ -31,6 +33,7 @@ Check if the system needs initial setup (no users exist).
 ```
 
 ### Use Cases
+
 - Frontend can check on load to redirect to setup wizard if needed
 - CI/CD pipelines can verify system readiness
 - Health monitoring can alert if users table is accidentally cleared
@@ -42,11 +45,13 @@ Check if the system needs initial setup (no users exist).
 Create the first user in the system (only available when no users exist).
 
 **Requirements:**
+
 - System must have zero users (check with `/api/system/setup-status` first)
 - User will be created as the system administrator
 - Same validation as regular registration applies
 
 **Request Body:**
+
 ```json
 {
   "username": "admin",
@@ -58,6 +63,7 @@ Create the first user in the system (only available when no users exist).
 ```
 
 **Response (201 Created - When users=0):**
+
 ```json
 {
   "status": "success",
@@ -74,6 +80,7 @@ Create the first user in the system (only available when no users exist).
 ```
 
 **Error Response (403 Forbidden - When users>0):**
+
 ```json
 {
   "status": "error",
@@ -83,13 +90,12 @@ Create the first user in the system (only available when no users exist).
 ```
 
 **Error Response (400 Bad Request - Validation Errors):**
+
 ```json
 {
   "status": "error",
   "message": "Password does not meet requirements",
-  "errors": [
-    "Password must contain at least one special character (!@#$%^&*)"
-  ]
+  "errors": ["Password must contain at least one special character (!@#$%^&*)"]
 }
 ```
 
@@ -100,6 +106,7 @@ Create the first user in the system (only available when no users exist).
 Get status of all required database tables.
 
 **Response (200 OK):**
+
 ```json
 {
   "status": "success",
@@ -139,6 +146,7 @@ Get status of all required database tables.
 ```
 
 ### Use Cases
+
 - Verify database initialization was successful
 - Monitor table row counts for data growth
 - Check if specific tables are missing (initialization failed)
@@ -147,6 +155,7 @@ Get status of all required database tables.
 ## Initial User Scenarios
 
 ### Scenario 1: Fresh Installation
+
 ```bash
 # 1. Check setup status
 curl http://localhost:5000/api/system/setup-status
@@ -169,6 +178,7 @@ curl -X POST http://localhost:5000/api/auth/register ...
 ```
 
 ### Scenario 2: Database Already Initialized
+
 ```bash
 # 1. Check setup status
 curl http://localhost:5000/api/system/setup-status
@@ -183,6 +193,7 @@ curl -X POST http://localhost:5000/api/auth/register ...
 ```
 
 ### Scenario 3: Verify Database Health
+
 ```bash
 curl http://localhost:5000/api/system/database-status
 # Returns detailed table status
@@ -192,6 +203,7 @@ curl http://localhost:5000/api/system/database-status
 ## Session Behavior
 
 When initial setup succeeds:
+
 - ✅ User is automatically logged in (session created)
 - ✅ User can immediately access `/api/users/profile` and other protected endpoints
 - ✅ Same 24-hour session expiration as regular login applies
@@ -199,6 +211,7 @@ When initial setup succeeds:
 ## Validation
 
 Initial setup uses identical validation to regular registration:
+
 - Username: 3-50 chars, alphanumeric + underscore/hyphen
 - Email: Valid format
 - Password: 8+ chars, uppercase, lowercase, number, special char
@@ -206,13 +219,13 @@ Initial setup uses identical validation to regular registration:
 
 ## Edge Cases Handled
 
-| Case | Behavior |
-|------|----------|
-| Users exist | Returns 403, suggests using /api/auth/register |
-| Zero users exist | Allows creation, becomes administrator |
-| Database missing tables | Database status shows allTablesExist: false |
-| Invalid password | Returns validation errors with requirements |
-| Duplicate username | Returns 400 error (should be impossible if first user) |
+| Case                    | Behavior                                               |
+| ----------------------- | ------------------------------------------------------ |
+| Users exist             | Returns 403, suggests using /api/auth/register         |
+| Zero users exist        | Allows creation, becomes administrator                 |
+| Database missing tables | Database status shows allTablesExist: false            |
+| Invalid password        | Returns validation errors with requirements            |
+| Duplicate username      | Returns 400 error (should be impossible if first user) |
 
 ## Frontend Integration Example
 
@@ -221,7 +234,7 @@ Initial setup uses identical validation to regular registration:
 async function checkSetupStatus() {
   const response = await fetch('/api/system/setup-status');
   const data = await response.json();
-  
+
   if (data.needsSetup) {
     // Show setup wizard
     window.location.href = '/setup';
@@ -236,9 +249,9 @@ async function completeSetup(formData) {
   const response = await fetch('/api/system/initial-setup', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(formData)
+    body: JSON.stringify(formData),
   });
-  
+
   if (response.ok) {
     // User created and logged in
     window.location.href = '/dashboard';
@@ -249,6 +262,7 @@ async function completeSetup(formData) {
 ## Testing
 
 ### Manual Testing
+
 ```bash
 # 1. Check current setup status
 curl http://localhost:5000/api/system/setup-status
@@ -272,16 +286,19 @@ curl -X POST http://localhost:5000/api/system/initial-setup \
 ## Security Considerations
 
 ✅ **Initial Setup Locked**
+
 - Only available when zero users exist
 - Prevents unauthorized creation of admin accounts
 - Returns clear 403 error if already initialized
 
 ✅ **Same Validation**
+
 - Uses identical password validation as regular auth
 - Prevents weak credentials
 - Email format verified
 
 ✅ **Session Security**
+
 - User created via initial-setup gets same secure session
 - HttpOnly cookies
 - 24-hour expiration
@@ -289,6 +306,7 @@ curl -X POST http://localhost:5000/api/system/initial-setup \
 ## Future Enhancements
 
 Possible additions in future phases:
+
 - [ ] Role-based access control (Admin, User roles)
 - [ ] Multi-admin support
 - [ ] Initial setup configuration (site name, theme, etc.)

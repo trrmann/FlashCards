@@ -1,178 +1,36 @@
 ╔════════════════════════════════════════════════════════════════╗
 ║  FlashCards Deployment
-║  Environment: -preview
-║  Started: Thu Oct 29 01:45:20 PM EDT 2026
+║  Environment: -prod
+║  Started: Thu Oct 29 01:58:00 PM EDT 2026
 ╚════════════════════════════════════════════════════════════════╝
 
-[2026-10-29 13:45:20] [INFO] FlashCards Deployment Starting
-[2026-10-29 13:45:20] [INFO] Environment: -preview
-[2026-10-29 13:45:20] [INFO] Checking prerequisites...
-[2026-10-29 13:45:20] [SUCCESS] All prerequisites met
-[2026-10-29 13:45:20] [INFO] Checking git status...
-[2026-10-29 13:45:20] [INFO] Current branch: main
-[2026-10-29 13:45:20] [WARN] Uncommitted changes detected
- .deployment/last-run.log          | 172 ++------------------------------------
- PHASE2_AUTHENTICATION_COMPLETE.md |  34 +++++++-
- server.js                         |   4 +
- 3 files changed, 43 insertions(+), 167 deletions(-)
-[2026-10-29 13:45:20] [INFO] Checking npm dependencies...
-[2026-10-29 13:45:20] [SUCCESS] Dependencies ready
-[2026-10-29 13:45:20] [INFO] Running code checks...
-[2026-10-29 13:45:22] [INFO] Running linter...
+[2026-10-29 13:58:00] [INFO] FlashCards Deployment Starting
+[2026-10-29 13:58:00] [INFO] Environment: -prod
+[2026-10-29 13:58:00] [INFO] Checking prerequisites...
+[2026-10-29 13:58:00] [SUCCESS] All prerequisites met
+[2026-10-29 13:58:00] [INFO] Checking git status...
+[2026-10-29 13:58:00] [INFO] Current branch: main
+[2026-10-29 13:58:00] [WARN] Uncommitted changes detected
+ .deployment/last-run.log        | 183 ++--------------------------------------
+ RENDER_ENVIRONMENT_VARIABLES.md |  58 +++++++++----
+ SYSTEM_INITIAL_SETUP.md         |  44 +++++++---
+ 3 files changed, 80 insertions(+), 205 deletions(-)
+[2026-10-29 13:58:00] [INFO] Checking npm dependencies...
+[2026-10-29 13:58:00] [SUCCESS] Dependencies ready
+[2026-10-29 13:58:00] [INFO] Running code checks...
+[2026-10-29 13:58:02] [INFO] Running linter...
 
 > FlashCards@1.0.0 lint
 > eslint . --ext .js,.mjs
 
 
-[2026-10-29 13:45:24] [INFO] ==========================================
-[2026-10-29 13:45:24] [INFO] DEPLOYING TO: Preview (Local)
-[2026-10-29 13:45:24] [INFO] ==========================================
-[2026-10-29 13:45:24] [INFO] Running strict code verification (format + lint)...
-[2026-10-29 13:45:24] [INFO] Formatting code...
+[2026-10-29 13:58:03] [INFO] ==========================================
+[2026-10-29 13:58:03] [INFO] DEPLOYING TO: Production (Render)
+[2026-10-29 13:58:03] [INFO] ==========================================
+[2026-10-29 13:58:03] [WARN] Uncommitted changes. Commit them first:
+[2026-10-29 13:58:03] [INFO]   git add .
+[2026-10-29 13:58:03] [INFO]   git commit -m 'Your message'
+[2026-10-29 13:58:03] [INFO]   git push origin main
+[2026-10-29 13:58:03] [ERROR] Please commit and push changes before deploying to production
 
-> FlashCards@1.0.0 format
-> prettier --write .
-
-.prettierrc.json 38ms (unchanged)
-CODE_QUALITY.md 246ms (unchanged)
-DATABASE_SETUP_COMPLETE.md 141ms (unchanged)
-DEPLOY_ACCESSIBILITY.md 29ms (unchanged)
-DEPLOY_QUICK_REFERENCE.md 60ms (unchanged)
-DEPLOY.md 53ms (unchanged)
-documents/API_ENDPOINTS.md 184ms (unchanged)
-documents/ARCHITECTURE.md 92ms (unchanged)
-documents/DATABASE_SCHEMA.md 96ms (unchanged)
-documents/DEPLOYMENT_STRATEGY.md 191ms (unchanged)
-documents/DEV_ENVIRONMENT_SETUP.md 144ms (unchanged)
-documents/LEITNER_SYSTEM.md 90ms (unchanged)
-documents/MULTI_APP_ARCHITECTURE.md 47ms (unchanged)
-documents/PROJECT_STRUCTURE.md 26ms (unchanged)
-documents/QUICK_REFERENCE.md 95ms (unchanged)
-documents/README.md 154ms (unchanged)
-documents/ROADMAP.md 132ms (unchanged)
-documents/TESTING_STRATEGY.md 228ms (unchanged)
-ENVIRONMENTS.md 19ms (unchanged)
-eslint.config.js 7ms (unchanged)
-FIREFOX_TESTING_QUICK_SETUP.md 56ms (unchanged)
-FIREFOX_TESTING.md 66ms (unchanged)
-FlashCards.code-workspace 1ms (unchanged)
-nodemon.json 1ms (unchanged)
-package.json 3ms (unchanged)
-PHASE2_AUTHENTICATION_COMPLETE.md 86ms (unchanged)
-public/css/core.css 68ms (unchanged)
-public/css/desktop.css 11ms (unchanged)
-public/css/laptop.css 3ms (unchanged)
-public/css/mobile.css 18ms (unchanged)
-public/css/styles.css 6ms (unchanged)
-public/css/tablet.css 7ms (unchanged)
-README_START_HERE.md 40ms (unchanged)
-scripts/init-db.mjs 26ms (unchanged)
-server.js 20ms (unchanged)
-SETUP_CHECKLIST.md 79ms (unchanged)
-SETUP_GUIDE_INDEX.md 44ms (unchanged)
-SETUP_QUICK_START.md 27ms (unchanged)
-src/auth/user.mjs 17ms (unchanged)
-src/auth/validator.mjs 8ms (unchanged)
-src/db/connection.mjs 10ms (unchanged)
-src/js/appSiteData.js 2ms (unchanged)
-src/js/modules/appSiteData.mjs 7ms (unchanged)
-src/routes/auth.mjs 21ms (unchanged)
-src/routes/system.mjs 15ms (unchanged)
-src/routes/users.mjs 13ms (unchanged)
-src/tests/preview-tests.mjs 43ms (unchanged)
-src/tests/test-config.mjs 16ms (unchanged)
-TESTING_INDEX.md 64ms (unchanged)
-TESTING_PREVIEW.md 46ms (unchanged)
-TESTING_QUICK_REFERENCE.md 19ms (unchanged)
-W3C_QUICK_ANSWER.md 18ms (unchanged)
-W3C_VALIDATION_STATUS.md 57ms (unchanged)
-[2026-10-29 13:45:28] [SUCCESS] Code formatted successfully
-[2026-10-29 13:45:28] [INFO] Verifying code with linter...
-
-> FlashCards@1.0.0 lint
-> eslint . --ext .js,.mjs
-
-[2026-10-29 13:45:30] [SUCCESS] Code verification passed
-[2026-10-29 13:45:30] [INFO] Starting preview server on localhost:5000...
-[2026-10-29 13:45:30] [WARN] Process already running on port 5000. Killing...
-[31m[nodemon] app crashed - waiting for file changes before starting...[39m
-[32m[nodemon] clean exit - waiting for changes before restart[39m
-[32m[nodemon] clean exit - waiting for changes before restart[39m
-[32m[nodemon] clean exit - waiting for changes before restart[39m
-[32m[nodemon] clean exit - waiting for changes before restart[39m
-[32m[nodemon] clean exit - waiting for changes before restart[39m
-[32m[nodemon] clean exit - waiting for changes before restart[39m
-[32m[nodemon] clean exit - waiting for changes before restart[39m
-[2026-10-29 13:45:31] [INFO] Server PID: 180081
-[2026-10-29 13:45:31] [INFO] Waiting for server to start...
-
-> FlashCards@1.0.0 dev
-> nodemon
-
-[33m[nodemon] 3.1.14[39m
-[33m[nodemon] to restart at any time, enter `rs`[39m
-[33m[nodemon] watching path(s): *.*[39m
-[33m[nodemon] watching extensions: js,css,ejs,env[39m
-[32m[nodemon] starting `node --env-file=.env server.js`[39m
-◇ injected env (0) from .env
-Server running in preview mode on port 5000
-[2026-10-29 13:45:32] [SUCCESS] Preview server is running
-[2026-10-29 13:45:32] [SUCCESS] URL: http://localhost:5000
-PREVIEW_PID=180081
-✅ Database connected: dpg-dbhnuks9v7es73beg8mg-a.virginia-postgres.render.com
-[2026-10-29 13:45:34] [INFO] Running comprehensive preview test suite...
-[2026-10-29 13:45:34] [INFO] Tests: Lighthouse, HTML/CSS validation, Memory, Core Web Vitals
-
-> FlashCards@1.0.0 test:preview
-> node src/tests/preview-tests.mjs
-
-[2026-10-29 13:45:36] [SUCCESS] All preview tests passed
-[2026-10-29 13:45:36] [INFO] Opening browser for Preview testing at http://localhost:5000...
-
-╔════════════════════════════════════════════════════════════════╗
-║  Deployment Completed
-║  Completed: Thu Oct 29 01:45:37 PM EDT 2026
-╚════════════════════════════════════════════════════════════════╝
-[2026-10-29 13:45:37] [SUCCESS] Deployment completed successfully
-[2026-10-29 13:45:37] [INFO] Full log available: /home/tmann/Documents/Projects/FlashCards/.deployment/last-run.log
-Executed query {
-  text: 'SELECT COUNT(*) as user_count FROM users',
-  duration: 17,
-  rows: 1
-}
-Executed query { text: 'SELECT COUNT(*) as count FROM users', duration: 16, rows: 1 }
-Executed query {
-  text: 'SELECT COUNT(*) as count FROM flashcards',
-  duration: 19,
-  rows: 1
-}
-Executed query {
-  text: 'SELECT COUNT(*) as count FROM leitner_boxes',
-  duration: 16,
-  rows: 1
-}
-Executed query {
-  text: 'SELECT COUNT(*) as count FROM quizzes',
-  duration: 15,
-  rows: 1
-}
-Executed query {
-  text: 'SELECT COUNT(*) as count FROM quiz_questions',
-  duration: 16,
-  rows: 1
-}
-Executed query {
-  text: 'SELECT COUNT(*) as count FROM quiz_results',
-  duration: 15,
-  rows: 1
-}
-Executed query {
-  text: 'SELECT COUNT(*) as count FROM import_export_logs',
-  duration: 16,
-  rows: 1
-}
-Executed query {
-  text: 'SELECT COUNT(*) as user_count FROM users',
-  duration: 16,
-  rows: 1
-}
+DEPLOYMENT FAILED: Please commit and push changes before deploying to production
