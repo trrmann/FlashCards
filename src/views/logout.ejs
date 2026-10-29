@@ -1,16 +1,24 @@
 <%- include('partials/header') %>
 <main>
-  <h1><%= siteData.getTitle() %></h1>
-  <h2>Welcome to <%= siteData.getName() %><%= siteData.getNameHeadingHelp() %>Flash Card Service!</h2>
-  <p>Our mission is to help <%= siteData.getName() %> study for English Connect.</p>
+  <div class="content-split">
+    <div class="intro-block">
+      <h1><%= siteData.getTitle() %></h1>
+      <h2>Welcome to <%= siteData.getName() %><%= siteData.getNameHeadingHelp() %>Flash Card Service!</h2>
+      <p>Our mission is to help <%= siteData.getName() %> study for English Connect.</p>
+    </div>
 
-  <div class="logout-container">
-    <p>Are you sure you want to logout?</p>
-    <button id="confirmLogout" class="btn-danger">Confirm Logout</button>
-    <button id="cancelLogout" class="btn-secondary">Cancel</button>
+    <div class="card-grid vertical-stack">
+      <div class="logout-container">
+        <h3 style="margin-bottom: 1rem;">Confirm Logout</h3>
+        <p>Are you sure you want to logout?</p>
+        <div style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 1.5rem;">
+          <button id="confirmLogout" class="btn-primary">Confirm Logout</button>
+          <button id="cancelLogout" class="btn-secondary">Cancel</button>
+        </div>
+        <div id="logoutStatus"></div>
+      </div>
+    </div>
   </div>
-
-  <div id="logoutStatus"></div>
 
   <script>
     document.getElementById('confirmLogout').addEventListener('click', async () => {

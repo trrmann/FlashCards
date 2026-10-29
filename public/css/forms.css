@@ -1,0 +1,331 @@
+/**
+ * Form Styles - Login, Profile, Admin Pages
+ */
+
+/* Form Containers */
+.auth-container,
+.login-container,
+.profile-section,
+.admin-section {
+  background-color: var(--accent-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.form-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--border-color);
+  margin-bottom: 2rem;
+  gap: 0;
+}
+
+.form-tabs button {
+  background: none;
+  border: none;
+  padding: 1rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.form-tabs button:hover {
+  color: var(--primary-color);
+  background-color: #f1f5f9;
+}
+
+.form-tabs button.active {
+  color: var(--secondary-color);
+  border-bottom-color: var(--secondary-color);
+}
+
+/* Form Groups */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: var(--primary-color);
+  font-size: 0.95rem;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-family: var(--primary-font);
+  font-size: 1rem;
+  background-color: #ffffff;
+  color: var(--primary-color);
+  transition: all 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--secondary-color);
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+}
+
+.form-group input:disabled {
+  background-color: #f1f5f9;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.form-group small {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-top: 0.25rem;
+}
+
+.form-group ul {
+  font-size: 0.85rem;
+  margin: 0.5rem 0 0 1.5rem;
+  padding: 0;
+  color: #64748b;
+}
+
+.form-group ul li {
+  margin-bottom: 0.25rem;
+  list-style-type: disc;
+}
+
+/* Button Styles */
+button,
+.btn-primary,
+.btn-secondary,
+.btn-danger {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--primary-font);
+}
+
+button[type='submit'],
+.btn-primary {
+  background-color: var(--secondary-color);
+  color: #ffffff;
+}
+
+button[type='submit']:hover,
+.btn-primary:hover {
+  background-color: #0369a1;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+}
+
+button[type='submit']:disabled,
+.btn-primary:disabled {
+  background-color: #cbd5e1;
+  color: #94a3b8;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-secondary {
+  background-color: #64748b;
+  color: #ffffff;
+}
+
+.btn-secondary:hover {
+  background-color: #475569;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3);
+}
+
+.btn-danger {
+  background-color: #ef4444;
+  color: #ffffff;
+}
+
+.btn-danger:hover {
+  background-color: #dc2626;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Form Layout - Side by side on larger screens */
+@media screen and (min-width: 768px) {
+  .auth-container {
+    max-width: 500px;
+    margin: 2rem auto;
+  }
+
+  .profile-section {
+    max-width: 600px;
+  }
+}
+
+/* Status Messages */
+.alert,
+.status-message,
+#profileStatus,
+#loginStatus,
+#registerStatus,
+#changePasswordStatus,
+#createUserStatus,
+#logoutStatus {
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+}
+
+.alert-info,
+.alert {
+  background-color: #dbeafe;
+  border: 1px solid #7dd3fc;
+  color: #0c4a6e;
+}
+
+.alert-info h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.success {
+  background-color: #dcfce7;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.error {
+  background-color: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #7f1d1d;
+}
+
+.success p,
+.error p,
+.alert p {
+  margin-bottom: 0;
+}
+
+/* Form Sections - Group related fields */
+.form-section {
+  margin-bottom: 2.5rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.form-section:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.form-section h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  margin-bottom: 1rem;
+}
+
+/* Admin Users Table */
+.admin-users-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  margin-top: 1rem;
+}
+
+.admin-users-table thead {
+  background-color: #f1f5f9;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.admin-users-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.admin-users-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.admin-users-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+.admin-users-table .btn-danger {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+}
+
+/* Logout Container */
+.logout-container {
+  background-color: #fef2f2;
+  border: 2px solid #fecaca;
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+  max-width: 400px;
+  margin: 2rem auto;
+}
+
+.logout-container p {
+  margin-bottom: 1.5rem;
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.logout-container button {
+  margin: 0.5rem;
+  min-width: 150px;
+}
+
+/* Form Row - Multiple fields in one row */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+@media screen and (min-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .form-row.full {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Loading states */
+button:disabled {
+  opacity: 0.6;
+}
+
+input:disabled,
+select:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}

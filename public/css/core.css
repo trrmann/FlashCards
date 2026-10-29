@@ -1,6 +1,8 @@
 /**
  * core styles - Variables & Global Resets
  */
+@import url('forms.css');
+
 :root {
   --primary-color: #0f172a; /* Deep slate text */
   --secondary-color: #0284c7; /* Accessible Sky Blue links */

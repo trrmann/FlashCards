@@ -1,8 +1,11 @@
 <%- include('partials/header') %>
 <main>
-  <h1><%= siteData.getTitle() %></h1>
-  <h2>Welcome to <%= siteData.getName() %><%= siteData.getNameHeadingHelp() %>Flash Card Service!</h2>
-  <p>Our mission is to help <%= siteData.getName() %> study for English Connect.</p>
+  <div class="content-split">
+    <div class="intro-block">
+      <h1><%= siteData.getTitle() %></h1>
+      <h2>Welcome to <%= siteData.getName() %><%= siteData.getNameHeadingHelp() %>Flash Card Service!</h2>
+      <p>Our mission is to help <%= siteData.getName() %> study for English Connect.</p>
+    </div>
 
   <!-- Check if no users exist and show registration form -->
   <% if (typeof needsSetup !== 'undefined' && needsSetup) { %>
@@ -145,5 +148,6 @@
       });
     </script>
   <% } %>
+  </div>
 </main>
 <%- include('partials/footer') %>
