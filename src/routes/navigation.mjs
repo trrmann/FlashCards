@@ -11,6 +11,7 @@ const router = express.Router();
 /**
  * POST /api/navigation/track
  * Track the current page visit for the authenticated user
+ * Excluded pages: /login, /logout, /register
  */
 router.post('/track', express.json(), async (req, res) => {
   try {
@@ -34,6 +35,16 @@ router.post('/track', express.json(), async (req, res) => {
 
     // Normalize page path (remove query params, hash, etc.)
     const normalizedPage = page.split('?')[0].split('#')[0];
+
+    // Don't track certain pages (auth pages, logout, etc.)
+    const excludedPages = ['/login', '/logout', '/register'];
+    if (excludedPages.includes(normalizedPage)) {
+      return res.status(200).json({
+        status: 'success',
+        message: 'Page tracking skipped (excluded page)',
+        page: normalizedPage,
+      });
+    }
 
     // Update last page visited
     await updateLastPageVisited(req.session.userId, normalizedPage);

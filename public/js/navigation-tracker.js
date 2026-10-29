@@ -10,6 +10,8 @@ class NavigationTracker {
   constructor() {
     this.debounceTimer = null;
     this.debounceDelay = 1000; // Wait 1 second before sending tracking event
+    // Pages that should NOT be saved as last visited
+    this.excludedPages = ['/logout', '/login', '/register'];
     this.init();
   }
 
@@ -45,6 +47,11 @@ class NavigationTracker {
    * @param {string} page - Page path to track
    */
   trackPage(page) {
+    // Skip tracking excluded pages (logout, login, register, etc.)
+    if (this.excludedPages.includes(page)) {
+      return;
+    }
+
     // Clear existing debounce timer
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
