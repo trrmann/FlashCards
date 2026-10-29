@@ -24,6 +24,17 @@ const port = portMap[NODE_ENV] || 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Log startup info
+console.log('═══════════════════════════════════════════════════════════');
+console.log(`🚀 FlashCards Server Starting`);
+console.log(`   NODE_ENV: ${NODE_ENV}`);
+console.log(`   PORT: ${port}`);
+console.log(
+  `   Cookie Security: ${NODE_ENV === 'production' ? 'SECURE (HTTPS only)' : 'INSECURE (HTTP)'}`
+);
+console.log(`   Session Store: PostgreSQL (connect-pg-simple)`);
+console.log('═══════════════════════════════════════════════════════════');
+
 const siteData = new appSiteData();
 const app = express();
 
@@ -34,26 +45,30 @@ const app = express();
 // Session configuration with PostgreSQL store for persistence across restarts
 const PgSession = pgSession(session);
 
-app.use(
-  session({
-    store: new PgSession({
-      pool: pool,
-      tableName: 'session',
-      errorLog: (error) => {
-        console.error('Session store error:', error);
-      },
-    }),
-    secret: process.env.SESSION_SECRET || 'flashcards-dev-secret-change-in-production',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 1000 * 60 * 60 * 24, // 24 hours
+const sessionConfig = {
+  store: new PgSession({
+    pool: pool,
+    tableName: 'session',
+    errorLog: (error) => {
+      console.error('❌ Session store error:', error.message);
     },
-  })
+  }),
+  secret: process.env.SESSION_SECRET || 'flashcards-dev-secret-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 1000 * 60 * 60 * 24, // 24 hours
+  },
+};
+
+console.log(
+  `✅ Session Config: secure=${sessionConfig.cookie.secure}, sameSite=${sessionConfig.cookie.sameSite}`
 );
+
+app.use(session(sessionConfig));
 
 app.use(express.static(path.join(__dirname, 'public')));
 // Set EJS as the templating engine
