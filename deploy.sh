@@ -20,7 +20,8 @@ cd "${PROJECT_ROOT}" || { echo "Failed to change to project directory"; exit 1; 
 
 LOG_DIR="${PROJECT_ROOT}/.deployment"
 LOG_FILE="${LOG_DIR}/last-run.log"
-RENDER_WAIT_TIME=60  # seconds to wait for Render auto-deploy
+RENDER_WAIT_TIME=45  # seconds to wait for initial Render deployment (last deploy: 34.6s)
+RENDER_HEALTH_CHECKS=60  # max health check attempts (up to 2min if free tier is spinning up)
 PORT_DEV=5000
 PORT_PREVIEW=4000
 PORT_PROD=3000
@@ -442,6 +443,7 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>" >> "${LOG_
     
     log SUCCESS "Code pushed to GitHub"
     log INFO "Waiting ${RENDER_WAIT_TIME} seconds for Render auto-deploy to start..."
+    log WARN "Note: Free tier may add 50+ seconds if instance is spinning up from inactivity"
     
     # Wait for Render to deploy
     for i in $(seq 1 $RENDER_WAIT_TIME); do
@@ -456,7 +458,7 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>" >> "${LOG_
     if [ -n "$render_url" ]; then
         log INFO "Checking if Render deployment is complete..."
         local health_check_attempts=0
-        local max_health_checks=30
+        local max_health_checks=$RENDER_HEALTH_CHECKS
         local site_ready=false
         
         while [ $health_check_attempts -lt $max_health_checks ]; do
@@ -467,8 +469,8 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>" >> "${LOG_
             fi
             
             health_check_attempts=$((health_check_attempts + 1))
-            if [ $((health_check_attempts % 5)) -eq 0 ]; then
-                log INFO "Still waiting for Render... ($health_check_attempts/$max_health_checks)"
+            if [ $((health_check_attempts % 10)) -eq 0 ]; then
+                log INFO "Still waiting for Render... ($health_check_attempts/$max_health_checks attempts)"
             fi
             echo -n "."
             sleep 2
