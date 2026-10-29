@@ -399,6 +399,18 @@ deploy_prod() {
     
     cd "${PROJECT_ROOT}"
     
+    # Load RENDER_URL from .env
+    local render_url=""
+    if [ -f ".env" ]; then
+        render_url=$(grep "^RENDER_URL=" .env | cut -d'=' -f2)
+    fi
+    
+    if [ -z "$render_url" ]; then
+        log WARN "RENDER_URL not found in .env. Will show dashboard link instead."
+    else
+        log INFO "Production URL: $render_url"
+    fi
+    
     # Auto-format any changes to documentation/config files
     log INFO "Running code format check..."
     if ! npm run format >> "${LOG_FILE}" 2>&1; then
@@ -439,15 +451,27 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>" >> "${LOG_
     echo ""
     
     log INFO "Render should be deploying now"
-    log INFO "Check your Render dashboard for deployment status"
     
-    # Try to get Render app URL from git remote
-    local render_url=$(git config --get remote.origin.url | sed 's/.*github.com\/.*\/\(.*\)\.git/\1/' | tr '[:lower:]' '[:upper:]')
+    if [ -n "$render_url" ]; then
+        log INFO "Waiting for Render to be ready (this can take 30-60 seconds)..."
+        log INFO "Opening $render_url"
+        open_browser "$render_url" "Production"
+    else
+        log INFO "Check your Render dashboard for deployment status"
+        log INFO "Render Dashboard: https://dashboard.render.com"
+    fi
     
     log SUCCESS "Production deployment initiated"
-    log INFO "Visit your Render dashboard to monitor deployment"
+    
+    if [ -n "$render_url" ]; then
+        log INFO "Production URL: $render_url"
+        log INFO "Test endpoints:"
+        log INFO "  GET $render_url/api/health"
+        log INFO "  GET $render_url/api/system/setup-status"
+    fi
     
     echo "PROD_DEPLOYED=$(date)" >> "${LOG_FILE}"
+    echo "PROD_URL=$render_url" >> "${LOG_FILE}"
 }
 
 ################################################################################

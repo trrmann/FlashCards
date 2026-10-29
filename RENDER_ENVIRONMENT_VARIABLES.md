@@ -80,6 +80,17 @@ This document explains which environment variables from your `.env` file need to
 
 ## Optional/Informational Variables
 
+### Local Development Only
+
+#### `RENDER_URL`
+
+- **Current Value:** `https://flashcards-98g4.onrender.com`
+- **Purpose:** Render production app URL for deploy script
+- **In Render:** ❌ NOT NEEDED (this is for local .env only)
+- **Why:** Allows deployment script to automatically open browser to production app
+- **Used By:** `bash deploy.sh -prod` command
+- **Format:** Full HTTPS URL to your Render app
+
 ### Not Required in Render (for reference only)
 
 #### `DB_PG_EXTERNAL_HOSTNAME`
