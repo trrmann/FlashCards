@@ -1,6 +1,7 @@
 # Testing Strategy for FlashCards
 
 ## Testing Philosophy
+
 - **Comprehensive**: Unit, integration, and E2E tests
 - **Fast**: Tests run quickly to support rapid development
 - **Reliable**: Tests produce consistent results
@@ -42,6 +43,7 @@ tests/
 ## Test Framework Selection
 
 ### Recommended Stack
+
 - **Test Runner**: Jest
   - Fast, built-in assertions
   - Great for Node.js + async/await
@@ -61,6 +63,7 @@ tests/
   - Spy on function calls
 
 ### Package.json Updates
+
 ```json
 {
   "devDependencies": {
@@ -85,6 +88,7 @@ tests/
 ## Unit Tests
 
 ### Authentication Service Tests
+
 ```javascript
 // tests/unit/auth.test.js
 describe('AuthService', () => {
@@ -124,6 +128,7 @@ describe('AuthService', () => {
 ```
 
 ### Card Service Tests
+
 ```javascript
 // tests/unit/cardService.test.js
 describe('CardService', () => {
@@ -133,7 +138,7 @@ describe('CardService', () => {
         question: 'What is 2+2?',
         answer: '4',
         category: 'Math',
-        difficulty: 2
+        difficulty: 2,
       };
       const result = cardService.createCard('user123', cardData);
       expect(result).toHaveProperty('card_id');
@@ -141,8 +146,9 @@ describe('CardService', () => {
     });
 
     test('should throw error if required fields missing', () => {
-      expect(() => cardService.createCard('user123', {}))
-        .toThrow('Question and answer are required');
+      expect(() => cardService.createCard('user123', {})).toThrow(
+        'Question and answer are required'
+      );
     });
   });
 
@@ -152,21 +158,21 @@ describe('CardService', () => {
         question: 'Q',
         answer: 'A',
         category: 'Cat',
-        difficulty: 3
+        difficulty: 3,
       };
       expect(() => cardService.validateCard(validCard)).not.toThrow();
     });
 
     test('should reject invalid difficulty', () => {
       const invalidCard = { question: 'Q', answer: 'A', difficulty: 10 };
-      expect(() => cardService.validateCard(invalidCard))
-        .toThrow('Difficulty must be 1-5');
+      expect(() => cardService.validateCard(invalidCard)).toThrow('Difficulty must be 1-5');
     });
   });
 });
 ```
 
 ### Practice System (Leitner Boxes) Tests
+
 ```javascript
 // tests/unit/leitnerService.test.js
 describe('LeitnerService - Box System', () => {
@@ -260,6 +266,7 @@ describe('LeitnerService - Box System', () => {
 ```
 
 ### Integration: Practice with Leitner Boxes
+
 ```javascript
 // tests/integration/practice.leitner.test.js
 describe('Practice Session with Leitner Boxes', () => {
@@ -325,7 +332,7 @@ describe('Practice Session with Leitner Boxes', () => {
     const boxRes = await request(app)
       .get(`/api/cards/${card.card_id}/box`)
       .set('Authorization', `Bearer ${token}`);
-    
+
     const nextReview = new Date(boxRes.body.next_review);
     const daysUntilReview = (nextReview - Date.now()) / (1000 * 60 * 60 * 24);
     expect(daysUntilReview).toBeCloseTo(7, 1); // ~7 days
@@ -338,6 +345,7 @@ describe('Practice Session with Leitner Boxes', () => {
 ## Integration Tests
 
 ### Authentication Integration Tests
+
 ```javascript
 // tests/integration/auth.integration.test.js
 describe('Authentication Integration', () => {
@@ -351,14 +359,12 @@ describe('Authentication Integration', () => {
 
   describe('POST /api/auth/register', () => {
     test('should register new user with valid data', async () => {
-      const response = await request(app)
-        .post('/api/auth/register')
-        .send({
-          username: 'testuser',
-          email: 'test@example.com',
-          password: 'SecurePass123!',
-          fullName: 'Test User'
-        });
+      const response = await request(app).post('/api/auth/register').send({
+        username: 'testuser',
+        email: 'test@example.com',
+        password: 'SecurePass123!',
+        fullName: 'Test User',
+      });
 
       expect(response.status).toBe(201);
       expect(response.body).toHaveProperty('token');
@@ -367,27 +373,23 @@ describe('Authentication Integration', () => {
 
     test('should reject duplicate username', async () => {
       await createTestUser({ username: 'taken' });
-      
-      const response = await request(app)
-        .post('/api/auth/register')
-        .send({
-          username: 'taken',
-          email: 'new@example.com',
-          password: 'Password123!'
-        });
+
+      const response = await request(app).post('/api/auth/register').send({
+        username: 'taken',
+        email: 'new@example.com',
+        password: 'Password123!',
+      });
 
       expect(response.status).toBe(409);
       expect(response.body.error).toMatch(/username already exists/i);
     });
 
     test('should validate password strength', async () => {
-      const response = await request(app)
-        .post('/api/auth/register')
-        .send({
-          username: 'testuser',
-          email: 'test@example.com',
-          password: 'weak'
-        });
+      const response = await request(app).post('/api/auth/register').send({
+        username: 'testuser',
+        email: 'test@example.com',
+        password: 'weak',
+      });
 
       expect(response.status).toBe(400);
     });
@@ -397,15 +399,13 @@ describe('Authentication Integration', () => {
     test('should login with correct credentials', async () => {
       const user = await createTestUser({
         username: 'testuser',
-        password: 'TestPassword123!'
+        password: 'TestPassword123!',
       });
 
-      const response = await request(app)
-        .post('/api/auth/login')
-        .send({
-          username: 'testuser',
-          password: 'TestPassword123!'
-        });
+      const response = await request(app).post('/api/auth/login').send({
+        username: 'testuser',
+        password: 'TestPassword123!',
+      });
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('token');
@@ -414,12 +414,10 @@ describe('Authentication Integration', () => {
     test('should reject incorrect password', async () => {
       await createTestUser({ username: 'testuser', password: 'Correct123!' });
 
-      const response = await request(app)
-        .post('/api/auth/login')
-        .send({
-          username: 'testuser',
-          password: 'WrongPassword!'
-        });
+      const response = await request(app).post('/api/auth/login').send({
+        username: 'testuser',
+        password: 'WrongPassword!',
+      });
 
       expect(response.status).toBe(401);
     });
@@ -428,6 +426,7 @@ describe('Authentication Integration', () => {
 ```
 
 ### Card Management Integration Tests
+
 ```javascript
 // tests/integration/cards.integration.test.js
 describe('Card Management Integration', () => {
@@ -449,7 +448,7 @@ describe('Card Management Integration', () => {
           question: 'Capital of France?',
           answer: 'Paris',
           category: 'Geography',
-          difficulty: 2
+          difficulty: 2,
         });
 
       expect(response.status).toBe(201);
@@ -457,19 +456,17 @@ describe('Card Management Integration', () => {
     });
 
     test('should reject unauthenticated request', async () => {
-      const response = await request(app)
-        .post('/api/cards')
-        .send({
-          question: 'Test?',
-          answer: 'Answer'
-        });
+      const response = await request(app).post('/api/cards').send({
+        question: 'Test?',
+        answer: 'Answer',
+      });
 
       expect(response.status).toBe(401);
     });
   });
 
   describe('GET /api/cards (list)', () => {
-    test('should return user\'s cards', async () => {
+    test("should return user's cards", async () => {
       await createTestCard(userId, { question: 'Q1', answer: 'A1' });
       await createTestCard(userId, { question: 'Q2', answer: 'A2' });
 
@@ -481,7 +478,7 @@ describe('Card Management Integration', () => {
       expect(response.body.cards).toHaveLength(2);
     });
 
-    test('should not return other users\' cards', async () => {
+    test("should not return other users' cards", async () => {
       const otherUser = await createTestUser();
       await createTestCard(otherUser.user_id, { question: 'Secret', answer: 'Hidden' });
 
@@ -497,7 +494,7 @@ describe('Card Management Integration', () => {
     test('should update card', async () => {
       const card = await createTestCard(userId, {
         question: 'Original',
-        answer: 'A1'
+        answer: 'A1',
       });
 
       const response = await request(app)
@@ -505,7 +502,7 @@ describe('Card Management Integration', () => {
         .set('Authorization', `Bearer ${authToken}`)
         .send({
           question: 'Updated Question',
-          difficulty: 4
+          difficulty: 4,
         });
 
       expect(response.status).toBe(200);
@@ -538,30 +535,27 @@ describe('Card Management Integration', () => {
 ## End-to-End Tests
 
 ### User Registration & Profile Flow
+
 ```javascript
 // tests/e2e/user-registration.e2e.test.js
 describe('User Registration & Profile Flow (E2E)', () => {
   describe('Complete user lifecycle', () => {
     test('user can register, login, update profile, and logout', async () => {
       // 1. Register
-      const registerResponse = await request(app)
-        .post('/api/auth/register')
-        .send({
-          username: 'e2euser',
-          email: 'e2e@example.com',
-          password: 'E2EPassword123!',
-          fullName: 'E2E Test User'
-        });
+      const registerResponse = await request(app).post('/api/auth/register').send({
+        username: 'e2euser',
+        email: 'e2e@example.com',
+        password: 'E2EPassword123!',
+        fullName: 'E2E Test User',
+      });
       expect(registerResponse.status).toBe(201);
       const token = registerResponse.body.token;
 
       // 2. Login with new credentials
-      const loginResponse = await request(app)
-        .post('/api/auth/login')
-        .send({
-          username: 'e2euser',
-          password: 'E2EPassword123!'
-        });
+      const loginResponse = await request(app).post('/api/auth/login').send({
+        username: 'e2euser',
+        password: 'E2EPassword123!',
+      });
       expect(loginResponse.status).toBe(200);
       expect(loginResponse.body.token).toBeDefined();
 
@@ -571,7 +565,7 @@ describe('User Registration & Profile Flow (E2E)', () => {
         .set('Authorization', `Bearer ${token}`)
         .send({
           fullName: 'Updated Name',
-          password: 'NewPassword123!'
+          password: 'NewPassword123!',
         });
       expect(updateResponse.status).toBe(200);
 
@@ -598,6 +592,7 @@ describe('User Registration & Profile Flow (E2E)', () => {
 ```
 
 ### Practice Session Flow
+
 ```javascript
 // tests/e2e/practice-session.e2e.test.js
 describe('Practice Session Flow (E2E)', () => {
@@ -609,7 +604,7 @@ describe('Practice Session Flow (E2E)', () => {
     const cards = await Promise.all([
       createTestCard(user.user_id, { question: 'Q1?', answer: 'A1' }),
       createTestCard(user.user_id, { question: 'Q2?', answer: 'A2' }),
-      createTestCard(user.user_id, { question: 'Q3?', answer: 'A3' })
+      createTestCard(user.user_id, { question: 'Q3?', answer: 'A3' }),
     ]);
 
     // 1. Start practice session
@@ -633,7 +628,7 @@ describe('Practice Session Flow (E2E)', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({
         cardId: card1Response.body.card.card_id,
-        correct: true
+        correct: true,
       });
     expect(answer1Response.status).toBe(200);
 
@@ -654,6 +649,7 @@ describe('Practice Session Flow (E2E)', () => {
 ```
 
 ### Import/Export Flow
+
 ```javascript
 // tests/e2e/import-export.e2e.test.js
 describe('Import/Export Flow (E2E)', () => {
@@ -664,7 +660,7 @@ describe('Import/Export Flow (E2E)', () => {
     // Create cards
     const cards = await Promise.all([
       createTestCard(user.user_id, { question: 'Q1?', answer: 'A1', category: 'Cat1' }),
-      createTestCard(user.user_id, { question: 'Q2?', answer: 'A2', category: 'Cat2' })
+      createTestCard(user.user_id, { question: 'Q2?', answer: 'A2', category: 'Cat2' }),
     ]);
 
     // Export
@@ -720,7 +716,7 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:14
@@ -740,24 +736,26 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: '18'
-      
+
       - run: npm ci
       - run: npm run test:unit
       - run: npm run test:integration
       - run: npm run test:coverage
-      
+
       - uses: codecov/codecov-action@v3
         with:
           files: ./coverage/coverage-final.json
 ```
 
 ### Coverage Goals
+
 - **Overall**: 80%+ coverage
 - **Unit tests**: 90%+
 - **Critical paths** (auth, payments): 95%+
 - **Views**: 60% (HTML-heavy, less critical)
 
 ### Test Running Commands
+
 ```bash
 npm test                    # Run all tests
 npm run test:watch         # Watch mode for development
@@ -772,6 +770,7 @@ npm run test:e2e           # E2E tests only
 ## Test Data & Fixtures
 
 ### Fixture Pattern
+
 ```javascript
 // tests/fixtures/users.fixture.js
 export const createTestUser = async (overrides = {}) => {
@@ -780,7 +779,7 @@ export const createTestUser = async (overrides = {}) => {
     username: `testuser_${Date.now()}`,
     email: `test${Date.now()}@example.com`,
     password_hash: await hashPassword('DefaultPassword123!'),
-    ...overrides
+    ...overrides,
   });
 };
 
@@ -793,7 +792,7 @@ export const createTestCard = async (userId, overrides = {}) => {
     answer: 'Test answer',
     category: 'Test',
     difficulty: 2,
-    ...overrides
+    ...overrides,
   });
 };
 ```
@@ -807,4 +806,3 @@ export const createTestCard = async (userId, overrides = {}) => {
 - Monitor test execution time; keep under 5 minutes
 - Keep tests up-to-date with feature changes
 - Review and update test data fixtures quarterly
-

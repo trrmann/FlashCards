@@ -86,7 +86,7 @@ npm install pg bcryptjs jsonwebtoken joi cors dotenv express-async-errors uuid
 CREATE SCHEMA IF NOT EXISTS flashcards_schema;
 SET search_path TO flashcards_schema;
 
--- Then copy all CREATE TABLE statements from 
+-- Then copy all CREATE TABLE statements from
 -- documents/DATABASE_SCHEMA.md and paste here
 ```
 
@@ -102,7 +102,7 @@ require('dotenv').config();
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
 });
 
 pool.on('connect', async (client) => {
@@ -132,6 +132,7 @@ npm run dev
 ```
 
 Expected output:
+
 ```
 ✅ Server running on http://localhost:5000
 🗄️  Database: dev_apps
@@ -140,6 +141,7 @@ Expected output:
 ```
 
 Test endpoints:
+
 ```bash
 curl http://localhost:5000/api/health
 curl http://localhost:5000/api/db-health
@@ -161,29 +163,32 @@ Your development environment is ready. Next steps:
 
 ## Troubleshooting
 
-| Problem | Solution |
-|---------|----------|
-| "ENOTFOUND" error | Check DATABASE_URL host is correct in .env |
-| "password authentication failed" | Copy password from Render dashboard (check special chars) |
-| "port 5000 already in use" | Change PORT in .env or kill process: `lsof -i :5000` |
-| ".env not being read" | Ensure `require('dotenv').config()` at top of server.js, restart server |
-| Can't see tables in pgAdmin | Right-click schema → Refresh, verify DB_SCHEMA in .env |
+| Problem                          | Solution                                                                |
+| -------------------------------- | ----------------------------------------------------------------------- |
+| "ENOTFOUND" error                | Check DATABASE_URL host is correct in .env                              |
+| "password authentication failed" | Copy password from Render dashboard (check special chars)               |
+| "port 5000 already in use"       | Change PORT in .env or kill process: `lsof -i :5000`                    |
+| ".env not being read"            | Ensure `require('dotenv').config()` at top of server.js, restart server |
+| Can't see tables in pgAdmin      | Right-click schema → Refresh, verify DB_SCHEMA in .env                  |
 
 ---
 
 ## Documentation Map
 
 **For Setup Issues:**
+
 - [DEV_ENVIRONMENT_SETUP.md](./documents/DEV_ENVIRONMENT_SETUP.md) - Detailed setup guide
 - [MULTI_APP_ARCHITECTURE.md](./documents/MULTI_APP_ARCHITECTURE.md) - Database design
 
 **For Development:**
+
 - [LEITNER_SYSTEM.md](./documents/LEITNER_SYSTEM.md) - Study methodology
 - [DATABASE_SCHEMA.md](./documents/DATABASE_SCHEMA.md) - Database structure
 - [API_ENDPOINTS.md](./documents/API_ENDPOINTS.md) - API specification
 - [ROADMAP.md](./documents/ROADMAP.md) - Development phases
 
 **For Testing & Deployment:**
+
 - [TESTING_STRATEGY.md](./documents/TESTING_STRATEGY.md) - Test framework & examples
 - [DEPLOYMENT_STRATEGY.md](./documents/DEPLOYMENT_STRATEGY.md) - Production deployment
 - [QUICK_REFERENCE.md](./documents/QUICK_REFERENCE.md) - Common commands
@@ -191,4 +196,3 @@ Your development environment is ready. Next steps:
 ---
 
 **Questions?** Check the documentation files for detailed explanations of each step.
-

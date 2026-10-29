@@ -41,6 +41,7 @@
 ### 1. Frontend (Client Layer)
 
 **Views (EJS Templates)**
+
 - **Layout**: Header (nav) → Main Content → Footer
 - **Navigation Structure**:
   - Unauthenticated: Home → Login
@@ -48,17 +49,18 @@
 
 **Page Components**
 
-| Page | Purpose | Features |
-|------|---------|----------|
-| Home | Landing page | Welcome, intro, login link |
-| Login | Authentication | Username/password form |
-| Profile | User settings | Update password, name, preferences |
-| Entries | Card management | CRUD for flashcards, import/export |
-| Practice | Study mode | Configurable practice algorithm, SRS |
-| Quiz | Assessment | Quiz taking, score tracking |
-| Logout | Cleanup | Session termination |
+| Page     | Purpose         | Features                             |
+| -------- | --------------- | ------------------------------------ |
+| Home     | Landing page    | Welcome, intro, login link           |
+| Login    | Authentication  | Username/password form               |
+| Profile  | User settings   | Update password, name, preferences   |
+| Entries  | Card management | CRUD for flashcards, import/export   |
+| Practice | Study mode      | Configurable practice algorithm, SRS |
+| Quiz     | Assessment      | Quiz taking, score tracking          |
+| Logout   | Cleanup         | Session termination                  |
 
 **Responsive Design**
+
 - Core styles (core.css) - baseline
 - Mobile-first responsive breakpoints:
   - Mobile (mobile.css)
@@ -100,6 +102,7 @@ Server Structure:
 ```
 
 **Key Middleware & Concerns**
+
 - **Session Management**: JWT tokens or server-side sessions
 - **Authentication**: Protect routes requiring login
 - **Validation**: Input sanitization & validation
@@ -113,6 +116,7 @@ Server Structure:
 **PostgreSQL on Render**
 
 **Access Methods**
+
 1. **Primary**: Node.js `pg` library for application queries
 2. **Admin/Monitoring**: pgAdmin 4 (local desktop app)
    - Connection: Render PostgreSQL URL
@@ -205,6 +209,7 @@ CREATE TABLE import_export_logs (
 ## Data Flow
 
 ### Authentication Flow
+
 ```
 User Input (login.ejs)
     ↓
@@ -224,6 +229,7 @@ Client stores session
 ```
 
 ### Practice Session Flow (Leitner System)
+
 ```
 User visits /practice
     ↓
@@ -231,7 +237,7 @@ Client requests GET /api/practice/next-card
     ↓
 PracticeController.getNextCard()
     ↓
-PracticeService.selectCard() 
+PracticeService.selectCard()
     (prioritizes Box 1 cards, then Box 2/3 if due)
     ↓
 Return card question
@@ -254,11 +260,13 @@ Return feedback & progress
 ```
 
 **Box Schedule:**
+
 - Box 1 (Daily): Review every 1 day
 - Box 2 (Every 2 days): Review every 2 days
 - Box 3 (Weekly): Review every 7 days
 
 ### Quiz Flow
+
 ```
 User creates/selects quiz on /quiz
     ↓
@@ -280,6 +288,7 @@ Display results/statistics
 ```
 
 ### Import/Export Flow
+
 ```
 User on /entries
     ↓
@@ -347,16 +356,19 @@ Return import summary
 ## Scalability Plan
 
 ### Phase 1 (MVP)
+
 - Single-instance Node.js server
 - Single Render PostgreSQL database
 - Local session storage (memory or cookies)
 
 ### Phase 2 (Growth)
+
 - Add Redis for session/cache layer
 - Database read replicas (if traffic warrants)
 - Load balancing (if multi-instance needed)
 
 ### Phase 3 (Scale)
+
 - Microservices for quiz/practice engines
 - Message queues for async processing
 - CDN for static assets
@@ -374,9 +386,9 @@ try {
   // Logic
 } catch (error) {
   logger.error(error);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'User-friendly message',
-    details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    details: process.env.NODE_ENV === 'development' ? error.message : undefined,
   });
 }
 ```
@@ -386,8 +398,8 @@ try {
 ## Deployment Architecture
 
 See `DEPLOYMENT_STRATEGY.md` for Render-specific setup:
+
 - Environment variables configuration
 - Database provisioning
 - CI/CD pipeline
 - Monitoring & logging
-

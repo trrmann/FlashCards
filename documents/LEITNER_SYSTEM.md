@@ -12,7 +12,7 @@ The FlashCards project now uses the **Leitner System**, a proven, low-tech space
 
 ```
            STUDENT WORKFLOW
-           
+
 ┌─────────────────────────────────────────────────────┐
 │         START: All Cards in Box 1                   │
 └────────────────────┬────────────────────────────────┘
@@ -84,6 +84,7 @@ BOXES STRUCTURE
 ### Week 1 Example
 
 **Monday:**
+
 ```
 Box 1 (Daily):     15 new cards
 Box 2 (2-day):     None
@@ -95,6 +96,7 @@ You study Box 1 cards:
 ```
 
 **Tuesday:**
+
 ```
 Box 1 (Daily):     3 cards (from yesterday's failures)
 Box 2 (2-day):     Not due yet (wait until Wed)
@@ -106,6 +108,7 @@ Study the 3 Box 1 cards again:
 ```
 
 **Wednesday:**
+
 ```
 Box 1 (Daily):     1 card (yesterday's failure)
 Box 2 (2-day):     12 cards (promoted from Monday - now due!)
@@ -118,6 +121,7 @@ Study 1 Box 1 card + 12 Box 2 cards:
 ```
 
 **Friday:**
+
 ```
 Box 1 (Daily):     2 cards (Wed failures)
 Box 2 (2-day):     Due again (last studied Wed)
@@ -130,6 +134,7 @@ Study time:
 ```
 
 ### Key Insight
+
 - **Box 1 requires most study time** (new material + struggle)
 - **Box 2 requires moderate time** (reinforcement every 2 days)
 - **Box 3 requires minimal time** (maintenance weekly)
@@ -146,35 +151,35 @@ CREATE TABLE leitner_boxes (
   box_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
   card_id UUID NOT NULL REFERENCES flashcards(card_id) ON DELETE CASCADE,
-  
+
   -- Current Position
   box_number INT NOT NULL CHECK (box_number >= 1 AND box_number <= 3),
-  
+
   -- Tracking Metrics
   review_count INT DEFAULT 0,        -- Total times reviewed
   correct_count INT DEFAULT 0,       -- Times answered correctly
   incorrect_count INT DEFAULT 0,     -- Times answered incorrectly
-  
+
   -- Scheduling
   last_reviewed TIMESTAMP,           -- Last review date
   next_review TIMESTAMP,             -- When to review next
-  
+
   -- Metadata
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
-  
+
   -- Constraint: One entry per user-card pair
   UNIQUE(user_id, card_id)
 );
 
 -- Indexes for efficient queries
-CREATE INDEX idx_leitner_boxes_user_id 
+CREATE INDEX idx_leitner_boxes_user_id
   ON leitner_boxes(user_id);
 
-CREATE INDEX idx_leitner_boxes_box_number 
+CREATE INDEX idx_leitner_boxes_box_number
   ON leitner_boxes(user_id, box_number);
 
-CREATE INDEX idx_leitner_boxes_next_review 
+CREATE INDEX idx_leitner_boxes_next_review
   ON leitner_boxes(user_id, next_review);
 ```
 
@@ -189,22 +194,23 @@ function promoteCard(card) {
   if (card.box_number < 3) {
     card.box_number++;
   }
-  
+
   // Schedule next review based on new box
   const intervals = {
-    1: 1,    // 1 day
-    2: 2,    // 2 days
-    3: 7     // 7 days
+    1: 1, // 1 day
+    2: 2, // 2 days
+    3: 7, // 7 days
   };
-  
+
   const dayInterval = intervals[card.box_number];
-  card.next_review = NOW() + (dayInterval * 24 * 60 * 60 * 1000);
-  
+  card.next_review = NOW() + dayInterval * 24 * 60 * 60 * 1000;
+
   return card;
 }
 ```
 
 **Logic:**
+
 - Box 1 card answered correctly → Move to Box 2, next review in 2 days
 - Box 2 card answered correctly → Move to Box 3, next review in 7 days
 - Box 3 card answered correctly → Stay in Box 3, next review in 7 days
@@ -215,15 +221,16 @@ function promoteCard(card) {
 function demoteCard(card) {
   // ALWAYS go back to Box 1
   card.box_number = 1;
-  
+
   // Schedule immediate review (tomorrow)
-  card.next_review = NOW() + (1 * 24 * 60 * 60 * 1000);
-  
+  card.next_review = NOW() + 1 * 24 * 60 * 60 * 1000;
+
   return card;
 }
 ```
 
 **Logic:**
+
 - ANY card answered incorrectly → Back to Box 1, next review tomorrow
 - No partial credit, no "almost right"
 - Forces aggressive drilling of weak concepts
@@ -237,6 +244,7 @@ function demoteCard(card) {
 Returns the next card to study based on box priorities.
 
 **Algorithm:**
+
 1. Get all Box 1 cards (no scheduling, always available)
 2. Get Box 2 cards where `next_review <= NOW()`
 3. Get Box 3 cards where `next_review <= NOW()`
@@ -244,12 +252,14 @@ Returns the next card to study based on box priorities.
 5. Return one card for review
 
 **Request:**
+
 ```bash
 GET /api/practice/next-card
 Authorization: Bearer <TOKEN>
 ```
 
 **Response:**
+
 ```json
 {
   "card": {
@@ -267,6 +277,7 @@ Authorization: Bearer <TOKEN>
 Submit answer for current card, update box position.
 
 **Request:**
+
 ```json
 {
   "cardId": "660e8400-e29b-41d4-a716-446655440001",
@@ -275,6 +286,7 @@ Submit answer for current card, update box position.
 ```
 
 **Response (Promotion):**
+
 ```json
 {
   "success": true,
@@ -303,6 +315,7 @@ Submit answer for current card, update box position.
 ```
 
 **Response (Demotion):**
+
 ```json
 {
   "success": true,
@@ -332,14 +345,14 @@ Submit answer for current card, update box position.
 
 ```sql
 -- Get all cards due for review today
-SELECT 
+SELECT
   f.card_id,
   f.question,
   f.answer,
   lb.box_number,
   lb.review_count,
   lb.correct_count,
-  CASE 
+  CASE
     WHEN lb.box_number = 1 THEN 'Daily'
     WHEN lb.box_number = 2 THEN 'Every 2 Days'
     WHEN lb.box_number = 3 THEN 'Weekly'
@@ -355,12 +368,12 @@ ORDER BY lb.box_number ASC, lb.next_review ASC;
 
 ```sql
 -- Show how many cards in each box
-SELECT 
+SELECT
   COUNT(CASE WHEN box_number = 1 THEN 1 END) as box1_new_cards,
   COUNT(CASE WHEN box_number = 2 THEN 1 END) as box2_medium_cards,
   COUNT(CASE WHEN box_number = 3 THEN 1 END) as box3_mastered_cards,
   COUNT(*) as total_cards,
-  ROUND(100.0 * SUM(correct_count) / 
+  ROUND(100.0 * SUM(correct_count) /
         NULLIF(SUM(review_count), 0), 2) as overall_accuracy
 FROM leitner_boxes
 WHERE user_id = $1;
@@ -370,11 +383,11 @@ WHERE user_id = $1;
 
 ```sql
 -- Focus on the hardest cards that need most drilling
-SELECT 
+SELECT
   f.question,
   lb.review_count,
   lb.correct_count,
-  ROUND(100.0 * lb.correct_count / 
+  ROUND(100.0 * lb.correct_count /
         NULLIF(lb.review_count, 0), 2) as accuracy_percent
 FROM flashcards f
 JOIN leitner_boxes lb ON f.card_id = lb.card_id
@@ -421,7 +434,7 @@ describe('LeitnerService', () => {
     it('should promote Box 1 to Box 2', () => {
       const card = { box_number: 1 };
       const result = leitnerService.promoteCard(card);
-      
+
       expect(result.box_number).toBe(2);
       expect(result.next_review).toBeDefined();
     });
@@ -429,7 +442,7 @@ describe('LeitnerService', () => {
     it('should not exceed Box 3', () => {
       const card = { box_number: 3 };
       const result = leitnerService.promoteCard(card);
-      
+
       expect(result.box_number).toBe(3);
     });
   });
@@ -438,7 +451,7 @@ describe('LeitnerService', () => {
     it('should demote any box to Box 1', () => {
       const card = { box_number: 3 };
       const result = leitnerService.demoteCard(card);
-      
+
       expect(result.box_number).toBe(1);
     });
   });
@@ -468,9 +481,9 @@ describe('Practice Session with Leitner', () => {
       await request(app)
         .post(`/api/practice/${session.sessionId}/answer`)
         .set('Authorization', `Bearer ${token}`)
-        .send({ 
-          cardId: card.body.card.card_id, 
-          correct: i < 4  // 4 correct, 1 incorrect
+        .send({
+          cardId: card.body.card.card_id,
+          correct: i < 4, // 4 correct, 1 incorrect
         });
     }
 
@@ -492,46 +505,52 @@ describe('Practice Session with Leitner', () => {
 ### Advantages
 
 ✅ **Scientifically Proven**
+
 - Used since 1970s
 - Based on spaced repetition principle
 - Backed by learning science research
 
 ✅ **Simple Implementation**
+
 - No complex algorithms
 - Easy to understand and use
 - Predictable scheduling
 
 ✅ **Focused Study**
+
 - Automatic prioritization of weak cards
 - Efficient use of study time
 - Clear progression path
 
 ✅ **Motivating**
+
 - Visual progress (cards moving through boxes)
 - Clear sense of achievement
 - Measurable improvement
 
 ✅ **Flexible**
+
 - Can pause/resume without state issues
 - Works with any number of cards
 - Adaptable to different learning speeds
 
 ✅ **Language Learning Perfect**
+
 - Ideal for vocabulary retention
 - Builds confidence systematically
 - Proven effective by BYU & other institutions
 
 ### Comparison to SM-2
 
-| Aspect | SM-2 | Leitner |
-|--------|------|---------|
-| Complexity | High (algorithm) | Low (3 boxes) |
-| Learning Curve | Steep | Flat |
-| Implementation | Complex | Simple |
-| Predictability | Variable | Fixed |
-| Beginner-Friendly | No | Yes ✅ |
-| Debugging Issues | Hard | Easy |
-| Study Efficiency | Good | Good ✅ |
+| Aspect            | SM-2             | Leitner       |
+| ----------------- | ---------------- | ------------- |
+| Complexity        | High (algorithm) | Low (3 boxes) |
+| Learning Curve    | Steep            | Flat          |
+| Implementation    | Complex          | Simple        |
+| Predictability    | Variable         | Fixed         |
+| Beginner-Friendly | No               | Yes ✅        |
+| Debugging Issues  | Hard             | Easy          |
+| Study Efficiency  | Good             | Good ✅       |
 
 ---
 
@@ -540,28 +559,34 @@ describe('Practice Session with Leitner', () => {
 ### Daily Workflow
 
 **Monday**
+
 - Open app, see "Box 1: 15 cards due"
 - Spend 15 minutes drilling new/weak cards
 - 12 correct → move to Box 2
 - 3 incorrect → stay in Box 1
 
 **Tuesday**
+
 - "Box 1: 3 cards due" (yesterday's failures)
 - 5-minute quick review
 
 **Wednesday**
+
 - "Box 1: 2 cards" + "Box 2: 12 cards due"
 - 20 minutes reviewing old + new
 
 **Thursday**
+
 - "Box 1: 2 cards"
 - Quick daily review
 
 **Friday**
+
 - "Box 1: 1 card" + "Box 2: some" + "Box 3: 10 cards due (weekly)"
 - Comprehensive weekly review, 30 minutes
 
 **Saturday/Sunday**
+
 - Review optional (no scheduled boxes)
 - Can optionally review any box
 
@@ -578,10 +603,10 @@ describe('Practice Session with Leitner', () => {
 ## 📞 Questions & Support
 
 For more information:
+
 - See [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md) for full schema
 - See [API_ENDPOINTS.md](./API_ENDPOINTS.md) for endpoint details
 - See [TESTING_STRATEGY.md](./TESTING_STRATEGY.md) for test examples
 - See [ARCHITECTURE.md](./ARCHITECTURE.md) for data flows
 
 This methodology is proven, simple, and perfect for language learning!
-

@@ -1,0 +1,75 @@
+╔════════════════════════════════════════════════════════════════╗
+║  FlashCards Deployment
+║  Environment: -preview
+║  Started: Thu Oct 29 11:37:51 AM EDT 2026
+╚════════════════════════════════════════════════════════════════╝
+
+[2026-10-29 11:37:51] [INFO] FlashCards Deployment Starting
+[2026-10-29 11:37:51] [INFO] Environment: -preview
+[2026-10-29 11:37:51] [INFO] Checking prerequisites...
+[2026-10-29 11:37:51] [SUCCESS] All prerequisites met
+[2026-10-29 11:37:51] [INFO] Checking git status...
+[2026-10-29 11:37:51] [INFO] Current branch: main
+[2026-10-29 11:37:51] [WARN] Uncommitted changes detected
+ DEPLOY.md                           |   23 +-
+ DEPLOY_ACCESSIBILITY.md             |    9 +
+ DEPLOY_QUICK_REFERENCE.md           |   31 +-
+ ENVIRONMENTS.md                     |   27 +-
+ FlashCards.code-workspace           |   14 +-
+ README_START_HERE.md                |   16 +-
+ SETUP_CHECKLIST.md                  |   55 +-
+ SETUP_GUIDE_INDEX.md                |   68 ++-
+ SETUP_QUICK_START.md                |   24 +-
+ deploy.sh                           |   31 ++
+ documents/API_ENDPOINTS.md          |   99 +++-
+ documents/ARCHITECTURE.md           |   38 +-
+ documents/DATABASE_SCHEMA.md        |   61 +-
+ documents/DEPLOYMENT_STRATEGY.md    |  100 +++-
+ documents/DEV_ENVIRONMENT_SETUP.md  |   55 +-
+ documents/LEITNER_SYSTEM.md         |  107 ++--
+ documents/MULTI_APP_ARCHITECTURE.md |   21 +-
+ documents/PROJECT_STRUCTURE.md      |   41 +-
+ documents/QUICK_REFERENCE.md        |   70 ++-
+ documents/README.md                 |   96 +++-
+ documents/ROADMAP.md                |   92 ++-
+ documents/TESTING_STRATEGY.md       |  154 +++--
+ nodemon.json                        |   11 +-
+ package-lock.json                   | 1051 ++++++++++++++++++++++++++++++++++-
+ package.json                        |   15 +-
+ public/css/core.css                 |   31 +-
+ public/css/desktop.css              |    4 +-
+ public/css/laptop.css               |    4 +-
+ public/css/mobile.css               |    7 +-
+ public/css/styles.css               |   10 +-
+ public/css/tablet.css               |    6 +-
+ server.js                           |   18 +-
+ src/js/appSiteData.js               |    4 +-
+ src/js/modules/appSiteData.mjs      |   74 +--
+ 34 files changed, 2037 insertions(+), 430 deletions(-)
+[2026-10-29 11:37:51] [INFO] Checking npm dependencies...
+[2026-10-29 11:37:51] [SUCCESS] Dependencies ready
+[2026-10-29 11:37:51] [INFO] Running code checks...
+[2026-10-29 11:37:54] [INFO] Running linter...
+
+> FlashCards@1.0.0 lint
+> eslint . --ext .js,.mjs
+
+
+[2026-10-29 11:38:00] [INFO] ==========================================
+[2026-10-29 11:38:00] [INFO] DEPLOYING TO: Preview (Local)
+[2026-10-29 11:38:00] [INFO] ==========================================
+[2026-10-29 11:38:00] [INFO] Running strict code verification (format + lint)...
+[2026-10-29 11:38:10] [INFO] Formatting code...
+
+> FlashCards@1.0.0 format
+> prettier --write .
+
+.prettierrc.json 63ms (unchanged)
+DEPLOY_ACCESSIBILITY.md 570ms (unchanged)
+DEPLOY_QUICK_REFERENCE.md 163ms (unchanged)
+DEPLOY.md 336ms (unchanged)
+documents/API_ENDPOINTS.md 854ms (unchanged)
+documents/ARCHITECTURE.md 215ms (unchanged)
+documents/DATABASE_SCHEMA.md 252ms (unchanged)
+documents/DEPLOYMENT_STRATEGY.md 391ms (unchanged)
+documents/DEV_ENVIRONMENT_SETUP.md 458ms (unchanged)

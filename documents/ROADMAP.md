@@ -5,6 +5,7 @@
 The FlashCards project is a web-based flashcard study application that integrates with Render PostgreSQL for persistent storage. This document outlines the 10-phase development roadmap, immediate next steps, and project status.
 
 **Project Goals:**
+
 1. ✅ Review and document project structure
 2. ✅ Create comprehensive architecture documentation
 3. ✅ Define complete API specification
@@ -21,8 +22,10 @@ The FlashCards project is a web-based flashcard study application that integrate
 ## Project Phases Overview
 
 ### Phase 1: Backend Setup & Database Integration (Week 1-2)
+
 **Dependencies:** None (startup phase)
 **Deliverables:**
+
 - ✅ Render PostgreSQL instance provisioned
 - Database schema initialized
 - Environment variables configured
@@ -30,6 +33,7 @@ The FlashCards project is a web-based flashcard study application that integrate
 - pgAdmin 4 connected to Render instance
 
 **Todos:**
+
 1. `setup-database-render` - Provision PostgreSQL on Render
 2. `init-database-schema` - Create all tables with schema.sql
 3. `install-db-dependencies` - Add pg, bcryptjs, jsonwebtoken, joi, cors, dotenv
@@ -40,8 +44,10 @@ The FlashCards project is a web-based flashcard study application that integrate
 ---
 
 ### Phase 2: Authentication System (Week 2-3)
+
 **Dependencies:** Phase 1 complete
 **Deliverables:**
+
 - User registration with validation
 - User login with JWT tokens
 - Protected route middleware
@@ -49,6 +55,7 @@ The FlashCards project is a web-based flashcard study application that integrate
 - Logout functionality
 
 **Todos:**
+
 1. `implement-user-registration` - POST /api/auth/register
 2. `implement-user-login` - POST /api/auth/login
 3. `implement-jwt-middleware` - Auth middleware for protected routes
@@ -58,6 +65,7 @@ The FlashCards project is a web-based flashcard study application that integrate
 **Effort:** 3-4 days
 
 **Key Features:**
+
 - Password hashing with bcryptjs (10+ rounds)
 - JWT tokens with 7-day expiration
 - Input validation with Joi
@@ -67,8 +75,10 @@ The FlashCards project is a web-based flashcard study application that integrate
 ---
 
 ### Phase 3: Flashcard Management (Week 3-4)
+
 **Dependencies:** Phase 2 complete
 **Deliverables:**
+
 - CRUD operations for flashcards
 - Category and difficulty filtering
 - Pagination support
@@ -76,6 +86,7 @@ The FlashCards project is a web-based flashcard study application that integrate
 - JSON import with file upload
 
 **Todos:**
+
 1. `implement-card-crud` - POST/GET/PUT/DELETE /api/cards
 2. `implement-card-filtering` - Category, difficulty, pagination
 3. `implement-export-functionality` - GET /api/cards/export
@@ -84,6 +95,7 @@ The FlashCards project is a web-based flashcard study application that integrate
 **Effort:** 3-4 days
 
 **Key Features:**
+
 - File upload handling with multer
 - JSON validation schema
 - Batch import with error reporting
@@ -93,8 +105,10 @@ The FlashCards project is a web-based flashcard study application that integrate
 ---
 
 ### Phase 4: Leitner Box System (Week 4-5)
+
 **Dependencies:** Phase 3 complete
 **Deliverables:**
+
 - Leitner Box implementation (3-box system)
 - Card promotion/demotion logic
 - Box scheduling (Daily, Every 2 Days, Weekly)
@@ -102,6 +116,7 @@ The FlashCards project is a web-based flashcard study application that integrate
 - Progress tracking by box level
 
 **Todos:**
+
 1. `implement-leitner-boxes` - Create leitner_boxes table and queries
 2. `implement-box-promotion` - Correct answer logic (promote to next box)
 3. `implement-box-demotion` - Incorrect answer logic (demote to Box 1)
@@ -123,6 +138,7 @@ The system uses 3 boxes with fixed review schedules:
 ```
 
 **Key Features:**
+
 - All cards start in Box 1
 - Correct answer → promote to next box
 - Incorrect answer → demote back to Box 1
@@ -131,6 +147,7 @@ The system uses 3 boxes with fixed review schedules:
 - Focus study time on weakest concepts in Box 1
 
 **Algorithm:**
+
 ```
 If Answer Correct:
   If card.box_number < 3:
@@ -143,6 +160,7 @@ If Answer Incorrect:
 ```
 
 **Box Review Schedule:**
+
 - Box 1: Every 1 day (daily practice)
 - Box 2: Every 2 days
 - Box 3: Every 7 days (weekly)
@@ -150,14 +168,17 @@ If Answer Incorrect:
 ---
 
 ### Phase 5: Quiz System (Week 6-7)
+
 **Dependencies:** Phase 4 complete
 **Deliverables:**
+
 - Quiz template creation
 - Quiz taking interface
 - Result scoring and storage
 - Performance analytics
 
 **Todos:**
+
 1. `implement-quiz-creation` - POST /api/quizzes
 2. `implement-quiz-taking` - Quiz session management
 3. `implement-quiz-results` - Score calculation & storage
@@ -166,6 +187,7 @@ If Answer Incorrect:
 **Effort:** 3-4 days
 
 **Features:**
+
 - Create quizzes from existing card sets
 - Immediate feedback on answers
 - Score calculation (percentage, time tracking)
@@ -175,14 +197,17 @@ If Answer Incorrect:
 ---
 
 ### Phase 6: Frontend UI/UX (Week 7-9)
+
 **Dependencies:** Phases 2-5 complete
 **Deliverables:**
+
 - Updated EJS templates with proper forms
 - Responsive CSS styling (mobile-first)
 - Client-side JavaScript for interactions
 - Form validation and error handling
 
 **Todos:**
+
 1. `update-login-view` - Wire login form
 2. `update-profile-view` - Profile editing interface
 3. `update-entries-view` - Card management UI
@@ -194,6 +219,7 @@ If Answer Incorrect:
 **Effort:** 5-6 days
 
 **Design Notes:**
+
 - Mobile-first responsive design
 - Accessibility compliance (WCAG 2.1 AA)
 - Loading states and error messages
@@ -203,14 +229,17 @@ If Answer Incorrect:
 ---
 
 ### Phase 7: Testing (Week 9-10)
+
 **Dependencies:** Phases 1-6 complete
 **Deliverables:**
+
 - Comprehensive test suite (80%+ coverage)
 - Unit tests for business logic
 - Integration tests for API endpoints
 - End-to-end tests for user flows
 
 **Todos:**
+
 1. `setup-jest-testing` - Jest + Supertest configuration
 2. `write-unit-tests` - Services, algorithms, utilities
 3. `write-integration-tests` - API endpoints + DB
@@ -219,11 +248,13 @@ If Answer Incorrect:
 **Effort:** 3-4 days
 
 **Test Coverage Goals:**
+
 - Overall: 80%+
 - Unit: 90%+
 - Critical paths (auth, practice): 95%+
 
 **Test Types:**
+
 - Unit tests for SRS algorithm, validation, utilities
 - Integration tests for all API endpoints
 - E2E tests for registration→login→practice→export→quiz
@@ -232,14 +263,17 @@ If Answer Incorrect:
 ---
 
 ### Phase 8: Deployment & DevOps (Week 10-11)
+
 **Dependencies:** Phases 1-7 complete
 **Deliverables:**
+
 - GitHub Actions CI/CD pipeline
 - Render deployment configuration
 - Monitoring and logging setup
 - Database backup strategy
 
 **Todos:**
+
 1. `setup-github-actions` - Automated testing & deployment
 2. `configure-render-deployment` - Auto-deploy on push
 3. `setup-monitoring-logging` - Error tracking, performance monitoring
@@ -248,6 +282,7 @@ If Answer Incorrect:
 **Effort:** 2-3 days
 
 **DevOps Stack:**
+
 - GitHub Actions for CI/CD
 - Render for hosting (auto-deploy from GitHub)
 - Sentry (optional) for error tracking
@@ -256,8 +291,10 @@ If Answer Incorrect:
 ---
 
 ### Phase 9: Documentation & Polish (Week 11-12)
+
 **Dependencies:** Phases 1-8 complete
 **Deliverables:**
+
 - ✅ API documentation (done)
 - ✅ Database schema documentation (done)
 - User guide for all features
@@ -265,6 +302,7 @@ If Answer Incorrect:
 - Project README with setup instructions
 
 **Todos:**
+
 1. `create-api-documentation` - ✅ Completed
 2. `create-user-guide` - How-to guides for each feature
 3. `create-developer-guide` - Setup, architecture, contribution
@@ -275,8 +313,10 @@ If Answer Incorrect:
 ---
 
 ### Phase 10: Optional Enhancements (Week 12+)
+
 **Dependencies:** MVP complete
 **Potential Features:**
+
 - Two-factor authentication
 - Performance metrics dashboard
 - Detailed SRS statistics and visualization
@@ -286,6 +326,7 @@ If Answer Incorrect:
 - Offline mode with sync
 
 **Todos:**
+
 1. `add-two-factor-auth` - 2FA security enhancement
 2. `add-performance-metrics` - Study trends & graphs
 3. `add-spaced-repetition-stats` - Detailed SRS insights
@@ -296,12 +337,14 @@ If Answer Incorrect:
 ## Tech Stack Summary
 
 ### Frontend
+
 - **Templating**: EJS 7.0.2
 - **Styling**: CSS (responsive, mobile-first)
 - **JavaScript**: Vanilla JS (no framework required initially)
 - **HTTP Client**: Fetch API
 
 ### Backend
+
 - **Runtime**: Node.js 18+
 - **Framework**: Express.js 5.3.0
 - **Authentication**: JWT (jsonwebtoken)
@@ -311,12 +354,14 @@ If Answer Incorrect:
 - **CORS**: cors middleware
 
 ### Database
+
 - **Provider**: PostgreSQL on Render
 - **Client**: pg (node-postgres)
 - **Migrations**: Manual SQL scripts
 - **GUI**: pgAdmin 4 (desktop)
 
 ### Development
+
 - **Dev Server**: Nodemon 3.1.14
 - **Testing**: Jest + Supertest
 - **CI/CD**: GitHub Actions
@@ -327,6 +372,7 @@ If Answer Incorrect:
 ## Getting Started (Immediate Actions)
 
 ### Step 1: Local Development Setup (Today)
+
 ```bash
 # Install dependencies
 npm install
@@ -343,17 +389,20 @@ JWT_SECRET=your-random-secret-string
 ```
 
 ### Step 2: Render PostgreSQL Setup (Day 1)
+
 1. Log in to [Render Dashboard](https://dashboard.render.com)
 2. Create PostgreSQL instance
 3. Copy connection string to .env
 4. Create database tables using schema from [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md)
 
 ### Step 3: pgAdmin Setup (Day 1)
+
 1. Install pgAdmin 4
 2. Add Render PostgreSQL connection with credentials
 3. Verify you can view tables, run queries
 
 ### Step 4: Start Phase 1 Implementation (Day 2)
+
 1. Create database connection module
 2. Implement user registration endpoint
 3. Test with Postman or curl
@@ -364,6 +413,7 @@ JWT_SECRET=your-random-secret-string
 ## Recommended Development Workflow
 
 ### Daily Workflow
+
 ```bash
 # 1. Pull latest changes
 git pull origin main
@@ -391,6 +441,7 @@ git push origin feature/your-feature-name
 ```
 
 ### Testing Workflow
+
 ```bash
 # Run all tests
 npm test
@@ -406,6 +457,7 @@ npm run test:watch
 ```
 
 ### Database Operations
+
 ```bash
 # Access Render DB via pgAdmin GUI (preferred for browsing)
 # Open pgAdmin → Connect to Render PostgreSQL instance
@@ -424,12 +476,14 @@ TRUNCATE users CASCADE; -- Clear all data (dev only!)
 ## Success Criteria for MVP
 
 ### Phase 1 Complete ✓
+
 - [x] PostgreSQL instance on Render provisioned
 - [ ] Database schema created with all tables
 - [ ] Environment variables configured locally and on Render
 - [ ] pgAdmin can connect to Render database
 
 ### Phase 2 Complete ✓
+
 - [ ] User registration working (POST /api/auth/register)
 - [ ] User login working (POST /api/auth/login)
 - [ ] JWT tokens issued and validated
@@ -437,30 +491,35 @@ TRUNCATE users CASCADE; -- Clear all data (dev only!)
 - [ ] 80%+ test coverage for auth
 
 ### Phase 3 Complete ✓
+
 - [ ] Card CRUD endpoints working (POST/GET/PUT/DELETE /api/cards)
 - [ ] Export to JSON working (GET /api/cards/export)
 - [ ] Import from JSON working (POST /api/cards/import)
 - [ ] Filtering and pagination working
 
 ### Phase 4 Complete ✓
+
 - [ ] SM-2 algorithm correctly implemented
 - [ ] Practice sessions working (POST /api/practice/start)
 - [ ] Next card selection correct (GET /api/practice/:id/card)
 - [ ] Answer submission updates SRS matrix (POST /api/practice/:id/answer)
 
 ### Phase 5 Complete ✓
+
 - [ ] Quiz creation working (POST /api/quizzes)
 - [ ] Quiz taking working (POST /api/quizzes/:id/take)
 - [ ] Results stored and calculated correctly
 - [ ] Quiz history available
 
 ### Phase 6 Complete ✓
+
 - [ ] All pages have proper HTML forms
 - [ ] CSS styling applied to all pages
 - [ ] Responsive design works on mobile, tablet, desktop
 - [ ] Client-side JavaScript for forms and API calls working
 
 ### Phase 7 Complete ✓
+
 - [ ] Unit tests for services (SRS, card, auth)
 - [ ] Integration tests for all endpoints
 - [ ] E2E tests for key user flows
@@ -468,12 +527,14 @@ TRUNCATE users CASCADE; -- Clear all data (dev only!)
 - [ ] All tests passing in GitHub Actions
 
 ### Phase 8 Complete ✓
+
 - [ ] GitHub Actions pipeline passing
 - [ ] Render deployment successful
 - [ ] Auto-deploy on push working
 - [ ] Monitoring/logging configured
 
 ### Phase 9 Complete ✓
+
 - [ ] README.md complete
 - [ ] API docs comprehensive
 - [ ] User guide written
@@ -485,27 +546,28 @@ TRUNCATE users CASCADE; -- Clear all data (dev only!)
 
 ### Technical Risks
 
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|-----------|
-| SRS algorithm bugs | Medium | High | Comprehensive unit tests, test with real user data |
-| Database performance issues | Low | High | Index planning, query optimization, monitoring |
-| JWT token security | Low | Critical | Use proven library, secure env vars, HTTPS |
-| Data loss | Low | Critical | Render auto-backups, versioned migrations |
-| Render service outage | Very Low | High | Disaster recovery plan, database exports |
+| Risk                        | Probability | Impact   | Mitigation                                         |
+| --------------------------- | ----------- | -------- | -------------------------------------------------- |
+| SRS algorithm bugs          | Medium      | High     | Comprehensive unit tests, test with real user data |
+| Database performance issues | Low         | High     | Index planning, query optimization, monitoring     |
+| JWT token security          | Low         | Critical | Use proven library, secure env vars, HTTPS         |
+| Data loss                   | Low         | Critical | Render auto-backups, versioned migrations          |
+| Render service outage       | Very Low    | High     | Disaster recovery plan, database exports           |
 
 ### Schedule Risks
 
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|-----------|
-| Underestimated effort | Medium | High | Buffer time, prioritize MVP features |
-| Dependency issues | Low | Medium | Pin versions, document setup, CI/CD testing |
-| Testing lag | Medium | Medium | Write tests as you code, use fixtures |
+| Risk                  | Probability | Impact | Mitigation                                  |
+| --------------------- | ----------- | ------ | ------------------------------------------- |
+| Underestimated effort | Medium      | High   | Buffer time, prioritize MVP features        |
+| Dependency issues     | Low         | Medium | Pin versions, document setup, CI/CD testing |
+| Testing lag           | Medium      | Medium | Write tests as you code, use fixtures       |
 
 ---
 
 ## Resource Requirements
 
 ### Skills Needed
+
 - Node.js / Express.js development
 - PostgreSQL / SQL
 - Frontend HTML/CSS/JavaScript
@@ -513,6 +575,7 @@ TRUNCATE users CASCADE; -- Clear all data (dev only!)
 - Git / GitHub
 
 ### Tools
+
 - VS Code or preferred IDE
 - Git
 - Postman or curl (API testing)
@@ -520,6 +583,7 @@ TRUNCATE users CASCADE; -- Clear all data (dev only!)
 - Terminal/CLI
 
 ### Time Commitment
+
 - **MVP (Phases 1-6)**: 60-80 hours
 - **Testing & Deployment (Phases 7-9)**: 30-40 hours
 - **Optional Enhancements (Phase 10)**: 20-30 hours/feature
@@ -530,12 +594,14 @@ TRUNCATE users CASCADE; -- Clear all data (dev only!)
 ## Communication & Progress Tracking
 
 ### Progress Tracking
+
 - Todos are in session database (44 items, 10 phases)
 - Each todo has status: pending, in_progress, done, blocked
 - Update todo status as work completes
 - Use git commits to mark checkpoints
 
 ### Key Milestones
+
 - [x] Week 1: Phase 1 (Database)
 - [ ] Week 2-3: Phase 2 (Auth)
 - [ ] Week 3-4: Phase 3 (Cards)
@@ -561,6 +627,7 @@ TRUNCATE users CASCADE; -- Clear all data (dev only!)
 ## Questions & Support
 
 Refer to the following documentation files:
+
 - [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) - Project layout
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - System design
 - [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md) - Database tables
@@ -569,4 +636,3 @@ Refer to the following documentation files:
 - [DEPLOYMENT_STRATEGY.md](./DEPLOYMENT_STRATEGY.md) - Deployment guide
 
 **Good luck with the FlashCards project! 🚀**
-

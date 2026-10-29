@@ -3,6 +3,7 @@
 ## Three Deployment Environments
 
 ### 🔵 Development (Dev)
+
 - **Where:** Your local machine
 - **Server:** Runs on localhost:5000
 - **Database:** Remote on Render
@@ -11,7 +12,8 @@
 - **Use Case:** Active development, testing locally
 - **Deployment:** `./deploy.sh -dev`
 
-### 🟢 Preview 
+### 🟢 Preview
+
 - **Where:** Your local machine
 - **Server:** Runs on localhost:5000
 - **Database:** Remote on Render
@@ -21,6 +23,7 @@
 - **Deployment:** `./deploy.sh -preview`
 
 ### 🔴 Production (Prod)
+
 - **Where:** Render servers (cloud)
 - **Server:** Runs on Render URL
 - **Database:** Remote on Render
@@ -51,6 +54,7 @@ localhost              from GitHub)
 ## Workflow
 
 ### Development Workflow
+
 ```
 1. Make code changes locally
 2. Run: ./deploy.sh -dev
@@ -59,6 +63,7 @@ localhost              from GitHub)
 ```
 
 ### Preview Workflow
+
 ```
 1. Finish development
 2. Run: ./deploy.sh -preview
@@ -67,6 +72,7 @@ localhost              from GitHub)
 ```
 
 ### Production Workflow
+
 ```
 1. Commit code to GitHub
    git add .
@@ -81,12 +87,13 @@ localhost              from GitHub)
 ```
 
 ### Deploy All Environments
+
 ```
 ./deploy.sh -all
 
 Runs in order:
   1. Dev (localhost:5000)
-  2. Preview (localhost:5000) 
+  2. Preview (localhost:5000)
   3. Prod (Render URL, waits for auto-deploy)
 ```
 
@@ -114,6 +121,7 @@ All share same data, so testing changes affects all environments.
 ## Environment Variables
 
 ### Dev / Preview (.env file)
+
 ```env
 DATABASE_URL=postgresql://app_admin:PASSWORD@HOST:5432/dev_apps
 NODE_ENV=development
@@ -121,7 +129,9 @@ PORT=5000
 ```
 
 ### Prod (Render dashboard)
+
 Same variables, but managed in Render's environment settings:
+
 ```
 DATABASE_URL=postgresql://app_admin:PASSWORD@HOST:5432/dev_apps
 NODE_ENV=production
@@ -138,7 +148,7 @@ Use `deploy.sh` to automate deployments:
 # Dev environment
 ./deploy.sh -dev
 
-# Preview environment  
+# Preview environment
 ./deploy.sh -preview
 
 # Production environment (GitHub auto-deploy)
@@ -149,6 +159,7 @@ Use `deploy.sh` to automate deployments:
 ```
 
 **What the script does:**
+
 - Checks prerequisites (Node, git, etc.)
 - Runs linter/tests if configured
 - Builds/prepares code
@@ -165,16 +176,16 @@ Use `deploy.sh` to automate deployments:
 Morning:
   ./deploy.sh -dev
   (Opens http://localhost:5000)
-  
+
 Code all day:
   1. Make changes
   2. Manual test on localhost
   3. Repeat
-  
+
 Before lunch/end of day:
   ./deploy.sh -preview
   (Final local test)
-  
+
 Ready to ship:
   git push origin main
   ./deploy.sh -prod
@@ -187,16 +198,19 @@ Ready to ship:
 ## Troubleshooting
 
 **Dev/Preview won't start:**
+
 - Check .env values
 - Check `npm install` completed
 - Check port 5000 not in use
 
 **Prod deploy stuck:**
+
 - Check GitHub push succeeded
 - Check Render webhook configured
 - Script waits 30 seconds for auto-deploy
 
 **Database errors in any env:**
+
 - All envs use same DB
 - Check pgAdmin connection
 - Verify schema exists
@@ -210,4 +224,3 @@ Ready to ship:
 - **All environments share same database** - test data is shared
 - **Deployment logs** - stored in `.deployment/last-run.log` (not backed up)
 - **Script is rerunnable** - safe to run multiple times
-

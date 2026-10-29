@@ -4,15 +4,15 @@
 
 All documentation is in `/documents/` folder:
 
-| Document | Purpose | Length |
-|----------|---------|--------|
-| [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) | Directory layout, components, current state | 5 min read |
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | System design, data flows, security | 10 min read |
-| [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md) | PostgreSQL tables, schema, queries | 15 min read |
-| [API_ENDPOINTS.md](./API_ENDPOINTS.md) | Complete API specification with examples | 20 min read |
-| [TESTING_STRATEGY.md](./TESTING_STRATEGY.md) | Testing approach, examples, CI/CD | 20 min read |
-| [DEPLOYMENT_STRATEGY.md](./DEPLOYMENT_STRATEGY.md) | Render setup, pgAdmin, deployment steps | 15 min read |
-| [ROADMAP.md](./ROADMAP.md) | 10-phase development plan, timeline | 20 min read |
+| Document                                           | Purpose                                     | Length      |
+| -------------------------------------------------- | ------------------------------------------- | ----------- |
+| [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md)     | Directory layout, components, current state | 5 min read  |
+| [ARCHITECTURE.md](./ARCHITECTURE.md)               | System design, data flows, security         | 10 min read |
+| [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md)         | PostgreSQL tables, schema, queries          | 15 min read |
+| [API_ENDPOINTS.md](./API_ENDPOINTS.md)             | Complete API specification with examples    | 20 min read |
+| [TESTING_STRATEGY.md](./TESTING_STRATEGY.md)       | Testing approach, examples, CI/CD           | 20 min read |
+| [DEPLOYMENT_STRATEGY.md](./DEPLOYMENT_STRATEGY.md) | Render setup, pgAdmin, deployment steps     | 15 min read |
+| [ROADMAP.md](./ROADMAP.md)                         | 10-phase development plan, timeline         | 20 min read |
 
 ---
 
@@ -20,6 +20,7 @@ All documentation is in `/documents/` folder:
 
 **What is FlashCards?**
 A web application for studying flashcards with:
+
 - User accounts (login/logout/profile)
 - Flashcard management (create, organize, import/export)
 - Intelligent practice with spaced repetition (SM-2 algorithm)
@@ -27,6 +28,7 @@ A web application for studying flashcards with:
 - Progress tracking and analytics
 
 **Tech Stack:**
+
 - Frontend: EJS, HTML, CSS, Vanilla JavaScript
 - Backend: Node.js + Express.js
 - Database: PostgreSQL (Render-hosted)
@@ -35,6 +37,7 @@ A web application for studying flashcards with:
 - Deployment: Render (auto-deploy from GitHub)
 
 **Current Status:**
+
 - ✅ Project structure reviewed and documented
 - ✅ Architecture designed
 - ✅ Database schema designed
@@ -49,6 +52,7 @@ A web application for studying flashcards with:
 ## Quick Start for Development
 
 ### Prerequisites
+
 ```bash
 # Node.js 18+
 node --version
@@ -61,6 +65,7 @@ psql --version
 ```
 
 ### Local Setup (First Time)
+
 ```bash
 cd /home/tmann/Documents/Projects/FlashCards
 
@@ -75,6 +80,7 @@ nano .env
 ```
 
 ### Running Locally
+
 ```bash
 # Development server (auto-reload with nodemon)
 npm run dev
@@ -101,6 +107,7 @@ npm run test:coverage
 ## Database Setup Checklist
 
 ### Step 1: Render PostgreSQL ✅ (DO FIRST)
+
 - [ ] Create account at https://render.com
 - [ ] Create new PostgreSQL instance
   - Name: `flashcards-db`
@@ -115,6 +122,7 @@ npm run test:coverage
   ```
 
 ### Step 2: Initialize Schema
+
 ```bash
 # Option A: Using psql CLI
 psql $DATABASE_URL < database/schema.sql
@@ -128,6 +136,7 @@ node scripts/init-db.js
 ```
 
 ### Step 3: pgAdmin Setup ✅ (YOUR PREFERENCE)
+
 - [ ] Install pgAdmin 4: https://www.pgadmin.org/download/
 - [ ] Open pgAdmin, create server connection:
   - Name: `FlashCards-Render`
@@ -140,6 +149,7 @@ node scripts/init-db.js
 - [ ] Test: Right-click server → Properties → Connection tab → Test
 
 ### Step 4: Configure Environment
+
 ```bash
 # .env file
 NODE_ENV=development
@@ -153,6 +163,7 @@ LOG_LEVEL=debug
 ```
 
 Generate JWT_SECRET:
+
 ```bash
 openssl rand -hex 32
 # Output: a1b2c3d4e5f6...
@@ -199,6 +210,7 @@ git push origin feature/user-registration
 ```
 
 ### Git Commit Convention
+
 ```
 feat: add new feature
 fix: fix a bug
@@ -220,6 +232,7 @@ docs: add API endpoints documentation
 ## Common Commands Cheat Sheet
 
 ### Development
+
 ```bash
 npm run dev              # Start dev server with auto-reload
 npm start               # Start production server
@@ -231,6 +244,7 @@ npm run build           # Build for production (when needed)
 ```
 
 ### Database (psql)
+
 ```bash
 # Connect to database
 psql $DATABASE_URL
@@ -255,6 +269,7 @@ psql $DATABASE_URL < backup.sql
 ```
 
 ### Git
+
 ```bash
 git status              # Check current branch and changes
 git log --oneline       # View commit history
@@ -266,6 +281,7 @@ git reset --hard        # Discard all changes (⚠️ careful!)
 ```
 
 ### Render Deployment
+
 ```bash
 # View logs
 git log --oneline | grep "deploy"
@@ -285,6 +301,7 @@ git log --oneline | grep "deploy"
 ## API Testing
 
 ### Using Postman
+
 1. Open Postman
 2. Create new request
 3. Method: `POST`
@@ -300,6 +317,7 @@ git log --oneline | grep "deploy"
 7. Response should include JWT token
 
 ### Using curl
+
 ```bash
 # Registration
 curl -X POST http://localhost:3000/api/auth/register \
@@ -326,7 +344,9 @@ curl -X GET http://localhost:3000/api/profile \
 ```
 
 ### Using VS Code REST Client Extension
+
 Create `test.http` file:
+
 ```http
 ### Register User
 POST http://localhost:3000/api/auth/register
@@ -360,6 +380,7 @@ Right-click and select "Send Request"
 ## Debugging
 
 ### Enable Debug Logging
+
 ```bash
 # In terminal before running
 DEBUG=* npm run dev
@@ -373,7 +394,9 @@ console.error('Error:', error);
 ```
 
 ### VS Code Debugger
+
 Create `.vscode/launch.json`:
+
 ```json
 {
   "version": "0.2.0",
@@ -394,6 +417,7 @@ Create `.vscode/launch.json`:
 Then press F5 to start debugging with breakpoints.
 
 ### Database Debugging
+
 ```bash
 # Connect to database
 psql $DATABASE_URL
@@ -403,8 +427,8 @@ SELECT * FROM users; -- See all users
 SELECT * FROM flashcards WHERE user_id = 'xxx'; -- See user's cards
 
 # Check SRS matrix
-SELECT * FROM practice_matrices 
-WHERE user_id = 'xxx' 
+SELECT * FROM practice_matrices
+WHERE user_id = 'xxx'
 AND next_review <= NOW()
 ORDER BY next_review;
 
@@ -417,30 +441,39 @@ SELECT * FROM quiz_results WHERE user_id = 'xxx';
 ## Troubleshooting
 
 ### Database Connection Error
+
 ```
 Error: connect ECONNREFUSED 127.0.0.1:5432
 ```
+
 **Solutions:**
+
 - Check `DATABASE_URL` in `.env`
 - Ensure PostgreSQL is running
 - Try `psql $DATABASE_URL -c "SELECT 1;"`
 - For Render: Verify instance is "Available" in dashboard
 
 ### JWT Token Issues
+
 ```
 Error: Invalid token or token expired
 ```
+
 **Solutions:**
+
 - Check `JWT_SECRET` matches between .env and Render
 - Verify token hasn't expired (default 7 days)
 - Use `/api/auth/refresh` to refresh token
 - Clear localStorage/cookies and re-login
 
 ### Port Already in Use
+
 ```
 Error: listen EADDRINUSE: address already in use :::3000
 ```
+
 **Solutions:**
+
 ```bash
 # Kill process on port 3000
 lsof -i :3000
@@ -451,6 +484,7 @@ PORT=3001 npm run dev
 ```
 
 ### npm Install Issues
+
 ```bash
 # Clear npm cache
 npm cache clean --force
@@ -465,6 +499,7 @@ npm install
 ## Performance Tips
 
 ### Database Queries
+
 - ✅ Use indexes (already in schema)
 - ✅ Use pagination for large lists
 - ✅ Filter unnecessary data in SELECT
@@ -472,12 +507,14 @@ npm install
 - ❌ Don't have N+1 queries in loops
 
 ### Code
+
 - ✅ Use async/await consistently
 - ✅ Handle errors with try/catch
 - ✅ Use connection pooling (pg pool)
 - ❌ Don't block event loop with sync operations
 
 ### Frontend
+
 - ✅ Minify CSS/JS in production
 - ✅ Use CDN for static assets
 - ✅ Compress images
@@ -503,12 +540,14 @@ npm install
 ## Testing Checklist
 
 ### Before Committing
+
 ```bash
 npm test              # All tests must pass
 npm run test:coverage # Check coverage threshold met
 ```
 
 ### Before Deploying
+
 ```bash
 # Local
 npm test
@@ -526,6 +565,7 @@ npm run test:coverage
 ## Getting Help
 
 ### Documentation Files
+
 - Questions about structure? → See [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md)
 - Questions about design? → See [ARCHITECTURE.md](./ARCHITECTURE.md)
 - Questions about database? → See [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md)
@@ -535,6 +575,7 @@ npm run test:coverage
 - Questions about timeline? → See [ROADMAP.md](./ROADMAP.md)
 
 ### Online Resources
+
 - Express.js: https://expressjs.com/
 - PostgreSQL: https://www.postgresql.org/docs/
 - pgAdmin: https://www.pgadmin.org/docs/
@@ -547,6 +588,7 @@ npm run test:coverage
 ## Productivity Tips
 
 ### VS Code Extensions
+
 - REST Client (for API testing)
 - ES7+ React/Redux/React-Native snippets
 - SQLTools + PostgreSQL Driver
@@ -555,6 +597,7 @@ npm run test:coverage
 - Thunder Client or Postman (API testing)
 
 ### Shortcuts
+
 ```
 Ctrl+K Ctrl+O    Open folder
 Ctrl+J           Toggle terminal
@@ -568,6 +611,7 @@ Shift+F11        Step out
 ```
 
 ### Focus & Productivity
+
 - Use `npm run test:watch` during development
 - Keep browser DevTools open for API testing
 - Use pgAdmin for database verification
@@ -579,6 +623,7 @@ Shift+F11        Step out
 ## Success Metrics
 
 ### Development Success ✅
+
 - [ ] All todos completed
 - [ ] 80%+ test coverage
 - [ ] All tests passing
@@ -586,6 +631,7 @@ Shift+F11        Step out
 - [ ] Code review completed
 
 ### Deployment Success ✅
+
 - [ ] CI/CD pipeline passing
 - [ ] App live on Render
 - [ ] Database persisting data
@@ -593,6 +639,7 @@ Shift+F11        Step out
 - [ ] All endpoints responsive
 
 ### User Experience ✅
+
 - [ ] Registration works end-to-end
 - [ ] Can create and study flashcards
 - [ ] Practice sessions improve accuracy
@@ -604,4 +651,3 @@ Shift+F11        Step out
 **Happy coding! 🚀**
 
 For the full picture, start with [ROADMAP.md](./ROADMAP.md) for timeline and context, then refer to specific documentation as needed.
-

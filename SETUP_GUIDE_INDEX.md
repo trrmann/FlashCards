@@ -3,10 +3,12 @@
 ## ⚡ Quick Links
 
 **New to this project?** Start here:
+
 - 📖 [SETUP_QUICK_START.md](./SETUP_QUICK_START.md) - 30-minute guided setup
 - ✅ [SETUP_CHECKLIST.md](./SETUP_CHECKLIST.md) - Track your progress
 
 **Ready to set up?**
+
 - 📋 [.env.example](./.env.example) - Copy to `.env` and fill in your values
 - 📚 [documents/DEV_ENVIRONMENT_SETUP.md](./documents/DEV_ENVIRONMENT_SETUP.md) - Detailed instructions
 - 📚 [documents/MULTI_APP_ARCHITECTURE.md](./documents/MULTI_APP_ARCHITECTURE.md) - Understand the database design
@@ -17,49 +19,50 @@
 
 ### Setup & Configuration
 
-| File | Purpose | Read Time |
-|------|---------|-----------|
-| [SETUP_QUICK_START.md](./SETUP_QUICK_START.md) | 30-minute guided setup with step-by-step commands | 5 min |
-| [SETUP_CHECKLIST.md](./SETUP_CHECKLIST.md) | Interactive checklist to track setup progress | 10 min |
-| [.env.example](./.env.example) | Template for environment variables | 2 min |
-| [documents/DEV_ENVIRONMENT_SETUP.md](./documents/DEV_ENVIRONMENT_SETUP.md) | Complete detailed setup guide for Render + pgAdmin | 20 min |
-| [documents/MULTI_APP_ARCHITECTURE.md](./documents/MULTI_APP_ARCHITECTURE.md) | How database supports multiple applications | 15 min |
+| File                                                                         | Purpose                                            | Read Time |
+| ---------------------------------------------------------------------------- | -------------------------------------------------- | --------- |
+| [SETUP_QUICK_START.md](./SETUP_QUICK_START.md)                               | 30-minute guided setup with step-by-step commands  | 5 min     |
+| [SETUP_CHECKLIST.md](./SETUP_CHECKLIST.md)                                   | Interactive checklist to track setup progress      | 10 min    |
+| [.env.example](./.env.example)                                               | Template for environment variables                 | 2 min     |
+| [documents/DEV_ENVIRONMENT_SETUP.md](./documents/DEV_ENVIRONMENT_SETUP.md)   | Complete detailed setup guide for Render + pgAdmin | 20 min    |
+| [documents/MULTI_APP_ARCHITECTURE.md](./documents/MULTI_APP_ARCHITECTURE.md) | How database supports multiple applications        | 15 min    |
 
 ### Study Methodology
 
-| File | Purpose | Read Time |
-|------|---------|-----------|
-| [documents/LEITNER_SYSTEM.md](./documents/LEITNER_SYSTEM.md) | Leitner Box System explained with examples | 15 min |
+| File                                                         | Purpose                                    | Read Time |
+| ------------------------------------------------------------ | ------------------------------------------ | --------- |
+| [documents/LEITNER_SYSTEM.md](./documents/LEITNER_SYSTEM.md) | Leitner Box System explained with examples | 15 min    |
 
 ### Development Reference
 
-| File | Purpose | Read Time |
-|------|---------|-----------|
-| [documents/ROADMAP.md](./documents/ROADMAP.md) | 10-phase development timeline with effort estimates | 15 min |
-| [documents/ARCHITECTURE.md](./documents/ARCHITECTURE.md) | System design, data flows, and components | 15 min |
-| [documents/DATABASE_SCHEMA.md](./documents/DATABASE_SCHEMA.md) | PostgreSQL schema with 7 tables and SQL | 15 min |
-| [documents/API_ENDPOINTS.md](./documents/API_ENDPOINTS.md) | REST API specification for 35+ endpoints | 20 min |
-| [documents/TESTING_STRATEGY.md](./documents/TESTING_STRATEGY.md) | Jest testing framework with examples | 20 min |
-| [documents/PROJECT_STRUCTURE.md](./documents/PROJECT_STRUCTURE.md) | Current project layout and file organization | 5 min |
-| [documents/QUICK_REFERENCE.md](./documents/QUICK_REFERENCE.md) | Common commands and quick troubleshooting | 10 min |
+| File                                                               | Purpose                                             | Read Time |
+| ------------------------------------------------------------------ | --------------------------------------------------- | --------- |
+| [documents/ROADMAP.md](./documents/ROADMAP.md)                     | 10-phase development timeline with effort estimates | 15 min    |
+| [documents/ARCHITECTURE.md](./documents/ARCHITECTURE.md)           | System design, data flows, and components           | 15 min    |
+| [documents/DATABASE_SCHEMA.md](./documents/DATABASE_SCHEMA.md)     | PostgreSQL schema with 7 tables and SQL             | 15 min    |
+| [documents/API_ENDPOINTS.md](./documents/API_ENDPOINTS.md)         | REST API specification for 35+ endpoints            | 20 min    |
+| [documents/TESTING_STRATEGY.md](./documents/TESTING_STRATEGY.md)   | Jest testing framework with examples                | 20 min    |
+| [documents/PROJECT_STRUCTURE.md](./documents/PROJECT_STRUCTURE.md) | Current project layout and file organization        | 5 min     |
+| [documents/QUICK_REFERENCE.md](./documents/QUICK_REFERENCE.md)     | Common commands and quick troubleshooting           | 10 min    |
 
 ### Deployment
 
-| File | Purpose | Read Time |
-|------|---------|-----------|
-| [documents/DEPLOYMENT_STRATEGY.md](./documents/DEPLOYMENT_STRATEGY.md) | Production deployment on Render | 15 min |
+| File                                                                   | Purpose                         | Read Time |
+| ---------------------------------------------------------------------- | ------------------------------- | --------- |
+| [documents/DEPLOYMENT_STRATEGY.md](./documents/DEPLOYMENT_STRATEGY.md) | Production deployment on Render | 15 min    |
 
 ### Overview
 
-| File | Purpose | Read Time |
-|------|---------|-----------|
-| [documents/README.md](./documents/README.md) | Documentation summary and project overview | 10 min |
+| File                                         | Purpose                                    | Read Time |
+| -------------------------------------------- | ------------------------------------------ | --------- |
+| [documents/README.md](./documents/README.md) | Documentation summary and project overview | 10 min    |
 
 ---
 
 ## 🚀 Setup Timeline
 
 ### Phase 1: Render Database (5 minutes)
+
 1. Create Render account
 2. Create `dev_apps` PostgreSQL database
 3. Copy connection details
@@ -67,6 +70,7 @@
 **Result:** PostgreSQL instance running on Render
 
 ### Phase 2: Environment (5 minutes)
+
 1. Create `.env` file
 2. Fill in database credentials
 3. Add to `.gitignore`
@@ -74,12 +78,14 @@
 **Result:** Local configuration ready
 
 ### Phase 3: Dependencies (5 minutes)
+
 1. Run `npm install`
 2. Verify packages installed
 
 **Result:** All Node packages ready
 
 ### Phase 4: Database Schema (10 minutes)
+
 1. Connect pgAdmin to Render database
 2. Create `flashcards_schema`
 3. Execute SQL to create 7 tables
@@ -87,6 +93,7 @@
 **Result:** PostgreSQL schema initialized
 
 ### Phase 5: Connection Test (5 minutes)
+
 1. Create test script
 2. Verify database connectivity
 3. Confirm tables are created
@@ -94,6 +101,7 @@
 **Result:** Database confirmed working
 
 ### Phase 6: Development Server (2 minutes)
+
 1. Create `server.js`
 2. Start with `npm run dev`
 3. Test health endpoints
@@ -140,6 +148,7 @@ DB_SCHEMA=flashcards_schema
 ```
 
 Generate JWT_SECRET:
+
 ```bash
 openssl rand -hex 32
 ```
@@ -151,23 +160,27 @@ Copy the entire `.env.example` file and fill in your actual values.
 ## 📖 Reading Order
 
 ### For Immediate Setup
+
 1. [SETUP_QUICK_START.md](./SETUP_QUICK_START.md) - 5 min read
 2. [.env.example](./.env.example) - Reference
 3. Follow 6 setup steps - 30 min execution
 4. ✅ Done!
 
 ### For Understanding
+
 1. [documents/MULTI_APP_ARCHITECTURE.md](./documents/MULTI_APP_ARCHITECTURE.md) - Why this design
 2. [documents/LEITNER_SYSTEM.md](./documents/LEITNER_SYSTEM.md) - Study methodology
 3. [documents/ARCHITECTURE.md](./documents/ARCHITECTURE.md) - System design
 
 ### For Development
+
 1. [documents/ROADMAP.md](./documents/ROADMAP.md) - What to build
 2. [documents/API_ENDPOINTS.md](./documents/API_ENDPOINTS.md) - How to build
 3. [documents/DATABASE_SCHEMA.md](./documents/DATABASE_SCHEMA.md) - Data structure
 4. [documents/TESTING_STRATEGY.md](./documents/TESTING_STRATEGY.md) - Testing approach
 
 ### For Operations
+
 1. [documents/DEPLOYMENT_STRATEGY.md](./documents/DEPLOYMENT_STRATEGY.md) - Production setup
 2. [documents/QUICK_REFERENCE.md](./documents/QUICK_REFERENCE.md) - Common commands
 3. [documents/DEV_ENVIRONMENT_SETUP.md](./documents/DEV_ENVIRONMENT_SETUP.md) - Troubleshooting
@@ -208,21 +221,25 @@ For more help: See "Troubleshooting" sections in [DEV_ENVIRONMENT_SETUP.md](./do
 ## 📞 Quick Reference
 
 **Generate JWT Secret:**
+
 ```bash
 openssl rand -hex 32
 ```
 
 **Start Development:**
+
 ```bash
 npm run dev
 ```
 
 **Test Database Connection:**
+
 ```bash
 curl http://localhost:5000/api/db-health
 ```
 
 **View Documentation:**
+
 ```bash
 cat SETUP_QUICK_START.md
 ```
@@ -257,4 +274,3 @@ cat SETUP_QUICK_START.md
 
 **Last Updated:** October 29, 2024
 **Documentation Version:** 2.0 (Multi-App Architecture)
-

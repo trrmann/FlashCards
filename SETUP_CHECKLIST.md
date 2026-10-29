@@ -53,11 +53,13 @@ Use this checklist to track your setup progress. Check off each item as you comp
 Run in your terminal:
 
 **macOS/Linux:**
+
 ```bash
 openssl rand -hex 32
 ```
 
 **Windows (PowerShell):**
+
 ```powershell
 [System.Convert]::ToHexString([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
 ```
@@ -89,6 +91,7 @@ JWT_SECRET=YOUR_32_CHAR_SECRET
 ```
 
 Checklist:
+
 - [ ] DATABASE_URL filled with Render connection string
 - [ ] DB_HOST filled (without `postgresql://` prefix)
 - [ ] DB_PASSWORD filled (from Render)
@@ -120,6 +123,7 @@ npm install pg bcryptjs jsonwebtoken joi cors dotenv express-async-errors uuid
 - [ ] `package-lock.json` updated
 
 Verify:
+
 ```bash
 npm list pg bcryptjs jsonwebtoken
 ```
@@ -137,9 +141,11 @@ npm list pg bcryptjs jsonwebtoken
 3. Right-click "Servers" → "Create" → "Server"
 
 **General Tab:**
+
 - [ ] Name: `Shared Dev Database`
 
 **Connection Tab:**
+
 - [ ] Host name/address: `YOUR_DB_HOST` (from .env)
 - [ ] Port: `5432`
 - [ ] Username: `app_admin`
@@ -173,6 +179,7 @@ SET search_path TO flashcards_schema;
 3. In pgAdmin Query Tool, paste and execute
 
 **Important:** The SQL should start with:
+
 ```sql
 SET search_path TO flashcards_schema;
 ```
@@ -189,6 +196,7 @@ Then all the CREATE TABLE commands follow.
 2. Right-click "Tables" → "Refresh"
 
 Verify these tables exist:
+
 - [ ] users
 - [ ] flashcards
 - [ ] leitner_boxes
@@ -213,7 +221,7 @@ require('dotenv').config();
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
 });
 
 pool.on('connect', async (client) => {
@@ -227,27 +235,33 @@ pool.query('SELECT NOW()', (err, res) => {
   } else {
     console.log('✅ Connected to database!');
     console.log('📊 Server time:', res.rows[0].now);
-    
+
     // Query tables in schema
-    pool.query(`
+    pool.query(
+      `
       SELECT table_name FROM information_schema.tables 
       WHERE table_schema = $1 ORDER BY table_name
-    `, [process.env.DB_SCHEMA], (err, res) => {
-      if (err) throw err;
-      console.log('\n📋 Tables in flashcards_schema:');
-      res.rows.forEach(r => console.log('  -', r.table_name));
-      pool.end();
-    });
+    `,
+      [process.env.DB_SCHEMA],
+      (err, res) => {
+        if (err) throw err;
+        console.log('\n📋 Tables in flashcards_schema:');
+        res.rows.forEach((r) => console.log('  -', r.table_name));
+        pool.end();
+      }
+    );
   }
 });
 ```
 
 Run test:
+
 ```bash
 node test-db.js
 ```
 
 Expected output:
+
 ```
 ✅ Connected to database!
 📊 Server time: 2024-10-29T...
@@ -263,6 +277,7 @@ Expected output:
 ```
 
 Checklist:
+
 - [ ] Connection test created
 - [ ] Command executed without errors
 - [ ] Shows "✅ Connected to database!"
@@ -271,6 +286,7 @@ Checklist:
 - [ ] Process completed cleanly
 
 Clean up test file:
+
 ```bash
 rm test-db.js
 ```
@@ -309,6 +325,7 @@ npm run dev
 ```
 
 Expected output:
+
 ```
 [nodemon] 3.0.1
 [nodemon] to restart at any time, type `rs`
@@ -324,6 +341,7 @@ Expected output:
 ```
 
 Checklist:
+
 - [ ] Server started with `npm run dev`
 - [ ] Shows "✅ Server running on http://localhost:5000"
 - [ ] Shows correct database and schema
@@ -342,6 +360,7 @@ curl http://localhost:5000/api/db-health
 Expected responses:
 
 **Health Check:**
+
 ```json
 {
   "status": "ok",
@@ -353,6 +372,7 @@ Expected responses:
 ```
 
 **DB Health Check:**
+
 ```json
 {
   "status": "ok",
@@ -363,6 +383,7 @@ Expected responses:
 ```
 
 Checklist:
+
 - [ ] `/api/health` endpoint responds with JSON
 - [ ] `/api/db-health` endpoint responds with JSON
 - [ ] Both show correct database name
@@ -401,19 +422,20 @@ All items checked off? Great! Your development environment is ready.
 ## 🆘 Troubleshooting
 
 If any step fails, check the troubleshooting section in:
+
 - `documents/DEV_ENVIRONMENT_SETUP.md`
 - `documents/MULTI_APP_ARCHITECTURE.md`
 - `SETUP_QUICK_START.md`
 
 Common issues:
 
-| Issue | Solution |
-|-------|----------|
-| "ENOTFOUND" on connection | Verify DB_HOST in .env is correct |
-| "Authentication failed" | Verify DB_PASSWORD in .env is correct |
-| "relation users does not exist" | Verify DB_SCHEMA=flashcards_schema in .env |
-| "Port 5000 already in use" | Change PORT in .env or kill process on port 5000 |
-| Tables not visible in pgAdmin | Right-click schema and hit Refresh |
+| Issue                           | Solution                                         |
+| ------------------------------- | ------------------------------------------------ |
+| "ENOTFOUND" on connection       | Verify DB_HOST in .env is correct                |
+| "Authentication failed"         | Verify DB_PASSWORD in .env is correct            |
+| "relation users does not exist" | Verify DB_SCHEMA=flashcards_schema in .env       |
+| "Port 5000 already in use"      | Change PORT in .env or kill process on port 5000 |
+| Tables not visible in pgAdmin   | Right-click schema and hit Refresh               |
 
 ---
 
@@ -436,4 +458,3 @@ Before you start development:
 - [ ] Both health check endpoints responding
 
 ✅ **Ready to code!**
-

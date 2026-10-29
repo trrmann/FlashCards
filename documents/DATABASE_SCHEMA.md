@@ -1,6 +1,7 @@
 # Database Schema for FlashCards
 
 ## Overview
+
 This document defines the PostgreSQL database schema for the FlashCards application. The schema is designed to support user authentication, flashcard management, spaced repetition practice, and quiz tracking.
 
 ---
@@ -45,6 +46,7 @@ This document defines the PostgreSQL database schema for the FlashCards applicat
 ## Tables
 
 ### 1. `users`
+
 Core user account information.
 
 ```sql
@@ -63,6 +65,7 @@ CREATE INDEX idx_users_email ON users(email);
 ```
 
 **Columns:**
+
 - `user_id`: Unique identifier (UUID)
 - `username`: Login identifier, must be unique
 - `email`: Contact email, must be unique
@@ -72,6 +75,7 @@ CREATE INDEX idx_users_email ON users(email);
 - `updated_at`: Last profile update timestamp
 
 **Notes:**
+
 - Do NOT store passwords in plaintext
 - Hash with bcryptjs (10+ rounds)
 - Updated_at should be updated on profile changes
@@ -79,6 +83,7 @@ CREATE INDEX idx_users_email ON users(email);
 ---
 
 ### 2. `flashcards`
+
 Flashcard definitions (question-answer pairs).
 
 ```sql
@@ -98,6 +103,7 @@ CREATE INDEX idx_flashcards_category ON flashcards(category, user_id);
 ```
 
 **Columns:**
+
 - `card_id`: Unique identifier (UUID)
 - `user_id`: Owner of the card (FK to users)
 - `question`: The front of the card (question/prompt)
@@ -108,12 +114,14 @@ CREATE INDEX idx_flashcards_category ON flashcards(category, user_id);
 - `updated_at`: Last modification timestamp
 
 **Constraints:**
+
 - `ON DELETE CASCADE`: When user is deleted, their cards are deleted
 - Difficulty must be between 1 and 5
 
 ---
 
 ### 3. `leitner_boxes`
+
 Leitner Box System tracking for each user-card pair.
 
 ```sql
@@ -137,6 +145,7 @@ CREATE INDEX idx_leitner_boxes_next_review ON leitner_boxes(user_id, next_review
 ```
 
 **Columns:**
+
 - `box_id`: Unique identifier
 - `user_id`: User who is studying this card
 - `card_id`: The card being studied
@@ -152,13 +161,14 @@ CREATE INDEX idx_leitner_boxes_next_review ON leitner_boxes(user_id, next_review
 
 The system uses 3 boxes with fixed review schedules:
 
-| Box | Review Schedule | Purpose | Promotion | Demotion |
-|-----|-----------------|---------|-----------|----------|
-| 1 | Daily | New cards & incorrect answers | 1 correct | N/A |
-| 2 | Every 2 days | Medium difficulty | 1 correct | 1 incorrect |
-| 3 | Weekly | Mastered cards | - | 1 incorrect |
+| Box | Review Schedule | Purpose                       | Promotion | Demotion    |
+| --- | --------------- | ----------------------------- | --------- | ----------- |
+| 1   | Daily           | New cards & incorrect answers | 1 correct | N/A         |
+| 2   | Every 2 days    | Medium difficulty             | 1 correct | 1 incorrect |
+| 3   | Weekly          | Mastered cards                | -         | 1 incorrect |
 
 **Flow Logic:**
+
 ```
 Card Answered Correctly:
   If box_number < 3:
@@ -180,6 +190,7 @@ Box Review Intervals:
 ```
 
 **Notes:**
+
 - UNIQUE constraint ensures one entry per user-card pair
 - Index on `box_number` enables efficient "cards due in this box" queries
 - Index on `next_review` enables efficient "cards due today" queries
@@ -189,6 +200,7 @@ Box Review Intervals:
 ---
 
 ### 4. `quizzes`
+
 Quiz templates (sets of questions grouped for testing).
 
 ```sql
@@ -205,6 +217,7 @@ CREATE INDEX idx_quizzes_user_id ON quizzes(user_id);
 ```
 
 **Columns:**
+
 - `quiz_id`: Unique identifier
 - `user_id`: Creator/owner of the quiz
 - `name`: Quiz title (e.g., "Chapter 3 Vocab Quiz")
@@ -215,6 +228,7 @@ CREATE INDEX idx_quizzes_user_id ON quizzes(user_id);
 ---
 
 ### 5. `quiz_questions`
+
 Composition of quizzes (which cards belong to which quiz, and in what order).
 
 ```sql
@@ -231,6 +245,7 @@ CREATE INDEX idx_quiz_questions_card_id ON quiz_questions(card_id);
 ```
 
 **Columns:**
+
 - `quiz_question_id`: Unique identifier
 - `quiz_id`: Which quiz this belongs to
 - `card_id`: Which flashcard is included
@@ -238,6 +253,7 @@ CREATE INDEX idx_quiz_questions_card_id ON quiz_questions(card_id);
 - `created_at`: When added to quiz
 
 **Notes:**
+
 - Allows cards to be reused across multiple quizzes
 - Order_index determines question sequence
 - Deleting a quiz cascades to delete all its questions
@@ -245,6 +261,7 @@ CREATE INDEX idx_quiz_questions_card_id ON quiz_questions(card_id);
 ---
 
 ### 6. `quiz_results`
+
 Results and scores from quiz attempts.
 
 ```sql
@@ -264,6 +281,7 @@ CREATE INDEX idx_quiz_results_taken_at ON quiz_results(user_id, taken_at DESC);
 ```
 
 **Columns:**
+
 - `result_id`: Unique identifier for this attempt
 - `quiz_id`: Which quiz was taken
 - `user_id`: Who took the quiz
@@ -273,6 +291,7 @@ CREATE INDEX idx_quiz_results_taken_at ON quiz_results(user_id, taken_at DESC);
 - `taken_at`: When the quiz was completed
 
 **Usage:**
+
 - Track user progress over time
 - Compare attempts on same quiz
 - Generate statistics and reports
@@ -280,6 +299,7 @@ CREATE INDEX idx_quiz_results_taken_at ON quiz_results(user_id, taken_at DESC);
 ---
 
 ### 7. `import_export_logs` (Optional)
+
 Audit log for flashcard imports and exports.
 
 ```sql
@@ -298,6 +318,7 @@ CREATE INDEX idx_import_export_logs_user_id ON import_export_logs(user_id, creat
 ```
 
 **Columns:**
+
 - `log_id`: Unique identifier
 - `user_id`: User who performed the action
 - `action`: Either 'import' or 'export'
@@ -308,6 +329,7 @@ CREATE INDEX idx_import_export_logs_user_id ON import_export_logs(user_id, creat
 - `created_at`: When the action occurred
 
 **Usage:**
+
 - Audit trail for data changes
 - Troubleshooting import failures
 - Usage analytics
@@ -317,6 +339,7 @@ CREATE INDEX idx_import_export_logs_user_id ON import_export_logs(user_id, creat
 ## Constraints & Relationships
 
 ### Foreign Keys (Referential Integrity)
+
 ```sql
 -- Flashcards belong to users
 ALTER TABLE flashcards
@@ -357,6 +380,7 @@ FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
 ```
 
 ### Cascade Delete Behavior
+
 - **User deleted** → All related cards, quizzes, practice matrices, results deleted
 - **Card deleted** → Removed from all quizzes and practice matrices
 - **Quiz deleted** → All its results are deleted (for history)
@@ -366,8 +390,9 @@ FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
 ## Sample Queries
 
 ### Get cards due for practice today (Box 1 - Daily)
+
 ```sql
-SELECT f.* 
+SELECT f.*
 FROM flashcards f
 JOIN leitner_boxes lb ON f.card_id = lb.card_id
 WHERE lb.user_id = $1
@@ -377,8 +402,9 @@ LIMIT 10;
 ```
 
 ### Get cards due for Box 2 (Every 2 days)
+
 ```sql
-SELECT f.* 
+SELECT f.*
 FROM flashcards f
 JOIN leitner_boxes lb ON f.card_id = lb.card_id
 WHERE lb.user_id = $1
@@ -388,8 +414,9 @@ ORDER BY lb.next_review ASC;
 ```
 
 ### Get mastered cards (Box 3)
+
 ```sql
-SELECT f.* 
+SELECT f.*
 FROM flashcards f
 JOIN leitner_boxes lb ON f.card_id = lb.card_id
 WHERE lb.user_id = $1
@@ -398,13 +425,14 @@ ORDER BY lb.next_review ASC;
 ```
 
 ### Get user's study statistics with Leitner boxes
+
 ```sql
-SELECT 
+SELECT
   COUNT(DISTINCT CASE WHEN lb.box_number = 1 THEN lb.card_id END) as box1_count,
   COUNT(DISTINCT CASE WHEN lb.box_number = 2 THEN lb.card_id END) as box2_count,
   COUNT(DISTINCT CASE WHEN lb.box_number = 3 THEN lb.card_id END) as box3_count,
   COUNT(DISTINCT lb.card_id) as total_cards,
-  ROUND(100.0 * SUM(lb.correct_count)::numeric / 
+  ROUND(100.0 * SUM(lb.correct_count)::numeric /
         NULLIF(SUM(lb.review_count), 0), 2) as accuracy_percent,
   MAX(lb.last_reviewed) as last_studied
 FROM leitner_boxes lb
@@ -412,13 +440,14 @@ WHERE lb.user_id = $1;
 ```
 
 ### Get cards due for review today across all boxes
+
 ```sql
-SELECT 
+SELECT
   f.card_id,
   f.question,
   lb.box_number,
   lb.next_review,
-  CASE 
+  CASE
     WHEN lb.box_number = 1 THEN 'Daily'
     WHEN lb.box_number = 2 THEN 'Every 2 Days'
     WHEN lb.box_number = 3 THEN 'Weekly'
@@ -450,6 +479,7 @@ INSERT INTO users (username, email, password_hash, full_name) VALUES
 ```
 
 Run with:
+
 ```bash
 psql postgresql://user:password@host/database < scripts/init-db.sql
 ```
@@ -459,16 +489,19 @@ psql postgresql://user:password@host/database < scripts/init-db.sql
 ## Backup & Recovery
 
 ### Manual Backup
+
 ```bash
 pg_dump postgresql://user:password@host:5432/database > backup.sql
 ```
 
 ### Restore from Backup
+
 ```bash
 psql postgresql://user:password@host:5432/database < backup.sql
 ```
 
 ### Render Automated Backups
+
 - Enabled by default
 - 7-day retention on free plan
 - Available in Render dashboard
@@ -478,12 +511,15 @@ psql postgresql://user:password@host:5432/database < backup.sql
 ## Performance Tuning
 
 ### Recommended Indexes
+
 Already included in table definitions above. Key ones:
+
 - `idx_flashcards_user_id`: Fast lookup of user's cards
 - `idx_practice_matrices_next_review`: Fast query for cards due for review
 - `idx_quiz_results_taken_at`: Time-series queries
 
 ### Statistics & Analysis
+
 ```sql
 -- Update statistics for query planner
 ANALYZE;
@@ -494,4 +530,3 @@ FROM pg_indexes
 WHERE schemaname = 'public'
 ORDER BY tablename, indexname;
 ```
-

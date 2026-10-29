@@ -46,6 +46,7 @@ postgresql://app_admin:<PASSWORD>@<HOST>:<PORT>/dev_apps
 **Keep this safe! You'll need it for the .env file.**
 
 Also note these individual components:
+
 - **Host**: `<HOST>` (e.g., `dpg-abc123.render-ov.postgres.databases.render.com`)
 - **Port**: `5432` (standard PostgreSQL port)
 - **Database**: `dev_apps` (shared by all applications)
@@ -67,6 +68,7 @@ npm install pg bcryptjs jsonwebtoken joi cors dotenv express-async-errors uuid
 ```
 
 **What each does:**
+
 - `pg` - PostgreSQL database client
 - `bcryptjs` - Password hashing
 - `jsonwebtoken` - JWT authentication tokens
@@ -89,16 +91,19 @@ touch .env
 Generate a secure random key (32 hex characters):
 
 **On macOS/Linux:**
+
 ```bash
 openssl rand -hex 32
 ```
 
 **On Windows (PowerShell):**
+
 ```powershell
 [System.Convert]::ToHexString([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
 ```
 
 This will output something like:
+
 ```
 a7f3d9e2c1b8a4f6d9e2c1b8a4f6d9e2c1b8a4f6d9e2c1b8a4f6d9e2c1b8a4
 ```
@@ -356,42 +361,42 @@ async function testConnection() {
     console.log(`📍 Connecting to: ${process.env.DB_HOST}`);
     console.log(`📦 Database: ${process.env.DB_NAME}`);
     console.log(`📋 Schema: ${process.env.DB_SCHEMA}`);
-    
+
     const client = await pool.connect();
     console.log('✅ Connected to PostgreSQL!');
-    
+
     // Set schema for this connection
     await client.query(`SET search_path TO ${process.env.DB_SCHEMA}`);
-    
+
     // Test query
     const result = await client.query('SELECT NOW()');
     console.log('✅ Query successful!');
     console.log(`📅 Server time: ${result.rows[0].now}`);
-    
+
     // Show tables in this app's schema
     const tables = await client.query(`
-      SELECT table_name 
-      FROM information_schema.tables 
+      SELECT table_name
+      FROM information_schema.tables
       WHERE table_schema = $1
       ORDER BY table_name
     `, [process.env.DB_SCHEMA]);
-    
+
     console.log(`\n📊 Tables in ${process.env.DB_SCHEMA} schema:`);
     tables.rows.forEach(row => console.log(`   - ${row.table_name}`));
-    
+
     // Show other schemas in this database (other apps)
     const schemas = await client.query(`
-      SELECT schema_name 
+      SELECT schema_name
       FROM information_schema.schemata
       WHERE schema_name NOT IN ('pg_catalog', 'information_schema', 'public')
       ORDER BY schema_name
     `);
-    
+
     if (schemas.rows.length > 0) {
       console.log(`\n🗂️  Other app schemas in ${process.env.DB_NAME}:`);
       schemas.rows.forEach(row => console.log(`   - ${row.schema_name}`));
     }
-    
+
     client.release();
     await pool.end();
     console.log('\n✅ All tests passed!');
@@ -517,7 +522,7 @@ app.locals.schema = process.env.DB_SCHEMA;
 
 // Basic health check
 app.get('/api/health', (req, res) => {
-  res.json({ 
+  res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
@@ -530,16 +535,16 @@ app.get('/api/health', (req, res) => {
 app.get('/api/db-health', async (req, res) => {
   try {
     const result = await pool.query('SELECT NOW()');
-    res.json({ 
+    res.json({
       status: 'ok',
       database: process.env.DB_NAME,
       schema: process.env.DB_SCHEMA,
       timestamp: result.rows[0].now
     });
   } catch (error) {
-    res.status(500).json({ 
+    res.status(500).json({
       status: 'error',
-      message: error.message 
+      message: error.message
     });
   }
 });
@@ -738,22 +743,26 @@ ENABLE_ANALYTICS=false
 Once everything above is complete:
 
 ### Phase 2: User Authentication (1-2 days)
+
 - Create user registration endpoint
 - Create user login endpoint
 - Create JWT token generation
 - Create password hashing with bcryptjs
 
 ### Phase 3: Flashcard CRUD (1-2 days)
+
 - Create flashcard management endpoints
 - Implement add/edit/delete/list cards
 
 ### Phase 4: Leitner System (2-3 days)
+
 - Create leitner_boxes service
 - Implement card promotion/demotion logic
 - Create practice endpoints
 - Implement box scheduling
 
 ### Phase 5: Quiz System (2-3 days)
+
 - Create quiz creation
 - Create quiz questions
 - Implement quiz taking
@@ -766,22 +775,29 @@ See `ROADMAP.md` for complete 10-phase timeline.
 ## Common Issues & Solutions
 
 ### Issue: "FATAL: role flashcards_user does not exist"
+
 **Solution:** Render may not have created the user yet. Wait 5 minutes and try again, or recreate the database.
 
 ### Issue: "connect ECONNREFUSED"
+
 **Solution:** Database isn't ready yet. Render takes 2-5 minutes after creation. Check Render dashboard.
 
 ### Issue: "SSL certificate problem"
+
 **Solution:** Already handled in our code with `rejectUnauthorized: false` for development.
 
 ### Issue: "password authentication failed"
-**Solution:** 
+
+**Solution:**
+
 - Check password includes special characters correctly
 - Copy from Render dashboard, not from URL (URL-encoded characters differ)
 - Try recreating database with simpler password
 
 ### Issue: "port 5000 already in use"
-**Solution:** 
+
+**Solution:**
+
 ```bash
 lsof -i :5000  # Find process using port
 kill -9 <PID>  # Kill the process
@@ -789,7 +805,9 @@ kill -9 <PID>  # Kill the process
 ```
 
 ### Issue: ".env file not being read"
-**Solution:** 
+
+**Solution:**
+
 - Ensure `require('dotenv').config();` is at top of server.js
 - Restart server after changing .env
 - Check file is named `.env` (not `.env.txt`)
@@ -835,4 +853,3 @@ If you encounter issues:
 5. Review server.js console output for error messages
 
 Good luck! 🚀
-

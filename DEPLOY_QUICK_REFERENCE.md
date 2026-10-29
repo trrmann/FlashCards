@@ -22,6 +22,7 @@
 ## What Each Command Does
 
 ### `./deploy.sh -dev`
+
 - ✅ Starts server on `http://localhost:5000`
 - ✅ Auto-kills any existing process on port 5000
 - ✅ Opens browser automatically when ready
@@ -30,6 +31,7 @@
 - ℹ️ **For:** Local development work
 
 ### `./deploy.sh -preview`
+
 - ✅ Same as `-dev` but used for final testing
 - ✅ Starts server on `http://localhost:5000`
 - ✅ Opens browser automatically when ready
@@ -37,6 +39,7 @@
 - ℹ️ **For:** Final local testing before production commit
 
 ### `./deploy.sh -prod`
+
 - ✅ Commits current code to GitHub (if changes exist)
 - ✅ Pushes to origin/main branch
 - ✅ Triggers Render's auto-deploy webhook
@@ -46,6 +49,7 @@
 - ℹ️ **For:** Production deployment to Render servers
 
 ### `./deploy.sh -all`
+
 - ✅ Runs all three environments sequentially
 - ✅ Order: dev → pause → preview → pause → prod
 - ✅ Pauses allow manual testing between environments
@@ -55,6 +59,7 @@
 ## Common Workflows
 
 ### Development Loop
+
 ```bash
 # 1. Make code changes
 # 2. Test locally
@@ -72,11 +77,13 @@ git commit -m "Your message"
 ```
 
 ### Quick Test After Code Change
+
 ```bash
 ./deploy.sh -dev
 ```
 
 ### Full Production Pipeline
+
 ```bash
 ./deploy.sh -all
 ```
@@ -92,11 +99,12 @@ Deployment logs are saved to `.deployment/last-run.log`:
 ```
 
 - **[INFO]** - Normal informational message
-- **[SUCCESS]** - Step completed successfully  
+- **[SUCCESS]** - Step completed successfully
 - **[WARN]** - Warning (deployment may continue)
 - **[ERROR]** - Error (deployment aborts)
 
 View the log:
+
 ```bash
 cat .deployment/last-run.log
 tail -50 .deployment/last-run.log  # Last 50 lines
@@ -105,6 +113,7 @@ tail -50 .deployment/last-run.log  # Last 50 lines
 ## Prerequisites Checked
 
 The script automatically verifies:
+
 - ✅ Node.js is installed
 - ✅ npm is installed
 - ✅ git is installed
@@ -116,29 +125,34 @@ If any prerequisite fails, the script exits with a helpful error message.
 ## Troubleshooting
 
 ### Port 5000 Already in Use
+
 ```
 ✓ Script automatically kills the existing process
 ✓ If it fails, manually: lsof -i :5000 | grep node | awk '{print $2}' | xargs kill -9
 ```
 
 ### Uncommitted Changes Before -prod
+
 ```
 ✓ Script will commit changes with message "Deployment commit"
 ✓ Or manually: git add . && git commit -m "Your message"
 ```
 
 ### Check Git Status
+
 ```bash
 git status
 git log --oneline -5  # See recent commits
 ```
 
 ### View Full Deployment Log
+
 ```bash
 cat .deployment/last-run.log
 ```
 
 ### Re-run Failed Deployment
+
 ```bash
 # Same command as before - scripts are rerunnable
 ./deploy.sh -dev   # or -preview, -prod, -all
@@ -146,17 +160,18 @@ cat .deployment/last-run.log
 
 ## Environment Difference
 
-| Aspect | Dev | Preview | Prod |
-|--------|-----|---------|------|
-| **Server** | localhost:5000 | localhost:5000 | Render.com |
-| **Database** | Render Remote | Render Remote | Render Remote |
-| **Purpose** | Development | Final Testing | Live |
-| **Code** | Local | Local | Deployed |
-| **Browser** | Auto-opens | Auto-opens | Manual check |
+| Aspect       | Dev            | Preview        | Prod          |
+| ------------ | -------------- | -------------- | ------------- |
+| **Server**   | localhost:5000 | localhost:5000 | Render.com    |
+| **Database** | Render Remote  | Render Remote  | Render Remote |
+| **Purpose**  | Development    | Final Testing  | Live          |
+| **Code**     | Local          | Local          | Deployed      |
+| **Browser**  | Auto-opens     | Auto-opens     | Manual check  |
 
 ## Git Status Before Production
 
 Before running `./deploy.sh -prod`:
+
 ```bash
 # Check for uncommitted changes
 git status

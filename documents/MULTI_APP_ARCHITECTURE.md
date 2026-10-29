@@ -46,26 +46,31 @@ Instead of creating a separate database for each application, we use **one Postg
 ## Benefits of This Architecture
 
 ### 1. **Cost Efficient** 💰
+
 - Only one database instance on Render (Free tier sufficient for dev/test)
 - One connection pool shared for development
 - No extra database hosting costs
 
 ### 2. **Easy Management** 🎯
+
 - Single pgAdmin connection to view all apps
 - Centralized backup strategy
 - Simplified credential management
 
 ### 3. **Data Isolation** 🔒
+
 - Each app has its own schema
 - Can't accidentally query another app's tables
 - Identical table names don't conflict (e.g., both have `users` table)
 
 ### 4. **Scalability** 📈
+
 - Easy to add new applications
 - No migration needed when adding 4th, 5th app
 - Simple to split databases later if needed
 
 ### 5. **Development Flexibility** 🔧
+
 - Share utility functions in `public` schema
 - Test cross-schema queries (rare but possible)
 - Learn PostgreSQL schema concepts
@@ -88,6 +93,7 @@ Database = Hard Drive
 ### Each App Gets Its Own Schema
 
 **FlashCards App:**
+
 ```
 dev_apps.flashcards_schema.users
 dev_apps.flashcards_schema.flashcards
@@ -95,6 +101,7 @@ dev_apps.flashcards_schema.leitner_boxes
 ```
 
 **Todos App** (hypothetical):
+
 ```
 dev_apps.todos_schema.users
 dev_apps.todos_schema.todos
@@ -219,6 +226,7 @@ DB_SCHEMA=todos_schema
 ### Step 4: Done!
 
 The Todos app now:
+
 - Uses the same database connection
 - Has its own completely isolated tables
 - Doesn't see FlashCards data
@@ -233,23 +241,28 @@ The Todos app now:
 Each app has its own `users` table. Three approaches:
 
 **Option A: Fully Separate** (Current)
+
 ```
 flashcards_schema.users (for FlashCards login)
 todos_schema.users (for Todos login)
 ```
+
 - Pro: Complete isolation
 - Con: Can't share auth across apps
 
 **Option B: Shared Users**
+
 ```
 public.users (shared by all apps)
 flashcards_schema.* (app-specific tables)
 todos_schema.* (app-specific tables)
 ```
+
 - Pro: Single login for all apps
 - Con: Requires cross-schema relationships
 
 **Option C: Hybrid** (Recommended)
+
 ```
 public.users (single auth system)
 flashcards_schema.* (app-specific)
@@ -371,7 +384,8 @@ GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA todos_schema TO app_admin;
 
 **Problem:** Tables not showing in the correct schema.
 
-**Solution:** 
+**Solution:**
+
 1. Right-click schema → **Refresh**
 2. Check schema name exactly matches
 3. Verify SQL executed with correct `SET search_path` statement
@@ -393,6 +407,7 @@ DB_POOL_MAX=20  # Instead of default 10
 As your applications grow, you can migrate to separate databases without code changes:
 
 **Phase 1: Single Database (Now)**
+
 ```
 dev_apps
 ├─ flashcards_schema
@@ -400,6 +415,7 @@ dev_apps
 ```
 
 **Phase 2: Separate Dev Databases**
+
 ```
 flashcards_db (on render.com)
 todos_db (on render.com)
@@ -426,7 +442,6 @@ DB_SCHEMA=public  # Or keep using flashcards_schema if preferred
 ✅ **Complete isolation** (can't accidentally access other app data)  
 ✅ **Cost efficient** (free tier sufficient for dev)  
 ✅ **Easy to scale** (just add a new schema)  
-✅ **Future proof** (can split to separate databases later)  
+✅ **Future proof** (can split to separate databases later)
 
 This architecture is perfect for a developer working on multiple projects!
-

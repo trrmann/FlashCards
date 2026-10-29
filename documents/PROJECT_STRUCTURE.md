@@ -1,9 +1,11 @@
 # FlashCards Project Structure
 
 ## Overview
+
 FlashCards is an Express.js-based web application for studying flashcards. The project aims to help users practice and quiz themselves using customizable study matrices with PostgreSQL backend storage.
 
 **Tech Stack:**
+
 - **Frontend:** EJS templates, HTML, CSS (responsive design)
 - **Backend:** Node.js with Express.js v5.3.0
 - **Database:** PostgreSQL (Render - planned)
@@ -58,6 +60,7 @@ FlashCards/
 ## Current Components
 
 ### Server (server.js)
+
 - Express application setup
 - Static middleware for public assets
 - EJS view engine configuration
@@ -65,19 +68,21 @@ FlashCards/
 - Error handling (async route handlers)
 
 ### Routes
-| Route | Purpose | Status |
-|-------|---------|--------|
-| `GET /` | Home page | ✅ Defined |
-| `GET /login` | User login | ✅ Defined |
-| `GET /profile` | User profile management | ✅ Defined |
-| `GET /entries` | Manage flashcard entries | ✅ Defined |
-| `GET /practice` | Practice mode | ✅ Defined |
-| `GET /quiz` | Quiz mode | ✅ Defined |
-| `GET /logout` | User logout | ✅ Defined |
+
+| Route           | Purpose                  | Status     |
+| --------------- | ------------------------ | ---------- |
+| `GET /`         | Home page                | ✅ Defined |
+| `GET /login`    | User login               | ✅ Defined |
+| `GET /profile`  | User profile management  | ✅ Defined |
+| `GET /entries`  | Manage flashcard entries | ✅ Defined |
+| `GET /practice` | Practice mode            | ✅ Defined |
+| `GET /quiz`     | Quiz mode                | ✅ Defined |
+| `GET /logout`   | User logout              | ✅ Defined |
 
 ### Data Models (Planned)
 
 #### User
+
 ```
 - user_id (UUID, PK)
 - username (VARCHAR, UNIQUE)
@@ -89,6 +94,7 @@ FlashCards/
 ```
 
 #### FlashCard
+
 ```
 - card_id (UUID, PK)
 - user_id (UUID, FK)
@@ -101,6 +107,7 @@ FlashCards/
 ```
 
 #### PracticeMatrix
+
 ```
 - matrix_id (UUID, PK)
 - user_id (UUID, FK)
@@ -113,6 +120,7 @@ FlashCards/
 ```
 
 #### Quiz
+
 ```
 - quiz_id (UUID, PK)
 - user_id (UUID, FK)
@@ -122,6 +130,7 @@ FlashCards/
 ```
 
 #### QuizQuestion
+
 ```
 - quiz_question_id (UUID, PK)
 - quiz_id (UUID, FK)
@@ -130,6 +139,7 @@ FlashCards/
 ```
 
 #### QuizResult
+
 ```
 - result_id (UUID, PK)
 - quiz_id (UUID, FK)
@@ -144,13 +154,16 @@ FlashCards/
 ## Technology Dependencies
 
 ### Production Dependencies
+
 - **express** (v5.3.0) - Web framework
 - **ejs** (v7.0.2) - Templating engine
 
 ### Development Dependencies
+
 - **nodemon** (v3.1.14) - Auto-restart server during development
 
 ### Planned Dependencies
+
 - **pg** or **postgres** - PostgreSQL client
 - **bcryptjs** - Password hashing
 - **jsonwebtoken** (JWT) - Authentication tokens
@@ -163,18 +176,21 @@ FlashCards/
 ## Running the Project
 
 ### Development
+
 ```bash
 npm install
 npm run dev          # Runs with nodemon
 ```
 
 ### Production
+
 ```bash
 npm install --production
 npm start            # Runs server.js
 ```
 
 ### Environment
+
 - Default port: 3000 (configurable via `PORT` env var)
 - Environment: Set via `NODE_ENV` (defaults to 'production')
 
@@ -183,28 +199,33 @@ npm start            # Runs server.js
 ## Future Development Areas
 
 ### Phase 1: Authentication & User Management
+
 - [ ] Database setup and connection
 - [ ] User registration/login endpoints
 - [ ] Session/JWT management
 - [ ] Password hashing and security
 
 ### Phase 2: Flashcard Management
+
 - [ ] Create/Read/Update/Delete flashcards
 - [ ] Category organization
 - [ ] Difficulty ratings
 - [ ] File import/export (JSON)
 
 ### Phase 3: Practice System
+
 - [ ] Practice mode with configurable matrix
 - [ ] Spaced repetition algorithm (SRS)
 - [ ] Progress tracking
 
 ### Phase 4: Quiz System
+
 - [ ] Quiz creation from question sets
 - [ ] Quiz taking interface
 - [ ] Result tracking and analytics
 
 ### Phase 5: Additional Features
+
 - [ ] pgAdmin integration
 - [ ] Export/Import functionality
 - [ ] User statistics and progress reporting
@@ -213,9 +234,9 @@ npm start            # Runs server.js
 ---
 
 ## Known Issues
+
 - Login and profile forms missing form tags
 - No CSS styling currently (framework in place)
 - All routes are GET, no POST/PUT/DELETE implementation
 - No database integration yet
 - No authentication logic
-

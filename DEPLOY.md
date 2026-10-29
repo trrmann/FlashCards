@@ -54,6 +54,7 @@ One-command deployments to dev, preview, prod, or all environments.
 ## Environments
 
 ### -dev (Development)
+
 - Server: localhost:5000
 - Database: Render (remote)
 - When: During active development
@@ -61,6 +62,7 @@ One-command deployments to dev, preview, prod, or all environments.
 - Rerunnable: Yes (kills previous process)
 
 ### -preview (Preview)
+
 - Server: localhost:5000
 - Database: Render (remote)
 - When: Final local testing before prod
@@ -68,6 +70,7 @@ One-command deployments to dev, preview, prod, or all environments.
 - Rerunnable: Yes (kills previous process)
 
 ### -prod (Production)
+
 - Server: Render cloud (not local)
 - Database: Render (remote)
 - When: Ready to ship live
@@ -76,6 +79,7 @@ One-command deployments to dev, preview, prod, or all environments.
 - Rerunnable: Yes (if no uncommitted changes)
 
 ### -all (All Environments)
+
 - Runs dev → preview → prod in sequence
 - Pauses between each for manual testing
 - Press Enter to proceed to next environment
@@ -85,6 +89,7 @@ One-command deployments to dev, preview, prod, or all environments.
 **Location:** `.deployment/last-run.log`
 
 **Contains:**
+
 - Timestamp for each operation
 - Success/warning/error messages
 - Full output from npm commands
@@ -97,18 +102,21 @@ One-command deployments to dev, preview, prod, or all environments.
 ## Requirements
 
 ### Must Exist:
+
 - `.env` file with database credentials
 - `server.js` file
 - Git repository initialized
 - GitHub remote configured (for prod)
 
 ### Optional:
+
 - `npm run lint` - will run if exists
 - `npm run test` - will run if exists
 
 ## Examples
 
 ### Daily Development
+
 ```bash
 # Start work
 ./deploy.sh -dev
@@ -123,6 +131,7 @@ git commit -m "Feature: add user profiles"
 ```
 
 ### Testing New Feature
+
 ```bash
 # Develop locally
 ./deploy.sh -dev
@@ -136,6 +145,7 @@ git push origin main
 ```
 
 ### Full Testing Pipeline
+
 ```bash
 # Test everything
 ./deploy.sh -all
@@ -151,20 +161,24 @@ git push origin main
 ## Troubleshooting
 
 ### "Permission denied" on deploy.sh
+
 ```bash
 chmod +x deploy.sh
 ```
 
 ### "Port 5000 already in use"
+
 - Script kills existing process automatically
 - If it doesn't work: `lsof -i :5000` and `kill -9 <PID>`
 
 ### ".env file not found"
+
 - Create .env from .env.example
 - Fill in your 4 critical values
 - Must be in project root
 
 ### "git push failed" in prod
+
 - Check your branch is main (or configured)
 - Check uncommitted changes
 - Commit and push manually:
@@ -176,6 +190,7 @@ chmod +x deploy.sh
   ```
 
 ### "Server failed to start" in dev/preview
+
 - Check .env DATABASE_URL is correct
 - Check Render database is running
 - Check port 5000 is available
@@ -184,11 +199,13 @@ chmod +x deploy.sh
 ## Log File
 
 View deployment history:
+
 ```bash
 cat .deployment/last-run.log
 ```
 
 Or with timestamps:
+
 ```bash
 tail -f .deployment/last-run.log
 ```
@@ -216,6 +233,7 @@ All operations are idempotent - safe to repeat.
 ## How It Works
 
 ### Dev/Preview Flow:
+
 1. Checks everything
 2. Kills existing process on port 5000
 3. Starts `npm run dev` (NODE_ENV=dev or preview)
@@ -224,6 +242,7 @@ All operations are idempotent - safe to repeat.
 6. Server continues running in background
 
 ### Prod Flow:
+
 1. Checks everything
 2. Verifies no uncommitted changes
 3. Pushes to GitHub `main` branch
@@ -234,11 +253,13 @@ All operations are idempotent - safe to repeat.
 ## Stopping Services
 
 **Stop dev/preview server:**
+
 ```bash
 kill $(lsof -t -i :5000)
 ```
 
 **Or switch environments** (script kills automatically):
+
 ```bash
 ./deploy.sh -dev   # Start dev
 # Later...
@@ -253,6 +274,7 @@ kill $(lsof -t -i :5000)
 ## Integration with CI/CD
 
 This script is designed for local development. For CI/CD:
+
 - Dev/Preview: Run in your local dev environment
 - Prod: GitHub Actions/Render webhooks handle auto-deploy
 
@@ -263,4 +285,3 @@ This script is designed for local development. For CI/CD:
 - **Rerunnable:** Safe to run multiple times
 - **Idempotent:** Same result if run twice
 - **Browser:** Automatically opens if command available on OS
-

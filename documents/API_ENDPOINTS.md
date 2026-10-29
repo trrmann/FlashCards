@@ -1,11 +1,14 @@
 # API Endpoints for FlashCards
 
 ## Base URL
+
 - **Development**: `http://localhost:3000`
 - **Production**: `https://flashcards-app.onrender.com`
 
 ## Authentication
+
 Most endpoints require a JWT token in the `Authorization` header:
+
 ```
 Authorization: Bearer <JWT_TOKEN>
 ```
@@ -17,9 +20,11 @@ Tokens are obtained via login endpoint and should be stored in HttpOnly cookies 
 ## Authentication Endpoints
 
 ### POST /api/auth/register
+
 Register a new user account.
 
 **Request:**
+
 ```json
 {
   "username": "newuser",
@@ -30,6 +35,7 @@ Register a new user account.
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -46,10 +52,12 @@ Register a new user account.
 ```
 
 **Error Responses:**
+
 - `400`: Invalid input (missing fields, weak password)
 - `409`: Username or email already exists
 
 **Validation Rules:**
+
 - Username: 3-50 characters, alphanumeric + underscore
 - Email: Valid email format
 - Password: Min 8 characters, at least 1 uppercase, 1 number, 1 special char
@@ -57,9 +65,11 @@ Register a new user account.
 ---
 
 ### POST /api/auth/login
+
 Authenticate user and receive JWT token.
 
 **Request:**
+
 ```json
 {
   "username": "newuser",
@@ -68,6 +78,7 @@ Authenticate user and receive JWT token.
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -82,11 +93,13 @@ Authenticate user and receive JWT token.
 ```
 
 **Error Responses:**
+
 - `400`: Missing username or password
 - `401`: Invalid username or password
 - `429`: Too many login attempts (rate limited)
 
 **Token Expiration:**
+
 - Default: 7 days
 - Can be configured via JWT_EXPIRE env var
 - Client should handle token refresh or re-login
@@ -94,14 +107,17 @@ Authenticate user and receive JWT token.
 ---
 
 ### POST /api/auth/logout
+
 Invalidate current session.
 
 **Request:**
+
 ```
 Authorization: Bearer <TOKEN>
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -110,15 +126,18 @@ Authorization: Bearer <TOKEN>
 ```
 
 **Implementation Note:**
+
 - If using server-side sessions: blacklist token
 - If using stateless JWT: just remove client-side token
 
 ---
 
 ### POST /api/auth/refresh
+
 Refresh an expired JWT token.
 
 **Request:**
+
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIs..."
@@ -126,6 +145,7 @@ Refresh an expired JWT token.
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIs...",
@@ -134,6 +154,7 @@ Refresh an expired JWT token.
 ```
 
 **Error Responses:**
+
 - `401`: Invalid or expired token
 
 ---
@@ -141,14 +162,17 @@ Refresh an expired JWT token.
 ## User Profile Endpoints
 
 ### GET /api/profile
+
 Get current user's profile information.
 
 **Request:**
+
 ```
 Authorization: Bearer <TOKEN>
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "user": {
@@ -165,9 +189,11 @@ Authorization: Bearer <TOKEN>
 ---
 
 ### PUT /api/profile
+
 Update user profile information.
 
 **Request:**
+
 ```json
 {
   "fullName": "Jane Doe",
@@ -178,11 +204,13 @@ Update user profile information.
 ```
 
 **Notes:**
+
 - `currentPassword` required if changing password
 - Email must be unique across system
 - Can update any field independently
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -198,6 +226,7 @@ Update user profile information.
 ```
 
 **Error Responses:**
+
 - `400`: Invalid input or current password incorrect
 - `409`: New email already in use
 
@@ -206,9 +235,11 @@ Update user profile information.
 ## Flashcard Endpoints
 
 ### POST /api/cards
+
 Create a new flashcard.
 
 **Request:**
+
 ```json
 {
   "question": "What is the capital of France?",
@@ -219,6 +250,7 @@ Create a new flashcard.
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -235,6 +267,7 @@ Create a new flashcard.
 ```
 
 **Validation:**
+
 - `question`: Required, max 1000 characters
 - `answer`: Required, max 5000 characters
 - `category`: Optional, max 100 characters
@@ -243,21 +276,25 @@ Create a new flashcard.
 ---
 
 ### GET /api/cards
+
 List all user's flashcards.
 
 **Query Parameters:**
+
 - `category`: Filter by category (optional)
 - `difficulty`: Filter by difficulty (optional)
 - `page`: Pagination page (default: 1)
 - `limit`: Items per page (default: 20, max: 100)
 
 **Request:**
+
 ```
 GET /api/cards?category=Geography&page=1&limit=20
 Authorization: Bearer <TOKEN>
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "cards": [
@@ -283,14 +320,17 @@ Authorization: Bearer <TOKEN>
 ---
 
 ### GET /api/cards/:cardId
+
 Get a specific flashcard.
 
 **Request:**
+
 ```
 Authorization: Bearer <TOKEN>
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "card": {
@@ -306,14 +346,17 @@ Authorization: Bearer <TOKEN>
 ```
 
 **Error Response:**
+
 - `404`: Card not found or not owned by user
 
 ---
 
 ### PUT /api/cards/:cardId
+
 Update a flashcard.
 
 **Request:**
+
 ```json
 {
   "question": "What is the capital of Germany?",
@@ -322,6 +365,7 @@ Update a flashcard.
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -339,19 +383,23 @@ Update a flashcard.
 ---
 
 ### DELETE /api/cards/:cardId
+
 Delete a flashcard.
 
 **Request:**
+
 ```
 Authorization: Bearer <TOKEN>
 ```
 
 **Success Response (204):**
+
 ```
 No content
 ```
 
 **Error Response:**
+
 - `404`: Card not found
 
 ---
@@ -359,9 +407,11 @@ No content
 ## Practice Mode Endpoints
 
 ### POST /api/practice/start
+
 Start a new practice session.
 
 **Request:**
+
 ```json
 {
   "sessionType": "daily",
@@ -371,12 +421,14 @@ Start a new practice session.
 ```
 
 **Session Types:**
+
 - `daily`: Study cards due today (default)
 - `all`: Study all cards
 - `category`: Study specific category
 - `new`: Study only new cards
 
 **Success Response (200):**
+
 ```json
 {
   "sessionId": "session-550e8400",
@@ -389,14 +441,17 @@ Start a new practice session.
 ---
 
 ### GET /api/practice/:sessionId/card
+
 Get next card for practice in current session.
 
 **Request:**
+
 ```
 Authorization: Bearer <TOKEN>
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "card": {
@@ -415,9 +470,11 @@ Authorization: Bearer <TOKEN>
 ---
 
 ### POST /api/practice/:sessionId/answer
+
 Submit answer for current card in Leitner Box system.
 
 **Request:**
+
 ```json
 {
   "cardId": "660e8400-e29b-41d4-a716-446655440001",
@@ -426,10 +483,12 @@ Submit answer for current card in Leitner Box system.
 ```
 
 **Parameters:**
+
 - `cardId`: The card being answered
 - `correct`: Boolean - whether the answer was correct
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -456,6 +515,7 @@ Submit answer for current card in Leitner Box system.
 ```
 
 **If Answer Incorrect (Demotion):**
+
 ```json
 {
   "success": true,
@@ -477,6 +537,7 @@ Submit answer for current card in Leitner Box system.
 ```
 
 **Leitner Box Rules:**
+
 - **Correct Answer**: Card promoted to next box (max Box 3)
   - Box 1 → Box 2: Next review in 2 days
   - Box 2 → Box 3: Next review in 7 days
@@ -489,9 +550,11 @@ Submit answer for current card in Leitner Box system.
 ---
 
 ### POST /api/practice/:sessionId/end
+
 End current practice session and get summary.
 
 **Request:**
+
 ```json
 {
   "sessionFeedback": "optional feedback"
@@ -499,6 +562,7 @@ End current practice session and get summary.
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -521,21 +585,21 @@ End current practice session and get summary.
 ## Quiz Endpoints
 
 ### POST /api/quizzes
+
 Create a new quiz from existing cards.
 
 **Request:**
+
 ```json
 {
   "name": "Chapter 3 Vocabulary",
   "description": "Test vocab from chapter 3",
-  "cardIds": [
-    "660e8400-e29b-41d4-a716-446655440001",
-    "660e8400-e29b-41d4-a716-446655440002"
-  ]
+  "cardIds": ["660e8400-e29b-41d4-a716-446655440001", "660e8400-e29b-41d4-a716-446655440002"]
 }
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -552,13 +616,16 @@ Create a new quiz from existing cards.
 ---
 
 ### GET /api/quizzes
+
 List all user's quizzes.
 
 **Query Parameters:**
+
 - `page`: Pagination page (default: 1)
 - `limit`: Items per page (default: 20)
 
 **Success Response (200):**
+
 ```json
 {
   "quizzes": [
@@ -583,9 +650,11 @@ List all user's quizzes.
 ---
 
 ### GET /api/quizzes/:quizId
+
 Get specific quiz details.
 
 **Success Response (200):**
+
 ```json
 {
   "quiz": {
@@ -607,14 +676,17 @@ Get specific quiz details.
 ---
 
 ### POST /api/quizzes/:quizId/take
+
 Start taking a quiz.
 
 **Request:**
+
 ```
 Authorization: Bearer <TOKEN>
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "attemptId": "attempt-660e8400",
@@ -633,9 +705,11 @@ Authorization: Bearer <TOKEN>
 ---
 
 ### POST /api/quizzes/:quizId/answer
+
 Submit answer to quiz question.
 
 **Request:**
+
 ```json
 {
   "attemptId": "attempt-660e8400",
@@ -645,6 +719,7 @@ Submit answer to quiz question.
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -661,9 +736,11 @@ Submit answer to quiz question.
 ---
 
 ### POST /api/quizzes/:quizId/submit
+
 Submit completed quiz and get results.
 
 **Request:**
+
 ```json
 {
   "attemptId": "attempt-660e8400",
@@ -672,6 +749,7 @@ Submit completed quiz and get results.
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -701,9 +779,11 @@ Submit completed quiz and get results.
 ## Import/Export Endpoints
 
 ### POST /api/cards/import
+
 Import flashcards from JSON file.
 
 **Request (Multipart Form Data):**
+
 ```
 Content-Type: multipart/form-data
 Authorization: Bearer <TOKEN>
@@ -713,6 +793,7 @@ overwrites: false (optional, default false)
 ```
 
 **Expected JSON Format:**
+
 ```json
 {
   "cards": [
@@ -733,6 +814,7 @@ overwrites: false (optional, default false)
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -744,6 +826,7 @@ overwrites: false (optional, default false)
 ```
 
 **Error Responses:**
+
 - `400`: Invalid file format
 - `413`: File too large
 - `422`: Validation errors in cards
@@ -751,19 +834,23 @@ overwrites: false (optional, default false)
 ---
 
 ### GET /api/cards/export
+
 Export all user's flashcards as JSON file.
 
 **Query Parameters:**
+
 - `category`: Export only specific category (optional)
 - `format`: json or csv (default: json)
 
 **Request:**
+
 ```
 GET /api/cards/export?format=json
 Authorization: Bearer <TOKEN>
 ```
 
 **Success Response (200 with file download):**
+
 ```
 Content-Type: application/json
 Content-Disposition: attachment; filename="flashcards_2024-10-29.json"
@@ -801,6 +888,7 @@ All error responses follow this format:
 ```
 
 **Common Error Codes:**
+
 - `INVALID_INPUT`: Validation failed
 - `UNAUTHORIZED`: Missing or invalid token
 - `FORBIDDEN`: User lacks permission
@@ -824,10 +912,12 @@ All error responses follow this format:
 All list endpoints support pagination:
 
 **Query Parameters:**
+
 - `page`: Page number (default: 1, min: 1)
 - `limit`: Items per page (default: 20, max: 100)
 
 **Response Structure:**
+
 ```json
 {
   "items": [...],
@@ -841,4 +931,3 @@ All list endpoints support pagination:
   }
 }
 ```
-

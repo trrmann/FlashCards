@@ -3,6 +3,7 @@
 The `deploy.sh` script can now be executed from anywhere in the terminal while in the project. Here are your options:
 
 ## Option 1: Run from Project Root (Recommended)
+
 Always run the script from the project root directory:
 
 ```bash
@@ -11,14 +12,17 @@ cd /home/tmann/Documents/Projects/FlashCards
 ```
 
 ## Option 2: Use Full Path from Anywhere
+
 ```bash
 /home/tmann/Documents/Projects/FlashCards/deploy.sh -dev
 ```
 
 ## Option 3: Add Project Alias to Shell Profile
+
 Create an alias in your shell configuration so you can use `deploy` from anywhere.
 
 ### For Bash Users (.bashrc)
+
 ```bash
 # Add this line to ~/.bashrc
 alias deploy='/home/tmann/Documents/Projects/FlashCards/deploy.sh'
@@ -34,6 +38,7 @@ deploy -all
 ```
 
 ### For Zsh Users (.zshrc)
+
 ```bash
 # Add this line to ~/.zshrc
 alias deploy='/home/tmann/Documents/Projects/FlashCards/deploy.sh'
@@ -46,6 +51,7 @@ deploy -dev
 ```
 
 ## Option 4: Add to PATH
+
 Add the deploy script directory to your PATH:
 
 ```bash
@@ -60,6 +66,7 @@ deploy.sh -dev
 ```
 
 ## Option 5: Create a Global Script Link
+
 Create a symbolic link in a directory that's already in your PATH:
 
 ```bash
@@ -87,6 +94,7 @@ The script has been updated to:
 3. **Set all paths relative to project root** (logs, .env, server.js)
 
 This means:
+
 - ✅ You can call it with a full path from anywhere: `/home/tmann/Documents/Projects/FlashCards/deploy.sh -dev`
 - ✅ You can call it with `./deploy.sh` from the project root
 - ✅ You can add it as an alias for convenience
@@ -102,6 +110,7 @@ alias deploy='cd /home/tmann/Documents/Projects/FlashCards && ./deploy.sh'
 ```
 
 Then from anywhere in your terminal:
+
 ```bash
 deploy -dev        # Start development
 deploy -preview    # Test preview
