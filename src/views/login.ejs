@@ -137,7 +137,9 @@
           if (response.ok) {
             statusDiv.innerHTML = '<p class="success">Login successful! Redirecting...</p>';
             setTimeout(() => {
-              window.location.href = '/profile';
+              // Redirect to last visited page, or default to /home
+              const redirectTo = data.redirectTo || '/home';
+              window.location.href = redirectTo;
             }, 1000);
           } else {
             statusDiv.innerHTML = `<p class="error">Login failed: ${data.message}</p>`;

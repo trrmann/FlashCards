@@ -6,10 +6,12 @@ import pgSession from 'connect-pg-simple';
 
 import { appSiteData } from './src/js/appSiteData.js';
 import { initializeDatabase, healthCheck, query, pool } from './src/db/connection.mjs';
+import { runMigrations } from './src/db/migrations.mjs';
 import authRoutes from './src/routes/auth.mjs';
 import userRoutes from './src/routes/users.mjs';
 import adminRoutes from './src/routes/admin.mjs';
 import systemRoutes from './src/routes/system.mjs';
+import navigationRoutes from './src/routes/navigation.mjs';
 
 // Define the application environment.
 const NODE_ENV = process.env.NODE_ENV?.toLocaleLowerCase() || 'production';
@@ -193,6 +195,9 @@ app.use('/api/auth', authRoutes);
 // User routes
 app.use('/api/users', userRoutes);
 
+// Navigation routes (page tracking, history)
+app.use('/api/navigation', navigationRoutes);
+
 // Admin routes
 app.use('/api/admin', adminRoutes);
 
@@ -209,5 +214,8 @@ app.listen(port, async () => {
   const dbReady = await initializeDatabase();
   if (!dbReady) {
     console.warn('⚠️ Warning: Database connection failed. Some features may be unavailable.');
+  } else {
+    // Run database migrations
+    await runMigrations();
   }
 });

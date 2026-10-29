@@ -166,6 +166,10 @@ router.post('/login', express.json(), async (req, res) => {
       });
     }
 
+    // Get user's last visited page
+    const { getLastPageVisited } = await import('../auth/user.mjs');
+    const lastPage = await getLastPageVisited(user.user_id);
+
     // Set session
     req.session.userId = user.user_id;
     req.session.username = user.username;
@@ -192,6 +196,7 @@ router.post('/login', express.json(), async (req, res) => {
         email: user.email,
         full_name: user.full_name,
       },
+      redirectTo: lastPage,
     });
   } catch (error) {
     console.error('Login error:', error.message);

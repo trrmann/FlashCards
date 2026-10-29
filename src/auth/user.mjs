@@ -204,6 +204,35 @@ export async function isAdmin(userId) {
 }
 
 /**
+ * Update user's last visited page
+ * @param {string} userId - User ID
+ * @param {string} page - Page path (e.g., '/home', '/study', '/quiz')
+ * @returns {Promise<string>} Updated page path
+ */
+export async function updateLastPageVisited(userId, page) {
+  const result = await query(
+    `UPDATE users 
+     SET last_page_visited = $1, last_visited_at = NOW()
+     WHERE user_id = $2
+     RETURNING last_page_visited`,
+    [page, userId]
+  );
+
+  return result.rows[0]?.last_page_visited || '/';
+}
+
+/**
+ * Get user's last visited page
+ * @param {string} userId - User ID
+ * @returns {Promise<string>} Last visited page path (defaults to '/')
+ */
+export async function getLastPageVisited(userId) {
+  const result = await query('SELECT last_page_visited FROM users WHERE user_id = $1', [userId]);
+
+  return result.rows[0]?.last_page_visited || '/';
+}
+
+/**
  * Check if username is available
  * @param {string} username - Username to check
  * @returns {Promise<boolean>} True if username is available
