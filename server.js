@@ -7,6 +7,7 @@ import { appSiteData } from './src/js/appSiteData.js';
 import { initializeDatabase, healthCheck } from './src/db/connection.mjs';
 import authRoutes from './src/routes/auth.mjs';
 import userRoutes from './src/routes/users.mjs';
+import systemRoutes from './src/routes/system.mjs';
 
 // Define the application environment.
 const NODE_ENV = process.env.NODE_ENV?.toLocaleLowerCase() || 'production';
@@ -84,6 +85,9 @@ app.get('/logout', async (req, res) => {
 /**
  * API Routes
  */
+
+// System routes (setup status, database status)
+app.use('/api/system', systemRoutes);
 
 // Authentication routes
 app.use('/api/auth', authRoutes);

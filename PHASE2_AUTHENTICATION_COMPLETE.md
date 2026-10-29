@@ -54,9 +54,11 @@ const available = await isEmailAvailable(email);
 Public endpoints for account management:
 
 #### POST `/api/auth/register`
+
 Create a new user account.
 
 **Request Body:**
+
 ```json
 {
   "username": "testuser",
@@ -68,6 +70,7 @@ Create a new user account.
 ```
 
 **Response (201 Created):**
+
 ```json
 {
   "status": "success",
@@ -83,15 +86,18 @@ Create a new user account.
 ```
 
 **Validation:**
+
 - Username must be 3-50 chars, alphanumeric + _ and -
 - Email must be valid format
 - Password must meet complexity requirements
 - Username and email must be unique
 
 #### POST `/api/auth/login`
+
 Authenticate user and create session.
 
 **Request Body:**
+
 ```json
 {
   "username": "testuser",
@@ -100,6 +106,7 @@ Authenticate user and create session.
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "status": "success",
@@ -114,6 +121,7 @@ Authenticate user and create session.
 ```
 
 **Session Cookie:**
+
 - Name: `connect.sid`
 - HttpOnly: true
 - Secure: true (in production)
@@ -121,9 +129,11 @@ Authenticate user and create session.
 - SameSite: Lax (default)
 
 #### POST `/api/auth/logout`
+
 Destroy user session.
 
 **Response (200 OK):**
+
 ```json
 {
   "status": "success",
@@ -132,9 +142,11 @@ Destroy user session.
 ```
 
 #### GET `/api/auth/current`
+
 Get currently authenticated user.
 
 **Response (200 OK):**
+
 ```json
 {
   "status": "success",
@@ -150,6 +162,7 @@ Get currently authenticated user.
 ```
 
 **Error (401 Unauthorized):**
+
 ```json
 {
   "status": "error",
@@ -162,9 +175,11 @@ Get currently authenticated user.
 Protected endpoints for profile management (requires authentication).
 
 #### GET `/api/users/profile`
+
 Retrieve current user's profile.
 
 **Response (200 OK):**
+
 ```json
 {
   "status": "success",
@@ -180,9 +195,11 @@ Retrieve current user's profile.
 ```
 
 #### PUT `/api/users/profile`
+
 Update current user's profile.
 
 **Request Body:**
+
 ```json
 {
   "fullName": "Updated Name",
@@ -191,6 +208,7 @@ Update current user's profile.
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "status": "success",
@@ -209,6 +227,7 @@ Update current user's profile.
 ### 5. Session Management (`server.js`)
 
 Express session configuration:
+
 - **Secret:** `process.env.SESSION_SECRET` (default: dev-secret)
 - **Storage:** In-memory (suitable for single-server development)
 - **Cookie Settings:**
@@ -304,6 +323,7 @@ curl -X GET http://localhost:5000/api/users/profile
 ## Database Schema
 
 ### users table
+
 ```sql
 CREATE TABLE users (
   user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -326,6 +346,7 @@ CREATE TABLE users (
 ## Deployment
 
 ### Environment Variables
+
 ```env
 NODE_ENV=production        # or development/preview
 SESSION_SECRET=your-secret # Change in production!
@@ -333,6 +354,7 @@ DB_PG_*                    # Database config (existing)
 ```
 
 ### Production Checklist
+
 - [ ] Set unique `SESSION_SECRET` environment variable
 - [ ] Enable `secure: true` for HTTPS cookies
 - [ ] Use persistent session store (Redis, PostgreSQL) instead of memory
@@ -343,11 +365,13 @@ DB_PG_*                    # Database config (existing)
 ## What's Next
 
 **Phase 3: User Profile Enhancement** (Optional)
+
 - Profile photo/avatar support
 - User preferences (theme, language, etc.)
 - Account settings (password change, 2FA)
 
 **Phase 4: Flashcard Management**
+
 - CRUD endpoints for flashcards
 - Category and difficulty levels
 - Quick start with authentication
@@ -374,17 +398,17 @@ DB_PG_*                    # Database config (existing)
 ## Troubleshooting
 
 ### Password Requirements Not Met
+
 ```json
 {
   "status": "error",
   "message": "Password does not meet requirements",
-  "errors": [
-    "Password must contain at least one special character (!@#$%^&*)"
-  ]
+  "errors": ["Password must contain at least one special character (!@#$%^&*)"]
 }
 ```
 
 ### Username Already Taken
+
 ```json
 {
   "status": "error",
@@ -393,6 +417,7 @@ DB_PG_*                    # Database config (existing)
 ```
 
 ### Invalid Credentials
+
 ```json
 {
   "status": "error",
@@ -401,6 +426,7 @@ DB_PG_*                    # Database config (existing)
 ```
 
 ### Session Expired
+
 - User receives 401 Unauthorized when accessing protected endpoints
 - User must login again
 
@@ -414,12 +440,14 @@ DB_PG_*                    # Database config (existing)
 ## Files Created/Modified
 
 ### Created
+
 - `src/auth/validator.mjs` - Password and input validation
 - `src/auth/user.mjs` - User database operations
 - `src/routes/auth.mjs` - Authentication endpoints
 - `src/routes/users.mjs` - Profile endpoints
 
 ### Modified
+
 - `server.js` - Added session configuration and route mounting
 - `package.json` - Added bcrypt and express-session dependencies
 
