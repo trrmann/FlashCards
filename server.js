@@ -59,23 +59,32 @@ app.set('views', path.join(__dirname, 'src/views'));
 app.use(async (req, res, next) => {
   if (req.session.userId) {
     res.locals.userId = req.session.userId;
-    res.locals.username = req.session.username;
     res.locals.isLoggedIn = true;
 
     try {
-      const user = await query('SELECT is_admin FROM users WHERE user_id = $1', [
+      const user = await query('SELECT full_name, is_admin FROM users WHERE user_id = $1', [
         req.session.userId,
       ]);
-      res.locals.isAdmin = user.rows.length > 0 && user.rows[0].is_admin;
+      if (user.rows.length > 0) {
+        res.locals.fullName = user.rows[0].full_name;
+        res.locals.isAdmin = user.rows[0].is_admin;
+        siteData.setUser(req.session.userId, user.rows[0].full_name);
+      } else {
+        res.locals.fullName = '';
+        res.locals.isAdmin = false;
+        siteData.clearUser();
+      }
     } catch (error) {
-      console.error('Error checking admin status:', error.message);
+      console.error('Error fetching user info:', error.message);
+      res.locals.fullName = '';
       res.locals.isAdmin = false;
     }
   } else {
     res.locals.userId = null;
-    res.locals.username = null;
+    res.locals.fullName = '';
     res.locals.isLoggedIn = false;
     res.locals.isAdmin = false;
+    siteData.clearUser();
   }
   next();
 });
