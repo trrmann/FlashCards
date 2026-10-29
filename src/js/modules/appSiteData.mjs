@@ -3,11 +3,13 @@ export class appSiteData {
   name;
   nameHeadingHelp;
   userId;
+  userFullName;
   isLoggedIn;
 
   constructor() {
     this.init('Home', '');
     this.userId = null;
+    this.userFullName = '';
     this.isLoggedIn = false;
   }
 
@@ -52,13 +54,13 @@ export class appSiteData {
   // User session management
   setUser(userId, fullName) {
     this.userId = userId;
-    this.name = fullName;
+    this.userFullName = fullName;
     this.isLoggedIn = true;
   }
 
   clearUser() {
     this.userId = null;
-    this.name = '';
+    this.userFullName = '';
     this.isLoggedIn = false;
   }
 
@@ -68,5 +70,9 @@ export class appSiteData {
 
   getUserId() {
     return this.userId;
+  }
+
+  getUserFullName() {
+    return this.userFullName;
   }
 }

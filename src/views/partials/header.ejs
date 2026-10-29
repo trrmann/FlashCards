@@ -22,7 +22,7 @@
           <li><a href="/profile">Profile</a></li>
           <li><a href="/logout">Logout</a></li>
           <li class="user-info">
-            <span class="username"><%= siteData.getName() %></span>
+            <span class="username"><%= siteData.getUserFullName() %></span>
           </li>
         <% } else { %>
           <!-- Navigation when user is NOT logged in -->
