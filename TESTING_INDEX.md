@@ -7,6 +7,7 @@ Complete guide to testing and quality assurance in the FlashCards project.
 New to testing? Start here:
 - **5-minute quickstart:** [TESTING_QUICK_REFERENCE.md](./TESTING_QUICK_REFERENCE.md)
 - **Full guide:** [TESTING_PREVIEW.md](./TESTING_PREVIEW.md)
+- **Firefox testing:** [FIREFOX_TESTING_QUICK_SETUP.md](./FIREFOX_TESTING_QUICK_SETUP.md) (cross-browser validation)
 
 ## Testing Levels
 
@@ -43,6 +44,7 @@ New to testing? Start here:
 - ✅ CSS analysis (all pages)
 - ✅ Memory tests (leak detection)
 - ✅ Core Web Vitals (user experience metrics)
+- ✅ Firefox accessibility testing (optional - WCAG compliance via axe)
 
 ### 3. **Production Deployment (Prod)**
 ```bash
@@ -111,6 +113,20 @@ New to testing? Start here:
   - Time to Interactive (TTI) < 5000ms
   - Cumulative Layout Shift (CLS) minimal
 - **Duration:** 10-15s
+
+### Firefox Accessibility Testing (Optional)
+- **What:** axe accessibility audit with Firefox WebDriver
+- **Why:** Deep WCAG compliance verification
+- **Validates:**
+  - WCAG 2.0 Level A, AA, AAA compliance
+  - ARIA attributes and semantic HTML
+  - Color contrast ratios
+  - Keyboard navigation
+  - Form labels and alt text
+- **Files:** All 7 pages tested with axe
+- **Duration:** 30-60s
+- **Note:** Requires Firefox installation and GeckoDriver
+- **See:** [FIREFOX_TESTING_QUICK_SETUP.md](./FIREFOX_TESTING_QUICK_SETUP.md)
 
 ## Code Quality Tools
 
@@ -384,9 +400,32 @@ grep "Lighthouse\|WARN\|Performance" .deployment/last-run.log
 
 ## Reference
 
-- [TESTING_PREVIEW.md](./TESTING_PREVIEW.md) - Full testing guide
+- [TESTING_PREVIEW.md](./TESTING_PREVIEW.md) - Full testing guide (Chrome Lighthouse)
 - [TESTING_QUICK_REFERENCE.md](./TESTING_QUICK_REFERENCE.md) - Quick commands
+- [FIREFOX_TESTING.md](./FIREFOX_TESTING.md) - Firefox tools and options
+- [FIREFOX_TESTING_QUICK_SETUP.md](./FIREFOX_TESTING_QUICK_SETUP.md) - Firefox implementation guide
 - [CODE_QUALITY.md](./CODE_QUALITY.md) - Linting and formatting
 - [DEPLOY.md](./DEPLOY.md) - Deployment guide
 - [TESTING_STRATEGY.md](./documents/TESTING_STRATEGY.md) - High-level strategy
 - `.deployment/last-run.log` - Latest test results
+
+## Chrome vs Firefox Testing
+
+### Chrome Lighthouse (Built-in)
+✅ Performance audits  
+✅ Accessibility (basic)  
+✅ Best practices  
+✅ SEO optimization  
+✅ PWA compliance  
+✅ Core Web Vitals  
+
+### Firefox Testing (Optional Add-on)
+✅ Deep accessibility (axe audit)  
+✅ WCAG 2.0 AA/AAA compliance  
+✅ Keyboard navigation  
+✅ ARIA validation  
+✅ Cross-browser verification  
+
+**Recommendation:** Use both for comprehensive coverage. Start with Chrome Lighthouse, then add Firefox for accessibility compliance when needed.
+
+See [FIREFOX_TESTING_QUICK_SETUP.md](./FIREFOX_TESTING_QUICK_SETUP.md) to enable Firefox testing.
