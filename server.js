@@ -45,7 +45,6 @@ app.use(
 );
 
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/js', express.static(path.join(__dirname, 'src/js')));
 // Set EJS as the templating engine
 app.set('view engine', 'ejs');
 // Tell Express where to find your templates
@@ -69,11 +68,11 @@ app.use(async (req, res, next) => {
       if (user.rows.length > 0) {
         res.locals.fullName = user.rows[0].full_name;
         res.locals.isAdmin = user.rows[0].is_admin;
-        siteData.setUser(req.session.userId, user.rows[0].full_name);
+        siteData.setName(user.rows[0].full_name);
       } else {
         res.locals.fullName = '';
         res.locals.isAdmin = false;
-        siteData.clearUser();
+        siteData.setName('');
       }
     } catch (error) {
       console.error('Error fetching user info:', error.message);
@@ -85,7 +84,7 @@ app.use(async (req, res, next) => {
     res.locals.fullName = '';
     res.locals.isLoggedIn = false;
     res.locals.isAdmin = false;
-    siteData.clearUser();
+    siteData.setName('');
   }
   next();
 });
