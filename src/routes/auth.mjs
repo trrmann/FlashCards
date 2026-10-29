@@ -105,28 +105,30 @@ router.post('/register', express.json(), async (req, res) => {
     req.session.userId = user.user_id;
     req.session.username = user.username;
 
-    // Explicitly save session before responding
-    req.session.save((err) => {
-      if (err) {
-        console.error('Session save error:', err.message);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to create session',
-        });
-      }
-
-      return res.status(201).json({
-        status: 'success',
-        message: 'User registered successfully' + (isFirstUser ? ' as system admin' : ''),
-        user: {
-          user_id: user.user_id,
-          username: user.username,
-          email: user.email,
-          full_name: user.full_name,
-          is_admin: user.is_admin || false,
-          created_at: user.created_at,
-        },
+    // Wrap session.save in a promise and await it
+    await new Promise((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) {
+          console.error('[REGISTER] Session save error:', err.message, err);
+          reject(err);
+        } else {
+          console.log('[REGISTER] Session saved successfully for user:', user.username);
+          resolve();
+        }
       });
+    });
+
+    return res.status(201).json({
+      status: 'success',
+      message: 'User registered successfully' + (isFirstUser ? ' as system admin' : ''),
+      user: {
+        user_id: user.user_id,
+        username: user.username,
+        email: user.email,
+        full_name: user.full_name,
+        is_admin: user.is_admin || false,
+        created_at: user.created_at,
+      },
     });
   } catch (error) {
     console.error('Registration error:', error.message);
@@ -168,26 +170,28 @@ router.post('/login', express.json(), async (req, res) => {
     req.session.userId = user.user_id;
     req.session.username = user.username;
 
-    // Explicitly save session before responding
-    req.session.save((err) => {
-      if (err) {
-        console.error('Session save error:', err.message);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to create session',
-        });
-      }
-
-      return res.status(200).json({
-        status: 'success',
-        message: 'Login successful',
-        user: {
-          user_id: user.user_id,
-          username: user.username,
-          email: user.email,
-          full_name: user.full_name,
-        },
+    // Wrap session.save in a promise and await it
+    await new Promise((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) {
+          console.error('[LOGIN] Session save error:', err.message, err);
+          reject(err);
+        } else {
+          console.log('[LOGIN] Session saved successfully for user:', user.username);
+          resolve();
+        }
       });
+    });
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Login successful',
+      user: {
+        user_id: user.user_id,
+        username: user.username,
+        email: user.email,
+        full_name: user.full_name,
+      },
     });
   } catch (error) {
     console.error('Login error:', error.message);
