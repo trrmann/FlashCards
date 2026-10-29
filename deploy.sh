@@ -257,26 +257,18 @@ run_checks_strict() {
     cd "${PROJECT_ROOT}"
     
     # Run format
-    if npm run format &> /dev/null; then
-        log INFO "Formatting code..."
-        if ! npm run format >> "${LOG_FILE}" 2>&1; then
-            error_exit "Code formatting failed. Check .deployment/last-run.log for details."
-        fi
-        log SUCCESS "Code formatted successfully"
-    else
-        log WARN "format script not configured (skipping)"
+    log INFO "Formatting code..."
+    if ! npm run format >> "${LOG_FILE}" 2>&1; then
+        error_exit "Code formatting failed. Check .deployment/last-run.log for details."
     fi
+    log SUCCESS "Code formatted successfully"
     
     # Run lint with verification
-    if npm run lint &> /dev/null; then
-        log INFO "Verifying code with linter..."
-        if ! npm run lint >> "${LOG_FILE}" 2>&1; then
-            error_exit "Linter verification failed. Code does not meet quality standards. Check .deployment/last-run.log for details."
-        fi
-        log SUCCESS "Code verification passed"
-    else
-        log WARN "lint script not configured (skipping)"
+    log INFO "Verifying code with linter..."
+    if ! npm run lint >> "${LOG_FILE}" 2>&1; then
+        error_exit "Linter verification failed. Code does not meet quality standards. Check .deployment/last-run.log for details."
     fi
+    log SUCCESS "Code verification passed"
 }
 
 run_comprehensive_tests() {
