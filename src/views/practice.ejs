@@ -614,6 +614,7 @@
         await loadNextCard();
       });
 
+      async function loadNextCard() {
         answered = false;
         const feedbackEl = document.getElementById('feedback-message');
         const nextBtn = document.getElementById('next-button');
