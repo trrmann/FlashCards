@@ -507,6 +507,12 @@
         // Wait a brief moment for filter-panel to restore filters from sessionStorage
         await new Promise(resolve => setTimeout(resolve, 100));
         
+        // Refresh stats with restored filters if any filters are active
+        if (sessionStorage.getItem('studyFilters')) {
+          console.log('[DOMContentLoaded] Filters restored from session, refreshing stats...');
+          await refreshStatsForActiveFilters();
+        }
+        
         try {
           const dueTodayCount = <%= summary.dueTodayCount %>;
           const totalCards = <%= stats.total %>;
@@ -590,25 +596,40 @@
 
           const data = await response.json();
           if (data.status === 'success' && data.stats) {
-            // Update the stats cards in the dashboard
-            const cards = document.querySelectorAll('.stats-card .number');
-            if (cards.length >= 3) {
-              cards[0].textContent = data.stats.box1;
-              cards[1].textContent = data.stats.box2;
-              cards[2].textContent = data.stats.box3;
+            // Update the dashboard stats (box counts and accuracy)
+            const dashboardCards = document.querySelectorAll('.dashboard:first-of-type .stats-card .number');
+            if (dashboardCards.length >= 3) {
+              dashboardCards[0].textContent = data.stats.box1;
+              dashboardCards[1].textContent = data.stats.box2;
+              dashboardCards[2].textContent = data.stats.box3;
             }
 
-            // Also update accuracy (4th card)
-            if (cards.length >= 4) {
-              cards[3].textContent = data.stats.accuracy + '%';
-              const accuracyLabel = cards[3].parentElement.querySelector('.label');
+            // Also update accuracy (4th card in dashboard)
+            if (dashboardCards.length >= 4) {
+              dashboardCards[3].textContent = data.stats.accuracy + '%';
+              const accuracyLabel = dashboardCards[3].parentElement.querySelector('.label');
               if (accuracyLabel) {
                 accuracyLabel.textContent = `${data.stats.totalCorrect}/${data.stats.totalAttempts} Correct`;
               }
             }
 
+            // Update the statistics section (total correct/incorrect/attempts)
+            const allDashboards = document.querySelectorAll('.dashboard');
+            if (allDashboards.length > 1) {
+              const statisticsDashboard = allDashboards[1];
+              const statCards = statisticsDashboard.querySelectorAll('.stats-card .number');
+              if (statCards.length >= 3) {
+                statCards[0].textContent = data.stats.totalCorrect;
+                statCards[1].textContent = data.stats.totalIncorrect;
+                statCards[2].textContent = data.stats.totalAttempts;
+                if (statCards.length >= 4) {
+                  statCards[3].textContent = data.stats.box3;
+                }
+              }
+            }
+
             console.log(
-              `[refreshStatsForActiveFilters] Updated stats: box1=${data.stats.box1}, box2=${data.stats.box2}, box3=${data.stats.box3}, accuracy=${data.stats.accuracy}%`
+              `[refreshStatsForActiveFilters] Updated stats: box1=${data.stats.box1}, box2=${data.stats.box2}, box3=${data.stats.box3}, accuracy=${data.stats.accuracy}%, totalCorrect=${data.stats.totalCorrect}, totalAttempts=${data.stats.totalAttempts}`
             );
           }
 

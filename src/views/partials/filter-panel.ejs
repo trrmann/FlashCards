@@ -312,6 +312,8 @@
         document.getElementById('filter-lesson').value = filterState.lesson || '';
         document.getElementById('filter-category').value = filterState.category || '';
         updateFilterStatus();
+        // Dispatch event to notify other components (like practice.ejs) that filters have been restored
+        window.dispatchEvent(new CustomEvent('filtersChanged', { detail: filterState }));
       }
     }
 

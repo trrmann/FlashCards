@@ -837,46 +837,19 @@ export async function getProgressStats(userId, filters = {}) {
   );
 
   // Get overall correct/incorrect counts WITH FILTERS APPLIED
-  let attemptsQueryParams = [userId];
-  let attemptsFilterClause = '';
-  
-  if (filterClause.length > 0) {
-    // Filters are already defined above, apply them to practice_history too
-    const filterConditionsForAttempts = [];
-    let attemptsParamIndex = 2;
-    
-    const classPattern2 = getFilterPattern(filters.class);
-    if (classPattern2) {
-      filterConditionsForAttempts.push(`ph.class ILIKE $${attemptsParamIndex}`);
-      attemptsQueryParams.push(classPattern2);
-      attemptsParamIndex += 1;
-    }
-    
-    const lessonPattern2 = getFilterPattern(filters.lesson);
-    if (lessonPattern2) {
-      filterConditionsForAttempts.push(`ph.lesson ILIKE $${attemptsParamIndex}`);
-      attemptsQueryParams.push(lessonPattern2);
-      attemptsParamIndex += 1;
-    }
-    
-    const categoryPattern2 = getFilterPattern(filters.category);
-    if (categoryPattern2) {
-      filterConditionsForAttempts.push(`ph.category ILIKE $${attemptsParamIndex}`);
-      attemptsQueryParams.push(categoryPattern2);
-    }
-    
-    attemptsFilterClause = filterConditionsForAttempts.length > 0 ? 'AND ' + filterConditionsForAttempts.join(' AND ') : '';
-  }
-
+  // IMPORTANT: Filter by CARD properties (f.class, f.lesson, f.category), NOT by 
+  // practice_history filter fields (ph.class, ph.lesson, ph.category) which represent
+  // what filters were active when the attempt was made, not the card's actual properties
   const attemptsResult = await query(
     `SELECT 
-       SUM(CASE WHEN correct THEN 1 ELSE 0 END) as total_correct,
-       SUM(CASE WHEN NOT correct THEN 1 ELSE 0 END) as total_incorrect,
+       SUM(CASE WHEN ph.correct THEN 1 ELSE 0 END) as total_correct,
+       SUM(CASE WHEN NOT ph.correct THEN 1 ELSE 0 END) as total_incorrect,
        COUNT(*) as total_attempts
      FROM practice_history ph
+     JOIN flashcards f ON ph.flashcard_id = f.flashcard_id
      WHERE ph.user_id = $1
-     ${attemptsFilterClause}`,
-    attemptsQueryParams
+     ${filterClause}`,
+    queryParams
   );
 
   const attempts = attemptsResult.rows[0];
