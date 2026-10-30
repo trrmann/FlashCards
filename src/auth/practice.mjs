@@ -389,6 +389,13 @@ export async function recordPracticeAttempt(userId, flashcardId, isCorrect, resp
     [newBox, nextReview, newTimesCorrect, newTimesIncorrect, flashcardId, userId]
   );
 
+  // Update difficulty score in background (non-blocking)
+  // This allows difficulty to adapt automatically as users practice
+  updateDifficultyScore(flashcardId, userId).catch((error) => {
+    console.error('Warning: Failed to update difficulty score:', error.message);
+    // Non-critical, don't fail the entire operation
+  });
+
   return updateResult.rows[0];
 }
 
