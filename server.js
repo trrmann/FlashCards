@@ -14,6 +14,7 @@ import systemRoutes from './src/routes/system.mjs';
 import navigationRoutes from './src/routes/navigation.mjs';
 import entriesRoutes from './src/routes/entries.mjs';
 import practiceRoutes from './src/routes/practice.mjs';
+import quizRoutes from './src/routes/quiz.mjs';
 
 // Define the application environment.
 const NODE_ENV = process.env.NODE_ENV?.toLocaleLowerCase() || 'production';
@@ -204,6 +205,9 @@ app.use('/api/entries', entriesRoutes);
 // Practice Study routes (Leitner system)
 app.use('/practice', practiceRoutes);
 app.use('/api/practice', practiceRoutes);
+
+// Quiz routes
+app.use('/api/quiz', quizRoutes);
 
 // Admin routes
 app.use('/api/admin', adminRoutes);
