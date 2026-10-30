@@ -203,9 +203,7 @@ const migrations = [
       }
 
       // Add the column if it doesn't exist
-      await query(
-        `ALTER TABLE flashcards ADD COLUMN class VARCHAR(255)`
-      );
+      await query(`ALTER TABLE flashcards ADD COLUMN class VARCHAR(255)`);
       console.log('✓ Added class column to flashcards table');
     },
   },

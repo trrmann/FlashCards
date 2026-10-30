@@ -132,7 +132,7 @@ router.get('/export', async (req, res) => {
       exportedBy: req.session.username || req.session.userId,
       filters: Object.keys(filters).length > 0 ? filters : null,
       count: flashcards.length,
-      entries: flashcards.map(card => ({
+      entries: flashcards.map((card) => ({
         question: card.question,
         answer: card.answer,
         lesson: card.lesson,
@@ -144,7 +144,10 @@ router.get('/export', async (req, res) => {
 
     // Send as downloadable JSON file
     res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', `attachment; filename="flashcards-export-${Date.now()}.json"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="flashcards-export-${Date.now()}.json"`
+    );
     return res.status(200).send(JSON.stringify(exportData, null, 2));
   } catch (error) {
     console.error('Export entries error:', error.message);
@@ -180,8 +183,13 @@ router.post('/import', express.json({ limit: '50mb' }), async (req, res) => {
     }
 
     // Validate entries
-    const validEntries = entries.filter(entry => {
-      return entry.question && entry.answer && typeof entry.question === 'string' && typeof entry.answer === 'string';
+    const validEntries = entries.filter((entry) => {
+      return (
+        entry.question &&
+        entry.answer &&
+        typeof entry.question === 'string' &&
+        typeof entry.answer === 'string'
+      );
     });
 
     if (validEntries.length === 0) {
@@ -564,7 +572,7 @@ router.get('/metadata/classes', async (req, res) => {
 
     return res.status(200).json({
       status: 'success',
-      classes: result.rows.map(row => row.class),
+      classes: result.rows.map((row) => row.class),
     });
   } catch (error) {
     console.error('Get classes error:', error.message);
@@ -591,7 +599,7 @@ router.get('/metadata/lessons', async (req, res) => {
 
     return res.status(200).json({
       status: 'success',
-      lessons: result.rows.map(row => row.lesson),
+      lessons: result.rows.map((row) => row.lesson),
     });
   } catch (error) {
     console.error('Get lessons error:', error.message);
@@ -618,7 +626,7 @@ router.get('/metadata/categories', async (req, res) => {
 
     return res.status(200).json({
       status: 'success',
-      categories: result.rows.map(row => row.category),
+      categories: result.rows.map((row) => row.category),
     });
   } catch (error) {
     console.error('Get categories error:', error.message);
