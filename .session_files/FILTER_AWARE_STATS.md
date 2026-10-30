@@ -1,11 +1,13 @@
 # Filter-Aware Dashboard Statistics
 
 ## Feature
+
 Dashboard statistics (Box 1, Box 2, Box 3 card counts) now dynamically update to reflect only cards matching the user's active filters.
 
 ## How It Works
 
 ### Backend Changes
+
 1. **getProgressStats() Function** ([src/auth/practice.mjs](file:///home/tmann/Documents/Projects/FlashCards/src/auth/practice.mjs:612))
    - Now accepts optional `filters` parameter: `{class, lesson, category}`
    - Applies the same filtering logic as `getDueCardsForToday()`
@@ -22,6 +24,7 @@ Dashboard statistics (Box 1, Box 2, Box 3 card counts) now dynamically update to
    - Returns filtered statistics
 
 ### Frontend Changes
+
 1. **refreshStatsForActiveFilters()** ([src/views/practice.ejs](file:///home/tmann/Documents/Projects/FlashCards/src/views/practice.ejs:566))
    - Reads filters from `sessionStorage.getItem('studyFilters')`
    - Calls `/api/practice/stats` with filter parameters
@@ -35,6 +38,7 @@ Dashboard statistics (Box 1, Box 2, Box 3 card counts) now dynamically update to
 ## User Experience
 
 ### Example Scenario
+
 1. User has 50 total flashcards across multiple classes
 2. Dashboard initially shows all 50 cards distributed across boxes
 3. User selects filter: "Biology" class
@@ -46,19 +50,23 @@ Dashboard statistics (Box 1, Box 2, Box 3 card counts) now dynamically update to
 ## Implementation Details
 
 ### Filter Application
+
 - **Class filter** with wildcard support: "Bio*" matches "Biology", "Biome", etc.
 - **Lesson filter**: matches exact lesson names (case-insensitive)
 - **Category filter**: matches exact categories (case-insensitive)
 - Multiple filters use AND logic (must match class AND lesson AND category)
 
 ### NULL Handling
+
 Uses `COALESCE(field, '')` to handle NULL values:
+
 ```sql
 WHERE COALESCE(class, '') = COALESCE($4, '')
   AND COALESCE(category, '') = COALESCE($5, '')
 ```
 
 ### Performance
+
 - Stats endpoint is called independently
 - Only executed when filters change or when user requests stats
 - Does not affect card loading performance
@@ -67,6 +75,7 @@ WHERE COALESCE(class, '') = COALESCE($4, '')
 ## Testing
 
 ### Manual Test Steps
+
 1. Add flashcards in multiple classes/categories
 2. Navigate to Practice page
 3. Note the initial Box 1/2/3 counts
@@ -81,7 +90,9 @@ WHERE COALESCE(class, '') = COALESCE($4, '')
    ```
 
 ## Debug Logging
+
 Server logs include detailed filtering information:
+
 - Filter parameters received
 - SQL filter clause generated
 - Box counts returned
@@ -90,13 +101,16 @@ Server logs include detailed filtering information:
 Enable with: Check `/tmp/server.log` or browser DevTools Console
 
 ## Files Modified
+
 - **src/auth/practice.mjs** - Added filter support to getProgressStats()
 - **src/routes/practice.mjs** - Updated /api/practice/stats endpoint
 - **src/views/practice.ejs** - Added refreshStatsForActiveFilters() and listener
 
 ## Commit
+
 - `a10e4f5` - Implement filter-aware dashboard statistics
 
 ## Related Features
+
 - [Dynamic Header Filtering](./PRACTICE_FILTERING_COMPLETE.md)
 - [NULL Handling Fix](./FILTER_NULL_HANDLING_FIX.md)
