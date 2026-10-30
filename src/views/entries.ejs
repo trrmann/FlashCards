@@ -815,7 +815,10 @@
       const data = await response.json();
 
       if (data.status === 'success') {
-        alert(`✓ Successfully imported ${data.count} flashcards!`);
+        const message = data.updated > 0 
+          ? `✓ Imported ${data.count} flashcards (${data.created} new, ${data.updated} updated)`
+          : `✓ Imported ${data.count} flashcards`;
+        alert(message);
         loadUserEntries();
       } else {
         alert('Error: ' + data.message);
