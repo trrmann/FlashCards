@@ -8,7 +8,7 @@ When there aren't enough flashcards to create multiple choice options, users now
 
 ### Backend Changes
 
-1. **Updated `generateMultipleChoiceOptions()`** ([src/auth/practice.mjs](file:///home/tmann/Documents/Projects/FlashCards/src/auth/practice.mjs:428))
+1. **Updated `generateMultipleChoiceOptions()`** ([src/scripts/js/modules/auth/practice.mjs](file:///home/tmann/Documents/Projects/FlashCards/src/scripts/js/modules/auth/practice.mjs:428))
    - Now returns an object instead of null when insufficient options
    - Object contains `insufficientOptions: true` flag
    - Includes `diagnostic` object with detailed information
@@ -126,7 +126,7 @@ Not enough entries in this category to practice. Add more flashcards to create m
 
 ## Files Modified
 
-- **src/auth/practice.mjs** - Return diagnostic object instead of null
+- **src/scripts/js/modules/auth/practice.mjs** - Return diagnostic object instead of null
 - **src/routes/practice.mjs** - Pass diagnostic to frontend
 - **src/views/practice.ejs** - Display collapsible diagnostic section
 

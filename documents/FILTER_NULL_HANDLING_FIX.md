@@ -39,7 +39,7 @@ Now:
 
 ## Changes Made
 
-### src/auth/practice.mjs
+### src/scripts/js/modules/auth/practice.mjs
 
 1. Updated both wrong-answer queries in `generateMultipleChoiceOptions()`:
    - Standard mode (showing correct answer)
@@ -85,7 +85,7 @@ Watch server logs for debug output:
 
 ## Files Modified
 
-- src/auth/practice.mjs - Core filtering logic fix + debug logging
+- src/scripts/js/modules/auth/practice.mjs - Core filtering logic fix + debug logging
 - src/routes/practice.mjs - API endpoint debug logging
 
 ## Commits

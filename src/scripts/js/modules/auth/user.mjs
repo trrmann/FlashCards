@@ -3,7 +3,7 @@
  * Handles user-related database operations
  */
 
-import { query } from '../scripts/js/modules/db/connection.mjs';
+import { query } from '../db/connection.mjs';
 import { hashPassword, comparePassword } from './validator.mjs';
 
 /**
@@ -166,7 +166,7 @@ export async function enableUser(userId) {
  * @returns {Promise<boolean>} True if deletion successful
  */
 export async function deleteUser(userId) {
-  const client = await (await import('../scripts/js/modules/db/connection.mjs')).getClient();
+  const client = await (await import('../db/connection.mjs')).getClient();
 
   try {
     await client.query('BEGIN');

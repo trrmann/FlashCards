@@ -31,7 +31,7 @@ WHERE ph.flashcard_id = f.flashcard_id
 
 Enhanced `recordPracticeAttempt()` and `recordPracticeAttemptWithSession()` to always capture category:
 
-**File:** [src/auth/practice.mjs](src/auth/practice.mjs)  
+**File:** [src/scripts/js/modules/auth/practice.mjs](src/scripts/js/modules/auth/practice.mjs)  
 **Change:** Lines 473-479 and 608-614
 
 **Before:**
@@ -110,7 +110,7 @@ practice_history for flashcard 2aaaeb51:
 
 ## Files Modified
 
-1. **[src/auth/practice.mjs](src/auth/practice.mjs)**
+1. **[src/scripts/js/modules/auth/practice.mjs](src/scripts/js/modules/auth/practice.mjs)**
    - `recordPracticeAttempt()` - Added safeguard for category capture (lines 473-479)
    - `recordPracticeAttemptWithSession()` - Added safeguard for category capture (lines 608-614)
 

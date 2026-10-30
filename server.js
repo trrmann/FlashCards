@@ -12,7 +12,7 @@ import {
   pool,
 } from './src/scripts/js/modules/db/connection.mjs';
 import { runMigrations } from './src/scripts/js/modules/db/migrations.mjs';
-import authRoutes from './src/routes/auth.mjs';
+import authRoutes from './src/scripts/js/modules/routes/auth.mjs';
 import userRoutes from './src/routes/users.mjs';
 import adminRoutes from './src/routes/admin.mjs';
 import systemRoutes from './src/routes/system.mjs';

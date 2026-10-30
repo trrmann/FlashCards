@@ -8,7 +8,7 @@ User authentication and profile management have been fully implemented with secu
 
 ## What Was Done
 
-### 1. Authentication Validator Module (`src/auth/validator.mjs`)
+### 1. Authentication Validator Module (`src/scripts/js/modules/auth/validator.mjs`)
 
 Provides secure password and account validation:
 
@@ -25,7 +25,7 @@ Provides secure password and account validation:
   - 3-50 characters
   - Alphanumeric, underscores, hyphens only
 
-### 2. User Service Module (`src/auth/user.mjs`)
+### 2. User Service Module (`src/scripts/js/modules/auth/user.mjs`)
 
 Database operations for user management:
 
@@ -49,7 +49,7 @@ const available = await isUsernameAvailable(username);
 const available = await isEmailAvailable(email);
 ```
 
-### 3. Authentication Routes (`src/routes/auth.mjs`)
+### 3. Authentication Routes (`src/scripts/js/modules/routes/auth.mjs`)
 
 Public endpoints for account management:
 
@@ -441,9 +441,9 @@ DB_PG_*                    # Database config (existing)
 
 ### Created
 
-- `src/auth/validator.mjs` - Password and input validation
-- `src/auth/user.mjs` - User database operations
-- `src/routes/auth.mjs` - Authentication endpoints
+- `src/scripts/js/modules/auth/validator.mjs` - Password and input validation
+- `src/scripts/js/modules/auth/user.mjs` - User database operations
+- `src/scripts/js/modules/routes/auth.mjs` - Authentication endpoints
 - `src/routes/users.mjs` - Profile endpoints
 
 ### Modified

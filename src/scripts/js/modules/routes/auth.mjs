@@ -12,7 +12,7 @@ import {
   isEmailAvailable,
 } from '../auth/user.mjs';
 import { validatePassword, validateEmail, validateUsername } from '../auth/validator.mjs';
-import { query } from '../scripts/js/modules/db/connection.mjs';
+import { query } from '../db/connection.mjs';
 
 const router = express.Router();
 

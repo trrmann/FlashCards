@@ -19,7 +19,7 @@ import {
   updateDifficultyScore,
   batchUpdateDifficultyScores,
   getDifficultyStats,
-} from '../auth/practice.mjs';
+} from '../scripts/js/modules/auth/practice.mjs';
 
 const router = express.Router();
 

@@ -70,7 +70,7 @@ When a user makes a NEW practice attempt WITH category="vocabulary" filter:
 
 ## Code is Correct
 
-The fix to [src/auth/practice.mjs](src/auth/practice.mjs) ensures:
+The fix to [src/scripts/js/modules/auth/practice.mjs](src/scripts/js/modules/auth/practice.mjs) ensures:
 
 ```javascript
 // If no filter context, use NULL (not the card's category)

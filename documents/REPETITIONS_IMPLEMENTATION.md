@@ -56,7 +56,7 @@ ADD COLUMN session_streak INTEGER DEFAULT 0;
 
 ## Backend Implementation
 
-### New Functions in `src/auth/practice.mjs`
+### New Functions in `src/scripts/js/modules/auth/practice.mjs`
 
 #### `getCardRepetitionsNeeded(boxNumber)`
 
@@ -291,7 +291,7 @@ if (data.session && data.session.needsMoreAttempts) {
 ## Files Modified
 
 - ✅ `src/scripts/js/modules/db/migrations.mjs` - Added 2 new migrations
-- ✅ `src/auth/practice.mjs` - Added 5 new session-aware functions
+- ✅ `src/scripts/js/modules/auth/practice.mjs` - Added 5 new session-aware functions
 - ✅ `src/routes/practice.mjs` - Updated /api/practice/answer endpoint and imports
 - ✅ `src/views/practice.ejs` - Added session tracking and attempt counter display
 

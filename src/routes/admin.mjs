@@ -14,16 +14,20 @@ import {
   isAdmin,
   isUsernameAvailable,
   isEmailAvailable,
-} from '../auth/user.mjs';
-import { validatePassword, validateEmail, validateUsername } from '../auth/validator.mjs';
+} from '../scripts/js/modules/auth/user.mjs';
+import {
+  validatePassword,
+  validateEmail,
+  validateUsername,
+} from '../scripts/js/modules/auth/validator.mjs';
 import {
   exportApplicationData,
   importApplicationData,
   rebuildSchema,
   logImportExport,
   getImportExportHistory,
-} from '../auth/backup.mjs';
-import { resetUserLeitnerStats } from '../auth/practice.mjs';
+} from '../scripts/js/modules/auth/backup.mjs';
+import { resetUserLeitnerStats } from '../scripts/js/modules/auth/practice.mjs';
 
 const router = express.Router();
 

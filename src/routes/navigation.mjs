@@ -4,7 +4,7 @@
  */
 
 import express from 'express';
-import { updateLastPageVisited, getLastPageVisited } from '../auth/user.mjs';
+import { updateLastPageVisited, getLastPageVisited } from '../scripts/js/modules/auth/user.mjs';
 
 const router = express.Router();
 

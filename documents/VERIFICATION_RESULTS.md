@@ -15,7 +15,7 @@
 
 ## Fix #1: Accuracy Filtering by Class/Lesson/Category ✅
 
-**Code Location**: `src/auth/practice.mjs` lines 787-810
+**Code Location**: `src/scripts/js/modules/auth/practice.mjs` lines 787-810
 
 **Verification Query Results**:
 
@@ -82,7 +82,7 @@ if (box1Card) {
 
 ## Fix #3: No Duplicate Entries in practice_history ✅
 
-**Code Location**: `src/auth/practice.mjs` lines 667-679
+**Code Location**: `src/scripts/js/modules/auth/practice.mjs` lines 667-679
 
 **Test Data Verification**:
 
@@ -167,7 +167,7 @@ Entry 3: flashcard_id=ffcfab94..., correct=true, class=English Connect, created=
 
 ## Code Verification
 
-✅ **src/auth/practice.mjs**
+✅ **src/scripts/js/modules/auth/practice.mjs**
 
 - Line 787: `ph.class ILIKE $${attemptsParamIndex}` - class filter applied
 - Line 793: `ph.lesson ILIKE $${attemptsParamIndex}` - lesson filter applied

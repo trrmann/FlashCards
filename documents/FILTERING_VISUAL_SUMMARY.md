@@ -151,7 +151,7 @@ if (filters.category) url += `&category=${encodeURIComponent(filters.category)}`
 
 ### 2. Filter Pattern Conversion (Backend)
 
-**File:** `src/auth/practice.mjs`
+**File:** `src/scripts/js/modules/auth/practice.mjs`
 
 ```javascript
 // Converts wildcards to SQL patterns (lines 8-16)
@@ -167,7 +167,7 @@ function getFilterPattern(filterValue) {
 
 ### 3. Main Card Filtering
 
-**File:** `src/auth/practice.mjs` - `getDueCardsForToday()` (lines 183-243)
+**File:** `src/scripts/js/modules/auth/practice.mjs` - `getDueCardsForToday()` (lines 183-243)
 
 ```javascript
 // Accepts filters parameter
@@ -187,7 +187,7 @@ export async function getDueCardsForToday(userId, filters = {}) {
 
 ### 4. Wrong Answer Filtering
 
-**File:** `src/auth/practice.mjs` - `generateMultipleChoiceOptions()` (lines 295-348)
+**File:** `src/scripts/js/modules/auth/practice.mjs` - `generateMultipleChoiceOptions()` (lines 295-348)
 
 ```javascript
 // Get wrong answers matching class AND category

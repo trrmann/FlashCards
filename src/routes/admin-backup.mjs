@@ -10,8 +10,8 @@ import {
   rebuildSchema,
   logImportExport,
   getImportExportHistory,
-} from '../auth/backup.mjs';
-import { isAdmin } from '../auth/user.mjs';
+} from '../scripts/js/modules/auth/backup.mjs';
+import { isAdmin } from '../scripts/js/modules/auth/user.mjs';
 
 const router = express.Router();
 

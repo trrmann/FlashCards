@@ -57,7 +57,7 @@ Added migration to create `category` column:
 }
 ```
 
-### 2. **src/auth/practice.mjs** (+66 lines)
+### 2. **src/scripts/js/modules/auth/practice.mjs** (+66 lines)
 
 #### New Helper Function: `getFilterPattern()`
 
@@ -339,7 +339,7 @@ The `category` column is automatically created when server starts:
 ## Files Modified
 
 ```
-src/auth/practice.mjs      +66 lines  (getFilterPattern, updated getDueCardsForToday, updated generateMultipleChoiceOptions)
+src/scripts/js/modules/auth/practice.mjs      +66 lines  (getFilterPattern, updated getDueCardsForToday, updated generateMultipleChoiceOptions)
 src/scripts/js/modules/db/migrations.mjs      +25 lines  (add_category_to_flashcards migration)
 src/routes/practice.mjs    +24 lines  (extract/pass filters to getDueCardsForToday)
 src/views/practice.ejs     +13 lines  (read filters from sessionStorage, pass to API)

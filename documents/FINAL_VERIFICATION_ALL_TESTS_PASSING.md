@@ -117,7 +117,7 @@ When filtering by category='vocabulary':
 
 ## Code Fix Summary
 
-**Files Changed:** [src/auth/practice.mjs](src/auth/practice.mjs)
+**Files Changed:** [src/scripts/js/modules/auth/practice.mjs](src/scripts/js/modules/auth/practice.mjs)
 
 **What Was Fixed:**
 
