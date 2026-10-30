@@ -533,8 +533,23 @@
         document.getElementById('next-button').style.display = 'none';
 
         try {
-          const response = await fetch('/api/practice/next');
+          console.log('[loadNextCard] Fetching /api/practice/next...');
+          
+          // Add timeout to fetch
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+          
+          const response = await fetch('/api/practice/next', { signal: controller.signal });
+          clearTimeout(timeoutId);
+          
+          console.log('[loadNextCard] Response status:', response.status);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
           const data = await response.json();
+          console.log('[loadNextCard] Data received:', data);
 
           if (data.card && data.options) {
             currentCard = data.card;
@@ -553,8 +568,11 @@
             alert('Error loading card options');
           }
         } catch (error) {
-          console.error('Error loading card:', error);
-          alert('Error loading card');
+          console.error('[loadNextCard] Error:', error.message, error);
+          const section = document.querySelector('.practice-section');
+          if (section) {
+            section.innerHTML = '<h2>⚠️ Error Loading Card</h2><p>' + error.message + '</p><p>Check browser console (F12) for details.</p>';
+          }
         }
       }
 
