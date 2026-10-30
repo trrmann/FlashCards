@@ -185,12 +185,12 @@ router.post('/answer', async (req, res) => {
     }
 
     const userId = req.session.userId;
-    const { flashcardId, selectedOptionIndex } = req.body;
+    const { flashcardId, selectedAnswer } = req.body;
 
-    if (!flashcardId || selectedOptionIndex === undefined) {
+    if (!flashcardId || !selectedAnswer) {
       return res.status(400).json({
         status: 'error',
-        error: 'Missing required fields: flashcardId, selectedOptionIndex',
+        error: 'Missing required fields: flashcardId, selectedAnswer',
       });
     }
 
@@ -216,12 +216,12 @@ router.post('/answer', async (req, res) => {
     // Generate options again to validate (must be consistent)
     const options = await generateMultipleChoiceOptions(userId, cardFullResult.rows[0], 4);
 
-    // Check if selected option is correct
-    const selectedOption = options[selectedOptionIndex];
+    // Find the selected option in the regenerated list
+    const selectedOption = options.find((opt) => opt.text === selectedAnswer);
     if (!selectedOption) {
       return res.status(400).json({
         status: 'error',
-        error: 'Invalid option index',
+        error: 'Invalid option selected',
       });
     }
 

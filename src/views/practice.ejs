@@ -605,13 +605,14 @@
         buttons[optionIndex].classList.add('selected');
 
         try {
+          const selectedAnswer = currentOptions[optionIndex].text;
           const response = await fetch('/api/practice/answer', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',  // Important: send cookies with request
             body: JSON.stringify({
               flashcardId: currentCard.flashcard_id,
-              selectedOptionIndex: optionIndex,
+              selectedAnswer: selectedAnswer,
             }),
           });
 
