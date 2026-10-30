@@ -734,8 +734,10 @@
 
       const url = `/api/entries/export${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
       
-      // Fetch the export data
-      const response = await fetch(url);
+      // Fetch the export data with credentials to include session cookie
+      const response = await fetch(url, {
+        credentials: 'include'
+      });
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -797,6 +799,7 @@
       const response = await fetch('/api/entries/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ entries }),
       });
 
