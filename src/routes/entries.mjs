@@ -9,6 +9,7 @@ import {
   getUserFlashcards,
   getUserFlashcardsFiltered,
   getFlashcard,
+  getFlashcardByQuestion,
   updateFlashcard,
   deleteFlashcard,
   shareFlashcard,
@@ -190,21 +191,37 @@ router.post('/import', express.json({ limit: '50mb' }), async (req, res) => {
       });
     }
 
-    // Import entries
+    // Import entries (create new or update existing based on question)
     const importedCards = [];
+    const updatedCards = [];
     const errors = [];
 
     for (const entry of validEntries) {
       try {
-        const card = await createFlashcard(
-          req.session.userId,
-          entry.question,
-          entry.answer,
-          entry.lesson || null,
-          entry.category || null,
-          entry.class || null
-        );
-        importedCards.push(card);
+        // Check if flashcard with same question already exists
+        const existingCard = await getFlashcardByQuestion(req.session.userId, entry.question);
+
+        if (existingCard) {
+          // Update existing flashcard
+          const updated = await updateFlashcard(existingCard.flashcard_id, req.session.userId, {
+            answer: entry.answer,
+            lesson: entry.lesson || null,
+            category: entry.category || null,
+            class: entry.class || null,
+          });
+          updatedCards.push(updated);
+        } else {
+          // Create new flashcard
+          const card = await createFlashcard(
+            req.session.userId,
+            entry.question,
+            entry.answer,
+            entry.lesson || null,
+            entry.category || null,
+            entry.class || null
+          );
+          importedCards.push(card);
+        }
       } catch (error) {
         errors.push({
           question: entry.question.substring(0, 50),
@@ -215,10 +232,13 @@ router.post('/import', express.json({ limit: '50mb' }), async (req, res) => {
 
     return res.status(201).json({
       status: 'success',
-      message: `Imported ${importedCards.length} entries successfully`,
-      count: importedCards.length,
+      message: `Imported ${importedCards.length + updatedCards.length} entries (${importedCards.length} new, ${updatedCards.length} updated)`,
+      count: importedCards.length + updatedCards.length,
+      created: importedCards.length,
+      updated: updatedCards.length,
       errors: errors.length > 0 ? errors : null,
       imported: importedCards,
+      updatedEntries: updatedCards,
     });
   } catch (error) {
     console.error('Import entries error:', error.message);

@@ -51,6 +51,24 @@ export async function getUserFlashcards(userId) {
 }
 
 /**
+ * Get a flashcard by question text (for duplicate detection during import)
+ * @param {string} userId - User ID who owns the flashcard
+ * @param {string} question - Question text to search for
+ * @returns {Promise<object>} Flashcard object or null
+ */
+export async function getFlashcardByQuestion(userId, question) {
+  const result = await query(
+    `SELECT flashcard_id, question, answer, lesson, category, class, is_private, created_at
+     FROM flashcards 
+     WHERE created_by = $1 AND question = $2
+     LIMIT 1`,
+    [userId, question]
+  );
+
+  return result.rows[0] || null;
+}
+
+/**
  * Get user's flashcards filtered by class, lesson, and/or category
  * @param {string} userId - User ID
  * @param {object} filters - { class: string, lesson: string, category: string }
