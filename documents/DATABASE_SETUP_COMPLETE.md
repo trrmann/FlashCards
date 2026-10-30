@@ -32,7 +32,7 @@ The FlashCards application now has a complete PostgreSQL database setup with con
 
 ### 3. Database Connection Module
 
-- **File:** `src/db/connection.mjs`
+- **File:** `src/scripts/js/modules/db/connection.mjs`
 - **Features:**
   - PostgreSQL connection pool (pg library)
   - Automatic environment detection (local vs. Render)
@@ -90,7 +90,7 @@ curl http://localhost:5000/api/health
 ### Database Connection in Code
 
 ```javascript
-import { query, getClient } from './src/db/connection.mjs';
+import { query, getClient } from './src/scripts/js/modules/db/connection.mjs';
 
 // Simple query
 const result = await query('SELECT * FROM users WHERE user_id = $1', [userId]);
@@ -244,7 +244,7 @@ PGPASSWORD=<password> psql -h dpg-dbhnuks9v7es73beg8mg-a.virginia-postgres.rende
 ## Resources
 
 - **Database Schema:** `documents/DATABASE_SCHEMA.md`
-- **Connection Module:** `src/db/connection.mjs`
+- **Connection Module:** `src/scripts/js/modules/db/connection.mjs`
 - **Initialization Script:** `scripts/init-db.mjs`
 - **Render Dashboard:** https://dashboard.render.com
 - **PostgreSQL Docs:** https://www.postgresql.org/docs/

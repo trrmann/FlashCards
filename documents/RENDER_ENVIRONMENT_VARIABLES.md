@@ -226,7 +226,7 @@ All should return `200 OK` with valid JSON responses.
 Currently, the code handles environment selection automatically:
 
 ```javascript
-// In src/db/connection.mjs
+// In src/scripts/js/modules/db/connection.mjs
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
 const hostname = isProduction
   ? process.env.DB_PG_INTERNAL_HOSTNAME // ← Uses internal in production
@@ -271,12 +271,12 @@ Before deploying to Render:
 
 ## File Locations Where Variables Are Used
 
-| File                    | Variables Used                 |
-| ----------------------- | ------------------------------ |
-| `server.js`             | NODE_ENV, PORT, SESSION_SECRET |
-| `src/db/connection.mjs` | NODE_ENV, DB_PG_*, RENDER      |
-| `src/routes/system.mjs` | DB_PG_DATABASE                 |
-| `scripts/init-db.mjs`   | DB_PG_*, RENDER                |
+| File                                       | Variables Used                 |
+| ------------------------------------------ | ------------------------------ |
+| `server.js`                                | NODE_ENV, PORT, SESSION_SECRET |
+| `src/scripts/js/modules/db/connection.mjs` | NODE_ENV, DB_PG_*, RENDER      |
+| `src/routes/system.mjs`                    | DB_PG_DATABASE                 |
+| `scripts/init-db.mjs`                      | DB_PG_*, RENDER                |
 
 ---
 

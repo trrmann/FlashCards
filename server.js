@@ -4,8 +4,13 @@ import path from 'path';
 import session from 'express-session';
 import pgSession from 'connect-pg-simple';
 
-import { appSiteData } from './src/js/appSiteData.js';
-import { initializeDatabase, healthCheck, query, pool } from './src/db/connection.mjs';
+import { appSiteData } from './src/scripts/js/appSiteData.js';
+import {
+  initializeDatabase,
+  healthCheck,
+  query,
+  pool,
+} from './src/scripts/js/modules/db/connection.mjs';
 import { runMigrations } from './src/scripts/js/modules/db/migrations.mjs';
 import authRoutes from './src/routes/auth.mjs';
 import userRoutes from './src/routes/users.mjs';
