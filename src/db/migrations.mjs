@@ -362,6 +362,64 @@ const migrations = [
       console.log('✓ Added session_streak column');
     },
   },
+  {
+    name: 'add_difficulty_scoring_system',
+    description: 'Add difficulty field to flashcards and tracking table for adaptive learning',
+    run: async () => {
+      // Check if difficulty column exists on flashcards
+      const difficultyCheck = await query(
+        `SELECT column_name FROM information_schema.columns 
+         WHERE table_name = 'flashcards' AND column_name = 'difficulty_score'`
+      );
+
+      if (difficultyCheck.rows.length > 0) {
+        console.log('✓ Difficulty scoring already configured');
+        return;
+      }
+
+      // Add difficulty_score column to flashcards (1.0 to 5.0 scale, default 3.0)
+      await query(
+        `ALTER TABLE flashcards
+         ADD COLUMN difficulty_score DECIMAL(3, 2) DEFAULT 3.00 CHECK (difficulty_score >= 1.0 AND difficulty_score <= 5.0)`
+      );
+
+      // Add last_difficulty_update tracking
+      await query(
+        `ALTER TABLE flashcards
+         ADD COLUMN last_difficulty_update TIMESTAMP DEFAULT NOW()`
+      );
+
+      // Add calculation_base column to track if difficulty is from shared (all users) or private (individual)
+      await query(
+        `ALTER TABLE flashcards
+         ADD COLUMN difficulty_calc_base VARCHAR(10) DEFAULT 'individual' CHECK (difficulty_calc_base IN ('individual', 'shared'))`
+      );
+
+      console.log('✓ Added difficulty scoring system to flashcards table');
+
+      // Create difficulty history table for tracking score changes over time
+      await query(
+        `CREATE TABLE IF NOT EXISTS difficulty_history (
+          id SERIAL PRIMARY KEY,
+          flashcard_id UUID NOT NULL REFERENCES flashcards(flashcard_id) ON DELETE CASCADE,
+          old_score DECIMAL(3, 2),
+          new_score DECIMAL(3, 2),
+          calculation_basis VARCHAR(255),
+          sample_size INTEGER,
+          success_rate DECIMAL(5, 2),
+          created_at TIMESTAMP DEFAULT NOW()
+        )`
+      );
+
+      // Create index for fast lookups
+      await query(
+        `CREATE INDEX IF NOT EXISTS idx_difficulty_history 
+         ON difficulty_history (flashcard_id, created_at)`
+      );
+
+      console.log('✓ Created difficulty_history table');
+    },
+  },
 ];
 
 /**

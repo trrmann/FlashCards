@@ -661,3 +661,196 @@ export async function resetUserLeitnerStats(userId) {
     message: `Reset Leitner progress for ${result.rows.length} flashcard(s)`,
   };
 }
+
+/**
+ * Calculate difficulty score based on success rate
+ * Difficulty scale: 1.0 (very easy) to 5.0 (very hard)
+ * Formula: 5.0 - (success_rate * 4.0)
+ * Examples:
+ *   100% success rate = 1.0 (very easy)
+ *   75% success rate = 2.0 (easy)
+ *   50% success rate = 3.0 (medium)
+ *   25% success rate = 4.0 (hard)
+ *   0% success rate = 5.0 (very hard)
+ * 
+ * @param {number} successRate - Decimal between 0 and 1 (0-100%)
+ * @returns {number} Difficulty score 1.0-5.0
+ */
+function calculateDifficultyFromSuccessRate(successRate) {
+  // Clamp success rate to 0-1
+  const rate = Math.max(0, Math.min(1, successRate));
+  // Convert to difficulty: 1.0 = very easy (100% success), 5.0 = very hard (0% success)
+  return parseFloat((5.0 - (rate * 4.0)).toFixed(2));
+}
+
+/**
+ * Update difficulty score for a flashcard based on performance data
+ * For shared cards: uses all users' performance
+ * For private cards: uses only that user's performance
+ * 
+ * @param {string} flashcardId - Flashcard ID
+ * @param {string} userId - User ID (for private cards)
+ * @returns {Promise<object>} Update result with old/new scores
+ */
+export async function updateDifficultyScore(flashcardId, userId = null) {
+  try {
+    // Get flashcard info
+    const cardResult = await query(
+      `SELECT is_private, created_by FROM flashcards WHERE flashcard_id = $1`,
+      [flashcardId]
+    );
+
+    if (cardResult.rows.length === 0) {
+      return { error: 'Flashcard not found' };
+    }
+
+    const { is_private, created_by } = cardResult.rows[0];
+
+    // Get current difficulty
+    const currentResult = await query(
+      `SELECT difficulty_score FROM flashcards WHERE flashcard_id = $1`,
+      [flashcardId]
+    );
+    const oldScore = currentResult.rows[0].difficulty_score;
+
+    let successRate = 0;
+    let sampleSize = 0;
+    let calculationBasis = '';
+
+    if (is_private) {
+      // Private card: use only the owner's data
+      const ownerStats = await query(
+        `SELECT COUNT(*) as total, SUM(CASE WHEN correct THEN 1 ELSE 0 END) as correct
+         FROM practice_history
+         WHERE flashcard_id = $1 AND user_id = $2`,
+        [flashcardId, created_by]
+      );
+
+      sampleSize = parseInt(ownerStats.rows[0].total) || 0;
+      const correctCount = parseInt(ownerStats.rows[0].correct) || 0;
+      successRate = sampleSize > 0 ? correctCount / sampleSize : 0.5; // Default to medium if no data
+      calculationBasis = `Owner only (${sampleSize} attempts)`;
+    } else {
+      // Shared card: use all users' data
+      const sharedStats = await query(
+        `SELECT COUNT(*) as total, SUM(CASE WHEN correct THEN 1 ELSE 0 END) as correct
+         FROM practice_history
+         WHERE flashcard_id = $1`,
+        [flashcardId]
+      );
+
+      sampleSize = parseInt(sharedStats.rows[0].total) || 0;
+      const correctCount = parseInt(sharedStats.rows[0].correct) || 0;
+      successRate = sampleSize > 0 ? correctCount / sampleSize : 0.5; // Default to medium if no data
+      calculationBasis = `All users (${sampleSize} attempts)`;
+    }
+
+    // Calculate new difficulty
+    const newScore = calculateDifficultyFromSuccessRate(successRate);
+
+    // Update the difficulty score
+    await query(
+      `UPDATE flashcards 
+       SET difficulty_score = $1,
+           last_difficulty_update = NOW(),
+           difficulty_calc_base = $2
+       WHERE flashcard_id = $3`,
+      [newScore, is_private ? 'individual' : 'shared', flashcardId]
+    );
+
+    // Record in difficulty history
+    if (newScore !== oldScore) {
+      await query(
+        `INSERT INTO difficulty_history 
+         (flashcard_id, old_score, new_score, calculation_basis, sample_size, success_rate)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [flashcardId, oldScore, newScore, calculationBasis, sampleSize, (successRate * 100).toFixed(2)]
+      );
+    }
+
+    return {
+      flashcardId,
+      oldScore,
+      newScore,
+      successRate: (successRate * 100).toFixed(2),
+      sampleSize,
+      calculationBasis,
+      changed: newScore !== oldScore,
+    };
+  } catch (error) {
+    console.error('Error updating difficulty score:', error);
+    return { error: error.message };
+  }
+}
+
+/**
+ * Batch update difficulty scores for all flashcards in a class/lesson
+ * Useful to run periodically to keep difficulties current
+ * 
+ * @param {string} userId - User ID (for filtering private cards)
+ * @param {string} lessonFilter - Optional: filter by lesson name
+ * @returns {Promise<array>} Array of update results
+ */
+export async function batchUpdateDifficultyScores(userId, lessonFilter = null) {
+  try {
+    // Get all flashcards (public and user's private ones)
+    let query_text = `
+      SELECT DISTINCT flashcard_id 
+      FROM flashcards 
+      WHERE is_private = false OR created_by = $1
+    `;
+    const params = [userId];
+
+    if (lessonFilter) {
+      query_text += ` AND lesson = $2`;
+      params.push(lessonFilter);
+    }
+
+    const cardsResult = await query(query_text, params);
+    const updates = [];
+
+    for (const row of cardsResult.rows) {
+      const result = await updateDifficultyScore(row.flashcard_id, userId);
+      if (result.changed || result.error) {
+        updates.push(result);
+      }
+    }
+
+    return updates;
+  } catch (error) {
+    console.error('Error in batch update:', error);
+    return [{ error: error.message }];
+  }
+}
+
+/**
+ * Get difficulty statistics for all cards
+ * Returns distribution of difficulty scores
+ * 
+ * @param {string} userId - User ID
+ * @returns {Promise<object>} Difficulty statistics
+ */
+export async function getDifficultyStats(userId) {
+  try {
+    const result = await query(
+      `SELECT 
+        COUNT(*) as total_cards,
+        ROUND(AVG(difficulty_score), 2) as avg_difficulty,
+        MIN(difficulty_score) as easiest,
+        MAX(difficulty_score) as hardest,
+        COUNT(CASE WHEN difficulty_score >= 1.0 AND difficulty_score < 2.0 THEN 1 END) as very_easy,
+        COUNT(CASE WHEN difficulty_score >= 2.0 AND difficulty_score < 3.0 THEN 1 END) as easy,
+        COUNT(CASE WHEN difficulty_score >= 3.0 AND difficulty_score < 4.0 THEN 1 END) as medium,
+        COUNT(CASE WHEN difficulty_score >= 4.0 AND difficulty_score < 5.0 THEN 1 END) as hard,
+        COUNT(CASE WHEN difficulty_score >= 5.0 THEN 1 END) as very_hard
+       FROM flashcards
+       WHERE is_private = false OR created_by = $1`,
+      [userId]
+    );
+
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error getting difficulty stats:', error);
+    return { error: error.message };
+  }
+}

@@ -18,6 +18,9 @@ import {
   getReviewSchedule,
   getTodaysSummary,
   getCardRepetitionsNeeded,
+  updateDifficultyScore,
+  batchUpdateDifficultyScores,
+  getDifficultyStats,
   checkNeedsMoreAttempts,
 } from '../auth/practice.mjs';
 
@@ -346,6 +349,103 @@ router.get('/summary', async (req, res) => {
   } catch (error) {
     console.error('Error fetching practice summary:', error);
     res.status(500).json({ status: 'error', error: 'Failed to fetch summary' });
+  }
+});
+
+/**
+ * POST /api/practice/difficulty/update-single
+ * Update difficulty score for a single flashcard based on performance
+ */
+router.post('/difficulty/update-single', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ status: 'error', error: 'Unauthorized' });
+    }
+
+    const userId = req.session.userId;
+    const { flashcardId } = req.body;
+
+    if (!flashcardId) {
+      return res.status(400).json({
+        status: 'error',
+        error: 'Missing required field: flashcardId',
+      });
+    }
+
+    const result = await updateDifficultyScore(flashcardId, userId);
+
+    if (result.error) {
+      return res.status(404).json({ status: 'error', error: result.error });
+    }
+
+    res.json({
+      status: 'success',
+      data: result,
+    });
+  } catch (error) {
+    console.error('Error updating difficulty:', error);
+    res.status(500).json({ status: 'error', error: 'Failed to update difficulty' });
+  }
+});
+
+/**
+ * POST /api/practice/difficulty/update-batch
+ * Batch update difficulty scores for all flashcards (optionally filtered by lesson)
+ */
+router.post('/difficulty/update-batch', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ status: 'error', error: 'Unauthorized' });
+    }
+
+    const userId = req.session.userId;
+    const { lesson } = req.body;
+
+    const results = await batchUpdateDifficultyScores(userId, lesson || null);
+
+    const changed = results.filter((r) => r.changed).length;
+    const errors = results.filter((r) => r.error).length;
+
+    res.json({
+      status: 'success',
+      summary: {
+        total: results.length,
+        updated: changed,
+        errors,
+        lesson: lesson || 'all',
+      },
+      details: results.slice(0, 10), // Return first 10 updates in detail
+    });
+  } catch (error) {
+    console.error('Error in batch update:', error);
+    res.status(500).json({ status: 'error', error: 'Failed to batch update' });
+  }
+});
+
+/**
+ * GET /api/practice/difficulty/stats
+ * Get difficulty distribution and statistics
+ */
+router.get('/difficulty/stats', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ status: 'error', error: 'Unauthorized' });
+    }
+
+    const userId = req.session.userId;
+    const stats = await getDifficultyStats(userId);
+
+    if (stats.error) {
+      return res.status(500).json({ status: 'error', error: stats.error });
+    }
+
+    res.json({
+      status: 'success',
+      data: stats,
+    });
+  } catch (error) {
+    console.error('Error fetching difficulty stats:', error);
+    res.status(500).json({ status: 'error', error: 'Failed to fetch statistics' });
   }
 });
 
