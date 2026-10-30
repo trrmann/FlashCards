@@ -2,7 +2,7 @@
 
 **Severity:** HIGH  
 **Status:** CONFIRMED  
-**Found:** 2026-10-30 00:34 EDT  
+**Found:** 2026-10-30 00:34 EDT
 
 ## Problem Summary
 
@@ -17,6 +17,7 @@ When practice attempts are submitted with a category filter applied, the `catego
 ## Test Data Evidence
 
 **Flashcards (have correct data):**
+
 ```
 flashcard_id: 2aaaeb51
 class: 'English Connect'
@@ -25,6 +26,7 @@ category: 'vocabulary'  ✅
 ```
 
 **Practice History (MISSING category):**
+
 ```
 id: 187
 flashcard_id: 2aaaeb51
@@ -38,25 +40,28 @@ created_at: 2026-10-30 04:22:36
 ## Database Verification
 
 ### Query: All Practice Attempts for tmann
+
 ```sql
-SELECT id, flashcard_id, class, lesson, category, correct, created_at 
-FROM practice_history 
+SELECT id, flashcard_id, class, lesson, category, correct, created_at
+FROM practice_history
 WHERE user_id = 'ce8b10de-d16c-49ba-bf2b-cfd3153763bd'
 ORDER BY created_at;
 ```
 
 **Result:**
-| id | class | lesson | category | correct |
-|----|-------|--------|----------|---------|
-| 187 | English Connect | Week 02 | **NULL** ❌ | t |
-| 188 | English Connect | Week 01 | **NULL** ❌ | t |
-| 189 | English Connect | Week 01 | **NULL** ❌ | t |
-| 190 | English Connect | Week 01 | **NULL** ❌ | t |
+
+| id  | class           | lesson  | category    | correct |
+| --- | --------------- | ------- | ----------- | ------- |
+| 187 | English Connect | Week 02 | **NULL** ❌ | t       |
+| 188 | English Connect | Week 01 | **NULL** ❌ | t       |
+| 189 | English Connect | Week 01 | **NULL** ❌ | t       |
+| 190 | English Connect | Week 01 | **NULL** ❌ | t       |
 
 ### Query: Filter by Category (Shows Bug)
+
 ```sql
 SELECT COUNT(*) as total_attempts, accuracy
-FROM practice_history 
+FROM practice_history
 WHERE user_id = 'ce8b10de-d16c-49ba-bf2b-cfd3153763bd'
   AND category ILIKE 'vocabulary%'
 ```
@@ -64,9 +69,10 @@ WHERE user_id = 'ce8b10de-d16c-49ba-bf2b-cfd3153763bd'
 **Result:** 0 attempts (should be 4!)
 
 ### Query: Filter by Class (Works)
+
 ```sql
 SELECT COUNT(*) as total_attempts, accuracy
-FROM practice_history 
+FROM practice_history
 WHERE user_id = 'ce8b10de-d16c-49ba-bf2b-cfd3153763bd'
   AND class ILIKE 'English%'
 ```
@@ -78,38 +84,44 @@ WHERE user_id = 'ce8b10de-d16c-49ba-bf2b-cfd3153763bd'
 ### Code Path Investigation
 
 **Frontend:** (practice.ejs line 835)
+
 ```javascript
 filterCategory: filters.category || null,  // ✅ Sends category correctly
 ```
+
 Status: **OK** - Frontend IS sending filterCategory in request body
 
 **Backend Route:** (practice.mjs line 296-299)
+
 ```javascript
 const filterContext = {
   class: filterClass || null,
   lesson: filterLesson || null,
-  category: filterCategory || null,    // ✅ Receives from request
+  category: filterCategory || null, // ✅ Receives from request
 };
 ```
+
 Status: **OK** - Route receives and passes to recordPracticeAttempt()
 
 **Backend Function:** (practice.mjs line 462-485)
+
 ```javascript
 export async function recordPracticeAttempt(
-  userId, 
-  flashcardId, 
-  isCorrect, 
-  responseTimeMs = null, 
+  userId,
+  flashcardId,
+  isCorrect,
+  responseTimeMs = null,
   filterContext = null  // ✅ Receives filterContext
 ) {
   // Line 478: Uses filterContext.category if provided
   cardCategory = filterContext?.category || card.category;
-  
+
   // Line 483: Inserts into practice_history with cardCategory
   INSERT INTO practice_history (..., category)
   VALUES (..., $7)  // cardCategory
 }
 ```
+
 Status: **APPEARS OK** - Code looks correct!
 
 ## Hypothesis
@@ -132,6 +144,7 @@ The code LOOKS correct, but the data shows category is NULL. Possible causes:
 ## Test Case: Reproduce With New Attempt
 
 **Steps:**
+
 1. Open Practice page
 2. Set filters: Class="English Connect", Category="vocabulary"
 3. Click "Apply Filters"
@@ -143,17 +156,18 @@ The code LOOKS correct, but the data shows category is NULL. Possible causes:
 
 ## Impact on Features
 
-| Feature | Status | Impact |
-|---------|--------|--------|
-| Wildcard filtering (no filters) | ✅ WORKS | Shows all cards correctly |
-| Class filtering | ✅ WORKS | Accuracy is correct |
-| Lesson filtering | ✅ WORKS | Accuracy is correct |
-| Category filtering | ❌ BROKEN | Shows 0% instead of actual accuracy |
-| Combined filters (class+category) | ❌ BROKEN | Category portion fails |
+| Feature                           | Status    | Impact                              |
+| --------------------------------- | --------- | ----------------------------------- |
+| Wildcard filtering (no filters)   | ✅ WORKS  | Shows all cards correctly           |
+| Class filtering                   | ✅ WORKS  | Accuracy is correct                 |
+| Lesson filtering                  | ✅ WORKS  | Accuracy is correct                 |
+| Category filtering                | ❌ BROKEN | Shows 0% instead of actual accuracy |
+| Combined filters (class+category) | ❌ BROKEN | Category portion fails              |
 
 ## Solution Options
 
 ### Option A: Populate Missing Data (DATA FIX)
+
 Update existing practice_history records by joining with flashcards:
 
 ```sql
@@ -168,6 +182,7 @@ WHERE ph.flashcard_id = f.flashcard_id
 **Cons:** Assumes category at time of practice = current category
 
 ### Option B: Debug and Fix New Attempts (CODE FIX)
+
 1. Add logging to recordPracticeAttempt() to trace filterContext
 2. Verify sessionStorage is populated on practice page
 3. Test new practice attempt with category filter applied
@@ -177,6 +192,7 @@ WHERE ph.flashcard_id = f.flashcard_id
 **Cons:** Doesn't fix existing historical data
 
 ### Option C: Both (COMPREHENSIVE FIX)
+
 1. Fix code for new attempts
 2. Migrate existing data to populate category from flashcards
 

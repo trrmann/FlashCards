@@ -11,6 +11,7 @@
 When the Practice page loaded, it was calling `loadNextCard()` **BEFORE** filters were restored from sessionStorage.
 
 **Timeline:**
+
 1. Page loads → DOMContentLoaded fires immediately
 2. `loadNextCard()` called (line 527 in practice.ejs)
 3. Reads `sessionStorage.getItem('studyFilters')` → **NULL** (hasn't been restored yet)
@@ -30,10 +31,10 @@ Added 100ms delay in DOMContentLoaded to allow filter-panel to restore filters f
 ```javascript
 document.addEventListener('DOMContentLoaded', async () => {
   sessionStartTime = new Date().toISOString();
-  
+
   // Wait for filter-panel to restore filters from sessionStorage
   await new Promise(resolve => setTimeout(resolve, 100));
-  
+
   // NOW safe to load first card - filters will be in sessionStorage
   ...
   await loadNextCard();
@@ -44,6 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 ## Verification (REAL BROWSER TEST)
 
 **Test Scenario:**
+
 1. Opened practice page fresh
 2. Page loaded WITH correct card "test" (vocabulary) - NO "More Entries Needed" error
 3. Expanded filters and set: Class="English Connect", Lesson="Week 01", Category="vocabulary"
@@ -85,10 +87,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 ## Real-World Test Results
 
 **Before Fix:**
+
 - Page loads → Shows "test 3" (category=other) ❌ WRONG
 - Apply filter → Shows "test" (category=vocabulary) ✅ RIGHT (but too late)
 
 **After Fix:**
+
 - Page loads → Shows "test" (category=vocabulary) ✅ CORRECT IMMEDIATELY
 - Apply filter → Shows "test" (category=vocabulary) ✅ STAYS CORRECT
 - More Entries Needed message is gone ✅

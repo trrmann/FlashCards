@@ -14,12 +14,12 @@
 
 ## Flashcard Inventory
 
-| Card ID | Class | Lesson | Category | Current Box |
-|---------|-------|--------|----------|-------------|
-| 52eacfa1 | English Connect | Week 01 | other | Box 2 |
-| 2aaaeb51 | English Connect | Week 02 | vocabulary | Box 1 |
-| c1d8c4c6 | test | chapter 1 | vocabulary | Box 1 |
-| ffcfab94 | English Connect | Week 01 | vocabulary | Box 1 |
+| Card ID  | Class           | Lesson    | Category   | Current Box |
+| -------- | --------------- | --------- | ---------- | ----------- |
+| 52eacfa1 | English Connect | Week 01   | other      | Box 2       |
+| 2aaaeb51 | English Connect | Week 02   | vocabulary | Box 1       |
+| c1d8c4c6 | test            | chapter 1 | vocabulary | Box 1       |
+| ffcfab94 | English Connect | Week 01   | vocabulary | Box 1       |
 
 ## Test Results
 
@@ -28,15 +28,16 @@
 **Expected:** All 4 cards counted across their boxes  
 **Filter Parameters:** `class=`, `lesson=`, `category=` (all empty/null = show all)
 
-| Box | Expected Count | Database Count | Status |
-|-----|----------------|-----------------|--------|
-| Box 1 | 3 | 3 ✅ | PASS |
-| Box 2 | 1 | 1 ✅ | PASS |
-| Box 3 | 0 | 0 ✅ | PASS |
+| Box   | Expected Count | Database Count | Status |
+| ----- | -------------- | -------------- | ------ |
+| Box 1 | 3              | 3 ✅           | PASS   |
+| Box 2 | 1              | 1 ✅           | PASS   |
+| Box 3 | 0              | 0 ✅           | PASS   |
 
 **SQL Query:**
+
 ```sql
-SELECT 'Box 1' as box_name, COUNT(DISTINCT p.id) as count 
+SELECT 'Box 1' as box_name, COUNT(DISTINCT p.id) as count
 FROM flashcard_leitner_progress p
 WHERE p.user_id = 'ce8b10de-d16c-49ba-bf2b-cfd3153763bd' AND p.current_box = 1
 ```
@@ -51,23 +52,25 @@ WHERE p.user_id = 'ce8b10de-d16c-49ba-bf2b-cfd3153763bd' AND p.current_box = 1
 **Cards That Match:** 3 cards (52eacfa1, 2aaaeb51, ffcfab94) all have class='English Connect'  
 **Filter Parameters:** `class=English*&lesson=&category=`
 
-| Box | Expected Count | Database Count | Status |
-|-----|----------------|-----------------|--------|
-| Box 1 | 2 | 2 ✅ | PASS |
-| Box 2 | 1 | 1 ✅ | PASS |
-| Box 3 | 0 | 0 ✅ | PASS |
+| Box   | Expected Count | Database Count | Status |
+| ----- | -------------- | -------------- | ------ |
+| Box 1 | 2              | 2 ✅           | PASS   |
+| Box 2 | 1              | 1 ✅           | PASS   |
+| Box 3 | 0              | 0 ✅           | PASS   |
 
 **SQL Query:**
+
 ```sql
-SELECT 'Box 1' as box_name, COUNT(DISTINCT p.id) as count 
-FROM flashcard_leitner_progress p 
-JOIN flashcards f ON p.flashcard_id = f.flashcard_id 
-WHERE p.user_id = 'ce8b10de-d16c-49ba-bf2b-cfd3153763bd' 
-  AND p.current_box = 1 
+SELECT 'Box 1' as box_name, COUNT(DISTINCT p.id) as count
+FROM flashcard_leitner_progress p
+JOIN flashcards f ON p.flashcard_id = f.flashcard_id
+WHERE p.user_id = 'ce8b10de-d16c-49ba-bf2b-cfd3153763bd'
+  AND p.current_box = 1
   AND f.class ILIKE 'English%'
 ```
 
-**Result:** 
+**Result:**
+
 - Box 1: 2 cards (2aaaeb51, ffcfab94)
 - Box 2: 1 card (52eacfa1)
 
@@ -79,19 +82,20 @@ WHERE p.user_id = 'ce8b10de-d16c-49ba-bf2b-cfd3153763bd'
 **Cards That Match:** 1 card (c1d8c4c6)  
 **Filter Parameters:** `class=test&lesson=&category=`
 
-| Box | Expected Count | Database Count | Status |
-|-----|----------------|-----------------|--------|
-| Box 1 | 1 | 1 ✅ | PASS |
-| Box 2 | 0 | 0 ✅ | PASS |
-| Box 3 | 0 | 0 ✅ | PASS |
+| Box   | Expected Count | Database Count | Status |
+| ----- | -------------- | -------------- | ------ |
+| Box 1 | 1              | 1 ✅           | PASS   |
+| Box 2 | 0              | 0 ✅           | PASS   |
+| Box 3 | 0              | 0 ✅           | PASS   |
 
 **SQL Query:**
+
 ```sql
-SELECT 'Box 1' as box_name, COUNT(DISTINCT p.id) as count 
-FROM flashcard_leitner_progress p 
-JOIN flashcards f ON p.flashcard_id = f.flashcard_id 
-WHERE p.user_id = 'ce8b10de-d16c-49ba-bf2b-cfd3153763bd' 
-  AND p.current_box = 1 
+SELECT 'Box 1' as box_name, COUNT(DISTINCT p.id) as count
+FROM flashcard_leitner_progress p
+JOIN flashcards f ON p.flashcard_id = f.flashcard_id
+WHERE p.user_id = 'ce8b10de-d16c-49ba-bf2b-cfd3153763bd'
+  AND p.current_box = 1
   AND f.class ILIKE 'test%'
 ```
 
@@ -105,8 +109,9 @@ WHERE p.user_id = 'ce8b10de-d16c-49ba-bf2b-cfd3153763bd'
 
 **Expected:** All practice attempts recorded are correct  
 **Query:**
+
 ```sql
-SELECT 
+SELECT
   ROUND(100.0 * SUM(CASE WHEN correct = true THEN 1 ELSE 0 END) / COUNT(*)::NUMERIC, 2) as accuracy_percent,
   COUNT(*) as total_attempts,
   SUM(CASE WHEN correct = true THEN 1 ELSE 0 END) as correct_attempts
@@ -114,6 +119,7 @@ FROM practice_history
 ```
 
 **Result:**
+
 - Accuracy: **100.00%** ✅
 - Total Attempts: **4**
 - Correct Attempts: **4**
@@ -124,8 +130,9 @@ FROM practice_history
 
 **Expected:** All "English Connect" practice attempts are correct  
 **Query:**
+
 ```sql
-SELECT 
+SELECT
   ROUND(100.0 * SUM(CASE WHEN correct = true THEN 1 ELSE 0 END) / COUNT(*)::NUMERIC, 2) as accuracy_percent,
   COUNT(*) as total_attempts,
   SUM(CASE WHEN correct = true THEN 1 ELSE 0 END) as correct_attempts
@@ -135,6 +142,7 @@ WHERE f.class ILIKE 'English%'
 ```
 
 **Result:**
+
 - Accuracy: **100.00%** ✅
 - Total Attempts: **4**
 - Correct Attempts: **4**
@@ -146,8 +154,9 @@ WHERE f.class ILIKE 'English%'
 
 **Expected:** No practice attempts for "test" class cards  
 **Query:**
+
 ```sql
-SELECT 
+SELECT
   ROUND(100.0 * SUM(CASE WHEN correct = true THEN 1 ELSE 0 END) / COUNT(*)::NUMERIC, 2) as accuracy_percent,
   COUNT(*) as total_attempts,
   SUM(CASE WHEN correct = true THEN 1 ELSE 0 END) as correct_attempts
@@ -157,6 +166,7 @@ WHERE f.class ILIKE 'test%'
 ```
 
 **Result:**
+
 - Accuracy: **NULL** (no attempts) ✅
 - Total Attempts: **0**
 - Correct Attempts: **NULL**
@@ -172,12 +182,13 @@ WHERE f.class ILIKE 'test%'
 **Verification:** Wildcard query returns all 4 cards (Box 1: 3, Box 2: 1, Box 3: 0)
 
 **Code Path (from practice.mjs):**
+
 ```javascript
 // Empty/null filters are omitted from WHERE clause
 const filters = {
-  class: req.query.class || null,      // '' becomes null
-  lesson: req.query.lesson || null,    // '' becomes null
-  category: req.query.category || null // '' becomes null
+  class: req.query.class || null, // '' becomes null
+  lesson: req.query.lesson || null, // '' becomes null
+  category: req.query.category || null, // '' becomes null
 };
 // SQL: WHERE (all filters omitted when null) = SELECT ALL
 ```
@@ -190,11 +201,13 @@ const filters = {
 **Example:** `"English*"` → `"English%" SQL ILIKE`
 
 **Verification:**
+
 - Filter: `class=English*` returns 3 cards ✅
 - All matching cards have `class = 'English Connect'` (starts with "English")
 - SQL Pattern: `f.class ILIKE 'English%'` correctly matches
 
 **Code Path (from practice.mjs lines 290-310):**
+
 ```javascript
 // Pattern conversion happens in getProgressStats
 function convertWildcardPattern(value) {
@@ -213,6 +226,7 @@ function convertWildcardPattern(value) {
 
 **Behavior:** Filter matching is case-insensitive via PostgreSQL ILIKE operator  
 **Verification:**
+
 - Filter: `class=test` matches card with `class='test'` ✅
 - Both exact and pattern matching use ILIKE
 
@@ -220,14 +234,14 @@ function convertWildcardPattern(value) {
 
 ## Summary
 
-| Scenario | Box 1 | Box 2 | Box 3 | Accuracy | Status |
-|----------|-------|-------|-------|----------|--------|
-| Wildcard (all empty) | 3 ✅ | 1 ✅ | 0 ✅ | 100% ✅ | **PASS** |
-| CLASS="English*" | 2 ✅ | 1 ✅ | 0 ✅ | 100% ✅ | **PASS** |
-| CLASS="test" | 1 ✅ | 0 ✅ | 0 ✅ | N/A ✅ | **PASS** |
-| LESSON="Week 01" | 1 ✅ | 1 ✅ | 0 ✅ | 100% ✅ | **PASS** |
-| CATEGORY="vocabulary" | 3 ✅ | 0 ✅ | 0 ✅ | 100% ✅ | **PASS** |
-| CLASS="English*" + CATEGORY="vocabulary" | 2 ✅ | 0 ✅ | 0 ✅ | 100% ✅ | **PASS** |
+| Scenario                                 | Box 1 | Box 2 | Box 3 | Accuracy | Status   |
+| ---------------------------------------- | ----- | ----- | ----- | -------- | -------- |
+| Wildcard (all empty)                     | 3 ✅  | 1 ✅  | 0 ✅  | 100% ✅  | **PASS** |
+| CLASS="English*"                         | 2 ✅  | 1 ✅  | 0 ✅  | 100% ✅  | **PASS** |
+| CLASS="test"                             | 1 ✅  | 0 ✅  | 0 ✅  | N/A ✅   | **PASS** |
+| LESSON="Week 01"                         | 1 ✅  | 1 ✅  | 0 ✅  | 100% ✅  | **PASS** |
+| CATEGORY="vocabulary"                    | 3 ✅  | 0 ✅  | 0 ✅  | 100% ✅  | **PASS** |
+| CLASS="English*" + CATEGORY="vocabulary" | 2 ✅  | 0 ✅  | 0 ✅  | 100% ✅  | **PASS** |
 
 **Overall Result:** ✅ All 6 filter scenarios working correctly.
 
@@ -239,16 +253,17 @@ function convertWildcardPattern(value) {
 
 **Available Lessons:** chapter 1, Week 01, Week 02  
 **Cards with Week 01:**
+
 - ffcfab94 (English Connect, Week 01, vocabulary) - Box 1
 - 52eacfa1 (English Connect, Week 01, other) - Box 2
 
 **Filter Parameters:** `lesson=Week 01&class=&category=`
 
-| Box | Expected | Database | Status |
-|-----|----------|----------|--------|
-| Box 1 | 1 | 1 ✅ | PASS |
-| Box 2 | 1 | 1 ✅ | PASS |
-| Box 3 | 0 | 0 ✅ | PASS |
+| Box   | Expected | Database | Status |
+| ----- | -------- | -------- | ------ |
+| Box 1 | 1        | 1 ✅     | PASS   |
+| Box 2 | 1        | 1 ✅     | PASS   |
+| Box 3 | 0        | 0 ✅     | PASS   |
 
 **Result:** Lesson filter correctly matches 2 cards across boxes
 
@@ -258,17 +273,18 @@ function convertWildcardPattern(value) {
 
 **Available Categories:** other, vocabulary  
 **Cards with vocabulary:**
+
 - 2aaaeb51 (English Connect, Week 02, vocabulary) - Box 1
 - c1d8c4c6 (test, chapter 1, vocabulary) - Box 1
 - ffcfab94 (English Connect, Week 01, vocabulary) - Box 1
 
 **Filter Parameters:** `category=vocabulary&class=&lesson=`
 
-| Box | Expected | Database | Status |
-|-----|----------|----------|--------|
-| Box 1 | 3 | 3 ✅ | PASS |
-| Box 2 | 0 | 0 ✅ | PASS |
-| Box 3 | 0 | 0 ✅ | PASS |
+| Box   | Expected | Database | Status |
+| ----- | -------- | -------- | ------ |
+| Box 1 | 3        | 3 ✅     | PASS   |
+| Box 2 | 0        | 0 ✅     | PASS   |
+| Box 3 | 0        | 0 ✅     | PASS   |
 
 **Result:** Category filter correctly matches 3 cards in Box 1
 
@@ -278,16 +294,17 @@ function convertWildcardPattern(value) {
 
 **Expected:** Intersection of both filters (cards matching BOTH conditions)  
 **Matching Cards:**
+
 - 2aaaeb51 (English Connect, Week 02, vocabulary) - Box 1
 - ffcfab94 (English Connect, Week 01, vocabulary) - Box 1
 
 **Filter Parameters:** `class=English*&category=vocabulary&lesson=`
 
-| Box | Expected | Database | Status |
-|-----|----------|----------|--------|
-| Box 1 | 2 | 2 ✅ | PASS |
-| Box 2 | 0 | 0 ✅ | PASS |
-| Box 3 | 0 | 0 ✅ | PASS |
+| Box   | Expected | Database | Status |
+| ----- | -------- | -------- | ------ |
+| Box 1 | 2        | 2 ✅     | PASS   |
+| Box 2 | 0        | 0 ✅     | PASS   |
+| Box 3 | 0        | 0 ✅     | PASS   |
 
 **Result:** Combined filters correctly apply AND logic (intersection of sets)
 

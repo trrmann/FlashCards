@@ -2,7 +2,8 @@
 
 **Issue Found:** Backfill was incorrectly populating old attempts with card categories
 
-**Correct Behavior:** 
+**Correct Behavior:**
+
 - Attempts made WITHOUT a filter → `category=NULL` (wildcard/unfiltered state)
 - Attempts made WITH a filter → `category=specific_value` (explicit filter)
 - Filter should only count attempts made WITH that filter, not retroactively apply to old attempts
@@ -10,16 +11,19 @@
 ## Test Results - CORRECT SEMANTICS ✅
 
 ### Test 1: WILDCARD (No filters applied)
+
 - **Count:** 4 attempts ✅
 - **Accuracy:** 100% (4/4 correct) ✅
 - **Logic:** Shows ALL attempts including category=NULL
 
 ### Test 2: CLASS="English*" Filter
-- **Count:** 4 attempts ✅ 
+
+- **Count:** 4 attempts ✅
 - **Accuracy:** 100% (all 4 are English Connect) ✅
 - **Note:** Works because class was captured in ALL attempts
 
 ### Test 3: CATEGORY="vocabulary" Filter
+
 - **Count:** 0 attempts ✅ (correct!)
 - **Accuracy:** N/A (no attempts with this filter) ✅
 - **Why:** All 4 historical attempts have `category=NULL` (made without filter)
@@ -44,11 +48,13 @@ All category=NULL means: "These attempts were made without a category filter"
 ## Why This is Correct
 
 When a user selects **category="vocabulary"** filter on the practice page:
+
 - The system asks: "How many practice attempts have been made with vocabulary filter active?"
 - Answer: **0** (because all attempts were made with NO filter)
 - This is honest reporting - no mixing of filtered vs unfiltered attempts
 
 When user selects **NO filters** (wildcard):
+
 - The system shows: All 4 attempts (includes the category=NULL entries)
 - Accuracy: 100%
 - Box counts: 3 in Box 1, 1 in Box 2
@@ -56,6 +62,7 @@ When user selects **NO filters** (wildcard):
 ## Future: When Category Filter is ACTUALLY Used
 
 When a user makes a NEW practice attempt WITH category="vocabulary" filter:
+
 1. Frontend sends: `filterCategory: "vocabulary"`
 2. Backend captures: `recordPracticeAttempt(..., filterContext={category:"vocabulary"})`
 3. Database stores: `category = 'vocabulary'` (not NULL)
@@ -64,11 +71,11 @@ When a user makes a NEW practice attempt WITH category="vocabulary" filter:
 ## Code is Correct
 
 The fix to [src/auth/practice.mjs](src/auth/practice.mjs) ensures:
+
 ```javascript
 // If no filter context, use NULL (not the card's category)
-cardCategory = (filterContext?.category && filterContext.category !== '') 
-  ? filterContext.category 
-  : null;  // ← NULL for unfiltered attempts
+cardCategory =
+  filterContext?.category && filterContext.category !== '' ? filterContext.category : null; // ← NULL for unfiltered attempts
 ```
 
 This way, category field represents "What filter was active when this attempt was made?" not "What category does the card have?"

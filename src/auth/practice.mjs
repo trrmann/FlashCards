@@ -228,7 +228,8 @@ export async function getDueCardsForToday(userId, filters = {}) {
     `[DEBUG] getDueCardsForToday - Filters: class=${filters.class}, lesson=${filters.lesson}, category=${filters.category}`,
     `Filter patterns: class=${classPattern}, lesson=${lessonPattern}, category=${categoryPattern}`,
     `SQL WHERE: (${boxCondition}) ${filterClause}`,
-    `Query params:`, queryParams
+    `Query params:`,
+    queryParams
   );
 
   const result = await query(
@@ -244,7 +245,9 @@ export async function getDueCardsForToday(userId, filters = {}) {
   );
 
   console.log(`[DEBUG] getDueCardsForToday - ACTUAL SQL QUERY:`);
-  console.log(`  SELECT f.*, p.current_box, p.times_correct, p.times_incorrect, p.last_reviewed, p.next_review`);
+  console.log(
+    `  SELECT f.*, p.current_box, p.times_correct, p.times_incorrect, p.last_reviewed, p.next_review`
+  );
   console.log(`  FROM flashcards f`);
   console.log(`  JOIN flashcard_leitner_progress p ON f.flashcard_id = p.flashcard_id`);
   console.log(`  WHERE f.created_by = $1 (${userId})`);
@@ -469,7 +472,13 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
  * @param {number} responseTimeMs - Time taken to answer in milliseconds
  * @returns {Promise<object>} Updated progress record
  */
-export async function recordPracticeAttempt(userId, flashcardId, isCorrect, responseTimeMs = null, filterContext = null) {
+export async function recordPracticeAttempt(
+  userId,
+  flashcardId,
+  isCorrect,
+  responseTimeMs = null,
+  filterContext = null
+) {
   // Get the flashcard to access its class, lesson, category
   const cardResult = await query(
     `SELECT class, lesson, category FROM flashcards WHERE flashcard_id = $1`,
@@ -484,9 +493,14 @@ export async function recordPracticeAttempt(userId, flashcardId, isCorrect, resp
     const card = cardResult.rows[0];
     // Use filter context if provided (non-empty), otherwise use card's actual values
     // This ensures we always capture the card's data even if filter context is null/empty
-    cardClass = (filterContext?.class && filterContext.class !== '') ? filterContext.class : card.class;
-    cardLesson = (filterContext?.lesson && filterContext.lesson !== '') ? filterContext.lesson : card.lesson;
-    cardCategory = (filterContext?.category && filterContext.category !== '') ? filterContext.category : card.category;
+    cardClass =
+      filterContext?.class && filterContext.class !== '' ? filterContext.class : card.class;
+    cardLesson =
+      filterContext?.lesson && filterContext.lesson !== '' ? filterContext.lesson : card.lesson;
+    cardCategory =
+      filterContext?.category && filterContext.category !== ''
+        ? filterContext.category
+        : card.category;
   }
 
   // Record in history with filter context
@@ -620,9 +634,14 @@ export async function recordPracticeAttemptWithSession(
     const card = cardResult.rows[0];
     // Use filter context if provided (non-empty), otherwise use card's actual values
     // This ensures we always capture the card's data even if filter context is null/empty
-    cardClass = (filterContext?.class && filterContext.class !== '') ? filterContext.class : card.class;
-    cardLesson = (filterContext?.lesson && filterContext.lesson !== '') ? filterContext.lesson : card.lesson;
-    cardCategory = (filterContext?.category && filterContext.category !== '') ? filterContext.category : card.category;
+    cardClass =
+      filterContext?.class && filterContext.class !== '' ? filterContext.class : card.class;
+    cardLesson =
+      filterContext?.lesson && filterContext.lesson !== '' ? filterContext.lesson : card.lesson;
+    cardCategory =
+      filterContext?.category && filterContext.category !== ''
+        ? filterContext.category
+        : card.category;
   }
 
   // Record in practice history with filter context
@@ -631,9 +650,20 @@ export async function recordPracticeAttemptWithSession(
       `INSERT INTO practice_history (flashcard_id, user_id, leitner_box, correct, response_time_ms, class, lesson, category)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id`,
-      [flashcardId, userId, currentBox, isCorrect, responseTimeMs, cardClass, cardLesson, cardCategory]
+      [
+        flashcardId,
+        userId,
+        currentBox,
+        isCorrect,
+        responseTimeMs,
+        cardClass,
+        cardLesson,
+        cardCategory,
+      ]
     );
-    console.log(`[practice_history] Success - recorded with id: ${historyResult.rows[0]?.id}, filter: class=${cardClass}, lesson=${cardLesson}, category=${cardCategory}`);
+    console.log(
+      `[practice_history] Success - recorded with id: ${historyResult.rows[0]?.id}, filter: class=${cardClass}, lesson=${cardLesson}, category=${cardCategory}`
+    );
   } catch (error) {
     console.error(`[practice_history] Error:`, error.message);
     throw error;
@@ -681,25 +711,31 @@ export async function recordPracticeAttemptWithSession(
       const sessionCorrect = parseInt(sessionStats.session_correct) || 0;
       const sessionIncorrect = parseInt(sessionStats.session_incorrect) || 0;
 
-      console.log(`[recordPracticeAttemptWithSession] Session complete: correct=${sessionCorrect}, incorrect=${sessionIncorrect}`);
+      console.log(
+        `[recordPracticeAttemptWithSession] Session complete: correct=${sessionCorrect}, incorrect=${sessionIncorrect}`
+      );
 
       // Box progression: ALL attempts must be correct to promote, ANY incorrect means demote
       if (sessionIncorrect === 0 && sessionCorrect > 0) {
         // All correct - promote to next box (unless already at Box 3)
         if (newBox < 3) {
           newBox += 1;
-          console.log(`[recordPracticeAttemptWithSession] Promoting card from Box ${newBox - 1} to Box ${newBox}`);
+          console.log(
+            `[recordPracticeAttemptWithSession] Promoting card from Box ${newBox - 1} to Box ${newBox}`
+          );
         }
       } else if (sessionIncorrect > 0) {
         // Any incorrect - demote back to Box 1
-        console.log(`[recordPracticeAttemptWithSession] Demoting card to Box 1 (had ${sessionIncorrect} incorrect)`);
+        console.log(
+          `[recordPracticeAttemptWithSession] Demoting card to Box 1 (had ${sessionIncorrect} incorrect)`
+        );
         newBox = 1;
       }
     }
 
     // Update times_correct, times_incorrect, and potentially current_box
     const nextReview = !needsMoreAttempts ? calculateNextReviewDate(newBox) : null;
-    
+
     if (!needsMoreAttempts) {
       // Session complete - update all fields
       await query(
@@ -713,7 +749,9 @@ export async function recordPracticeAttemptWithSession(
          WHERE flashcard_id = $5 AND user_id = $6`,
         [newTimesCorrect, newTimesIncorrect, newBox, nextReview, flashcardId, userId]
       );
-      console.log(`[recordPracticeAttemptWithSession] Session complete update: correct=${newTimesCorrect}, incorrect=${newTimesIncorrect}, box=${newBox}`);
+      console.log(
+        `[recordPracticeAttemptWithSession] Session complete update: correct=${newTimesCorrect}, incorrect=${newTimesIncorrect}, box=${newBox}`
+      );
     } else {
       // Session in progress - update only attempt counts
       await query(
@@ -724,7 +762,9 @@ export async function recordPracticeAttemptWithSession(
          WHERE flashcard_id = $3 AND user_id = $4`,
         [newTimesCorrect, newTimesIncorrect, flashcardId, userId]
       );
-      console.log(`[recordPracticeAttemptWithSession] Mid-session update: correct=${newTimesCorrect}, incorrect=${newTimesIncorrect}`);
+      console.log(
+        `[recordPracticeAttemptWithSession] Mid-session update: correct=${newTimesCorrect}, incorrect=${newTimesIncorrect}`
+      );
     }
   }
 
@@ -837,7 +877,7 @@ export async function getProgressStats(userId, filters = {}) {
   );
 
   // Get overall correct/incorrect counts WITH FILTERS APPLIED
-  // IMPORTANT: Filter by CARD properties (f.class, f.lesson, f.category), NOT by 
+  // IMPORTANT: Filter by CARD properties (f.class, f.lesson, f.category), NOT by
   // practice_history filter fields (ph.class, ph.lesson, ph.category) which represent
   // what filters were active when the attempt was made, not the card's actual properties
   const attemptsResult = await query(
@@ -978,9 +1018,7 @@ export async function getTodaysSummary(userId, filters = {}) {
     queryParams.push(categoryPattern);
   }
 
-  const filterClause = filterConditions.length > 0 
-    ? 'AND ' + filterConditions.join(' AND ') 
-    : '';
+  const filterClause = filterConditions.length > 0 ? 'AND ' + filterConditions.join(' AND ') : '';
 
   // Get today's practice attempts (with filters applied)
   const todayResult = await query(

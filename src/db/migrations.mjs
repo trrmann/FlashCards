@@ -503,7 +503,9 @@ const addFilterContextMigration = {
       ADD COLUMN lesson VARCHAR(255),
       ADD COLUMN category VARCHAR(255)
     `);
-    console.log('✓ Added filter context columns (class, lesson, category) to practice_history table');
+    console.log(
+      '✓ Added filter context columns (class, lesson, category) to practice_history table'
+    );
   },
 };
 

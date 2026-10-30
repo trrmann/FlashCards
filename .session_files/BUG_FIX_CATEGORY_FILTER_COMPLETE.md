@@ -35,19 +35,21 @@ Enhanced `recordPracticeAttempt()` and `recordPracticeAttemptWithSession()` to a
 **Change:** Lines 473-479 and 608-614
 
 **Before:**
+
 ```javascript
 cardCategory = filterContext?.category || card.category;
 ```
 
 **After (Safeguard Added):**
+
 ```javascript
 // Always use card's data if filter context is null or empty
-cardCategory = (filterContext?.category && filterContext.category !== '') 
-  ? filterContext.category 
-  : card.category;
+cardCategory =
+  filterContext?.category && filterContext.category !== '' ? filterContext.category : card.category;
 ```
 
 This ensures:
+
 - If filterContext.category is provided → use it
 - If filterContext.category is empty/null → fall back to card.category
 - Result: Never NULL unless card itself has NULL category
@@ -56,24 +58,25 @@ This ensures:
 
 ### Box Count Tests (Unchanged - No Breaking Changes)
 
-| Test | Box 1 | Box 2 | Box 3 | Status |
-|------|-------|-------|-------|--------|
-| Wildcard | 3 ✅ | 1 ✅ | 0 ✅ | **PASS** |
-| CLASS="English*" | 2 ✅ | 1 ✅ | 0 ✅ | **PASS** |
-| CLASS="test" | 1 ✅ | 0 ✅ | 0 ✅ | **PASS** |
-| CATEGORY="vocabulary" | 3 ✅ | 0 ✅ | 0 ✅ | **FIXED!** |
+| Test                  | Box 1 | Box 2 | Box 3 | Status     |
+| --------------------- | ----- | ----- | ----- | ---------- |
+| Wildcard              | 3 ✅  | 1 ✅  | 0 ✅  | **PASS**   |
+| CLASS="English*"      | 2 ✅  | 1 ✅  | 0 ✅  | **PASS**   |
+| CLASS="test"          | 1 ✅  | 0 ✅  | 0 ✅  | **PASS**   |
+| CATEGORY="vocabulary" | 3 ✅  | 0 ✅  | 0 ✅  | **FIXED!** |
 
 ### Accuracy Tests (Now Correct!)
 
-| Test | Accuracy | Status |
-|------|----------|--------|
-| Wildcard (all attempts) | **100%** ✅ | PASS |
-| CLASS="English*" | **100%** ✅ | PASS |
-| CATEGORY="vocabulary" | **100%** ✅ | **FIXED!** |
+| Test                    | Accuracy    | Status     |
+| ----------------------- | ----------- | ---------- |
+| Wildcard (all attempts) | **100%** ✅ | PASS       |
+| CLASS="English*"        | **100%** ✅ | PASS       |
+| CATEGORY="vocabulary"   | **100%** ✅ | **FIXED!** |
 
 ## Data Changes
 
 ### Before Fix
+
 ```
 practice_history for flashcard 2aaaeb51:
   class: 'English Connect' ✅
@@ -82,6 +85,7 @@ practice_history for flashcard 2aaaeb51:
 ```
 
 ### After Fix
+
 ```
 practice_history for flashcard 2aaaeb51:
   class: 'English Connect' ✅
@@ -92,12 +96,14 @@ practice_history for flashcard 2aaaeb51:
 ## Impact Analysis
 
 ### ✅ What Still Works (No Breaking Changes)
+
 - Wildcard filter (no filters): Still shows 3, 1, 0 across boxes
 - Class filter: Still matches all 4 attempts (class always populated)
 - Lesson filter: Still matches attempts (lesson always populated)
 - Accuracy calculation for non-category filters: Still 100%
 
 ### ✅ What Now Works (Previously Broken)
+
 - Category filter: Now shows 3 vocabulary cards in Box 1 (previously 0)
 - Category accuracy: Now shows 100% (previously 0%)
 - Combined filters (e.g., CLASS + CATEGORY): Now work correctly
@@ -119,7 +125,7 @@ When user makes a new practice attempt with category filter applied:
 2. **During attempt:** User selects an answer
 3. **After fix verification:** Check database:
    ```sql
-   SELECT category FROM practice_history 
+   SELECT category FROM practice_history
    WHERE id = (SELECT MAX(id) FROM practice_history)
    ```
    Should show: **'vocabulary'** (not NULL)
@@ -136,8 +142,9 @@ No data loss risk - all changes are additive.
 ## Conclusion
 
 ✅ **All filter scenarios now work correctly**
+
 - Wildcard: PASS
-- Class filter: PASS  
+- Class filter: PASS
 - Lesson filter: PASS
 - Category filter: **FIXED!**
 - Combined filters: **FIXED!**
@@ -147,6 +154,7 @@ No data loss risk - all changes are additive.
 ---
 
 **Verification Queries Run:**
+
 - Backfill completion: 4 rows updated
 - Box count verification: 6 tests, all passing
 - Accuracy calculation: 3 tests, all showing 100%

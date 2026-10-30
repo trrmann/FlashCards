@@ -189,10 +189,10 @@ router.post('/:quizId/submit', async (req, res) => {
     }
 
     // Verify quiz belongs to user
-    const quizCheck = await query('SELECT quiz_id FROM quizzes WHERE quiz_id = $1 AND user_id = $2', [
-      quizId,
-      req.session.userId,
-    ]);
+    const quizCheck = await query(
+      'SELECT quiz_id FROM quizzes WHERE quiz_id = $1 AND user_id = $2',
+      [quizId, req.session.userId]
+    );
 
     if (quizCheck.rows.length === 0) {
       return res.status(404).json({
@@ -280,10 +280,10 @@ router.get('/:quizId/results', async (req, res) => {
     const { quizId } = req.params;
 
     // Verify quiz belongs to user
-    const quizCheck = await query('SELECT quiz_id FROM quizzes WHERE quiz_id = $1 AND user_id = $2', [
-      quizId,
-      req.session.userId,
-    ]);
+    const quizCheck = await query(
+      'SELECT quiz_id FROM quizzes WHERE quiz_id = $1 AND user_id = $2',
+      [quizId, req.session.userId]
+    );
 
     if (quizCheck.rows.length === 0) {
       return res.status(404).json({
