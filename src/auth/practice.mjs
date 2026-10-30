@@ -776,15 +776,47 @@ export async function getProgressStats(userId, filters = {}) {
     `[DEBUG] getProgressStats - Box counts: box1=${boxCounts.box1}, box2=${boxCounts.box2}, box3=${boxCounts.box3}`
   );
 
-  // Get overall correct/incorrect counts (not filtered, for overall accuracy)
+  // Get overall correct/incorrect counts WITH FILTERS APPLIED
+  let attemptsQueryParams = [userId];
+  let attemptsFilterClause = '';
+  
+  if (filterClause.length > 0) {
+    // Filters are already defined above, apply them to practice_history too
+    const filterConditionsForAttempts = [];
+    let attemptsParamIndex = 2;
+    
+    const classPattern2 = getFilterPattern(filters.class);
+    if (classPattern2) {
+      filterConditionsForAttempts.push(`ph.class ILIKE $${attemptsParamIndex}`);
+      attemptsQueryParams.push(classPattern2);
+      attemptsParamIndex += 1;
+    }
+    
+    const lessonPattern2 = getFilterPattern(filters.lesson);
+    if (lessonPattern2) {
+      filterConditionsForAttempts.push(`ph.lesson ILIKE $${attemptsParamIndex}`);
+      attemptsQueryParams.push(lessonPattern2);
+      attemptsParamIndex += 1;
+    }
+    
+    const categoryPattern2 = getFilterPattern(filters.category);
+    if (categoryPattern2) {
+      filterConditionsForAttempts.push(`ph.category ILIKE $${attemptsParamIndex}`);
+      attemptsQueryParams.push(categoryPattern2);
+    }
+    
+    attemptsFilterClause = filterConditionsForAttempts.length > 0 ? 'AND ' + filterConditionsForAttempts.join(' AND ') : '';
+  }
+
   const attemptsResult = await query(
     `SELECT 
        SUM(CASE WHEN correct THEN 1 ELSE 0 END) as total_correct,
        SUM(CASE WHEN NOT correct THEN 1 ELSE 0 END) as total_incorrect,
        COUNT(*) as total_attempts
-     FROM practice_history
-     WHERE user_id = $1`,
-    [userId]
+     FROM practice_history ph
+     WHERE ph.user_id = $1
+     ${attemptsFilterClause}`,
+    attemptsQueryParams
   );
 
   const attempts = attemptsResult.rows[0];
