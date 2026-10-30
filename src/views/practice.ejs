@@ -350,9 +350,58 @@
           width: 100%;
         }
       }
+
+      /* Database Expiration Warning Styles */
+      .db-expiration-warning {
+        padding: 12px 20px;
+        text-align: center;
+        font-weight: 500;
+        animation-duration: 2s;
+        animation-timing-function: ease-in-out;
+      }
+
+      .db-expiration-warning.warning {
+        background-color: #fff3cd;
+        color: #856404;
+        border-bottom: 2px solid #ffc107;
+      }
+
+      .db-expiration-warning.critical {
+        background-color: #f8d7da;
+        color: #721c24;
+        border-bottom: 2px solid #dc3545;
+      }
+
+      .db-expiration-warning.critical-1day {
+        background-color: #f8d7da;
+        color: #721c24;
+        border-bottom: 2px solid #dc3545;
+        animation: flash-critical 1s infinite;
+      }
+
+      .db-expiration-warning.expired {
+        background-color: #721c24;
+        color: #ffffff;
+        border-bottom: 2px solid #dc3545;
+        animation: flash-critical 0.5s infinite;
+      }
+
+      @keyframes flash-critical {
+        0%, 100% {
+          background-color: #f8d7da;
+          color: #721c24;
+        }
+        50% {
+          background-color: #dc3545;
+          color: #ffffff;
+        }
+      }
     </style>
   </head>
   <body>
+    <!-- Database Expiration Warning -->
+    <div id="db-warning-container"></div>
+
     <nav>
       <ul>
         <li><a href="/">Home</a></li>
@@ -498,6 +547,34 @@
       let sessionStartTime = null;
       let currentAttemptCount = 1;
       let currentTotalAttempts = 1;
+
+      // Fetch and display database expiration warning
+      async function initializeDbExpirationWarning() {
+        try {
+          const response = await fetch('/api/system/db-expiration-warning');
+          const data = await response.json();
+          
+          if (data.warning && data.warning.message) {
+            const container = document.getElementById('db-warning-container');
+            const warningDiv = document.createElement('div');
+            warningDiv.className = `db-expiration-warning ${data.warning.level}`;
+            warningDiv.textContent = data.warning.message;
+            container.appendChild(warningDiv);
+          }
+        } catch (error) {
+          console.error('Failed to load database expiration warning:', error);
+        }
+      }
+
+      // Initialize warning when page loads
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeDbExpirationWarning);
+      } else {
+        initializeDbExpirationWarning();
+      }
+
+      // Refresh warning every minute to update countdown
+      setInterval(initializeDbExpirationWarning, 60000);
 
       // Load the first card when page loads
       document.addEventListener('DOMContentLoaded', async () => {

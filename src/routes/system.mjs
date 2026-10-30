@@ -7,6 +7,7 @@ import express from 'express';
 import { query } from '../db/connection.mjs';
 import { createUser } from '../auth/user.mjs';
 import { validatePassword, validateEmail, validateUsername } from '../auth/validator.mjs';
+import { getExpirationWarning } from '../utils/dbExpiration.mjs';
 
 const router = express.Router();
 
@@ -174,6 +175,26 @@ router.get('/database-status', async (req, res) => {
     return res.status(500).json({
       status: 'error',
       message: 'Failed to check database status',
+    });
+  }
+});
+
+/**
+ * GET /api/system/db-expiration-warning
+ * Get database expiration warning for header display
+ */
+router.get('/db-expiration-warning', (req, res) => {
+  try {
+    const warning = getExpirationWarning();
+    return res.status(200).json({
+      status: 'success',
+      warning,
+    });
+  } catch (error) {
+    console.error('Database expiration warning error:', error.message);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to get expiration warning',
     });
   }
 });
