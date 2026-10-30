@@ -554,8 +554,10 @@
           const response = await fetch('/api/system/db-expiration-warning');
           const data = await response.json();
           
+          const container = document.getElementById('db-warning-container');
+          container.innerHTML = ''; // Clear previous warning
+          
           if (data.warning && data.warning.message) {
-            const container = document.getElementById('db-warning-container');
             const warningDiv = document.createElement('div');
             warningDiv.className = `db-expiration-warning ${data.warning.level}`;
             warningDiv.textContent = data.warning.message;
