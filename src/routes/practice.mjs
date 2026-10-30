@@ -119,11 +119,13 @@ router.get('/next', async (req, res) => {
     }
 
     const userId = req.session.userId;
+    console.log(`[DEBUG] practice/next - User ID from session: ${userId}`);
 
     // Initialize any new flashcards
     await initializeAllCardsForUser(userId);
 
     const nextCard = await getNextPracticeCard(userId);
+    console.log(`[DEBUG] practice/next - Next card: ${nextCard ? nextCard.question.substring(0, 50) : 'null'}`);
 
     if (!nextCard) {
       return res.json({
