@@ -885,18 +885,49 @@ export async function getReviewSchedule(userId) {
  * @param {string} userId - User ID
  * @returns {Promise<object>} Today's summary
  */
-export async function getTodaysSummary(userId) {
-  const dueCards = await getDueCardsForToday(userId);
+export async function getTodaysSummary(userId, filters = {}) {
+  const dueCards = await getDueCardsForToday(userId, filters);
 
-  // Get today's practice attempts
+  // Build filter conditions for practice history (same as getDueCardsForToday)
+  const filterConditions = [];
+  const queryParams = [userId];
+  let paramIndex = 2;
+
+  const classPattern = getFilterPattern(filters.class);
+  if (classPattern) {
+    filterConditions.push(`f.class ILIKE $${paramIndex}`);
+    queryParams.push(classPattern);
+    paramIndex += 1;
+  }
+
+  const lessonPattern = getFilterPattern(filters.lesson);
+  if (lessonPattern) {
+    filterConditions.push(`f.lesson ILIKE $${paramIndex}`);
+    queryParams.push(lessonPattern);
+    paramIndex += 1;
+  }
+
+  const categoryPattern = getFilterPattern(filters.category);
+  if (categoryPattern) {
+    filterConditions.push(`f.category ILIKE $${paramIndex}`);
+    queryParams.push(categoryPattern);
+  }
+
+  const filterClause = filterConditions.length > 0 
+    ? 'AND ' + filterConditions.join(' AND ') 
+    : '';
+
+  // Get today's practice attempts (with filters applied)
   const todayResult = await query(
     `SELECT COUNT(*) as attempts,
             SUM(CASE WHEN correct THEN 1 ELSE 0 END) as correct,
             SUM(CASE WHEN NOT correct THEN 1 ELSE 0 END) as incorrect
-     FROM practice_history
-     WHERE user_id = $1
-     AND DATE(created_at) = CURRENT_DATE`,
-    [userId]
+     FROM practice_history ph
+     LEFT JOIN flashcards f ON ph.flashcard_id = f.flashcard_id
+     WHERE ph.user_id = $1
+     AND DATE(ph.created_at) = CURRENT_DATE
+     ${filterClause}`,
+    queryParams
   );
 
   const today = todayResult.rows[0];

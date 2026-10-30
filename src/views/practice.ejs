@@ -597,9 +597,55 @@
               }
             }
 
+            // Also update accuracy
+            if (cards.length >= 4) {
+              cards[3].textContent = data.stats.accuracy + '%';
+              const accuracyLabel = cards[3].parentElement.querySelector('.label');
+              if (accuracyLabel) {
+                accuracyLabel.textContent = `${data.stats.totalCorrect}/${data.stats.totalAttempts} Correct`;
+              }
+            }
+
             console.log(
               `[refreshStatsForActiveFilters] Updated stats: box1=${data.stats.box1}, box2=${data.stats.box2}, box3=${data.stats.box3}`
             );
+          }
+
+          // Also fetch and update summary (Cards Due Today, etc.)
+          let summaryUrl = '/api/practice/summary';
+          if (filters.class) summaryUrl += `?class=${encodeURIComponent(filters.class)}`;
+          if (filters.lesson) summaryUrl += `${filters.class ? '&' : '?'}lesson=${encodeURIComponent(filters.lesson)}`;
+          if (filters.category) summaryUrl += `${filters.class || filters.lesson ? '&' : '?'}category=${encodeURIComponent(filters.category)}`;
+
+          const summaryResponse = await fetch(summaryUrl, {
+            credentials: 'include',
+          });
+
+          if (summaryResponse.ok) {
+            const summaryData = await summaryResponse.json();
+            if (summaryData.status === 'success' && summaryData.summary) {
+              const summary = summaryData.summary;
+              // Find the "Cards Due Today" card and update it
+              const allCards = document.querySelectorAll('.stats-card');
+              allCards.forEach(card => {
+                const h3 = card.querySelector('h3');
+                if (h3 && h3.textContent === 'Cards Due Today') {
+                  const numberDiv = card.querySelector('.number');
+                  const labelDiv = card.querySelector('.label');
+                  if (numberDiv) numberDiv.textContent = summary.dueTodayCount;
+                  if (labelDiv) labelDiv.textContent = `${summary.practiceAttempts} Reviewed`;
+                  // Update progress bar
+                  const progressFill = card.querySelector('.progress-fill');
+                  if (progressFill) {
+                    const percentage = summary.dueTodayCount > 0 
+                      ? (summary.practiceAttempts / summary.dueTodayCount) * 100 
+                      : 0;
+                    progressFill.style.width = percentage + '%';
+                  }
+                }
+              });
+              console.log('[refreshStatsForActiveFilters] Updated summary: due=' + summary.dueTodayCount + ', attempts=' + summary.practiceAttempts);
+            }
           }
         } catch (error) {
           console.error('[refreshStatsForActiveFilters] Error:', error);
@@ -855,6 +901,10 @@
               nextBtn.textContent = 'Next Card';
             }
             nextBtn.style.display = 'block';
+
+            // Refresh stats after each answer
+            console.log('[selectOption] Refreshing stats after answer submission...');
+            await refreshStatsForActiveFilters();
           } else {
             alert('Error: ' + data.error);
           }

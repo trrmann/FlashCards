@@ -409,6 +409,7 @@ router.get('/schedule', async (req, res) => {
 /**
  * GET /api/practice/summary
  * Get today's practice summary
+ * Query params: class, lesson, category (optional filters)
  */
 router.get('/summary', async (req, res) => {
   try {
@@ -417,7 +418,15 @@ router.get('/summary', async (req, res) => {
     }
 
     const userId = req.session.userId;
-    const summary = await getTodaysSummary(userId);
+
+    // Extract filters from query params
+    const filters = {
+      class: req.query.class || null,
+      lesson: req.query.lesson || null,
+      category: req.query.category || null,
+    };
+
+    const summary = await getTodaysSummary(userId, filters);
 
     res.json({
       status: 'success',
