@@ -482,9 +482,38 @@ const addCategoryMigration = {
   },
 };
 
-// Add it to migrations if not present
+// Add filter context columns to practice_history
+const addFilterContextMigration = {
+  name: 'add_filter_context_to_practice_history',
+  description: 'Add class, lesson, category columns to practice_history for filter tracking',
+  run: async () => {
+    const classCheck = await query(
+      `SELECT column_name FROM information_schema.columns 
+       WHERE table_name = 'practice_history' AND column_name = 'class'`
+    );
+
+    if (classCheck.rows.length > 0) {
+      console.log('✓ Filter context columns already exist');
+      return;
+    }
+
+    await query(`
+      ALTER TABLE practice_history 
+      ADD COLUMN class VARCHAR(255),
+      ADD COLUMN lesson VARCHAR(255),
+      ADD COLUMN category VARCHAR(255)
+    `);
+    console.log('✓ Added filter context columns (class, lesson, category) to practice_history table');
+  },
+};
+
+// Add migrations if not present
 if (!migrations.some((m) => m.name === 'add_category_to_flashcards')) {
   migrations.push(addCategoryMigration);
+}
+
+if (!migrations.some((m) => m.name === 'add_filter_context_to_practice_history')) {
+  migrations.push(addFilterContextMigration);
 }
 
 export default migrations;

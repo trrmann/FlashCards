@@ -242,7 +242,7 @@ router.post('/answer', async (req, res) => {
     const userId = req.session.userId;
     console.log('[ANSWER] req.body:', JSON.stringify(req.body));
     console.log('[ANSWER] User ID:', userId);
-    const { flashcardId, selectedAnswer, isCorrect, sessionStartTime } = req.body;
+    const { flashcardId, selectedAnswer, isCorrect, sessionStartTime, filterClass, filterLesson, filterCategory } = req.body;
 
     if (!flashcardId || selectedAnswer === undefined || isCorrect === undefined) {
       console.error('[ANSWER] Missing required fields');
@@ -253,6 +253,7 @@ router.post('/answer', async (req, res) => {
     }
 
     console.log(`[ANSWER] Processing: flashcardId=${flashcardId}, isCorrect=${isCorrect}, sessionStartTime=${sessionStartTime}`);
+    console.log(`[ANSWER] Filter context: class=${filterClass}, lesson=${filterLesson}, category=${filterCategory}`);
 
     // Get the card to get the correct answer for feedback
     const cardResult = await query(
@@ -274,6 +275,13 @@ router.post('/answer', async (req, res) => {
 
     const correctAnswer = cardResult.rows[0].answer;
 
+    // Build filter context
+    const filterContext = {
+      class: filterClass || null,
+      lesson: filterLesson || null,
+      category: filterCategory || null,
+    };
+
     // Use session-aware tracking if sessionStartTime provided (enhanced mode)
     // Otherwise fall back to simple tracking (backward compatibility)
     let result;
@@ -286,13 +294,14 @@ router.post('/answer', async (req, res) => {
         flashcardId,
         isCorrect,
         null,
-        sessionDate
+        sessionDate,
+        filterContext
       );
       console.log('[ANSWER] Result:', { needsMoreAttempts: result.needsMoreAttempts, attemptNumber: result.attemptNumber });
     } else {
       // Backward compatible: single attempt mode
       console.log('[ANSWER] Using simple tracking (no session)');
-      const progress = await recordPracticeAttempt(userId, flashcardId, isCorrect, null);
+      const progress = await recordPracticeAttempt(userId, flashcardId, isCorrect, null, filterContext);
       result = {
         progress,
         needsMoreAttempts: false,

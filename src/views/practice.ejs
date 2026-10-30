@@ -775,6 +775,10 @@
         buttons[optionIndex].classList.add('selected');
 
         try {
+          // Get active filters from sessionStorage
+          const studyFiltersJson = sessionStorage.getItem('studyFilters');
+          const filters = studyFiltersJson ? JSON.parse(studyFiltersJson) : {};
+
           const selectedOption = currentOptions[optionIndex];
           const response = await fetch('/api/practice/answer', {
             method: 'POST',
@@ -785,6 +789,9 @@
               selectedAnswer: selectedOption.text,
               isCorrect: selectedOption.isCorrect,
               sessionStartTime: sessionStartTime,
+              filterClass: filters.class || null,
+              filterLesson: filters.lesson || null,
+              filterCategory: filters.category || null,
             }),
           });
 

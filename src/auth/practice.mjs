@@ -459,14 +459,32 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
  * @param {number} responseTimeMs - Time taken to answer in milliseconds
  * @returns {Promise<object>} Updated progress record
  */
-export async function recordPracticeAttempt(userId, flashcardId, isCorrect, responseTimeMs = null) {
-  // Record in history
+export async function recordPracticeAttempt(userId, flashcardId, isCorrect, responseTimeMs = null, filterContext = null) {
+  // Get the flashcard to access its class, lesson, category
+  const cardResult = await query(
+    `SELECT class, lesson, category FROM flashcards WHERE flashcard_id = $1`,
+    [flashcardId]
+  );
+
+  let cardClass = null;
+  let cardLesson = null;
+  let cardCategory = null;
+
+  if (cardResult.rows.length > 0) {
+    const card = cardResult.rows[0];
+    // Use filter context if provided, otherwise use card's actual values
+    cardClass = filterContext?.class || card.class;
+    cardLesson = filterContext?.lesson || card.lesson;
+    cardCategory = filterContext?.category || card.category;
+  }
+
+  // Record in history with filter context
   await query(
-    `INSERT INTO practice_history (flashcard_id, user_id, leitner_box, correct, response_time_ms)
-     SELECT $1, $2, p.current_box, $3, $4
+    `INSERT INTO practice_history (flashcard_id, user_id, leitner_box, correct, response_time_ms, class, lesson, category)
+     SELECT $1, $2, p.current_box, $3, $4, $5, $6, $7
      FROM flashcard_leitner_progress p
      WHERE p.flashcard_id = $1 AND p.user_id = $2`,
-    [flashcardId, userId, isCorrect, responseTimeMs]
+    [flashcardId, userId, isCorrect, responseTimeMs, cardClass, cardLesson, cardCategory]
   );
 
   // Get current progress
@@ -530,6 +548,7 @@ export async function recordPracticeAttempt(userId, flashcardId, isCorrect, resp
  * @param {boolean} isCorrect - Whether answer was correct
  * @param {number} responseTimeMs - Time taken to answer
  * @param {Date} sessionStartTime - When practice session started
+ * @param {object} filterContext - Active filter context {class, lesson, category}
  * @returns {Promise<object>} {progress, needsMoreAttempts, attemptNumber, totalNeeded, sessionData}
  */
 export async function recordPracticeAttemptWithSession(
@@ -537,7 +556,8 @@ export async function recordPracticeAttemptWithSession(
   flashcardId,
   isCorrect,
   responseTimeMs = null,
-  sessionStartTime = new Date()
+  sessionStartTime = new Date(),
+  filterContext = null
 ) {
   // Get current box before any updates
   const currentResult = await query(
@@ -575,15 +595,33 @@ export async function recordPracticeAttemptWithSession(
     throw error;
   }
 
-  // Record in practice history
+  // Get the flashcard to access its class, lesson, category
+  const cardResult = await query(
+    `SELECT class, lesson, category FROM flashcards WHERE flashcard_id = $1`,
+    [flashcardId]
+  );
+
+  let cardClass = null;
+  let cardLesson = null;
+  let cardCategory = null;
+
+  if (cardResult.rows.length > 0) {
+    const card = cardResult.rows[0];
+    // Use filter context if provided, otherwise use card's actual values
+    cardClass = filterContext?.class || card.class;
+    cardLesson = filterContext?.lesson || card.lesson;
+    cardCategory = filterContext?.category || card.category;
+  }
+
+  // Record in practice history with filter context
   try {
     const historyResult = await query(
-      `INSERT INTO practice_history (flashcard_id, user_id, leitner_box, correct, response_time_ms)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO practice_history (flashcard_id, user_id, leitner_box, correct, response_time_ms, class, lesson, category)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id`,
-      [flashcardId, userId, currentBox, isCorrect, responseTimeMs]
+      [flashcardId, userId, currentBox, isCorrect, responseTimeMs, cardClass, cardLesson, cardCategory]
     );
-    console.log(`[practice_history] Success - recorded with id: ${historyResult.rows[0]?.id}`);
+    console.log(`[practice_history] Success - recorded with id: ${historyResult.rows[0]?.id}, filter: class=${cardClass}, lesson=${cardLesson}, category=${cardCategory}`);
   } catch (error) {
     console.error(`[practice_history] Error:`, error.message);
     throw error;
@@ -596,7 +634,7 @@ export async function recordPracticeAttemptWithSession(
   // Only move card if all repetitions are done
   let progress = null;
   if (!needsMoreAttempts) {
-    progress = await recordPracticeAttempt(userId, flashcardId, isCorrect, responseTimeMs);
+    progress = await recordPracticeAttempt(userId, flashcardId, isCorrect, responseTimeMs, filterContext);
   }
 
   return {
