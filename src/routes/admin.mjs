@@ -23,6 +23,7 @@ import {
   logImportExport,
   getImportExportHistory,
 } from '../auth/backup.mjs';
+import { resetUserLeitnerStats } from '../auth/practice.mjs';
 
 const router = express.Router();
 
@@ -418,6 +419,53 @@ router.get('/backup/history', requireAdmin, async (req, res) => {
     return res.status(500).json({
       status: 'error',
       message: 'Failed to fetch import/export history',
+    });
+  }
+});
+
+/**
+ * POST /api/admin/users/:userId/reset-stats
+ * Reset all Leitner practice statistics for a user (admin only)
+ * Resets all cards back to Box 1 with zero stats, allowing user to start fresh
+ */
+router.post('/users/:userId/reset-stats', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Prevent resetting oneself as admin might accidentally do this
+    if (userId === req.session.userId) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Cannot reset your own stats. Ask another admin.',
+      });
+    }
+
+    // Verify the target user exists
+    const user = await findUserById(userId);
+    if (!user) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found',
+      });
+    }
+
+    // Reset the user's Leitner progress
+    const result = await resetUserLeitnerStats(userId);
+
+    console.log(`Admin ${req.session.userId} reset stats for user ${userId}: ${result.cardsReset} cards reset`);
+
+    return res.status(200).json({
+      status: 'success',
+      message: result.message,
+      cardsReset: result.cardsReset,
+      userName: user.username,
+    });
+  } catch (error) {
+    console.error('Reset user stats error:', error.message);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to reset user statistics',
+      error: error.message,
     });
   }
 });

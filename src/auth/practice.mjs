@@ -495,3 +495,30 @@ export async function getTodaysSummary(userId) {
     incorrectToday: parseInt(today.incorrect) || 0,
   };
 }
+
+/**
+ * Reset all Leitner progress for a user (admin function)
+ * Resets all cards back to Box 1 with zero stats
+ * @param {string} userId - User ID whose stats to reset
+ * @returns {Promise<object>} Result with number of cards reset
+ */
+export async function resetUserLeitnerStats(userId) {
+  // Reset all Leitner progress for this user's cards
+  const result = await query(
+    `UPDATE flashcard_leitner_progress
+     SET current_box = 1,
+         last_reviewed = NULL,
+         next_review = NOW(),
+         times_correct = 0,
+         times_incorrect = 0,
+         none_of_above_count = 0
+     WHERE user_id = $1
+     RETURNING flashcard_id`,
+    [userId]
+  );
+
+  return {
+    cardsReset: result.rows.length,
+    message: `Reset Leitner progress for ${result.rows.length} flashcard(s)`,
+  };
+}
