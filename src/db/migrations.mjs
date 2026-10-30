@@ -300,6 +300,68 @@ const migrations = [
       console.log('✓ Created practice_history table');
     },
   },
+  {
+    name: 'add_session_card_attempts_tracking',
+    description: 'Add table for tracking multiple card attempts within a single session',
+    run: async () => {
+      // Check if table exists
+      const checkResult = await query(
+        `SELECT EXISTS (
+          SELECT 1 FROM information_schema.tables 
+          WHERE table_name = 'session_card_attempts'
+        )`
+      );
+
+      if (checkResult.rows[0].exists) {
+        console.log('✓ Table session_card_attempts already exists');
+        return;
+      }
+
+      // Create the table
+      await query(
+        `CREATE TABLE session_card_attempts (
+          id SERIAL PRIMARY KEY,
+          flashcard_id UUID NOT NULL REFERENCES flashcards(flashcard_id) ON DELETE CASCADE,
+          user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+          session_start_time TIMESTAMP NOT NULL,
+          attempt_number INTEGER NOT NULL CHECK (attempt_number >= 1),
+          was_correct BOOLEAN NOT NULL,
+          response_time_ms INTEGER,
+          created_at TIMESTAMP DEFAULT NOW()
+        )`
+      );
+      
+      // Create index separately for PostgreSQL compatibility
+      await query(
+        `CREATE INDEX idx_session_card ON session_card_attempts (user_id, flashcard_id, session_start_time)`
+      );
+      
+      console.log('✓ Created session_card_attempts table');
+    },
+  },
+  {
+    name: 'add_session_streak_to_leitner_progress',
+    description: 'Track consecutive correct answers within current session',
+    run: async () => {
+      // Check if column exists
+      const checkResult = await query(
+        `SELECT column_name FROM information_schema.columns 
+         WHERE table_name = 'flashcard_leitner_progress' AND column_name = 'session_streak'`
+      );
+
+      if (checkResult.rows.length > 0) {
+        console.log('✓ Column session_streak already exists');
+        return;
+      }
+
+      // Add the column
+      await query(
+        `ALTER TABLE flashcard_leitner_progress
+         ADD COLUMN session_streak INTEGER DEFAULT 0`
+      );
+      console.log('✓ Added session_streak column');
+    },
+  },
 ];
 
 /**

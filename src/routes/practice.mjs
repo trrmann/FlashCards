@@ -11,11 +11,14 @@ import {
   getNextPracticeCard,
   getNextCatchUpCard,
   recordPracticeAttempt,
+  recordPracticeAttemptWithSession,
   generateMultipleChoiceOptions,
   getProgressStats,
   getPracticeStreak,
   getReviewSchedule,
   getTodaysSummary,
+  getCardRepetitionsNeeded,
+  checkNeedsMoreAttempts,
 } from '../auth/practice.mjs';
 
 const router = express.Router();
@@ -198,7 +201,7 @@ router.post('/answer', async (req, res) => {
 
     const userId = req.session.userId;
     console.log('[ANSWER] req.body:', JSON.stringify(req.body));
-    const { flashcardId, selectedAnswer, isCorrect } = req.body;
+    const { flashcardId, selectedAnswer, isCorrect, sessionStartTime } = req.body;
 
     if (!flashcardId || selectedAnswer === undefined || isCorrect === undefined) {
       return res.status(400).json({
@@ -208,8 +211,14 @@ router.post('/answer', async (req, res) => {
     }
 
     // Get the card to get the correct answer for feedback
-    const cardResult = await query('SELECT answer FROM flashcards WHERE flashcard_id = $1', [
+    const cardResult = await query(`
+      SELECT f.answer, COALESCE(p.current_box, 1) as current_box 
+      FROM flashcards f 
+      LEFT JOIN flashcard_leitner_progress p ON f.flashcard_id = p.flashcard_id AND p.user_id = $2 
+      WHERE f.flashcard_id = $1
+    `, [
       flashcardId,
+      userId,
     ]);
 
     if (cardResult.rows.length === 0) {
@@ -221,10 +230,26 @@ router.post('/answer', async (req, res) => {
 
     const correctAnswer = cardResult.rows[0].answer;
 
-    // Record the attempt with the correctness value from the frontend
-    const updatedProgress = await recordPracticeAttempt(userId, flashcardId, isCorrect, null);
+    // Use session-aware tracking if sessionStartTime provided (enhanced mode)
+    // Otherwise fall back to simple tracking (backward compatibility)
+    let result;
+    
+    if (sessionStartTime) {
+      const sessionDate = new Date(sessionStartTime);
+      result = await recordPracticeAttemptWithSession(userId, flashcardId, isCorrect, null, sessionDate);
+    } else {
+      // Backward compatible: single attempt mode
+      const progress = await recordPracticeAttempt(userId, flashcardId, isCorrect, null);
+      result = {
+        progress,
+        needsMoreAttempts: false,
+        attemptNumber: 1,
+        totalNeeded: 1,
+        sessionData: { isComplete: true }
+      };
+    }
 
-    if (!updatedProgress) {
+    if (!result) {
       return res.status(404).json({
         status: 'error',
         error: 'Flashcard not found',
@@ -238,7 +263,13 @@ router.post('/answer', async (req, res) => {
         ? `✅ Correct! The answer is: ${correctAnswer}`
         : `❌ Incorrect. The answer is: ${correctAnswer}`,
       correctAnswer: correctAnswer,
-      progress: updatedProgress,
+      progress: result.progress,
+      session: {
+        needsMoreAttempts: result.needsMoreAttempts,
+        attemptNumber: result.attemptNumber,
+        totalNeeded: result.totalNeeded,
+        feedback: result.sessionData.feedback,
+      }
     });
   } catch (error) {
     console.error('Error recording practice attempt:', error.message);

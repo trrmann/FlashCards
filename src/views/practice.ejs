@@ -493,9 +493,14 @@
       let currentOptions = null;
       let answered = false;
       let catchUpMode = false;
+      let sessionStartTime = null;
+      let currentAttemptCount = 1;
+      let currentTotalAttempts = 1;
 
       // Load the first card when page loads
       document.addEventListener('DOMContentLoaded', async () => {
+        // Capture session start time for tracking repetitions
+        sessionStartTime = new Date().toISOString();
         try {
           const dueTodayCount = <%= summary.dueTodayCount %>;
           const totalCards = <%= stats.total %>;
@@ -665,6 +670,7 @@
               flashcardId: currentCard.flashcard_id,
               selectedAnswer: selectedOption.text,
               isCorrect: selectedOption.isCorrect,
+              sessionStartTime: sessionStartTime,
             }),
           });
 
@@ -680,6 +686,18 @@
               const noneOfAboveOption = currentOptions.find((o) => o.isNoneOfAbove === true);
               if (noneOfAboveOption) {
                 feedbackText += ` (Correct answer: ${currentCard.answer})`;
+              }
+            }
+
+            // Add attempt counter and progress info if available
+            if (data.session && data.session.attemptNumber !== undefined) {
+              currentAttemptCount = data.session.attemptNumber;
+              currentTotalAttempts = data.session.totalNeeded;
+              
+              if (data.session.needsMoreAttempts) {
+                feedbackText += ` [Attempt ${currentAttemptCount}/${currentTotalAttempts}]`;
+              } else {
+                feedbackText += ` [Mastered! Moving to next card]`;
               }
             }
 
@@ -701,8 +719,14 @@
               buttons[correctIndex].classList.add('correct');
             }
 
-            // Show next button
-            document.getElementById('next-button').style.display = 'block';
+            // Show next button (or "repeat" if more attempts needed)
+            const nextBtn = document.getElementById('next-button');
+            if (data.session && data.session.needsMoreAttempts) {
+              nextBtn.textContent = '↻ Try Again';
+            } else {
+              nextBtn.textContent = 'Next Card';
+            }
+            nextBtn.style.display = 'block';
           } else {
             alert('Error: ' + data.error);
           }

@@ -1,9 +1,87 @@
 /**
  * Practice & Leitner System Logic
  * Handles flashcard practice using the Leitner spaced repetition system
+ * Enhanced with multiple repetitions per session for improved memorization
  */
 
 import { query } from '../db/connection.mjs';
+
+/**
+ * Get optimal number of repetitions for a card based on Leitner box
+ * Research shows multiple exposures dramatically improve retention:
+ * - Box 1 (struggling): 3 repetitions recommended
+ * - Box 2 (medium): 2 repetitions recommended
+ * - Box 3 (mastered): 1 repetition minimum
+ * @param {number} boxNumber - Current Leitner box (1, 2, or 3)
+ * @returns {number} Number of times card should be shown in session
+ */
+export function getCardRepetitionsNeeded(boxNumber) {
+  // Research-based optimal repetitions per box
+  if (boxNumber === 1) return 3; // Struggling cards need most reinforcement
+  if (boxNumber === 2) return 2; // Medium difficulty needs moderate reinforcement
+  return 1;                       // Mastered cards need minimal reinforcement
+}
+
+/**
+ * Get current session attempt count for a card
+ * @param {string} userId - User ID
+ * @param {string} flashcardId - Flashcard ID
+ * @param {Date} sessionStartTime - When the practice session started
+ * @returns {Promise<number>} Number of attempts in current session
+ */
+export async function getSessionAttemptCount(userId, flashcardId, sessionStartTime) {
+  const result = await query(
+    `SELECT COUNT(*) as attempt_count 
+     FROM session_card_attempts
+     WHERE user_id = $1 
+     AND flashcard_id = $2 
+     AND session_start_time = $3`,
+    [userId, flashcardId, sessionStartTime]
+  );
+  return parseInt(result.rows[0].attempt_count) || 0;
+}
+
+/**
+ * Record an attempt within a practice session
+ * @param {string} userId - User ID
+ * @param {string} flashcardId - Flashcard ID
+ * @param {Date} sessionStartTime - When the session started
+ * @param {number} attemptNumber - Which attempt this is (1, 2, 3)
+ * @param {boolean} wasCorrect - Whether answer was correct
+ * @param {number} responseTimeMs - Time taken to answer
+ * @returns {Promise<object>} Session attempt record
+ */
+export async function trackSessionAttempt(userId, flashcardId, sessionStartTime, attemptNumber, wasCorrect, responseTimeMs = null) {
+  const result = await query(
+    `INSERT INTO session_card_attempts 
+     (flashcard_id, user_id, session_start_time, attempt_number, was_correct, response_time_ms)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING *`,
+    [flashcardId, userId, sessionStartTime, attemptNumber, wasCorrect, responseTimeMs]
+  );
+  return result.rows[0];
+}
+
+/**
+ * Check if card needs more attempts in current session
+ * @param {string} userId - User ID
+ * @param {string} flashcardId - Flashcard ID
+ * @param {number} boxNumber - Current box number
+ * @param {Date} sessionStartTime - Session start time
+ * @returns {Promise<object>} {needsMoreAttempts, attemptNumber, totalNeeded}
+ */
+export async function checkNeedsMoreAttempts(userId, flashcardId, boxNumber, sessionStartTime) {
+  const attemptCount = await getSessionAttemptCount(userId, flashcardId, sessionStartTime);
+  const totalNeeded = getCardRepetitionsNeeded(boxNumber);
+  const needsMoreAttempts = attemptCount < totalNeeded;
+  
+  return {
+    needsMoreAttempts,
+    attemptNumber: attemptCount + 1,
+    totalNeeded,
+    currentAttempt: attemptCount,
+  };
+}
 
 /**
  * Initialize Leitner progress for a flashcard
@@ -315,14 +393,75 @@ export async function recordPracticeAttempt(userId, flashcardId, isCorrect, resp
 }
 
 /**
+ * Record practice attempt with session-aware repetition tracking
+ * Determines if card needs more attempts within current session
+ * @param {string} userId - User ID
+ * @param {string} flashcardId - Flashcard ID
+ * @param {boolean} isCorrect - Whether answer was correct
+ * @param {number} responseTimeMs - Time taken to answer
+ * @param {Date} sessionStartTime - When practice session started
+ * @returns {Promise<object>} {progress, needsMoreAttempts, attemptNumber, totalNeeded, sessionData}
+ */
+export async function recordPracticeAttemptWithSession(userId, flashcardId, isCorrect, responseTimeMs = null, sessionStartTime = new Date()) {
+  // Get current box before any updates
+  const currentResult = await query(
+    `SELECT current_box FROM flashcard_leitner_progress 
+     WHERE flashcard_id = $1 AND user_id = $2`,
+    [flashcardId, userId]
+  );
+
+  if (currentResult.rows.length === 0) {
+    return null;
+  }
+
+  const currentBox = currentResult.rows[0].current_box;
+  const totalAttemptsNeeded = getCardRepetitionsNeeded(currentBox);
+  const currentAttemptCount = await getSessionAttemptCount(userId, flashcardId, sessionStartTime);
+  const currentAttemptNumber = currentAttemptCount + 1;
+
+  // Track this session attempt
+  await trackSessionAttempt(userId, flashcardId, sessionStartTime, currentAttemptNumber, isCorrect, responseTimeMs);
+
+  // Record in practice history
+  await query(
+    `INSERT INTO practice_history (flashcard_id, user_id, leitner_box, correct, response_time_ms)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [flashcardId, userId, currentBox, isCorrect, responseTimeMs]
+  );
+
+  // Check if all repetitions complete
+  const needsMoreAttempts = currentAttemptNumber < totalAttemptsNeeded;
+
+  // Only move card if all repetitions are done
+  let progress = null;
+  if (!needsMoreAttempts) {
+    progress = await recordPracticeAttempt(userId, flashcardId, isCorrect, responseTimeMs);
+  }
+
+  return {
+    progress,
+    needsMoreAttempts,
+    attemptNumber: currentAttemptNumber,
+    totalNeeded: totalAttemptsNeeded,
+    sessionData: {
+      sessionStartTime,
+      isComplete: !needsMoreAttempts,
+      feedback: needsMoreAttempts 
+        ? `Attempt ${currentAttemptNumber}/${totalAttemptsNeeded}. Keep going!`
+        : `All ${totalAttemptsNeeded} attempts complete!`,
+    }
+  };
+}
+
+/**
  * Calculate next review date based on Leitner box
  * Box 1: Tomorrow (1 day)
- * Box 2: 3 days from now
- * Box 3: 7 days from now
- *
- * @param {number} boxNumber - Target box number
- * @returns {Date} Next review date
- */
+   * Box 2: 3 days from now
+   * Box 3: 7 days from now
+   *
+   * @param {number} boxNumber - Target box number
+   * @returns {Date} Next review date
+   */
 function calculateNextReviewDate(boxNumber) {
   const now = new Date();
   let daysToAdd = 1;
