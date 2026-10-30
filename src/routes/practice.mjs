@@ -51,7 +51,7 @@ router.get('/', async (req, res) => {
     });
   } catch (error) {
     console.error('Error loading practice page:', error);
-    res.status(500).render('error', { error: 'Failed to load practice page' });
+    res.status(500).json({ status: 'error', error: 'Failed to load practice page' });
   }
 });
 
