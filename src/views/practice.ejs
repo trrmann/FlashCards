@@ -629,10 +629,25 @@
           // Build URL with filter parameters
           let url = catchUpMode ? '/api/practice/next?catchUp=true' : '/api/practice/next';
           
+          // Track if we already have query parameters
+          let hasQueryParams = catchUpMode;
+          
           // Add filter parameters if they exist
-          if (filters.class) url += `&class=${encodeURIComponent(filters.class)}`;
-          if (filters.lesson) url += `&lesson=${encodeURIComponent(filters.lesson)}`;
-          if (filters.category) url += `&category=${encodeURIComponent(filters.category)}`;
+          if (filters.class) {
+            url += hasQueryParams ? '&' : '?';
+            url += `class=${encodeURIComponent(filters.class)}`;
+            hasQueryParams = true;
+          }
+          if (filters.lesson) {
+            url += hasQueryParams ? '&' : '?';
+            url += `lesson=${encodeURIComponent(filters.lesson)}`;
+            hasQueryParams = true;
+          }
+          if (filters.category) {
+            url += hasQueryParams ? '&' : '?';
+            url += `category=${encodeURIComponent(filters.category)}`;
+            hasQueryParams = true;
+          }
           
           console.log('[loadNextCard] Fetching ' + url + '...');
           
