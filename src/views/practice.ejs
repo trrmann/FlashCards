@@ -503,6 +503,10 @@
       document.addEventListener('DOMContentLoaded', async () => {
         // Capture session start time for tracking repetitions
         sessionStartTime = new Date().toISOString();
+        
+        // Wait a brief moment for filter-panel to restore filters from sessionStorage
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         try {
           const dueTodayCount = <%= summary.dueTodayCount %>;
           const totalCards = <%= stats.total %>;

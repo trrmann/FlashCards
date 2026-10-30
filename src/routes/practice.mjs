@@ -162,6 +162,9 @@ router.get('/next', async (req, res) => {
       if (dueCards.length > 0) {
         const randomIndex = Math.floor(Math.random() * dueCards.length);
         nextCard = dueCards[randomIndex];
+        console.log(
+          `[DEBUG] practice/next - SELECTED CARD: "${nextCard.question}", Category: "${nextCard.category}", Class: "${nextCard.class}", Lesson: "${nextCard.lesson}"`
+        );
       } else {
         nextCard = null;
       }

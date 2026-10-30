@@ -227,7 +227,8 @@ export async function getDueCardsForToday(userId, filters = {}) {
   console.log(
     `[DEBUG] getDueCardsForToday - Filters: class=${filters.class}, lesson=${filters.lesson}, category=${filters.category}`,
     `Filter patterns: class=${classPattern}, lesson=${lessonPattern}, category=${categoryPattern}`,
-    `SQL WHERE: (${boxCondition}) ${filterClause}`
+    `SQL WHERE: (${boxCondition}) ${filterClause}`,
+    `Query params:`, queryParams
   );
 
   const result = await query(
@@ -242,6 +243,15 @@ export async function getDueCardsForToday(userId, filters = {}) {
     queryParams
   );
 
+  console.log(`[DEBUG] getDueCardsForToday - ACTUAL SQL QUERY:`);
+  console.log(`  SELECT f.*, p.current_box, p.times_correct, p.times_incorrect, p.last_reviewed, p.next_review`);
+  console.log(`  FROM flashcards f`);
+  console.log(`  JOIN flashcard_leitner_progress p ON f.flashcard_id = p.flashcard_id`);
+  console.log(`  WHERE f.created_by = $1 (${userId})`);
+  console.log(`  AND (${boxCondition})`);
+  console.log(`  AND (p.next_review IS NULL OR p.next_review <= NOW())`);
+  console.log(`  ${filterClause}`);
+  console.log(`  Query params:`, queryParams);
   console.log(`[DEBUG] getDueCardsForToday - Result count: ${result.rows.length}`);
 
   return result.rows;
@@ -472,10 +482,11 @@ export async function recordPracticeAttempt(userId, flashcardId, isCorrect, resp
 
   if (cardResult.rows.length > 0) {
     const card = cardResult.rows[0];
-    // Use filter context if provided, otherwise use card's actual values
-    cardClass = filterContext?.class || card.class;
-    cardLesson = filterContext?.lesson || card.lesson;
-    cardCategory = filterContext?.category || card.category;
+    // Use filter context if provided (non-empty), otherwise use card's actual values
+    // This ensures we always capture the card's data even if filter context is null/empty
+    cardClass = (filterContext?.class && filterContext.class !== '') ? filterContext.class : card.class;
+    cardLesson = (filterContext?.lesson && filterContext.lesson !== '') ? filterContext.lesson : card.lesson;
+    cardCategory = (filterContext?.category && filterContext.category !== '') ? filterContext.category : card.category;
   }
 
   // Record in history with filter context
@@ -607,10 +618,11 @@ export async function recordPracticeAttemptWithSession(
 
   if (cardResult.rows.length > 0) {
     const card = cardResult.rows[0];
-    // Use filter context if provided, otherwise use card's actual values
-    cardClass = filterContext?.class || card.class;
-    cardLesson = filterContext?.lesson || card.lesson;
-    cardCategory = filterContext?.category || card.category;
+    // Use filter context if provided (non-empty), otherwise use card's actual values
+    // This ensures we always capture the card's data even if filter context is null/empty
+    cardClass = (filterContext?.class && filterContext.class !== '') ? filterContext.class : card.class;
+    cardLesson = (filterContext?.lesson && filterContext.lesson !== '') ? filterContext.lesson : card.lesson;
+    cardCategory = (filterContext?.category && filterContext.category !== '') ? filterContext.category : card.category;
   }
 
   // Record in practice history with filter context
