@@ -662,14 +662,11 @@ export async function recordPracticeAttemptWithSession(
     console.log(`[recordPracticeAttemptWithSession] Updated attempt counts: correct=${newTimesCorrect}, incorrect=${newTimesIncorrect}`);
   }
 
-  // Only move card if all repetitions are done
-  let progress = null;
-  if (!needsMoreAttempts) {
-    progress = await recordPracticeAttempt(userId, flashcardId, isCorrect, responseTimeMs, filterContext);
-  }
-
+  // Return session data
+  // Note: Card box progression and practice_history recording is already handled above
+  // via the attempts loop that updates times_correct/times_incorrect and calls
+  // recordPracticeAttempt which moves the card to the next box when all attempts are done
   return {
-    progress,
     needsMoreAttempts,
     attemptNumber: currentAttemptNumber,
     totalNeeded: totalAttemptsNeeded,

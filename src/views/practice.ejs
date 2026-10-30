@@ -587,17 +587,14 @@
           const data = await response.json();
           if (data.status === 'success' && data.stats) {
             // Update the stats cards in the dashboard
-            const box1Card = document.querySelector('.stats-card .number');
-            if (box1Card) {
-              const cards = document.querySelectorAll('.stats-card .number');
-              if (cards.length >= 3) {
-                cards[0].textContent = data.stats.box1;
-                cards[1].textContent = data.stats.box2;
-                cards[2].textContent = data.stats.box3;
-              }
+            const cards = document.querySelectorAll('.stats-card .number');
+            if (cards.length >= 3) {
+              cards[0].textContent = data.stats.box1;
+              cards[1].textContent = data.stats.box2;
+              cards[2].textContent = data.stats.box3;
             }
 
-            // Also update accuracy
+            // Also update accuracy (4th card)
             if (cards.length >= 4) {
               cards[3].textContent = data.stats.accuracy + '%';
               const accuracyLabel = cards[3].parentElement.querySelector('.label');
@@ -607,7 +604,7 @@
             }
 
             console.log(
-              `[refreshStatsForActiveFilters] Updated stats: box1=${data.stats.box1}, box2=${data.stats.box2}, box3=${data.stats.box3}`
+              `[refreshStatsForActiveFilters] Updated stats: box1=${data.stats.box1}, box2=${data.stats.box2}, box3=${data.stats.box3}, accuracy=${data.stats.accuracy}%`
             );
           }
 
