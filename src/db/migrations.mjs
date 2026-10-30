@@ -244,6 +244,30 @@ const migrations = [
     },
   },
   {
+    name: 'add_none_of_above_tracking',
+    description:
+      'Add none_of_above_count to flashcard_leitner_progress for tracking None of Above presentations',
+    run: async () => {
+      // Check if column already exists
+      const checkResult = await query(
+        `SELECT column_name FROM information_schema.columns 
+         WHERE table_name = 'flashcard_leitner_progress' AND column_name = 'none_of_above_count'`
+      );
+
+      if (checkResult.rows.length > 0) {
+        console.log('✓ Column none_of_above_count already exists');
+        return;
+      }
+
+      // Add the column if it doesn't exist
+      await query(
+        `ALTER TABLE flashcard_leitner_progress 
+         ADD COLUMN none_of_above_count INTEGER DEFAULT 0`
+      );
+      console.log('✓ Added none_of_above_count column to flashcard_leitner_progress table');
+    },
+  },
+  {
     name: 'create_practice_history_table',
     description: 'Create table for tracking individual practice attempts',
     run: async () => {

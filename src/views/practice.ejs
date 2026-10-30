@@ -575,7 +575,17 @@
           if (data.status === 'success') {
             // Show feedback
             const feedbackEl = document.getElementById('feedback-message');
-            feedbackEl.textContent = data.message;
+            let feedbackText = data.message;
+
+            // If "None of the above" was the correct answer and user got it wrong, show actual answer
+            if (!data.isCorrect && currentOptions[optionIndex].text !== 'None of the above') {
+              const noneOfAboveOption = currentOptions.find((o) => o.isNoneOfAbove === true);
+              if (noneOfAboveOption) {
+                feedbackText += ` (Correct answer: ${currentCard.answer})`;
+              }
+            }
+
+            feedbackEl.textContent = feedbackText;
             feedbackEl.className = data.isCorrect
               ? 'feedback-message feedback-correct'
               : 'feedback-message feedback-incorrect';
@@ -588,7 +598,7 @@
               buttons[optionIndex].classList.remove('selected');
               buttons[optionIndex].classList.add('incorrect');
 
-              // Highlight correct answer
+              // Highlight correct answer or "None of the above"
               const correctIndex = currentOptions.findIndex((o) => o.isCorrect);
               buttons[correctIndex].classList.add('correct');
             }

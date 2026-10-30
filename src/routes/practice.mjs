@@ -4,6 +4,7 @@
  */
 
 import express from 'express';
+import { query } from '../db/connection.mjs';
 import {
   initializeAllCardsForUser,
   getDueCardsForToday,
@@ -107,6 +108,19 @@ router.get('/next', async (req, res) => {
     // Generate multiple choice options
     const options = await generateMultipleChoiceOptions(userId, nextCard, 4);
 
+    // Check if "None of the above" is in the options
+    const hasNoneOfAbove = options.some((opt) => opt.isNoneOfAbove === true);
+
+    // If showing "None of the above", increment the counter
+    if (hasNoneOfAbove) {
+      await query(
+        `UPDATE flashcard_leitner_progress 
+         SET none_of_above_count = none_of_above_count + 1 
+         WHERE flashcard_id = $1 AND user_id = $2`,
+        [nextCard.flashcard_id, userId]
+      );
+    }
+
     res.json({
       status: 'success',
       card: {
@@ -118,6 +132,7 @@ router.get('/next', async (req, res) => {
         times_incorrect: nextCard.times_incorrect,
       },
       options: options,
+      showingNoneOfAbove: hasNoneOfAbove,
     });
   } catch (error) {
     console.error('Error fetching next practice card:', error);

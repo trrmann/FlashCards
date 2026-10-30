@@ -145,34 +145,75 @@ export async function getNextPracticeCard(userId) {
 
 /**
  * Generate multiple choice options for a flashcard
+ * Periodically includes "None of the above" option for critical thinking
+ * Ratio: ~80-90% shows correct answer, ~10-20% shows "None of the above"
  * @param {string} userId - User ID
  * @param {object} correctCard - The correct card object
  * @param {number} optionCount - Number of options (default 4)
  * @returns {Promise<array>} Array of shuffled options with {text, isCorrect}
  */
 export async function generateMultipleChoiceOptions(userId, correctCard, optionCount = 4) {
-  // Get wrong answers from other cards
-  const wrongAnswersResult = await query(
-    `SELECT DISTINCT answer 
-     FROM flashcards 
-     WHERE created_by = $1 
-     AND flashcard_id != $2 
-     AND answer IS NOT NULL
-     AND answer != $3
-     ORDER BY RANDOM() 
-     LIMIT $4`,
-    [userId, correctCard.flashcard_id, correctCard.answer, optionCount - 1]
+  // Get the none_of_above_count for this card
+  const progressResult = await query(
+    `SELECT none_of_above_count, times_correct, times_incorrect 
+     FROM flashcard_leitner_progress 
+     WHERE flashcard_id = $1 AND user_id = $2`,
+    [correctCard.flashcard_id, userId]
   );
 
-  // Build options array
-  const options = [{ text: correctCard.answer, isCorrect: true }];
+  let noneOfAboveCount = 0;
+  let totalAttempts = 0;
+  if (progressResult.rows.length > 0) {
+    noneOfAboveCount = progressResult.rows[0].none_of_above_count || 0;
+    totalAttempts =
+      (progressResult.rows[0].times_correct || 0) + (progressResult.rows[0].times_incorrect || 0);
+  }
 
-  // Add wrong answers
-  wrongAnswersResult.rows.forEach((row) => {
-    options.push({ text: row.answer, isCorrect: false });
-  });
+  // Calculate ratio: aim for ~15% "None of the above" presentations
+  // Formula: if (totalAttempts * 0.15) > noneOfAboveCount, show correct answer
+  const shouldShowCorrectAnswer = totalAttempts === 0 || noneOfAboveCount / totalAttempts < 0.15;
 
-  // If we don't have enough wrong answers, we still proceed with what we have
+  const options = [];
+
+  if (shouldShowCorrectAnswer) {
+    // Standard mode: show correct answer with wrong answers as distractors
+    const wrongAnswersResult = await query(
+      `SELECT DISTINCT answer 
+       FROM flashcards 
+       WHERE created_by = $1 
+       AND flashcard_id != $2 
+       AND answer IS NOT NULL
+       AND answer != $3
+       ORDER BY RANDOM() 
+       LIMIT $4`,
+      [userId, correctCard.flashcard_id, correctCard.answer, optionCount - 1]
+    );
+
+    options.push({ text: correctCard.answer, isCorrect: true });
+    wrongAnswersResult.rows.forEach((row) => {
+      options.push({ text: row.answer, isCorrect: false });
+    });
+  } else {
+    // "None of the above" mode: show wrong answers only, with "None of the above" as correct option
+    const wrongAnswersResult = await query(
+      `SELECT DISTINCT answer 
+       FROM flashcards 
+       WHERE created_by = $1 
+       AND flashcard_id != $2 
+       AND answer IS NOT NULL
+       AND answer != $3
+       ORDER BY RANDOM() 
+       LIMIT $4`,
+      [userId, correctCard.flashcard_id, correctCard.answer, optionCount - 1]
+    );
+
+    wrongAnswersResult.rows.forEach((row) => {
+      options.push({ text: row.answer, isCorrect: false });
+    });
+
+    options.push({ text: 'None of the above', isCorrect: true, isNoneOfAbove: true });
+  }
+
   // Shuffle the options randomly
   return options.sort(() => Math.random() - 0.5);
 }
