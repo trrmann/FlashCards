@@ -3,7 +3,7 @@
 /**
  * Migration Script: Add Lesson and Sharing Features
  * Adds lesson tracking and privacy controls to flashcards
- * Usage: node scripts/add-lesson-and-sharing.mjs
+ * Usage: node src/scripts/js/modules/add-lesson-and-sharing.mjs
  */
 
 import pg from 'pg';

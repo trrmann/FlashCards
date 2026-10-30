@@ -72,7 +72,7 @@ Phase 4 introduces flashcard entry management with privacy controls and lesson t
 Run the migration to add the new columns and tables:
 
 ```bash
-node scripts/add-lesson-and-sharing.mjs
+node src/scripts/js/modules/add-lesson-and-sharing.mjs
 ```
 
 This script:

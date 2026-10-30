@@ -3,7 +3,7 @@
 /**
  * Database Initialization Script for FlashCards
  * Initializes PostgreSQL database schema and creates required tables
- * Usage: node scripts/init-db.mjs
+ * Usage: node src/scripts/js/modules/db/init-db.mjs
  */
 
 import pg from 'pg';
