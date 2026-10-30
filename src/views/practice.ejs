@@ -1,14 +1,494 @@
-<%- include('partials/header') %>
-<main>
-  <h1><%= siteData.getTitle() %></h1>
-  <h2>Welcome to <%= siteData.getName() %><%= siteData.getNameHeadingHelp() %>Flash Card Service!</h2>
-  <p>
-    Our mission is to help <%= siteData.getName() %> study for English Connect.
-  </p>
-  <!--<img
-    class="main-logo"
-    src="/images/cse340-service-network.png"
-    alt="CSE 340 Service Network Logo"
-  />-->
-</main>
-<%- include('partials/footer') %>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Practice Study - Leitner System</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+    <style>
+      .practice-container {
+        max-width: 900px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+
+      .dashboard {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+      }
+
+      .stats-card {
+        background: #f5f5f5;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        padding: 1.5rem;
+        text-align: center;
+      }
+
+      .stats-card h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 0.9rem;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .stats-card .number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #333;
+        margin: 0.5rem 0;
+      }
+
+      .stats-card .label {
+        font-size: 0.85rem;
+        color: #999;
+      }
+
+      .practice-section {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+      }
+
+      .practice-section h2 {
+        margin-top: 0;
+        border-bottom: 2px solid #f0f0f0;
+        padding-bottom: 1rem;
+      }
+
+      .card-display {
+        background: #f9f9f9;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 2rem;
+        margin: 2rem 0;
+        text-align: center;
+        min-height: 200px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .card-display:hover {
+        background: #f0f0f0;
+        border-color: #999;
+      }
+
+      .card-display.flipped {
+        background: #e8f4f8;
+        border-color: #0066cc;
+      }
+
+      .card-side {
+        display: none;
+      }
+
+      .card-side.active {
+        display: block;
+      }
+
+      .card-label {
+        font-size: 0.85rem;
+        color: #999;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 1rem;
+      }
+
+      .card-text {
+        font-size: 1.5rem;
+        font-weight: 500;
+        color: #333;
+        line-height: 1.6;
+      }
+
+      .click-hint {
+        font-size: 0.8rem;
+        color: #bbb;
+        margin-top: 1rem;
+        font-style: italic;
+      }
+
+      .button-group {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-top: 2rem;
+      }
+
+      .button-group button {
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .btn-correct {
+        background: #28a745;
+        color: white;
+      }
+
+      .btn-correct:hover {
+        background: #218838;
+      }
+
+      .btn-incorrect {
+        background: #dc3545;
+        color: white;
+      }
+
+      .btn-incorrect:hover {
+        background: #c82333;
+      }
+
+      .btn-skip {
+        background: #6c757d;
+        color: white;
+      }
+
+      .btn-skip:hover {
+        background: #5a6268;
+      }
+
+      .schedule-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+      }
+
+      .schedule-item {
+        background: #f9f9f9;
+        padding: 1rem;
+        border-radius: 4px;
+        border-left: 4px solid #0066cc;
+      }
+
+      .schedule-item h4 {
+        margin: 0 0 0.5rem 0;
+        font-size: 0.9rem;
+        color: #666;
+        text-transform: uppercase;
+      }
+
+      .schedule-item .due {
+        font-size: 0.9rem;
+        color: #333;
+        margin-bottom: 0.5rem;
+      }
+
+      .schedule-item .count {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #0066cc;
+      }
+
+      .no-cards {
+        text-align: center;
+        padding: 2rem;
+        color: #999;
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: #e0e0e0;
+        border-radius: 4px;
+        margin-top: 0.5rem;
+        overflow: hidden;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: #28a745;
+        transition: width 0.3s ease;
+      }
+
+      .streak {
+        display: inline-block;
+        background: #ffc107;
+        color: #333;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 0.9rem;
+        margin-top: 1rem;
+      }
+
+      @media (max-width: 768px) {
+        .dashboard {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .button-group {
+          flex-direction: column;
+        }
+
+        .button-group button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <ul>
+        <li><a href="/">Home</a></li>
+        <% if (isLoggedIn) { %>
+        <li><a href="/entries">Entries</a></li>
+        <li><a href="/practice" class="active">Practice</a></li>
+        <li><a href="/quiz">Quiz</a></li>
+        <li><a href="/profile">Profile</a></li>
+        <li><a href="/api/auth/logout">Logout</a></li>
+        <% } else { %>
+        <li><a href="/login">Login</a></li>
+        <% } %>
+      </ul>
+    </nav>
+
+    <div class="practice-container">
+      <h1>🎓 Practice Study - Leitner System</h1>
+
+      <!-- Dashboard Stats -->
+      <div class="dashboard">
+        <div class="stats-card">
+          <h3>Box 1</h3>
+          <div class="number"><%= stats.box1 %></div>
+          <div class="label">Daily Review</div>
+        </div>
+        <div class="stats-card">
+          <h3>Box 2</h3>
+          <div class="number"><%= stats.box2 %></div>
+          <div class="label">Every 3 Days</div>
+        </div>
+        <div class="stats-card">
+          <h3>Box 3</h3>
+          <div class="number"><%= stats.box3 %></div>
+          <div class="label">Weekly Review</div>
+        </div>
+        <div class="stats-card">
+          <h3>Accuracy</h3>
+          <div class="number"><%= stats.accuracy %>%</div>
+          <div class="label"><%= stats.totalCorrect %>/<%= stats.totalAttempts %> Correct</div>
+        </div>
+      </div>
+
+      <!-- Today's Summary -->
+      <div class="practice-section">
+        <h2>📊 Today's Progress</h2>
+        <div class="stats-card">
+          <h3>Cards Due Today</h3>
+          <div class="number"><%= summary.dueTodayCount %></div>
+          <div class="label"><%= summary.practiceAttempts %> Reviewed</div>
+          <div class="progress-bar">
+            <div
+              class="progress-fill"
+              style="width: <%= (summary.practiceAttempts / summary.dueTodayCount) * 100 %>%"
+            ></div>
+          </div>
+          <% if (streak > 0) { %>
+          <div class="streak">🔥 <%= streak %> Correct in a Row!</div>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Review Schedule -->
+      <div class="practice-section">
+        <h2>📅 Review Schedule</h2>
+        <div class="schedule-grid">
+          <div class="schedule-item">
+            <h4>Box 1 - Daily</h4>
+            <div class="due"><%= schedule.box1.due %></div>
+            <div class="count"><%= schedule.box1.count %> cards</div>
+          </div>
+          <div class="schedule-item" style="border-left-color: #ffc107">
+            <h4>Box 2 - Every 3 Days</h4>
+            <div class="due"><%= schedule.box2.due %></div>
+            <div class="count"><%= schedule.box2.count %> cards</div>
+          </div>
+          <div class="schedule-item" style="border-left-color: #28a745">
+            <h4>Box 3 - Weekly</h4>
+            <div class="due"><%= schedule.box3.due %></div>
+            <div class="count"><%= schedule.box3.count %> cards</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Practice Card Area -->
+      <div class="practice-section">
+        <h2>🎯 Start Practicing</h2>
+        <div id="practice-area">
+          <% if (summary.dueTodayCount > 0) { %>
+          <div class="card-display" id="card-display" onclick="flipCard()">
+            <div class="card-side active" id="question-side">
+              <div class="card-label">Question</div>
+              <div class="card-text" id="question-text">Loading first card...</div>
+              <div class="click-hint">Click to reveal answer</div>
+            </div>
+            <div class="card-side" id="answer-side">
+              <div class="card-label">Answer</div>
+              <div class="card-text" id="answer-text"></div>
+              <div class="click-hint">Click to see question</div>
+            </div>
+          </div>
+
+          <div class="button-group">
+            <button class="btn-incorrect" onclick="markIncorrect()">❌ Incorrect</button>
+            <button class="btn-skip" onclick="skipCard()">⏭️ Skip</button>
+            <button class="btn-correct" onclick="markCorrect()">✅ Correct</button>
+          </div>
+          <% } else { %>
+          <div class="no-cards">
+            <p>🎉 No cards due today!</p>
+            <p>Come back tomorrow to continue your practice.</p>
+          </div>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Statistics -->
+      <div class="practice-section">
+        <h2>📈 Statistics</h2>
+        <div class="dashboard">
+          <div class="stats-card">
+            <h3>Total Correct</h3>
+            <div class="number"><%= stats.totalCorrect %></div>
+          </div>
+          <div class="stats-card">
+            <h3>Total Incorrect</h3>
+            <div class="number"><%= stats.totalIncorrect %></div>
+          </div>
+          <div class="stats-card">
+            <h3>Total Attempts</h3>
+            <div class="number"><%= stats.totalAttempts %></div>
+          </div>
+          <div class="stats-card">
+            <h3>Mastered Cards</h3>
+            <div class="number"><%= stats.box3 %></div>
+            <div class="label">In Box 3</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let currentCard = null;
+      let startTime = null;
+
+      // Load the first card when page loads
+      document.addEventListener('DOMContentLoaded', async () => {
+        const dueTodayCount = <%= summary.dueTodayCount %>;
+        if (dueTodayCount > 0) {
+          await loadNextCard();
+        }
+      });
+
+      async function loadNextCard() {
+        try {
+          const response = await fetch('/api/practice/next');
+          const data = await response.json();
+
+          if (data.card) {
+            currentCard = data.card;
+            startTime = Date.now();
+
+            document.getElementById('question-text').textContent = currentCard.question;
+            document.getElementById('answer-text').textContent = currentCard.answer;
+
+            // Reset card to question side
+            resetCardFlip();
+          } else {
+            alert('No cards due today! Great job! 🎉');
+            location.reload();
+          }
+        } catch (error) {
+          console.error('Error loading card:', error);
+          alert('Error loading card');
+        }
+      }
+
+      function flipCard() {
+        const questionSide = document.getElementById('question-side');
+        const answerSide = document.getElementById('answer-side');
+
+        questionSide.classList.toggle('active');
+        answerSide.classList.toggle('active');
+
+        const display = document.getElementById('card-display');
+        display.classList.toggle('flipped');
+      }
+
+      function resetCardFlip() {
+        const questionSide = document.getElementById('question-side');
+        const answerSide = document.getElementById('answer-side');
+
+        questionSide.classList.add('active');
+        answerSide.classList.remove('active');
+
+        const display = document.getElementById('card-display');
+        display.classList.remove('flipped');
+      }
+
+      async function submitAnswer(isCorrect) {
+        if (!currentCard) return;
+
+        const responseTimeMs = Date.now() - startTime;
+
+        try {
+          const response = await fetch('/api/practice/answer', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              flashcardId: currentCard.flashcard_id,
+              isCorrect: isCorrect,
+              responseTimeMs: responseTimeMs,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (data.status === 'success') {
+            // Show feedback
+            const message = isCorrect
+              ? `✅ Correct! Moved to Box ${data.progress.current_box}`
+              : `❌ Incorrect. Back to Box 1`;
+
+            alert(message);
+
+            // Load next card
+            await loadNextCard();
+          } else {
+            alert('Error: ' + data.error);
+          }
+        } catch (error) {
+          console.error('Error submitting answer:', error);
+          alert('Error submitting answer');
+        }
+      }
+
+      function markCorrect() {
+        submitAnswer(true);
+      }
+
+      function markIncorrect() {
+        submitAnswer(false);
+      }
+
+      function skipCard() {
+        // Just load next card without recording
+        loadNextCard();
+      }
+    </script>
+  </body>
+</html>

@@ -207,6 +207,75 @@ const migrations = [
       console.log('✓ Added class column to flashcards table');
     },
   },
+  {
+    name: 'create_flashcard_leitner_progress_table',
+    description: 'Create table for tracking Leitner box progress for each flashcard',
+    run: async () => {
+      // Check if table already exists
+      const checkResult = await query(
+        `SELECT EXISTS (
+          SELECT 1 FROM information_schema.tables 
+          WHERE table_name = 'flashcard_leitner_progress'
+        )`
+      );
+
+      if (checkResult.rows[0].exists) {
+        console.log('✓ Table flashcard_leitner_progress already exists');
+        return;
+      }
+
+      // Create the table
+      await query(
+        `CREATE TABLE flashcard_leitner_progress (
+          id SERIAL PRIMARY KEY,
+          flashcard_id INTEGER NOT NULL REFERENCES flashcards(flashcard_id) ON DELETE CASCADE,
+          user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+          current_box INTEGER NOT NULL DEFAULT 1 CHECK (current_box IN (1, 2, 3)),
+          last_reviewed TIMESTAMP,
+          next_review TIMESTAMP DEFAULT NOW(),
+          times_correct INTEGER DEFAULT 0,
+          times_incorrect INTEGER DEFAULT 0,
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW(),
+          UNIQUE(flashcard_id, user_id)
+        )`
+      );
+      console.log('✓ Created flashcard_leitner_progress table');
+    },
+  },
+  {
+    name: 'create_practice_history_table',
+    description: 'Create table for tracking individual practice attempts',
+    run: async () => {
+      // Check if table already exists
+      const checkResult = await query(
+        `SELECT EXISTS (
+          SELECT 1 FROM information_schema.tables 
+          WHERE table_name = 'practice_history'
+        )`
+      );
+
+      if (checkResult.rows[0].exists) {
+        console.log('✓ Table practice_history already exists');
+        return;
+      }
+
+      // Create the table
+      await query(
+        `CREATE TABLE practice_history (
+          id SERIAL PRIMARY KEY,
+          flashcard_id INTEGER NOT NULL REFERENCES flashcards(flashcard_id) ON DELETE CASCADE,
+          user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+          leitner_box INTEGER NOT NULL CHECK (leitner_box IN (1, 2, 3)),
+          correct BOOLEAN NOT NULL,
+          response_time_ms INTEGER,
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+        `
+      );
+      console.log('✓ Created practice_history table');
+    },
+  },
 ];
 
 /**

@@ -13,6 +13,7 @@ import adminRoutes from './src/routes/admin.mjs';
 import systemRoutes from './src/routes/system.mjs';
 import navigationRoutes from './src/routes/navigation.mjs';
 import entriesRoutes from './src/routes/entries.mjs';
+import practiceRoutes from './src/routes/practice.mjs';
 
 // Define the application environment.
 const NODE_ENV = process.env.NODE_ENV?.toLocaleLowerCase() || 'production';
@@ -201,6 +202,10 @@ app.use('/api/navigation', navigationRoutes);
 
 // Entries/Flashcards routes (CRUD and sharing)
 app.use('/api/entries', entriesRoutes);
+
+// Practice Study routes (Leitner system)
+app.use('/practice', practiceRoutes);
+app.use('/api/practice', practiceRoutes);
 
 // Admin routes
 app.use('/api/admin', adminRoutes);
