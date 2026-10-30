@@ -178,12 +178,15 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
   if (shouldShowCorrectAnswer) {
     // Standard mode: show correct answer with wrong answers as distractors
     const wrongAnswersResult = await query(
-      `SELECT DISTINCT answer 
-       FROM flashcards 
-       WHERE created_by = $1 
-       AND flashcard_id != $2 
-       AND answer IS NOT NULL
-       AND answer != $3
+      `SELECT answer 
+       FROM (
+         SELECT DISTINCT answer 
+         FROM flashcards 
+         WHERE created_by = $1 
+         AND flashcard_id != $2 
+         AND answer IS NOT NULL
+         AND answer != $3
+       ) AS distinct_answers
        ORDER BY RANDOM() 
        LIMIT $4`,
       [userId, correctCard.flashcard_id, correctCard.answer, optionCount - 1]
@@ -196,12 +199,15 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
   } else {
     // "None of the above" mode: show wrong answers only, with "None of the above" as correct option
     const wrongAnswersResult = await query(
-      `SELECT DISTINCT answer 
-       FROM flashcards 
-       WHERE created_by = $1 
-       AND flashcard_id != $2 
-       AND answer IS NOT NULL
-       AND answer != $3
+      `SELECT answer 
+       FROM (
+         SELECT DISTINCT answer 
+         FROM flashcards 
+         WHERE created_by = $1 
+         AND flashcard_id != $2 
+         AND answer IS NOT NULL
+         AND answer != $3
+       ) AS distinct_answers
        ORDER BY RANDOM() 
        LIMIT $4`,
       [userId, correctCard.flashcard_id, correctCard.answer, optionCount - 1]
