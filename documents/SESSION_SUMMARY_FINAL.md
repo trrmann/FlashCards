@@ -178,12 +178,12 @@ Difficulty reflects current performance
 
 ## 📁 Files Modified
 
-| File                                     | Changes                                   | Lines |
-| ---------------------------------------- | ----------------------------------------- | ----- |
-| src/scripts/js/modules/db/migrations.mjs | 2 new migrations (sessions, difficulty)   | +73   |
-| src/scripts/js/modules/auth/practice.mjs | 8 new functions (sessions + difficulty)   | +392  |
-| src/routes/practice.mjs                  | Updated answer endpoint + 3 new endpoints | +120  |
-| src/views/practice.ejs                   | Session tracking + attempt counter UI     | +35   |
+| File                                       | Changes                                   | Lines |
+| ------------------------------------------ | ----------------------------------------- | ----- |
+| src/scripts/js/modules/db/migrations.mjs   | 2 new migrations (sessions, difficulty)   | +73   |
+| src/scripts/js/modules/auth/practice.mjs   | 8 new functions (sessions + difficulty)   | +392  |
+| src/scripts/js/modules/routes/practice.mjs | Updated answer endpoint + 3 new endpoints | +120  |
+| src/views/practice.ejs                     | Session tracking + attempt counter UI     | +35   |
 
 **Total New Code:** 620 lines (well-tested, documented)
 

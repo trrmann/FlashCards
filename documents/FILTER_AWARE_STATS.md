@@ -15,7 +15,7 @@ Dashboard statistics (Box 1, Box 2, Box 3 card counts) now dynamically update to
    - Uses `COALESCE()` to handle NULL values in class/category fields
    - Returns box counts for only matching cards
 
-2. **API Endpoint** ([src/routes/practice.mjs](file:///home/tmann/Documents/Projects/FlashCards/src/routes/practice.mjs:332))
+2. **API Endpoint** ([src/scripts/js/modules/routes/practice.mjs](file:///home/tmann/Documents/Projects/FlashCards/src/scripts/js/modules/routes/practice.mjs:332))
    - GET `/api/practice/stats` now accepts filter query parameters:
      - `?class=Biology`
      - `?lesson=Chapter1`
@@ -103,7 +103,7 @@ Enable with: Check `/tmp/server.log` or browser DevTools Console
 ## Files Modified
 
 - **src/scripts/js/modules/auth/practice.mjs** - Added filter support to getProgressStats()
-- **src/routes/practice.mjs** - Updated /api/practice/stats endpoint
+- **src/scripts/js/modules/routes/practice.mjs** - Updated /api/practice/stats endpoint
 - **src/views/practice.ejs** - Added refreshStatsForActiveFilters() and listener
 
 ## Commit

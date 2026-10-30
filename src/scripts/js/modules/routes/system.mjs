@@ -4,14 +4,10 @@
  */
 
 import express from 'express';
-import { query } from '../scripts/js/modules/db/connection.mjs';
-import { createUser } from '../scripts/js/modules/auth/user.mjs';
-import {
-  validatePassword,
-  validateEmail,
-  validateUsername,
-} from '../scripts/js/modules/auth/validator.mjs';
-import { getExpirationWarning } from '../scripts/js/modules/db/dbExpiration.mjs';
+import { validateEmail, validatePassword, validateUsername } from '../auth/validator.mjs';
+import { query } from '../db/connection.mjs';
+import { createUser } from '../auth/user.mjs';
+import { getExpirationWarning } from '../db/dbExpiration.mjs';
 
 const router = express.Router();
 

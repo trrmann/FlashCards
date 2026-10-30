@@ -97,7 +97,7 @@ AND flashcard_id != $2
 AND answer != $3
 ```
 
-### 3. **src/routes/practice.mjs** (+24 lines)
+### 3. **src/scripts/js/modules/routes/practice.mjs** (+24 lines)
 
 #### Updated: `GET /api/practice/next`
 
@@ -341,7 +341,7 @@ The `category` column is automatically created when server starts:
 ```
 src/scripts/js/modules/auth/practice.mjs      +66 lines  (getFilterPattern, updated getDueCardsForToday, updated generateMultipleChoiceOptions)
 src/scripts/js/modules/db/migrations.mjs      +25 lines  (add_category_to_flashcards migration)
-src/routes/practice.mjs    +24 lines  (extract/pass filters to getDueCardsForToday)
+src/scripts/js/modules/routes/practice.mjs    +24 lines  (extract/pass filters to getDueCardsForToday)
 src/views/practice.ejs     +13 lines  (read filters from sessionStorage, pass to API)
 .session_files/            +2 docs    (documentation)
 ```

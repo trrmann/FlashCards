@@ -170,7 +170,7 @@ Get currently authenticated user.
 }
 ```
 
-### 4. User Profile Routes (`src/routes/users.mjs`)
+### 4. User Profile Routes (`src/scripts/js/modules/routes/users.mjs`)
 
 Protected endpoints for profile management (requires authentication).
 
@@ -444,7 +444,7 @@ DB_PG_*                    # Database config (existing)
 - `src/scripts/js/modules/auth/validator.mjs` - Password and input validation
 - `src/scripts/js/modules/auth/user.mjs` - User database operations
 - `src/scripts/js/modules/routes/auth.mjs` - Authentication endpoints
-- `src/routes/users.mjs` - Profile endpoints
+- `src/scripts/js/modules/routes/users.mjs` - Profile endpoints
 
 ### Modified
 

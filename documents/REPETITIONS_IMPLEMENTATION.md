@@ -111,7 +111,7 @@ Enhanced version of `recordPracticeAttempt` that:
 }
 ```
 
-### API Changes in `src/routes/practice.mjs`
+### API Changes in `src/scripts/js/modules/routes/practice.mjs`
 
 #### POST `/api/practice/answer`
 
@@ -292,7 +292,7 @@ if (data.session && data.session.needsMoreAttempts) {
 
 - ✅ `src/scripts/js/modules/db/migrations.mjs` - Added 2 new migrations
 - ✅ `src/scripts/js/modules/auth/practice.mjs` - Added 5 new session-aware functions
-- ✅ `src/routes/practice.mjs` - Updated /api/practice/answer endpoint and imports
+- ✅ `src/scripts/js/modules/routes/practice.mjs` - Updated /api/practice/answer endpoint and imports
 - ✅ `src/views/practice.ejs` - Added session tracking and attempt counter display
 
 ## Future Enhancements

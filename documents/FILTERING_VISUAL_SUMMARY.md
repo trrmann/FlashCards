@@ -207,7 +207,7 @@ const wrongAnswersResult = await query(
 
 ### 5. API Endpoint Integration
 
-**File:** `src/routes/practice.mjs` - GET `/api/practice/next` (lines 126-169)
+**File:** `src/scripts/js/modules/routes/practice.mjs` - GET `/api/practice/next` (lines 126-169)
 
 ```javascript
 // Extract filters from query params (lines 139-142)

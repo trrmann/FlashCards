@@ -136,7 +136,7 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
 
 ### API Updates
 
-**File**: `src/routes/practice.mjs`
+**File**: `src/scripts/js/modules/routes/practice.mjs`
 
 #### GET /api/practice/next
 

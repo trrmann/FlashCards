@@ -275,7 +275,7 @@ Before deploying to Render:
 | ------------------------------------------ | ------------------------------ |
 | `server.js`                                | NODE_ENV, PORT, SESSION_SECRET |
 | `src/scripts/js/modules/db/connection.mjs` | NODE_ENV, DB_PG_*, RENDER      |
-| `src/routes/system.mjs`                    | DB_PG_DATABASE                 |
+| `src/scripts/js/modules/routes/system.mjs` | DB_PG_DATABASE                 |
 | `src/scripts/js/modules/db/init-db.mjs`    | DB_PG_*, RENDER                |
 
 ---

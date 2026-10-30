@@ -24,12 +24,12 @@ Successfully implemented **dynamic header/class/category filtering** for practic
 
 ### Files Modified (4 files, ~140 lines)
 
-| File                                       | Changes   | Status    |
-| ------------------------------------------ | --------- | --------- |
-| `src/scripts/js/modules/auth/practice.mjs` | +66 lines | ✅ Linted |
-| `src/routes/practice.mjs`                  | +24 lines | ✅ Linted |
-| `src/views/practice.ejs`                   | +13 lines | ✅ Linted |
-| `src/scripts/js/modules/db/migrations.mjs` | +25 lines | ✅ Linted |
+| File                                         | Changes   | Status    |
+| -------------------------------------------- | --------- | --------- |
+| `src/scripts/js/modules/auth/practice.mjs`   | +66 lines | ✅ Linted |
+| `src/scripts/js/modules/routes/practice.mjs` | +24 lines | ✅ Linted |
+| `src/views/practice.ejs`                     | +13 lines | ✅ Linted |
+| `src/scripts/js/modules/db/migrations.mjs`   | +25 lines | ✅ Linted |
 
 ### Linting Fixes Applied
 
@@ -170,7 +170,7 @@ aa76fb2 feat: implement header/class/category filtering for practice mode
 ### Implementation
 
 - `src/scripts/js/modules/auth/practice.mjs` - Core filtering logic
-- `src/routes/practice.mjs` - API endpoints
+- `src/scripts/js/modules/routes/practice.mjs` - API endpoints
 - `src/views/practice.ejs` - Frontend integration
 - `src/scripts/js/modules/db/migrations.mjs` - Database migration
 

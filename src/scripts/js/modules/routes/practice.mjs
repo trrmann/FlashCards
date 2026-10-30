@@ -4,7 +4,7 @@
  */
 
 import express from 'express';
-import { query } from '../scripts/js/modules/db/connection.mjs';
+import { query } from '../db/connection.mjs';
 import {
   initializeAllCardsForUser,
   getDueCardsForToday,
@@ -19,7 +19,7 @@ import {
   updateDifficultyScore,
   batchUpdateDifficultyScores,
   getDifficultyStats,
-} from '../scripts/js/modules/auth/practice.mjs';
+} from '../auth/practice.mjs';
 
 const router = express.Router();
 

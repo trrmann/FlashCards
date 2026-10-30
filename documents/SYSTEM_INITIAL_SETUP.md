@@ -315,7 +315,7 @@ Possible additions in future phases:
 
 ## Files Modified
 
-- `src/routes/system.mjs` - New system routes
+- `src/scripts/js/modules/routes/system.mjs` - New system routes
 - `server.js` - Added system routes mounting
 
 ---

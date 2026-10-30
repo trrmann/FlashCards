@@ -19,8 +19,8 @@ import {
   getPendingShares,
   getAcceptedShares,
   getOwnedShares,
-} from '../scripts/js/modules/auth/entries.mjs';
-import { query } from '../scripts/js/modules/db/connection.mjs';
+} from '../auth/entries.mjs';
+import { query } from '../db/connection.mjs';
 
 const router = express.Router();
 

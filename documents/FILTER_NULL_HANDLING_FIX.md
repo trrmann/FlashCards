@@ -55,7 +55,7 @@ Now:
    - Logs filters and SQL patterns applied
    - Logs number of cards returned
 
-### src/routes/practice.mjs
+### src/scripts/js/modules/routes/practice.mjs
 
 - Added debug logging to see how filters are received and passed to backend
 - Logs number of due cards found for the session
@@ -86,7 +86,7 @@ Watch server logs for debug output:
 ## Files Modified
 
 - src/scripts/js/modules/auth/practice.mjs - Core filtering logic fix + debug logging
-- src/routes/practice.mjs - API endpoint debug logging
+- src/scripts/js/modules/routes/practice.mjs - API endpoint debug logging
 
 ## Commits
 

@@ -13,13 +13,13 @@ import {
 } from './src/scripts/js/modules/db/connection.mjs';
 import { runMigrations } from './src/scripts/js/modules/db/migrations.mjs';
 import authRoutes from './src/scripts/js/modules/routes/auth.mjs';
-import userRoutes from './src/routes/users.mjs';
-import adminRoutes from './src/routes/admin.mjs';
-import systemRoutes from './src/routes/system.mjs';
-import navigationRoutes from './src/routes/navigation.mjs';
-import entriesRoutes from './src/routes/entries.mjs';
-import practiceRoutes from './src/routes/practice.mjs';
-import quizRoutes from './src/routes/quiz.mjs';
+import userRoutes from './src/scripts/js/modules/routes/users.mjs';
+import adminRoutes from './src/scripts/js/modules/routes/admin.mjs';
+import systemRoutes from './src/scripts/js/modules/routes/system.mjs';
+import navigationRoutes from './src/scripts/js/modules/routes/navigation.mjs';
+import entriesRoutes from './src/scripts/js/modules/routes/entries.mjs';
+import practiceRoutes from './src/scripts/js/modules/routes/practice.mjs';
+import quizRoutes from './src/scripts/js/modules/routes/quiz.mjs';
 
 // Define the application environment.
 const NODE_ENV = process.env.NODE_ENV?.toLocaleLowerCase() || 'production';

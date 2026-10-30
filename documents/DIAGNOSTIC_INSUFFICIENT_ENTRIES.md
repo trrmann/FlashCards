@@ -33,7 +33,7 @@ When there aren't enough flashcards to create multiple choice options, users now
    }
    ```
 
-3. **API Endpoint** ([src/routes/practice.mjs](file:///home/tmann/Documents/Projects/FlashCards/src/routes/practice.mjs:178))
+3. **API Endpoint** ([src/scripts/js/modules/routes/practice.mjs](file:///home/tmann/Documents/Projects/FlashCards/src/scripts/js/modules/routes/practice.mjs:178))
    - Checks if `options.insufficientOptions` is true
    - Passes `diagnostic` object to frontend in response
 
@@ -127,7 +127,7 @@ Not enough entries in this category to practice. Add more flashcards to create m
 ## Files Modified
 
 - **src/scripts/js/modules/auth/practice.mjs** - Return diagnostic object instead of null
-- **src/routes/practice.mjs** - Pass diagnostic to frontend
+- **src/scripts/js/modules/routes/practice.mjs** - Pass diagnostic to frontend
 - **src/views/practice.ejs** - Display collapsible diagnostic section
 
 ## Commit
