@@ -631,6 +631,37 @@ export async function recordPracticeAttemptWithSession(
   const needsMoreAttempts = currentAttemptNumber < totalAttemptsNeeded;
   console.log(`[recordPracticeAttemptWithSession] NeedsMoreAttempts: ${needsMoreAttempts}`);
 
+  // Update attempt counts EVERY time (not just when complete)
+  // This ensures times_correct and times_incorrect are tracked per attempt
+  const progressResult = await query(
+    `SELECT * FROM flashcard_leitner_progress 
+     WHERE flashcard_id = $1 AND user_id = $2`,
+    [flashcardId, userId]
+  );
+
+  if (progressResult.rows.length > 0) {
+    const current = progressResult.rows[0];
+    let newTimesCorrect = current.times_correct;
+    let newTimesIncorrect = current.times_incorrect;
+
+    if (isCorrect) {
+      newTimesCorrect += 1;
+    } else {
+      newTimesIncorrect += 1;
+    }
+
+    // Update times_correct and times_incorrect with every attempt
+    await query(
+      `UPDATE flashcard_leitner_progress
+       SET times_correct = $1,
+           times_incorrect = $2,
+           updated_at = NOW()
+       WHERE flashcard_id = $3 AND user_id = $4`,
+      [newTimesCorrect, newTimesIncorrect, flashcardId, userId]
+    );
+    console.log(`[recordPracticeAttemptWithSession] Updated attempt counts: correct=${newTimesCorrect}, incorrect=${newTimesIncorrect}`);
+  }
+
   // Only move card if all repetitions are done
   let progress = null;
   if (!needsMoreAttempts) {
