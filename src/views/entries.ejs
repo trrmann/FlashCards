@@ -120,6 +120,93 @@
       <p>Please <a href="/login">log in</a> to manage your flashcards.</p>
     <% } %>
   </div>
+
+  <!-- Edit Modal -->
+  <div id="edit-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Edit Flashcard</h2>
+        <button class="modal-close" onclick="closeEditModal()">&times;</button>
+      </div>
+      <form id="edit-form" class="entry-form">
+        <div class="form-group">
+          <label for="edit-question">Question:</label>
+          <textarea
+            id="edit-question"
+            name="question"
+            placeholder="Enter the question or front of the flashcard..."
+            required
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="edit-answer">Answer:</label>
+          <textarea
+            id="edit-answer"
+            name="answer"
+            placeholder="Enter the answer or back of the flashcard..."
+            required
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="edit-class">Class:</label>
+          <input
+            type="text"
+            id="edit-class"
+            name="class"
+            list="edit-class-options"
+            placeholder="Optional: e.g., Biology 101, AP Calculus"
+            autocomplete="off"
+          />
+          <datalist id="edit-class-options"></datalist>
+        </div>
+
+        <div class="form-group">
+          <label for="edit-lesson">Lesson (within Class):</label>
+          <input
+            type="text"
+            id="edit-lesson"
+            name="lesson"
+            list="edit-lesson-options"
+            placeholder="Optional: e.g., Lesson 5, Chapter 3"
+            autocomplete="off"
+          />
+          <datalist id="edit-lesson-options"></datalist>
+        </div>
+
+        <div class="form-group">
+          <label for="edit-category">Category (Independent):</label>
+          <input
+            type="text"
+            id="edit-category"
+            name="category"
+            list="edit-category-options"
+            placeholder="Optional: e.g., Taxonomy, Photosynthesis, Ecosystems"
+            autocomplete="off"
+          />
+          <datalist id="edit-category-options"></datalist>
+        </div>
+
+        <div class="form-group">
+          <label for="edit-is-private">
+            <input
+              type="checkbox"
+              id="edit-is-private"
+              name="is_private"
+            />
+            Keep Private (not visible to other users)
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+          <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+          <span id="edit-form-status"></span>
+        </div>
+      </form>
+    </div>
+  </div>
 </main>
 
 <style>
@@ -378,6 +465,85 @@
     border-radius: 4px;
     margin-bottom: 15px;
   }
+
+  /* Modal Styles */
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    animation: fadeIn 0.3s ease-in;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .modal-content {
+    background-color: white;
+    margin: 10% auto;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    animation: slideIn 0.3s ease-in;
+  }
+
+  @keyframes slideIn {
+    from {
+      transform: translateY(-50px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+  }
+
+  .modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    font-weight: bold;
+    color: #999;
+    cursor: pointer;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-close:hover {
+    color: #000;
+  }
 </style>
 
 <script>
@@ -400,6 +566,14 @@
     window.addEventListener('filtersChanged', () => {
       loadUserEntries();
       loadMetadataOptions();
+    });
+
+    // Close modal when clicking outside of it
+    window.addEventListener('click', (event) => {
+      const modal = document.getElementById('edit-modal');
+      if (event.target === modal) {
+        closeEditModal();
+      }
     });
   }
 
@@ -653,8 +827,133 @@
     }
   }
 
-  function editEntry(entryId) {
-    alert('Edit feature coming soon!');
+  async function editEntry(entryId) {
+    try {
+      // Fetch the entry data
+      const response = await fetch(`/api/entries/${entryId}`);
+      const data = await response.json();
+
+      if (data.status === 'success' && data.flashcard) {
+        const entry = data.flashcard;
+        
+        // Populate the edit form
+        document.getElementById('edit-question').value = entry.question || '';
+        document.getElementById('edit-answer').value = entry.answer || '';
+        document.getElementById('edit-class').value = entry.class || '';
+        document.getElementById('edit-lesson').value = entry.lesson || '';
+        document.getElementById('edit-category').value = entry.category || '';
+        document.getElementById('edit-is-private').checked = entry.is_private !== false;
+        
+        // Store the entry ID for use when saving
+        document.getElementById('edit-form').dataset.entryId = entryId;
+        
+        // Load metadata options for the datalists
+        await loadEditMetadataOptions();
+        
+        // Show the modal
+        document.getElementById('edit-modal').style.display = 'block';
+      } else {
+        alert('Error: ' + data.message);
+      }
+    } catch (error) {
+      console.error('Error loading entry for edit:', error);
+      alert('Error loading entry: ' + error.message);
+    }
+  }
+
+  async function loadEditMetadataOptions() {
+    try {
+      // Load classes
+      const classRes = await fetch('/api/entries/metadata/classes');
+      const classData = await classRes.json();
+      if (classData.status === 'success' && classData.classes) {
+        const classDatalist = document.getElementById('edit-class-options');
+        classDatalist.innerHTML = classData.classes
+          .map(cls => `<option value="${escapeHtml(cls)}" />`)
+          .join('');
+      }
+
+      // Load lessons
+      const lessonRes = await fetch('/api/entries/metadata/lessons');
+      const lessonData = await lessonRes.json();
+      if (lessonData.status === 'success' && lessonData.lessons) {
+        const lessonDatalist = document.getElementById('edit-lesson-options');
+        lessonDatalist.innerHTML = lessonData.lessons
+          .map(lesson => `<option value="${escapeHtml(lesson)}" />`)
+          .join('');
+      }
+
+      // Load categories
+      const categoryRes = await fetch('/api/entries/metadata/categories');
+      const categoryData = await categoryRes.json();
+      if (categoryData.status === 'success' && categoryData.categories) {
+        const categoryDatalist = document.getElementById('edit-category-options');
+        categoryDatalist.innerHTML = categoryData.categories
+          .map(cat => `<option value="${escapeHtml(cat)}" />`)
+          .join('');
+      }
+    } catch (error) {
+      console.error('Error loading edit metadata options:', error);
+    }
+  }
+
+  function closeEditModal() {
+    document.getElementById('edit-modal').style.display = 'none';
+    document.getElementById('edit-form').reset();
+  }
+
+  // Setup edit form submission
+  const editForm = document.getElementById('edit-form');
+  if (editForm) {
+    editForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const entryId = editForm.dataset.entryId;
+      const statusSpan = document.getElementById('edit-form-status');
+
+      try {
+        statusSpan.textContent = 'Saving...';
+        statusSpan.className = '';
+
+        const response = await fetch(`/api/entries/${entryId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question: document.getElementById('edit-question').value,
+            answer: document.getElementById('edit-answer').value,
+            class: document.getElementById('edit-class').value,
+            lesson: document.getElementById('edit-lesson').value,
+            category: document.getElementById('edit-category').value,
+            is_private: document.getElementById('edit-is-private').checked,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+          statusSpan.textContent = '✓ Entry updated!';
+          statusSpan.className = 'success';
+          
+          setTimeout(() => {
+            closeEditModal();
+            loadUserEntries();
+            loadMetadataOptions();
+            // Also refresh filter panel options
+            if (window.refreshFilterOptions) {
+              window.refreshFilterOptions().catch(err => {
+                console.error('Error refreshing filter options:', err);
+              });
+            }
+          }, 1000);
+        } else {
+          statusSpan.textContent = 'Error: ' + data.message;
+          statusSpan.className = 'error';
+        }
+      } catch (error) {
+        statusSpan.textContent = 'Error: ' + error.message;
+        statusSpan.className = 'error';
+      }
+    });
   }
 
   function shareEntry(entryId) {
