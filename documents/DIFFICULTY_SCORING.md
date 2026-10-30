@@ -409,7 +409,7 @@ For shared cards:
 
 ## Files Modified
 
-- ✅ `src/db/migrations.mjs` - Added difficulty migration
+- ✅ `src/scripts/js/modules/db/migrations.mjs` - Added difficulty migration
 - ✅ `src/auth/practice.mjs` - Added 3 difficulty functions
 - ✅ `src/routes/practice.mjs` - Added 3 API endpoints
 

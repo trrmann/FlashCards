@@ -3,7 +3,7 @@
  * Handles schema changes and updates
  */
 
-import { query } from './connection.mjs';
+import { query } from '../../../../db/connection.mjs';
 
 /**
  * List of all migrations to run

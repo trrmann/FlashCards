@@ -223,7 +223,7 @@ const dueCards = await getDueCardsForToday(userId, filters);
 
 ### 6. Database Migration
 
-**File:** `src/db/migrations.mjs` (lines 454-476)
+**File:** `src/scripts/js/modules/db/migrations.mjs` (lines 454-476)
 
 ```javascript
 {

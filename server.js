@@ -6,7 +6,7 @@ import pgSession from 'connect-pg-simple';
 
 import { appSiteData } from './src/js/appSiteData.js';
 import { initializeDatabase, healthCheck, query, pool } from './src/db/connection.mjs';
-import { runMigrations } from './src/db/migrations.mjs';
+import { runMigrations } from './src/scripts/js/modules/db/migrations.mjs';
 import authRoutes from './src/routes/auth.mjs';
 import userRoutes from './src/routes/users.mjs';
 import adminRoutes from './src/routes/admin.mjs';

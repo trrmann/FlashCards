@@ -42,7 +42,7 @@ Returns card + distractors matching filters
 
 ## Code Changes
 
-### 1. **src/db/migrations.mjs** (+25 lines)
+### 1. **src/scripts/js/modules/db/migrations.mjs** (+25 lines)
 
 Added migration to create `category` column:
 
@@ -340,7 +340,7 @@ The `category` column is automatically created when server starts:
 
 ```
 src/auth/practice.mjs      +66 lines  (getFilterPattern, updated getDueCardsForToday, updated generateMultipleChoiceOptions)
-src/db/migrations.mjs      +25 lines  (add_category_to_flashcards migration)
+src/scripts/js/modules/db/migrations.mjs      +25 lines  (add_category_to_flashcards migration)
 src/routes/practice.mjs    +24 lines  (extract/pass filters to getDueCardsForToday)
 src/views/practice.ejs     +13 lines  (read filters from sessionStorage, pass to API)
 .session_files/            +2 docs    (documentation)
