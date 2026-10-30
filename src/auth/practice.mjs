@@ -320,6 +320,10 @@ export async function getNextCatchUpCard(userId) {
  * @returns {Promise<array|null>} Array of shuffled options with {text, isCorrect}, or null if not enough options (< 2 total)
  */
 export async function generateMultipleChoiceOptions(userId, correctCard, optionCount = 4) {
+  console.log(
+    `[DEBUG] generateMultipleChoiceOptions - Card: ${correctCard.question.substring(0, 40)}..., Class: ${correctCard.class}, Category: ${correctCard.category}`
+  );
+
   // Get the none_of_above_count for this card
   const progressResult = await query(
     `SELECT none_of_above_count, times_correct, times_incorrect 
@@ -374,6 +378,10 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
     wrongAnswersResult.rows.forEach((row) => {
       options.push({ text: row.answer, isCorrect: false });
     });
+
+    console.log(
+      `[DEBUG] generateMultipleChoiceOptions - Found ${wrongAnswersResult.rows.length} wrong answers (Standard mode)`
+    );
   } else {
     // "None of the above" mode: show wrong answers only, with "None of the above" as correct option
     // Wrong answers must match class AND category (but can be different lesson)
@@ -407,9 +415,16 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
     });
 
     options.push({ text: 'None of the above', isCorrect: true, isNoneOfAbove: true });
+
+    console.log(
+      `[DEBUG] generateMultipleChoiceOptions - Found ${wrongAnswersResult.rows.length} wrong answers (None of above mode)`
+    );
   }
 
   // Check if we have at least 2 options (1 correct + 1 wrong)
+  console.log(
+    `[DEBUG] generateMultipleChoiceOptions - Total options: ${options.length}, Returning: ${options.length >= 2 ? 'options' : 'null (insufficient)'}`
+  );
   if (options.length < 2) {
     return null;
   }
