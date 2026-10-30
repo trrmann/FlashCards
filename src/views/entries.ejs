@@ -557,7 +557,7 @@
   }
 
   function initializeEntriesPage() {
-    loadMetadataOptions();
+    refreshAllMetadataOptions();
     setupCreateForm();
     loadUserEntries();
     loadSharedEntries();
@@ -565,7 +565,7 @@
     // Listen for filter changes from the filter panel
     window.addEventListener('filtersChanged', () => {
       loadUserEntries();
-      loadMetadataOptions();
+      refreshAllMetadataOptions();
     });
 
     // Close modal when clicking outside of it
@@ -577,36 +577,54 @@
     });
   }
 
+  async function refreshAllMetadataOptions() {
+    // Refresh both create form and edit modal datalists
+    await loadMetadataOptions();
+    await loadEditMetadataOptions();
+  }
+
   async function loadMetadataOptions() {
     try {
       // Load classes
       const classRes = await fetch('/api/entries/metadata/classes');
       const classData = await classRes.json();
-      if (classData.status === 'success' && classData.classes) {
+      console.log('Classes response:', classData);
+      if (classData.status === 'success' && classData.classes && classData.classes.length > 0) {
         const classDatalist = document.getElementById('class-options');
         classDatalist.innerHTML = classData.classes
           .map(cls => `<option value="${escapeHtml(cls)}" />`)
           .join('');
+        console.log('Populated classes datalist with', classData.classes.length, 'items');
+      } else {
+        console.warn('Classes response invalid or empty:', classData);
       }
 
       // Load lessons
       const lessonRes = await fetch('/api/entries/metadata/lessons');
       const lessonData = await lessonRes.json();
-      if (lessonData.status === 'success' && lessonData.lessons) {
+      console.log('Lessons response:', lessonData);
+      if (lessonData.status === 'success' && lessonData.lessons && lessonData.lessons.length > 0) {
         const lessonDatalist = document.getElementById('lesson-options');
         lessonDatalist.innerHTML = lessonData.lessons
           .map(lesson => `<option value="${escapeHtml(lesson)}" />`)
           .join('');
+        console.log('Populated lessons datalist with', lessonData.lessons.length, 'items');
+      } else {
+        console.warn('Lessons response invalid or empty:', lessonData);
       }
 
       // Load categories
       const categoryRes = await fetch('/api/entries/metadata/categories');
       const categoryData = await categoryRes.json();
-      if (categoryData.status === 'success' && categoryData.categories) {
+      console.log('Categories response:', categoryData);
+      if (categoryData.status === 'success' && categoryData.categories && categoryData.categories.length > 0) {
         const categoryDatalist = document.getElementById('category-options');
         categoryDatalist.innerHTML = categoryData.categories
           .map(cat => `<option value="${escapeHtml(cat)}" />`)
           .join('');
+        console.log('Populated categories datalist with', categoryData.categories.length, 'items');
+      } else {
+        console.warn('Categories response invalid or empty:', categoryData);
       }
     } catch (error) {
       console.error('Error loading metadata options:', error);
@@ -660,7 +678,7 @@
           // Reload entries and metadata options
           setTimeout(() => {
             loadUserEntries();
-            loadMetadataOptions();
+            refreshAllMetadataOptions();
             // Also refresh filter panel options
             if (window.refreshFilterOptions) {
               window.refreshFilterOptions().catch(err => {
@@ -866,31 +884,43 @@
       // Load classes
       const classRes = await fetch('/api/entries/metadata/classes');
       const classData = await classRes.json();
-      if (classData.status === 'success' && classData.classes) {
+      console.log('Edit - Classes response:', classData);
+      if (classData.status === 'success' && classData.classes && classData.classes.length > 0) {
         const classDatalist = document.getElementById('edit-class-options');
         classDatalist.innerHTML = classData.classes
           .map(cls => `<option value="${escapeHtml(cls)}" />`)
           .join('');
+        console.log('Populated edit classes datalist with', classData.classes.length, 'items');
+      } else {
+        console.warn('Edit - Classes response invalid or empty:', classData);
       }
 
       // Load lessons
       const lessonRes = await fetch('/api/entries/metadata/lessons');
       const lessonData = await lessonRes.json();
-      if (lessonData.status === 'success' && lessonData.lessons) {
+      console.log('Edit - Lessons response:', lessonData);
+      if (lessonData.status === 'success' && lessonData.lessons && lessonData.lessons.length > 0) {
         const lessonDatalist = document.getElementById('edit-lesson-options');
         lessonDatalist.innerHTML = lessonData.lessons
           .map(lesson => `<option value="${escapeHtml(lesson)}" />`)
           .join('');
+        console.log('Populated edit lessons datalist with', lessonData.lessons.length, 'items');
+      } else {
+        console.warn('Edit - Lessons response invalid or empty:', lessonData);
       }
 
       // Load categories
       const categoryRes = await fetch('/api/entries/metadata/categories');
       const categoryData = await categoryRes.json();
-      if (categoryData.status === 'success' && categoryData.categories) {
+      console.log('Edit - Categories response:', categoryData);
+      if (categoryData.status === 'success' && categoryData.categories && categoryData.categories.length > 0) {
         const categoryDatalist = document.getElementById('edit-category-options');
         categoryDatalist.innerHTML = categoryData.categories
           .map(cat => `<option value="${escapeHtml(cat)}" />`)
           .join('');
+        console.log('Populated edit categories datalist with', categoryData.categories.length, 'items');
+      } else {
+        console.warn('Edit - Categories response invalid or empty:', categoryData);
       }
     } catch (error) {
       console.error('Error loading edit metadata options:', error);
@@ -937,7 +967,7 @@
           setTimeout(() => {
             closeEditModal();
             loadUserEntries();
-            loadMetadataOptions();
+            refreshAllMetadataOptions();
             // Also refresh filter panel options
             if (window.refreshFilterOptions) {
               window.refreshFilterOptions().catch(err => {
