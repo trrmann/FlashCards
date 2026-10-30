@@ -555,25 +555,43 @@ export async function recordPracticeAttemptWithSession(
   const currentAttemptCount = await getSessionAttemptCount(userId, flashcardId, sessionStartTime);
   const currentAttemptNumber = currentAttemptCount + 1;
 
-  // Track this session attempt
-  await trackSessionAttempt(
-    userId,
-    flashcardId,
-    sessionStartTime,
-    currentAttemptNumber,
-    isCorrect,
-    responseTimeMs
+  console.log(
+    `[recordPracticeAttemptWithSession] Card: ${flashcardId}, Attempt: ${currentAttemptNumber}/${totalAttemptsNeeded}, IsCorrect: ${isCorrect}`
   );
 
+  // Track this session attempt
+  try {
+    await trackSessionAttempt(
+      userId,
+      flashcardId,
+      sessionStartTime,
+      currentAttemptNumber,
+      isCorrect,
+      responseTimeMs
+    );
+    console.log(`[trackSessionAttempt] Success - recorded attempt ${currentAttemptNumber}`);
+  } catch (error) {
+    console.error(`[trackSessionAttempt] Error:`, error.message);
+    throw error;
+  }
+
   // Record in practice history
-  await query(
-    `INSERT INTO practice_history (flashcard_id, user_id, leitner_box, correct, response_time_ms)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [flashcardId, userId, currentBox, isCorrect, responseTimeMs]
-  );
+  try {
+    const historyResult = await query(
+      `INSERT INTO practice_history (flashcard_id, user_id, leitner_box, correct, response_time_ms)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id`,
+      [flashcardId, userId, currentBox, isCorrect, responseTimeMs]
+    );
+    console.log(`[practice_history] Success - recorded with id: ${historyResult.rows[0]?.id}`);
+  } catch (error) {
+    console.error(`[practice_history] Error:`, error.message);
+    throw error;
+  }
 
   // Check if all repetitions complete
   const needsMoreAttempts = currentAttemptNumber < totalAttemptsNeeded;
+  console.log(`[recordPracticeAttemptWithSession] NeedsMoreAttempts: ${needsMoreAttempts}`);
 
   // Only move card if all repetitions are done
   let progress = null;

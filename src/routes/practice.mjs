@@ -241,14 +241,18 @@ router.post('/answer', async (req, res) => {
 
     const userId = req.session.userId;
     console.log('[ANSWER] req.body:', JSON.stringify(req.body));
+    console.log('[ANSWER] User ID:', userId);
     const { flashcardId, selectedAnswer, isCorrect, sessionStartTime } = req.body;
 
     if (!flashcardId || selectedAnswer === undefined || isCorrect === undefined) {
+      console.error('[ANSWER] Missing required fields');
       return res.status(400).json({
         status: 'error',
         error: 'Missing required fields: flashcardId, selectedAnswer, isCorrect',
       });
     }
+
+    console.log(`[ANSWER] Processing: flashcardId=${flashcardId}, isCorrect=${isCorrect}, sessionStartTime=${sessionStartTime}`);
 
     // Get the card to get the correct answer for feedback
     const cardResult = await query(
@@ -275,6 +279,7 @@ router.post('/answer', async (req, res) => {
     let result;
 
     if (sessionStartTime) {
+      console.log('[ANSWER] Using session-aware tracking');
       const sessionDate = new Date(sessionStartTime);
       result = await recordPracticeAttemptWithSession(
         userId,
@@ -283,8 +288,10 @@ router.post('/answer', async (req, res) => {
         null,
         sessionDate
       );
+      console.log('[ANSWER] Result:', { needsMoreAttempts: result.needsMoreAttempts, attemptNumber: result.attemptNumber });
     } else {
       // Backward compatible: single attempt mode
+      console.log('[ANSWER] Using simple tracking (no session)');
       const progress = await recordPracticeAttempt(userId, flashcardId, isCorrect, null);
       result = {
         progress,
