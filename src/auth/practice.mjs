@@ -144,6 +144,40 @@ export async function getNextPracticeCard(userId) {
 }
 
 /**
+ * Generate multiple choice options for a flashcard
+ * @param {string} userId - User ID
+ * @param {object} correctCard - The correct card object
+ * @param {number} optionCount - Number of options (default 4)
+ * @returns {Promise<array>} Array of shuffled options with {text, isCorrect}
+ */
+export async function generateMultipleChoiceOptions(userId, correctCard, optionCount = 4) {
+  // Get wrong answers from other cards
+  const wrongAnswersResult = await query(
+    `SELECT DISTINCT answer 
+     FROM flashcards 
+     WHERE created_by = $1 
+     AND flashcard_id != $2 
+     AND answer IS NOT NULL
+     AND answer != $3
+     ORDER BY RANDOM() 
+     LIMIT $4`,
+    [userId, correctCard.flashcard_id, correctCard.answer, optionCount - 1]
+  );
+
+  // Build options array
+  const options = [{ text: correctCard.answer, isCorrect: true }];
+
+  // Add wrong answers
+  wrongAnswersResult.rows.forEach((row) => {
+    options.push({ text: row.answer, isCorrect: false });
+  });
+
+  // If we don't have enough wrong answers, we still proceed with what we have
+  // Shuffle the options randomly
+  return options.sort(() => Math.random() - 0.5);
+}
+
+/**
  * Record a practice attempt
  * @param {string} userId - User ID
  * @param {number} flashcardId - Flashcard ID

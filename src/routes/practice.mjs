@@ -9,6 +9,7 @@ import {
   getDueCardsForToday,
   getNextPracticeCard,
   recordPracticeAttempt,
+  generateMultipleChoiceOptions,
   getProgressStats,
   getPracticeStreak,
   getReviewSchedule,
@@ -79,7 +80,7 @@ router.get('/daily', async (req, res) => {
 
 /**
  * GET /api/practice/next
- * Get the next random card for practice from due cards
+ * Get the next random card for practice from due cards with multiple choice options
  */
 router.get('/next', async (req, res) => {
   try {
@@ -99,12 +100,24 @@ router.get('/next', async (req, res) => {
         status: 'success',
         message: 'No cards due for today',
         card: null,
+        options: null,
       });
     }
 
+    // Generate multiple choice options
+    const options = await generateMultipleChoiceOptions(userId, nextCard, 4);
+
     res.json({
       status: 'success',
-      card: nextCard,
+      card: {
+        flashcard_id: nextCard.flashcard_id,
+        question: nextCard.question,
+        answer: nextCard.answer,
+        current_box: nextCard.current_box,
+        times_correct: nextCard.times_correct,
+        times_incorrect: nextCard.times_incorrect,
+      },
+      options: options,
     });
   } catch (error) {
     console.error('Error fetching next practice card:', error);
@@ -115,7 +128,7 @@ router.get('/next', async (req, res) => {
 /**
  * POST /api/practice/answer
  * Submit an answer for a flashcard and move to appropriate box
- * Body: { flashcardId, isCorrect, responseTimeMs }
+ * Body: { flashcardId, selectedOptionIndex }
  */
 router.post('/answer', async (req, res) => {
   try {
@@ -124,22 +137,51 @@ router.post('/answer', async (req, res) => {
     }
 
     const userId = req.session.userId;
-    const { flashcardId, isCorrect, responseTimeMs } = req.body;
+    const { flashcardId, selectedOptionIndex } = req.body;
 
-    if (!flashcardId || isCorrect === undefined) {
+    if (!flashcardId || selectedOptionIndex === undefined) {
       return res.status(400).json({
         status: 'error',
-        error: 'Missing required fields: flashcardId, isCorrect',
+        error: 'Missing required fields: flashcardId, selectedOptionIndex',
       });
     }
 
-    // Record the attempt
-    const updatedProgress = await recordPracticeAttempt(
-      userId,
+    // Get the card to validate the answer
+    const { query: dbQuery } = await import('../db/connection.mjs');
+    const cardResult = await dbQuery('SELECT answer FROM flashcards WHERE flashcard_id = $1', [
       flashcardId,
-      isCorrect,
-      responseTimeMs || null
-    );
+    ]);
+
+    if (cardResult.rows.length === 0) {
+      return res.status(404).json({
+        status: 'error',
+        error: 'Flashcard not found',
+      });
+    }
+
+    const correctAnswer = cardResult.rows[0].answer;
+
+    // Get the card object for generating options
+    const cardFullResult = await dbQuery('SELECT * FROM flashcards WHERE flashcard_id = $1', [
+      flashcardId,
+    ]);
+
+    // Generate options again to validate (must be consistent)
+    const options = await generateMultipleChoiceOptions(userId, cardFullResult.rows[0], 4);
+
+    // Check if selected option is correct
+    const selectedOption = options[selectedOptionIndex];
+    if (!selectedOption) {
+      return res.status(400).json({
+        status: 'error',
+        error: 'Invalid option index',
+      });
+    }
+
+    const isCorrect = selectedOption.isCorrect;
+
+    // Record the attempt with auto-determined correctness
+    const updatedProgress = await recordPracticeAttempt(userId, flashcardId, isCorrect, null);
 
     if (!updatedProgress) {
       return res.status(404).json({
@@ -150,7 +192,11 @@ router.post('/answer', async (req, res) => {
 
     res.json({
       status: 'success',
-      message: isCorrect ? 'Correct! Promoted to next box.' : 'Incorrect. Back to Box 1.',
+      isCorrect: isCorrect,
+      message: isCorrect
+        ? `✅ Correct! The answer is: ${correctAnswer}`
+        : `❌ Incorrect. The answer is: ${correctAnswer}`,
+      correctAnswer: correctAnswer,
       progress: updatedProgress,
     });
   } catch (error) {

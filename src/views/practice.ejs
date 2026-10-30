@@ -224,9 +224,122 @@
         margin-top: 1rem;
       }
 
+      /* Multiple Choice Styles */
+      .question-box {
+        background: #f9f9f9;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 2rem;
+        margin: 2rem 0;
+        text-align: center;
+        min-height: 100px;
+      }
+
+      .question-text {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #333;
+        line-height: 1.6;
+      }
+
+      .options-container {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin: 2rem 0;
+      }
+
+      .option-button {
+        padding: 1rem;
+        border: 2px solid #ddd;
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1rem;
+        text-align: left;
+        transition: all 0.3s ease;
+        font-weight: 500;
+        color: #333;
+      }
+
+      .option-button:hover:not(:disabled) {
+        border-color: #0066cc;
+        background: #f0f7ff;
+        transform: translateY(-2px);
+        box-shadow: 0 2px 8px rgba(0, 102, 204, 0.2);
+      }
+
+      .option-button:disabled {
+        cursor: not-allowed;
+      }
+
+      .option-button.selected {
+        border-color: #0066cc;
+        background: #0066cc;
+        color: white;
+      }
+
+      .option-button.correct {
+        border-color: #28a745;
+        background: #28a745;
+        color: white;
+      }
+
+      .option-button.incorrect {
+        border-color: #dc3545;
+        background: #dc3545;
+        color: white;
+      }
+
+      .feedback-message {
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+        font-weight: bold;
+        text-align: center;
+        font-size: 1.1rem;
+      }
+
+      .feedback-correct {
+        background: #d4edda;
+        border: 2px solid #28a745;
+        color: #155724;
+      }
+
+      .feedback-incorrect {
+        background: #f8d7da;
+        border: 2px solid #dc3545;
+        color: #721c24;
+      }
+
+      .feedback-hidden {
+        display: none;
+      }
+
+      .btn-next {
+        display: block;
+        margin: 1.5rem auto 0;
+        padding: 0.75rem 2rem;
+        font-size: 1rem;
+        background: #0066cc;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .btn-next:hover {
+        background: #0052a3;
+      }
+
       @media (max-width: 768px) {
         .dashboard {
           grid-template-columns: 1fr 1fr;
+        }
+
+        .options-container {
+          grid-template-columns: 1fr;
         }
 
         .button-group {
@@ -328,24 +441,23 @@
         <h2>🎯 Start Practicing</h2>
         <div id="practice-area">
           <% if (summary.dueTodayCount > 0) { %>
-          <div class="card-display" id="card-display" onclick="flipCard()">
-            <div class="card-side active" id="question-side">
-              <div class="card-label">Question</div>
-              <div class="card-text" id="question-text">Loading first card...</div>
-              <div class="click-hint">Click to reveal answer</div>
-            </div>
-            <div class="card-side" id="answer-side">
-              <div class="card-label">Answer</div>
-              <div class="card-text" id="answer-text"></div>
-              <div class="click-hint">Click to see question</div>
-            </div>
+          <!-- Question Display -->
+          <div class="question-box">
+            <div class="question-text" id="question-text">Loading first card...</div>
           </div>
 
-          <div class="button-group">
-            <button class="btn-incorrect" onclick="markIncorrect()">❌ Incorrect</button>
-            <button class="btn-skip" onclick="skipCard()">⏭️ Skip</button>
-            <button class="btn-correct" onclick="markCorrect()">✅ Correct</button>
+          <!-- Multiple Choice Options -->
+          <div class="options-container" id="options-container">
+            <!-- Will be populated by JavaScript -->
           </div>
+
+          <!-- Feedback Message -->
+          <div id="feedback-message" class="feedback-hidden"></div>
+
+          <!-- Next Button (appears after answer) -->
+          <button class="btn-next" id="next-button" onclick="loadNextCard()" style="display: none;">
+            ⏭️ Next Card
+          </button>
           <% } else { %>
           <div class="no-cards">
             <p>🎉 No cards due today!</p>
@@ -382,7 +494,8 @@
 
     <script>
       let currentCard = null;
-      let startTime = null;
+      let currentOptions = null;
+      let answered = false;
 
       // Load the first card when page loads
       document.addEventListener('DOMContentLoaded', async () => {
@@ -393,22 +506,28 @@
       });
 
       async function loadNextCard() {
+        answered = false;
+        document.getElementById('feedback-message').className = 'feedback-hidden';
+        document.getElementById('next-button').style.display = 'none';
+
         try {
           const response = await fetch('/api/practice/next');
           const data = await response.json();
 
-          if (data.card) {
+          if (data.card && data.options) {
             currentCard = data.card;
-            startTime = Date.now();
+            currentOptions = data.options;
 
+            // Display question
             document.getElementById('question-text').textContent = currentCard.question;
-            document.getElementById('answer-text').textContent = currentCard.answer;
 
-            // Reset card to question side
-            resetCardFlip();
-          } else {
+            // Display multiple choice options
+            displayOptions();
+          } else if (!data.card) {
             alert('No cards due today! Great job! 🎉');
             location.reload();
+          } else {
+            alert('Error loading card options');
           }
         } catch (error) {
           console.error('Error loading card:', error);
@@ -416,43 +535,38 @@
         }
       }
 
-      function flipCard() {
-        const questionSide = document.getElementById('question-side');
-        const answerSide = document.getElementById('answer-side');
+      function displayOptions() {
+        const container = document.getElementById('options-container');
+        container.innerHTML = '';
 
-        questionSide.classList.toggle('active');
-        answerSide.classList.toggle('active');
-
-        const display = document.getElementById('card-display');
-        display.classList.toggle('flipped');
+        currentOptions.forEach((option, index) => {
+          const button = document.createElement('button');
+          button.className = 'option-button';
+          button.textContent = option.text;
+          button.onclick = () => selectOption(index);
+          button.disabled = answered;
+          container.appendChild(button);
+        });
       }
 
-      function resetCardFlip() {
-        const questionSide = document.getElementById('question-side');
-        const answerSide = document.getElementById('answer-side');
+      async function selectOption(optionIndex) {
+        if (answered) return; // Prevent multiple answers
+        answered = true;
 
-        questionSide.classList.add('active');
-        answerSide.classList.remove('active');
-
-        const display = document.getElementById('card-display');
-        display.classList.remove('flipped');
-      }
-
-      async function submitAnswer(isCorrect) {
-        if (!currentCard) return;
-
-        const responseTimeMs = Date.now() - startTime;
+        // Mark selected option
+        const buttons = document.querySelectorAll('.option-button');
+        buttons.forEach((btn) => {
+          btn.disabled = true;
+        });
+        buttons[optionIndex].classList.add('selected');
 
         try {
           const response = await fetch('/api/practice/answer', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               flashcardId: currentCard.flashcard_id,
-              isCorrect: isCorrect,
-              responseTimeMs: responseTimeMs,
+              selectedOptionIndex: optionIndex,
             }),
           });
 
@@ -460,14 +574,27 @@
 
           if (data.status === 'success') {
             // Show feedback
-            const message = isCorrect
-              ? `✅ Correct! Moved to Box ${data.progress.current_box}`
-              : `❌ Incorrect. Back to Box 1`;
+            const feedbackEl = document.getElementById('feedback-message');
+            feedbackEl.textContent = data.message;
+            feedbackEl.className = data.isCorrect
+              ? 'feedback-message feedback-correct'
+              : 'feedback-message feedback-incorrect';
 
-            alert(message);
+            // Style correct/incorrect option
+            if (data.isCorrect) {
+              buttons[optionIndex].classList.remove('selected');
+              buttons[optionIndex].classList.add('correct');
+            } else {
+              buttons[optionIndex].classList.remove('selected');
+              buttons[optionIndex].classList.add('incorrect');
 
-            // Load next card
-            await loadNextCard();
+              // Highlight correct answer
+              const correctIndex = currentOptions.findIndex((o) => o.isCorrect);
+              buttons[correctIndex].classList.add('correct');
+            }
+
+            // Show next button
+            document.getElementById('next-button').style.display = 'block';
           } else {
             alert('Error: ' + data.error);
           }
@@ -475,19 +602,6 @@
           console.error('Error submitting answer:', error);
           alert('Error submitting answer');
         }
-      }
-
-      function markCorrect() {
-        submitAnswer(true);
-      }
-
-      function markIncorrect() {
-        submitAnswer(false);
-      }
-
-      function skipCard() {
-        // Just load next card without recording
-        loadNextCard();
       }
     </script>
   </body>
