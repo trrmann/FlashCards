@@ -462,4 +462,29 @@ export async function runMigrations() {
   return results;
 }
 
+// Add category column migration if not already added
+const addCategoryMigration = {
+  name: 'add_category_to_flashcards',
+  description: 'Add category column to flashcards for practice filtering',
+  run: async () => {
+    const categoryCheck = await query(
+      `SELECT column_name FROM information_schema.columns 
+       WHERE table_name = 'flashcards' AND column_name = 'category'`
+    );
+
+    if (categoryCheck.rows.length > 0) {
+      console.log('✓ Category column already exists');
+      return;
+    }
+
+    await query(`ALTER TABLE flashcards ADD COLUMN category VARCHAR(255)`);
+    console.log('✓ Added category column to flashcards table');
+  },
+};
+
+// Add it to migrations if not present
+if (!migrations.some(m => m.name === 'add_category_to_flashcards')) {
+  migrations.push(addCategoryMigration);
+}
+
 export default migrations;

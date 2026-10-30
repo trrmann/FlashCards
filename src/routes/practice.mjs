@@ -120,7 +120,9 @@ router.get('/daily', async (req, res) => {
 /**
  * GET /api/practice/next
  * Get the next random card for practice from due cards with multiple choice options
- * Query params: ?catchUp=true to get any available card (not just due today)
+ * Query params: 
+ *   ?catchUp=true to get any available card (not just due today)
+ *   ?class=Bio101&category=Taxonomy to filter by class/category/lesson
  */
 router.get('/next', async (req, res) => {
   try {
@@ -131,18 +133,32 @@ router.get('/next', async (req, res) => {
     const userId = req.session.userId;
     const catchUpMode = req.query.catchUp === 'true';
     
-    console.log(`[DEBUG] practice/next - User ID from session: ${userId}, Catch-up mode: ${catchUpMode}`);
+    // Extract filters from query params
+    const filters = {
+      class: req.query.class || null,
+      lesson: req.query.lesson || null,
+      category: req.query.category || null,
+    };
+    
+    console.log(`[DEBUG] practice/next - User ID from session: ${userId}, Catch-up mode: ${catchUpMode}, Filters:`, filters);
 
     // Initialize any new flashcards
     await initializeAllCardsForUser(userId);
 
-    // Get next card based on mode
+    // Get next card based on mode, passing filters
     let nextCard;
     if (catchUpMode) {
       nextCard = await getNextCatchUpCard(userId);
       console.log(`[DEBUG] practice/next (CATCH-UP) - Next card: ${nextCard ? nextCard.question.substring(0, 50) : 'null'}`);
     } else {
-      nextCard = await getNextPracticeCard(userId);
+      // Pass filters to getDueCardsForToday
+      const dueCards = await getDueCardsForToday(userId, filters);
+      if (dueCards.length > 0) {
+        const randomIndex = Math.floor(Math.random() * dueCards.length);
+        nextCard = dueCards[randomIndex];
+      } else {
+        nextCard = null;
+      }
       console.log(`[DEBUG] practice/next - Next card: ${nextCard ? nextCard.question.substring(0, 50) : 'null'}`);
     }
 

@@ -2,9 +2,27 @@
  * Practice & Leitner System Logic
  * Handles flashcard practice using the Leitner spaced repetition system
  * Enhanced with multiple repetitions per session for improved memorization
+ * Supports filtering by class/category/lesson with wildcard support
  */
 
 import { query } from '../db/connection.mjs';
+
+/**
+ * Convert filter pattern to SQL LIKE pattern with wildcard support
+ * "Bio*" becomes "Bio%" for SQL LIKE
+ * @param {string} filterValue - Filter value from user
+ * @returns {string} SQL LIKE pattern or null if empty
+ */
+function getFilterPattern(filterValue) {
+  if (!filterValue || filterValue.trim() === '') return null;
+  
+  const trimmed = filterValue.trim();
+  // If ends with *, use it as wildcard pattern; otherwise exact match
+  if (trimmed.endsWith('*')) {
+    return trimmed.substring(0, trimmed.length - 1) + '%';
+  }
+  return trimmed;
+}
 
 /**
  * Get optimal number of repetitions for a card based on Leitner box
@@ -151,9 +169,10 @@ function getDayOfWeek(date) {
  * - Box 3: Friday only (weekly)
  *
  * @param {string} userId - User ID
+ * @param {object} filters - Optional filters {class, lesson, category} - supports wildcards
  * @returns {Promise<array>} Array of flashcards due today
  */
-export async function getDueCardsForToday(userId) {
+export async function getDueCardsForToday(userId, filters = {}) {
   const now = new Date();
   const dayOfWeek = getDayOfWeek(now);
 
@@ -171,6 +190,31 @@ export async function getDueCardsForToday(userId) {
     boxCondition += ' OR p.current_box = 3';
   }
 
+  // Build filter conditions
+  let filterConditions = [];
+  let queryParams = [userId];
+  let paramIndex = 2;
+
+  const classPattern = getFilterPattern(filters.class);
+  if (classPattern) {
+    filterConditions.push(`f.class ILIKE $${paramIndex++}`);
+    queryParams.push(classPattern);
+  }
+
+  const lessonPattern = getFilterPattern(filters.lesson);
+  if (lessonPattern) {
+    filterConditions.push(`f.lesson ILIKE $${paramIndex++}`);
+    queryParams.push(lessonPattern);
+  }
+
+  const categoryPattern = getFilterPattern(filters.category);
+  if (categoryPattern) {
+    filterConditions.push(`f.category ILIKE $${paramIndex++}`);
+    queryParams.push(categoryPattern);
+  }
+
+  const filterClause = filterConditions.length > 0 ? 'AND ' + filterConditions.join(' AND ') : '';
+
   const result = await query(
     `SELECT f.*, p.current_box, p.times_correct, p.times_incorrect, p.last_reviewed, p.next_review
      FROM flashcards f
@@ -178,8 +222,9 @@ export async function getDueCardsForToday(userId) {
      WHERE f.created_by = $1
      AND (${boxCondition})
      AND (p.next_review IS NULL OR p.next_review <= NOW())
+     ${filterClause}
      ORDER BY p.current_box ASC, p.last_reviewed ASC NULLS FIRST`,
-    [userId]
+    queryParams
   );
 
   return result.rows;
@@ -251,8 +296,9 @@ export async function getNextCatchUpCard(userId) {
  * Generate multiple choice options for a flashcard
  * Periodically includes "None of the above" option for critical thinking
  * Ratio: ~80-90% shows correct answer, ~10-20% shows "None of the above"
+ * Wrong answers match the same class AND category as the practice card (allows different lessons)
  * @param {string} userId - User ID
- * @param {object} correctCard - The correct card object
+ * @param {object} correctCard - The correct card object (must include class and category)
  * @param {number} optionCount - Number of options (default 4)
  * @returns {Promise<array>} Array of shuffled options with {text, isCorrect}
  */
@@ -281,6 +327,7 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
 
   if (shouldShowCorrectAnswer) {
     // Standard mode: show correct answer with wrong answers as distractors
+    // Wrong answers must match class AND category (but can be different lesson)
     const wrongAnswersResult = await query(
       `SELECT answer 
        FROM (
@@ -290,10 +337,12 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
          AND flashcard_id != $2 
          AND answer IS NOT NULL
          AND answer != $3
+         AND class = $4
+         AND category = $5
        ) AS distinct_answers
        ORDER BY RANDOM() 
-       LIMIT $4`,
-      [userId, correctCard.flashcard_id, correctCard.answer, optionCount - 1]
+       LIMIT $6`,
+      [userId, correctCard.flashcard_id, correctCard.answer, correctCard.class, correctCard.category, optionCount - 1]
     );
 
     options.push({ text: correctCard.answer, isCorrect: true });
@@ -302,6 +351,7 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
     });
   } else {
     // "None of the above" mode: show wrong answers only, with "None of the above" as correct option
+    // Wrong answers must match class AND category (but can be different lesson)
     const wrongAnswersResult = await query(
       `SELECT answer 
        FROM (
@@ -311,10 +361,12 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
          AND flashcard_id != $2 
          AND answer IS NOT NULL
          AND answer != $3
+         AND class = $4
+         AND category = $5
        ) AS distinct_answers
        ORDER BY RANDOM() 
-       LIMIT $4`,
-      [userId, correctCard.flashcard_id, correctCard.answer, optionCount - 1]
+       LIMIT $6`,
+      [userId, correctCard.flashcard_id, correctCard.answer, correctCard.class, correctCard.category, optionCount - 1]
     );
 
     wrongAnswersResult.rows.forEach((row) => {

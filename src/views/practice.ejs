@@ -564,7 +564,18 @@
         if (nextBtn) nextBtn.style.display = 'none';
 
         try {
-          const url = catchUpMode ? '/api/practice/next?catchUp=true' : '/api/practice/next';
+          // Get active filters from sessionStorage
+          const studyFiltersJson = sessionStorage.getItem('studyFilters');
+          const filters = studyFiltersJson ? JSON.parse(studyFiltersJson) : {};
+          
+          // Build URL with filter parameters
+          let url = catchUpMode ? '/api/practice/next?catchUp=true' : '/api/practice/next';
+          
+          // Add filter parameters if they exist
+          if (filters.class) url += `&class=${encodeURIComponent(filters.class)}`;
+          if (filters.lesson) url += `&lesson=${encodeURIComponent(filters.lesson)}`;
+          if (filters.category) url += `&category=${encodeURIComponent(filters.category)}`;
+          
           console.log('[loadNextCard] Fetching ' + url + '...');
           
           // Add timeout to fetch
