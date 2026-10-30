@@ -131,7 +131,7 @@ grep "WARN" .deployment/last-run.log
 
 ## Configuration
 
-To adjust test thresholds, edit `src/tests/test-config.mjs`:
+To adjust test thresholds, edit `src/scripts/js/modules/tests/test-config.mjs`:
 
 ```javascript
 lighthouseThresholds: {

@@ -278,7 +278,7 @@ git commit -m "Your message"
 
 ### Adjust Thresholds
 
-Edit `src/tests/test-config.mjs`:
+Edit `src/scripts/js/modules/tests/test-config.mjs`:
 
 ```javascript
 // Lighthouse thresholds
@@ -299,7 +299,7 @@ memoryThresholds: {
 
 ### Core Web Vitals
 
-Edit `src/tests/preview-tests.mjs`:
+Edit `src/scripts/js/modules/tests/preview-tests.mjs`:
 
 ```javascript
 const webVitalThresholds = {
@@ -310,7 +310,7 @@ const webVitalThresholds = {
 
 ### Add/Remove Endpoints
 
-Edit `src/tests/test-config.mjs`:
+Edit `src/scripts/js/modules/tests/test-config.mjs`:
 
 ```javascript
 endpoints: [
@@ -322,15 +322,15 @@ endpoints: [
 
 ## Test Files
 
-| File                          | Purpose                                         |
-| ----------------------------- | ----------------------------------------------- |
-| `src/tests/test-config.mjs`   | Configuration, results tracking, test endpoints |
-| `src/tests/preview-tests.mjs` | Complete test suite implementation              |
-| `.deployment/last-run.log`    | Test results and deployment log                 |
-| `eslint.config.js`            | Linting rules (Node.js + ES2024)                |
-| `.prettierrc.json`            | Formatting rules                                |
-| `package.json`                | npm scripts and dependencies                    |
-| `deploy.sh`                   | Deployment automation with testing              |
+| File                                             | Purpose                                         |
+| ------------------------------------------------ | ----------------------------------------------- |
+| `src/scripts/js/modules/tests/test-config.mjs`   | Configuration, results tracking, test endpoints |
+| `src/scripts/js/modules/tests/preview-tests.mjs` | Complete test suite implementation              |
+| `.deployment/last-run.log`                       | Test results and deployment log                 |
+| `eslint.config.js`                               | Linting rules (Node.js + ES2024)                |
+| `.prettierrc.json`                               | Formatting rules                                |
+| `package.json`                                   | npm scripts and dependencies                    |
+| `deploy.sh`                                      | Deployment automation with testing              |
 
 ## Documentation Files
 

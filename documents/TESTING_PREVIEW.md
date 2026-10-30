@@ -173,7 +173,7 @@ Tests run on all these pages:
 
 ### Lighthouse Thresholds
 
-Edit in `src/tests/test-config.mjs`:
+Edit in `src/scripts/js/modules/tests/test-config.mjs`:
 
 ```javascript
 lighthouseThresholds: {
@@ -187,7 +187,7 @@ lighthouseThresholds: {
 
 ### Memory Thresholds
 
-Edit in `src/tests/test-config.mjs`:
+Edit in `src/scripts/js/modules/tests/test-config.mjs`:
 
 ```javascript
 memoryThresholds: {
@@ -198,7 +198,7 @@ memoryThresholds: {
 
 ### Core Web Vitals Thresholds
 
-Edit in `src/tests/preview-tests.mjs`:
+Edit in `src/scripts/js/modules/tests/preview-tests.mjs`:
 
 ```javascript
 if (vitals['First Contentful Paint'] > 2500) {
@@ -355,8 +355,8 @@ As features are added, update tests:
 
 ## Files
 
-- `src/tests/test-config.mjs` - Configuration and TestResults class
-- `src/tests/preview-tests.mjs` - Complete test suite implementation
+- `src/scripts/js/modules/tests/test-config.mjs` - Configuration and TestResults class
+- `src/scripts/js/modules/tests/preview-tests.mjs` - Complete test suite implementation
 - `.deployment/last-run.log` - Test results logged here
 - `package.json` - `npm run test:preview` script
 - `deploy.sh` - Integration with preview deployment

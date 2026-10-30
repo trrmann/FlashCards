@@ -286,7 +286,7 @@ kill $GECKO_PID
 {
   "scripts": {
     "test:firefox": "node src/tests/firefox-accessibility-tests.mjs",
-    "test:preview": "npm run test:firefox && node src/tests/preview-tests.mjs"
+    "test:preview": "npm run test:firefox && node src/scripts/js/modules/tests/preview-tests.mjs"
   },
   "devDependencies": {
     "geckodriver": "^8.0.0",

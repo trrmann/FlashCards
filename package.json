@@ -16,7 +16,7 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "test:preview": "node src/tests/preview-tests.mjs",
+    "test:preview": "node src/scripts/js/modules/tests/preview-tests.mjs",
     "dev": "nodemon",
     "start": "node server.js",
     "format": "prettier --write .",
