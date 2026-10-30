@@ -524,8 +524,9 @@
             // Display multiple choice options
             displayOptions();
           } else if (!data.card) {
-            alert('No cards due today! Great job! 🎉');
-            location.reload();
+            // No cards due - show message and hide practice section
+            const section = document.querySelector('.practice-section');
+            section.innerHTML = '<h2>🎉 Great Job!</h2><p>No cards are due for study today. Come back later to continue practicing!</p>';
           } else {
             alert('Error loading card options');
           }
