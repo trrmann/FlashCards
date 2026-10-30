@@ -144,6 +144,32 @@ export async function getNextPracticeCard(userId) {
 }
 
 /**
+ * Get next card for catch-up practice (any card user owns, not just due today)
+ * Prioritizes cards not yet mastered (boxes 1 & 2)
+ * @param {string} userId - User ID
+ * @returns {Promise<object|null>} Flashcard or null if none available
+ */
+export async function getNextCatchUpCard(userId) {
+  // Get any card from boxes 1 or 2 (not mastered)
+  const result = await query(
+    `SELECT f.*, p.current_box, p.times_correct, p.times_incorrect, p.last_reviewed, p.next_review
+     FROM flashcards f
+     JOIN flashcard_leitner_progress p ON f.flashcard_id = p.flashcard_id
+     WHERE f.created_by = $1
+     AND (p.current_box = 1 OR p.current_box = 2)
+     ORDER BY RANDOM()
+     LIMIT 1`,
+    [userId]
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return result.rows[0];
+}
+
+/**
  * Generate multiple choice options for a flashcard
  * Periodically includes "None of the above" option for critical thinking
  * Ratio: ~80-90% shows correct answer, ~10-20% shows "None of the above"

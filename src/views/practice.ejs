@@ -440,7 +440,6 @@
       <div class="practice-section">
         <h2>🎯 Start Practicing</h2>
         <div id="practice-area">
-          <% if (summary.dueTodayCount > 0) { %>
           <!-- Question Display -->
           <div class="question-box">
             <div class="question-text" id="question-text">Loading first card...</div>
@@ -458,12 +457,9 @@
           <button class="btn-next" id="next-button" onclick="loadNextCard()" style="display: none;">
             ⏭️ Next Card
           </button>
-          <% } else { %>
-          <div class="no-cards">
-            <p>🎉 No cards due today!</p>
-            <p>Come back tomorrow to continue your practice.</p>
-          </div>
-          <% } %>
+
+          <!-- Status messages (shown when no cards due) -->
+          <div id="status-message"></div>
         </div>
       </div>
 
@@ -496,50 +492,81 @@
       let currentCard = null;
       let currentOptions = null;
       let answered = false;
+      let catchUpMode = false;
 
       // Load the first card when page loads
       document.addEventListener('DOMContentLoaded', async () => {
         try {
           const dueTodayCount = <%= summary.dueTodayCount %>;
           const totalCards = <%= stats.total %>;
+          const practiceArea = document.getElementById('practice-area');
+          const statusMsg = document.getElementById('status-message');
+          const questionBox = document.querySelector('.question-box');
+          const optionsContainer = document.getElementById('options-container');
+          const questionText = document.getElementById('question-text');
           
           if (totalCards === 0) {
             // No cards at all - direct to entries page
-            const section = document.querySelector('.practice-section');
-            section.innerHTML = `
+            practiceArea.innerHTML = `
               <h2>📚 No Questions Yet</h2>
               <p>You haven't added any flashcards yet. Get started by adding your first cards!</p>
               <a href="/entries" class="btn btn-primary" style="display: inline-block; margin-top: 1rem; padding: 0.75rem 1.5rem; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Go to Entries</a>
             `;
           } else if (dueTodayCount > 0) {
+            // Show card area and load first card
+            questionBox.style.display = 'block';
+            optionsContainer.style.display = 'flex';
+            statusMsg.style.display = 'none';
             await loadNextCard();
           } else {
-            // Cards exist but none due
-            const section = document.querySelector('.practice-section');
-            section.innerHTML = '<h2>🎉 Great Job!</h2><p>No cards are due for study today. Come back later to continue practicing!</p>';
+            // Cards exist but none due - offer catch-up option
+            questionBox.style.display = 'none';
+            optionsContainer.style.display = 'none';
+            statusMsg.innerHTML = `
+              <h2>🎉 Great Job!</h2>
+              <p>No cards are due for study today. You're all caught up!</p>
+              <button onclick="startCatchUpMode()" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem;">
+                📚 Practice More (Catch-up Mode)
+              </button>
+            `;
+            statusMsg.style.display = 'block';
           }
         } catch (error) {
           console.error('Error initializing practice page:', error);
-          const section = document.querySelector('.practice-section');
-          if (section) {
-            section.innerHTML = '<h2>Error</h2><p>Failed to load practice page. Please refresh.</p>';
+          const statusMsg = document.getElementById('status-message');
+          if (statusMsg) {
+            statusMsg.innerHTML = '<h2>Error</h2><p>Failed to load practice page. Please refresh.</p>';
+            statusMsg.style.display = 'block';
           }
         }
       });
 
+      async function startCatchUpMode() {
+        catchUpMode = true;
+        console.log('[startCatchUpMode] Entering catch-up practice mode');
+        // Show card area
+        document.querySelector('.question-box').style.display = 'block';
+        document.getElementById('options-container').style.display = 'flex';
+        document.getElementById('status-message').style.display = 'none';
+        await loadNextCard();
+      }
+
       async function loadNextCard() {
         answered = false;
-        document.getElementById('feedback-message').className = 'feedback-hidden';
-        document.getElementById('next-button').style.display = 'none';
+        const feedbackEl = document.getElementById('feedback-message');
+        const nextBtn = document.getElementById('next-button');
+        if (feedbackEl) feedbackEl.className = 'feedback-hidden';
+        if (nextBtn) nextBtn.style.display = 'none';
 
         try {
-          console.log('[loadNextCard] Fetching /api/practice/next...');
+          const url = catchUpMode ? '/api/practice/next?catchUp=true' : '/api/practice/next';
+          console.log('[loadNextCard] Fetching ' + url + '...');
           
           // Add timeout to fetch
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
           
-          const response = await fetch('/api/practice/next', { 
+          const response = await fetch(url, { 
             signal: controller.signal,
             credentials: 'include'  // Important: send cookies with request
           });
@@ -564,17 +591,41 @@
             // Display multiple choice options
             displayOptions();
           } else if (!data.card) {
-            // No cards due - show message
-            const section = document.querySelector('.practice-section');
-            section.innerHTML = '<h2>🎉 Great Job!</h2><p>No cards are due for study today. Come back later to continue practicing!</p>';
+            // No more cards - show appropriate message
+            const statusMsg = document.getElementById('status-message');
+            const questionBox = document.querySelector('.question-box');
+            const optionsContainer = document.getElementById('options-container');
+            
+            questionBox.style.display = 'none';
+            optionsContainer.style.display = 'none';
+            statusMsg.style.display = 'block';
+            
+            if (catchUpMode) {
+              statusMsg.innerHTML = `
+                <h2>✅ All Caught Up!</h2>
+                <p>You've practiced all available cards. Great effort!</p>
+                <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem;">
+                  ↺ Back to Dashboard
+                </button>
+              `;
+            } else {
+              statusMsg.innerHTML = `
+                <h2>🎉 Great Job!</h2>
+                <p>No cards are due for study today. You're all caught up!</p>
+                <button onclick="startCatchUpMode()" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem;">
+                  📚 Practice More (Catch-up Mode)
+                </button>
+              `;
+            }
           } else {
             alert('Error loading card options');
           }
         } catch (error) {
           console.error('[loadNextCard] Error:', error.message, error);
-          const section = document.querySelector('.practice-section');
-          if (section) {
-            section.innerHTML = '<h2>⚠️ Error Loading Card</h2><p>' + error.message + '</p><p>Check browser console (F12) for details.</p>';
+          const statusMsg = document.getElementById('status-message');
+          if (statusMsg) {
+            statusMsg.innerHTML = '<h2>⚠️ Error Loading Card</h2><p>' + error.message + '</p><p>Check browser console (F12) for details.</p>';
+            statusMsg.style.display = 'block';
           }
         }
       }
@@ -605,14 +656,15 @@
         buttons[optionIndex].classList.add('selected');
 
         try {
-          const selectedAnswer = currentOptions[optionIndex].text;
+          const selectedOption = currentOptions[optionIndex];
           const response = await fetch('/api/practice/answer', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',  // Important: send cookies with request
             body: JSON.stringify({
               flashcardId: currentCard.flashcard_id,
-              selectedAnswer: selectedAnswer,
+              selectedAnswer: selectedOption.text,
+              isCorrect: selectedOption.isCorrect,
             }),
           });
 

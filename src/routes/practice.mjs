@@ -9,6 +9,7 @@ import {
   initializeAllCardsForUser,
   getDueCardsForToday,
   getNextPracticeCard,
+  getNextCatchUpCard,
   recordPracticeAttempt,
   generateMultipleChoiceOptions,
   getProgressStats,
@@ -113,6 +114,7 @@ router.get('/daily', async (req, res) => {
 /**
  * GET /api/practice/next
  * Get the next random card for practice from due cards with multiple choice options
+ * Query params: ?catchUp=true to get any available card (not just due today)
  */
 router.get('/next', async (req, res) => {
   try {
@@ -121,20 +123,30 @@ router.get('/next', async (req, res) => {
     }
 
     const userId = req.session.userId;
-    console.log(`[DEBUG] practice/next - User ID from session: ${userId}`);
+    const catchUpMode = req.query.catchUp === 'true';
+    
+    console.log(`[DEBUG] practice/next - User ID from session: ${userId}, Catch-up mode: ${catchUpMode}`);
 
     // Initialize any new flashcards
     await initializeAllCardsForUser(userId);
 
-    const nextCard = await getNextPracticeCard(userId);
-    console.log(`[DEBUG] practice/next - Next card: ${nextCard ? nextCard.question.substring(0, 50) : 'null'}`);
+    // Get next card based on mode
+    let nextCard;
+    if (catchUpMode) {
+      nextCard = await getNextCatchUpCard(userId);
+      console.log(`[DEBUG] practice/next (CATCH-UP) - Next card: ${nextCard ? nextCard.question.substring(0, 50) : 'null'}`);
+    } else {
+      nextCard = await getNextPracticeCard(userId);
+      console.log(`[DEBUG] practice/next - Next card: ${nextCard ? nextCard.question.substring(0, 50) : 'null'}`);
+    }
 
     if (!nextCard) {
       return res.json({
         status: 'success',
-        message: 'No cards due for today',
+        message: catchUpMode ? 'No more cards to practice' : 'No cards due for today',
         card: null,
         options: null,
+        catchUpMode: catchUpMode,
       });
     }
 
@@ -185,16 +197,17 @@ router.post('/answer', async (req, res) => {
     }
 
     const userId = req.session.userId;
-    const { flashcardId, selectedAnswer } = req.body;
+    console.log('[ANSWER] req.body:', JSON.stringify(req.body));
+    const { flashcardId, selectedAnswer, isCorrect } = req.body;
 
-    if (!flashcardId || !selectedAnswer) {
+    if (!flashcardId || selectedAnswer === undefined || isCorrect === undefined) {
       return res.status(400).json({
         status: 'error',
-        error: 'Missing required fields: flashcardId, selectedAnswer',
+        error: 'Missing required fields: flashcardId, selectedAnswer, isCorrect',
       });
     }
 
-    // Get the card to validate the answer
+    // Get the card to get the correct answer for feedback
     const cardResult = await query('SELECT answer FROM flashcards WHERE flashcard_id = $1', [
       flashcardId,
     ]);
@@ -208,26 +221,7 @@ router.post('/answer', async (req, res) => {
 
     const correctAnswer = cardResult.rows[0].answer;
 
-    // Get the card object for generating options
-    const cardFullResult = await query('SELECT * FROM flashcards WHERE flashcard_id = $1', [
-      flashcardId,
-    ]);
-
-    // Generate options again to validate (must be consistent)
-    const options = await generateMultipleChoiceOptions(userId, cardFullResult.rows[0], 4);
-
-    // Find the selected option in the regenerated list
-    const selectedOption = options.find((opt) => opt.text === selectedAnswer);
-    if (!selectedOption) {
-      return res.status(400).json({
-        status: 'error',
-        error: 'Invalid option selected',
-      });
-    }
-
-    const isCorrect = selectedOption.isCorrect;
-
-    // Record the attempt with auto-determined correctness
+    // Record the attempt with the correctness value from the frontend
     const updatedProgress = await recordPracticeAttempt(userId, flashcardId, isCorrect, null);
 
     if (!updatedProgress) {
