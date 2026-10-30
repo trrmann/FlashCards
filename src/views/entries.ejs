@@ -586,42 +586,42 @@
       const classRes = await fetch('/api/entries/metadata/classes');
       const classData = await classRes.json();
       console.log('Classes response:', classData);
-      if (classData.status === 'success' && classData.classes && classData.classes.length > 0) {
+      if (classData.status === 'success' && classData.classes) {
         const classDatalist = document.getElementById('class-options');
         classDatalist.innerHTML = classData.classes
           .map(cls => `<option value="${escapeHtml(cls)}" />`)
           .join('');
         console.log('Populated classes datalist with', classData.classes.length, 'items');
       } else {
-        console.warn('Classes response invalid or empty:', classData);
+        console.warn('Classes response invalid:', classData);
       }
 
       // Load lessons
       const lessonRes = await fetch('/api/entries/metadata/lessons');
       const lessonData = await lessonRes.json();
       console.log('Lessons response:', lessonData);
-      if (lessonData.status === 'success' && lessonData.lessons && lessonData.lessons.length > 0) {
+      if (lessonData.status === 'success' && lessonData.lessons) {
         const lessonDatalist = document.getElementById('lesson-options');
         lessonDatalist.innerHTML = lessonData.lessons
           .map(lesson => `<option value="${escapeHtml(lesson)}" />`)
           .join('');
         console.log('Populated lessons datalist with', lessonData.lessons.length, 'items');
       } else {
-        console.warn('Lessons response invalid or empty:', lessonData);
+        console.warn('Lessons response invalid:', lessonData);
       }
 
       // Load categories
       const categoryRes = await fetch('/api/entries/metadata/categories');
       const categoryData = await categoryRes.json();
       console.log('Categories response:', categoryData);
-      if (categoryData.status === 'success' && categoryData.categories && categoryData.categories.length > 0) {
+      if (categoryData.status === 'success' && categoryData.categories) {
         const categoryDatalist = document.getElementById('category-options');
         categoryDatalist.innerHTML = categoryData.categories
           .map(cat => `<option value="${escapeHtml(cat)}" />`)
           .join('');
         console.log('Populated categories datalist with', categoryData.categories.length, 'items');
       } else {
-        console.warn('Categories response invalid or empty:', categoryData);
+        console.warn('Categories response invalid:', categoryData);
       }
     } catch (error) {
       console.error('Error loading metadata options:', error);
@@ -631,6 +631,27 @@
   function setupCreateForm() {
     const form = document.getElementById('create-entry-form');
     const statusSpan = document.getElementById('form-status');
+    const classInput = document.getElementById('class');
+
+    // When class changes, filter lessons to show only lessons for that class
+    classInput.addEventListener('change', async () => {
+      const selectedClass = classInput.value;
+      if (selectedClass) {
+        try {
+          const response = await fetch(`/api/entries/metadata/lessons/${encodeURIComponent(selectedClass)}`);
+          const data = await response.json();
+          if (data.status === 'success' && data.lessons) {
+            const lessonDatalist = document.getElementById('lesson-options');
+            lessonDatalist.innerHTML = data.lessons
+              .map(lesson => `<option value="${escapeHtml(lesson)}" />`)
+              .join('');
+            console.log('Filtered lessons for class', selectedClass, ':', data.lessons.length, 'items');
+          }
+        } catch (error) {
+          console.error('Error loading lessons for class:', error);
+        }
+      }
+    });
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -665,11 +686,6 @@
           statusSpan.textContent = '✓ Flashcard created!';
           statusSpan.className = 'success';
           form.reset();
-          
-          // Restore default values after reset
-          document.getElementById('class').value = 'English Connect';
-          document.getElementById('lesson').value = 'Week 01';
-          document.getElementById('category').value = 'vocabulary';
           document.getElementById('is_private').checked = true;
 
           // Reload entries and metadata options
@@ -882,42 +898,42 @@
       const classRes = await fetch('/api/entries/metadata/classes');
       const classData = await classRes.json();
       console.log('Edit - Classes response:', classData);
-      if (classData.status === 'success' && classData.classes && classData.classes.length > 0) {
+      if (classData.status === 'success' && classData.classes) {
         const classDatalist = document.getElementById('edit-class-options');
         classDatalist.innerHTML = classData.classes
           .map(cls => `<option value="${escapeHtml(cls)}" />`)
           .join('');
         console.log('Populated edit classes datalist with', classData.classes.length, 'items');
       } else {
-        console.warn('Edit - Classes response invalid or empty:', classData);
+        console.warn('Edit - Classes response invalid:', classData);
       }
 
       // Load lessons
       const lessonRes = await fetch('/api/entries/metadata/lessons');
       const lessonData = await lessonRes.json();
       console.log('Edit - Lessons response:', lessonData);
-      if (lessonData.status === 'success' && lessonData.lessons && lessonData.lessons.length > 0) {
+      if (lessonData.status === 'success' && lessonData.lessons) {
         const lessonDatalist = document.getElementById('edit-lesson-options');
         lessonDatalist.innerHTML = lessonData.lessons
           .map(lesson => `<option value="${escapeHtml(lesson)}" />`)
           .join('');
         console.log('Populated edit lessons datalist with', lessonData.lessons.length, 'items');
       } else {
-        console.warn('Edit - Lessons response invalid or empty:', lessonData);
+        console.warn('Edit - Lessons response invalid:', lessonData);
       }
 
       // Load categories
       const categoryRes = await fetch('/api/entries/metadata/categories');
       const categoryData = await categoryRes.json();
       console.log('Edit - Categories response:', categoryData);
-      if (categoryData.status === 'success' && categoryData.categories && categoryData.categories.length > 0) {
+      if (categoryData.status === 'success' && categoryData.categories) {
         const categoryDatalist = document.getElementById('edit-category-options');
         categoryDatalist.innerHTML = categoryData.categories
           .map(cat => `<option value="${escapeHtml(cat)}" />`)
           .join('');
         console.log('Populated edit categories datalist with', categoryData.categories.length, 'items');
       } else {
-        console.warn('Edit - Categories response invalid or empty:', categoryData);
+        console.warn('Edit - Categories response invalid:', categoryData);
       }
     } catch (error) {
       console.error('Error loading edit metadata options:', error);
@@ -932,6 +948,28 @@
   // Setup edit form submission
   const editForm = document.getElementById('edit-form');
   if (editForm) {
+    const editClassInput = document.getElementById('edit-class');
+    
+    // When class changes, filter lessons to show only lessons for that class
+    editClassInput.addEventListener('change', async () => {
+      const selectedClass = editClassInput.value;
+      if (selectedClass) {
+        try {
+          const response = await fetch(`/api/entries/metadata/lessons/${encodeURIComponent(selectedClass)}`);
+          const data = await response.json();
+          if (data.status === 'success' && data.lessons) {
+            const lessonDatalist = document.getElementById('edit-lesson-options');
+            lessonDatalist.innerHTML = data.lessons
+              .map(lesson => `<option value="${escapeHtml(lesson)}" />`)
+              .join('');
+            console.log('Filtered edit lessons for class', selectedClass, ':', data.lessons.length, 'items');
+          }
+        } catch (error) {
+          console.error('Error loading lessons for class:', error);
+        }
+      }
+    });
+
     editForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 

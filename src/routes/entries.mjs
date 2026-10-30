@@ -634,4 +634,35 @@ router.get('/metadata/categories', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/entries/metadata/lessons/:class
+ * Get all unique lesson values for a specific class
+ */
+router.get('/metadata/lessons/:className', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ status: 'error', message: 'Not authenticated' });
+    }
+
+    const { className } = req.params;
+
+    const result = await query(
+      `SELECT DISTINCT lesson FROM flashcards 
+       WHERE lesson IS NOT NULL 
+       AND class = $1 
+       AND (created_by = $2 OR user_id = $2)
+       ORDER BY lesson ASC`,
+      [className, req.session.userId]
+    );
+
+    return res.status(200).json({
+      status: 'success',
+      lessons: result.rows.map((row) => row.lesson),
+    });
+  } catch (error) {
+    console.error('Get lessons for class error:', error.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to fetch lessons for class' });
+  }
+});
+
 export default router;

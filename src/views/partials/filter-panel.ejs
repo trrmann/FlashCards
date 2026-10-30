@@ -210,14 +210,12 @@
     // Load filter options
     async function loadFilterOptions() {
       try {
-        const [classRes, lessonRes, categoryRes] = await Promise.all([
+        const [classRes, categoryRes] = await Promise.all([
           fetch('/api/entries/metadata/classes'),
-          fetch('/api/entries/metadata/lessons'),
           fetch('/api/entries/metadata/categories'),
         ]);
 
         const classData = await classRes.json();
-        const lessonData = await lessonRes.json();
         const categoryData = await categoryRes.json();
 
         if (classData.status === 'success' && classData.classes) {
@@ -227,6 +225,9 @@
             .join('');
         }
 
+        // Load all lessons initially (for when no class is selected)
+        const lessonRes = await fetch('/api/entries/metadata/lessons');
+        const lessonData = await lessonRes.json();
         if (lessonData.status === 'success' && lessonData.lessons) {
           const lessonDatalist = document.getElementById('filter-lesson-options');
           lessonDatalist.innerHTML = lessonData.lessons
@@ -244,6 +245,41 @@
         console.error('Error loading filter options:', error);
       }
     }
+
+    // When class filter changes, filter lessons to show only lessons for that class
+    const filterClassInput = document.getElementById('filter-class');
+    filterClassInput.addEventListener('change', async () => {
+      const selectedClass = filterClassInput.value;
+      if (selectedClass) {
+        try {
+          const response = await fetch(`/api/entries/metadata/lessons/${encodeURIComponent(selectedClass)}`);
+          const data = await response.json();
+          if (data.status === 'success' && data.lessons) {
+            const lessonDatalist = document.getElementById('filter-lesson-options');
+            lessonDatalist.innerHTML = data.lessons
+              .map(lesson => `<option value="${escapeHtml(lesson)}" />`)
+              .join('');
+            console.log('Filtered filter lessons for class', selectedClass, ':', data.lessons.length, 'items');
+          }
+        } catch (error) {
+          console.error('Error loading lessons for class:', error);
+        }
+      } else {
+        // If class is cleared, reload all lessons
+        try {
+          const response = await fetch('/api/entries/metadata/lessons');
+          const data = await response.json();
+          if (data.status === 'success' && data.lessons) {
+            const lessonDatalist = document.getElementById('filter-lesson-options');
+            lessonDatalist.innerHTML = data.lessons
+              .map(lesson => `<option value="${escapeHtml(lesson)}" />`)
+              .join('');
+          }
+        } catch (error) {
+          console.error('Error loading all lessons:', error);
+        }
+      }
+    });
 
     // Apply filters
     document.getElementById('apply-filters').addEventListener('click', () => {
