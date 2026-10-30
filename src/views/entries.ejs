@@ -721,65 +721,74 @@
   }
 
   // Export entries
-  document.getElementById('export-btn').addEventListener('click', async () => {
-    try {
-      // Get current filters
-      const filters = window.getStudyFilters ? window.getStudyFilters() : {};
-      
-      // Build query string
-      const queryParams = new URLSearchParams();
-      if (filters.class) queryParams.append('class', filters.class);
-      if (filters.lesson) queryParams.append('lesson', filters.lesson);
-      if (filters.category) queryParams.append('category', filters.category);
+  const exportBtn = document.getElementById('export-btn');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', async () => {
+      try {
+        // Get current filters
+        const filters = window.getStudyFilters ? window.getStudyFilters() : {};
+        
+        // Build query string
+        const queryParams = new URLSearchParams();
+        if (filters.class) queryParams.append('class', filters.class);
+        if (filters.lesson) queryParams.append('lesson', filters.lesson);
+        if (filters.category) queryParams.append('category', filters.category);
 
-      const url = `/api/entries/export${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-      
-      // Fetch the export data with credentials to include session cookie
-      const response = await fetch(url, {
-        credentials: 'include'
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        alert('Error: ' + (errorData.message || 'Failed to export entries'));
-        return;
+        const url = `/api/entries/export${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+        
+        // Fetch the export data with credentials to include session cookie
+        const response = await fetch(url, {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          alert('Error: ' + (errorData.message || 'Failed to export entries'));
+          return;
+        }
+
+        // Get the JSON data
+        const data = await response.json();
+
+        // Create blob and download
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const downloadUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `flashcards-${Date.now()}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(downloadUrl);
+
+        alert(`✓ Exported ${data.count} flashcards`);
+      } catch (error) {
+        console.error('Export error:', error);
+        alert('Export failed: ' + error.message);
       }
-
-      // Get the JSON data
-      const data = await response.json();
-
-      // Create blob and download
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const downloadUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = `flashcards-${Date.now()}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(downloadUrl);
-
-      alert(`✓ Exported ${data.count} flashcards`);
-    } catch (error) {
-      console.error('Export error:', error);
-      alert('Export failed: ' + error.message);
-    }
-  });
+    });
+  }
 
   // Import entries
-  document.getElementById('import-btn').addEventListener('click', () => {
-    document.getElementById('import-file-input').click();
-  });
+  const importBtn = document.getElementById('import-btn');
+  const importFileInput = document.getElementById('import-file-input');
+  
+  if (importBtn) {
+    importBtn.addEventListener('click', () => {
+      importFileInput.click();
+    });
+  }
 
-  document.getElementById('import-file-input').addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  if (importFileInput) {
+    importFileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
 
-    try {
-      const fileContent = await file.text();
-      const importData = JSON.parse(fileContent);
+      try {
+        const fileContent = await file.text();
+        const importData = JSON.parse(fileContent);
 
-      if (!Array.isArray(importData.entries) && !Array.isArray(importData)) {
+        if (!Array.isArray(importData.entries) && !Array.isArray(importData)) {
         alert('Invalid file format. Expected JSON with entries array.');
         return;
       }
@@ -817,7 +826,8 @@
       // Reset file input
       e.target.value = '';
     }
-  });
+    });
+  }
 
   function escapeHtml(text) {
     const map = {
