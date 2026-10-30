@@ -1,11 +1,13 @@
 # Practice Filtering Implementation
 
 ## Overview
+
 The practice module now supports **dynamic filtering by Class, Category, and Lesson** with wildcard support. All filtering is completely data-driven and works with any user-created card values.
 
 ## Features
 
 ### 1. Main Practice Cards - Limited to Selected Header (with Wildcards)
+
 - **What**: Main practice cards are filtered to match user's selected Class/Category/Lesson
 - **How**: Cards are pulled from `getDueCardsForToday(userId, filters)`
 - **Wildcards**: User can type `Bio*` to match "Biology", "Biosphere", etc.
@@ -16,6 +18,7 @@ The practice module now supports **dynamic filtering by Class, Category, and Les
   - `category: "vocab*"` - matches "vocabulary", "vocab-practice", etc.
 
 ### 2. Wrong Answers (Distractors) - Match Class AND Category (Any Lesson)
+
 - **What**: Wrong answers come from cards with same Class AND Category
 - **Why**: Keeps distractors relevant to the topic, but pulls from different lessons for variety
 - **Mechanism**: `generateMultipleChoiceOptions()` filters distractors using:
@@ -30,6 +33,7 @@ The practice module now supports **dynamic filtering by Class, Category, and Les
 ## How It's Used
 
 ### Frontend Flow
+
 1. User selects filters on Entries page (preserved in sessionStorage)
 2. User navigates to Practice page
 3. Practice page reads sessionStorage for active filters
@@ -39,6 +43,7 @@ The practice module now supports **dynamic filtering by Class, Category, and Les
    ```
 
 ### Backend Flow
+
 1. Route receives filters in query params
 2. Calls `getDueCardsForToday(userId, { class, lesson, category })`
 3. Filters applied using parameterized queries (SQL injection safe)
@@ -49,6 +54,7 @@ The practice module now supports **dynamic filtering by Class, Category, and Les
 ## SQL Implementation
 
 ### Dynamic Filter Conversion
+
 ```javascript
 // getFilterPattern() - converts user input to SQL LIKE pattern
 function getFilterPattern(filterValue) {
@@ -62,6 +68,7 @@ function getFilterPattern(filterValue) {
 ```
 
 ### Parameterized Query Building
+
 ```javascript
 // Build WHERE clause dynamically based on provided filters
 let filterConditions = [];
@@ -83,9 +90,7 @@ if (categoryPattern) {
   queryParams.push(categoryPattern);
 }
 
-const filterClause = filterConditions.length > 0 
-  ? 'AND ' + filterConditions.join(' AND ') 
-  : '';
+const filterClause = filterConditions.length > 0 ? 'AND ' + filterConditions.join(' AND ') : '';
 ```
 
 ## Data Compatibility
@@ -98,6 +103,7 @@ const filterClause = filterConditions.length > 0
 ## Examples
 
 ### Scenario 1: Basic Class Filtering
+
 ```
 User has cards:
 - Class: "Spanish 101", Category: "verbs", Lesson: "Past Tense"
@@ -110,6 +116,7 @@ Distractors: Wrong answers from other "Spanish 101"/"verbs" cards
 ```
 
 ### Scenario 2: Wildcard Filtering
+
 ```
 User has cards:
 - Class: "Biology 101", Category: "cells"
@@ -121,6 +128,7 @@ Result: Gets cards from "Biology 101" OR "Biology 102"
 ```
 
 ### Scenario 3: Multi-Filter
+
 ```
 User filters by: class="English Connect", category="vocabulary", lesson="Week 01"
 Result: Only cards matching ALL three criteria
@@ -130,15 +138,18 @@ Distractors: Wrong answers from same class/category (any lesson)
 ## API Endpoints
 
 ### GET /api/practice/next
+
 Fetch next practice card with filtering support
 
 **Query Parameters:**
+
 - `catchUp` (optional): `true` for catch-up mode (any card), `false` for due cards only
 - `class` (optional): Class name or wildcard pattern (e.g., "Biology*")
 - `lesson` (optional): Lesson name or wildcard pattern
 - `category` (optional): Category name or wildcard pattern
 
 **Example:**
+
 ```
 GET /api/practice/next?class=Spanish%20101&category=verbs
 GET /api/practice/next?class=Bio*&catchUp=true
@@ -148,11 +159,13 @@ GET /api/practice/next  (no filters)
 ## Database Columns Used
 
 The implementation uses these columns for filtering:
+
 - `flashcards.class` - VARCHAR(255) - Class/subject name
 - `flashcards.category` - VARCHAR(255) - NEW COLUMN (added via migration)
 - `flashcards.lesson` - VARCHAR(255) - Lesson/chapter name
 
 The `category` column is automatically added by the migration:
+
 ```javascript
 ALTER TABLE flashcards ADD COLUMN category VARCHAR(255)
 ```

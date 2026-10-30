@@ -15,7 +15,7 @@ import { query } from '../db/connection.mjs';
  */
 function getFilterPattern(filterValue) {
   if (!filterValue || filterValue.trim() === '') return null;
-  
+
   const trimmed = filterValue.trim();
   // If ends with *, use it as wildcard pattern; otherwise exact match
   if (trimmed.endsWith('*')) {
@@ -37,7 +37,7 @@ export function getCardRepetitionsNeeded(boxNumber) {
   // Research-based optimal repetitions per box
   if (boxNumber === 1) return 3; // Struggling cards need most reinforcement
   if (boxNumber === 2) return 2; // Medium difficulty needs moderate reinforcement
-  return 1;                       // Mastered cards need minimal reinforcement
+  return 1; // Mastered cards need minimal reinforcement
 }
 
 /**
@@ -69,7 +69,14 @@ export async function getSessionAttemptCount(userId, flashcardId, sessionStartTi
  * @param {number} responseTimeMs - Time taken to answer
  * @returns {Promise<object>} Session attempt record
  */
-export async function trackSessionAttempt(userId, flashcardId, sessionStartTime, attemptNumber, wasCorrect, responseTimeMs = null) {
+export async function trackSessionAttempt(
+  userId,
+  flashcardId,
+  sessionStartTime,
+  attemptNumber,
+  wasCorrect,
+  responseTimeMs = null
+) {
   const result = await query(
     `INSERT INTO session_card_attempts 
      (flashcard_id, user_id, session_start_time, attempt_number, was_correct, response_time_ms)
@@ -92,7 +99,7 @@ export async function checkNeedsMoreAttempts(userId, flashcardId, boxNumber, ses
   const attemptCount = await getSessionAttemptCount(userId, flashcardId, sessionStartTime);
   const totalNeeded = getCardRepetitionsNeeded(boxNumber);
   const needsMoreAttempts = attemptCount < totalNeeded;
-  
+
   return {
     needsMoreAttempts,
     attemptNumber: attemptCount + 1,
@@ -191,25 +198,27 @@ export async function getDueCardsForToday(userId, filters = {}) {
   }
 
   // Build filter conditions
-  let filterConditions = [];
-  let queryParams = [userId];
+  const filterConditions = [];
+  const queryParams = [userId];
   let paramIndex = 2;
 
   const classPattern = getFilterPattern(filters.class);
   if (classPattern) {
-    filterConditions.push(`f.class ILIKE $${paramIndex++}`);
+    filterConditions.push(`f.class ILIKE $${paramIndex}`);
     queryParams.push(classPattern);
+    paramIndex += 1;
   }
 
   const lessonPattern = getFilterPattern(filters.lesson);
   if (lessonPattern) {
-    filterConditions.push(`f.lesson ILIKE $${paramIndex++}`);
+    filterConditions.push(`f.lesson ILIKE $${paramIndex}`);
     queryParams.push(lessonPattern);
+    paramIndex += 1;
   }
 
   const categoryPattern = getFilterPattern(filters.category);
   if (categoryPattern) {
-    filterConditions.push(`f.category ILIKE $${paramIndex++}`);
+    filterConditions.push(`f.category ILIKE $${paramIndex}`);
     queryParams.push(categoryPattern);
   }
 
@@ -342,7 +351,14 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
        ) AS distinct_answers
        ORDER BY RANDOM() 
        LIMIT $6`,
-      [userId, correctCard.flashcard_id, correctCard.answer, correctCard.class, correctCard.category, optionCount - 1]
+      [
+        userId,
+        correctCard.flashcard_id,
+        correctCard.answer,
+        correctCard.class,
+        correctCard.category,
+        optionCount - 1,
+      ]
     );
 
     options.push({ text: correctCard.answer, isCorrect: true });
@@ -366,7 +382,14 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
        ) AS distinct_answers
        ORDER BY RANDOM() 
        LIMIT $6`,
-      [userId, correctCard.flashcard_id, correctCard.answer, correctCard.class, correctCard.category, optionCount - 1]
+      [
+        userId,
+        correctCard.flashcard_id,
+        correctCard.answer,
+        correctCard.class,
+        correctCard.category,
+        optionCount - 1,
+      ]
     );
 
     wrongAnswersResult.rows.forEach((row) => {
@@ -461,7 +484,13 @@ export async function recordPracticeAttempt(userId, flashcardId, isCorrect, resp
  * @param {Date} sessionStartTime - When practice session started
  * @returns {Promise<object>} {progress, needsMoreAttempts, attemptNumber, totalNeeded, sessionData}
  */
-export async function recordPracticeAttemptWithSession(userId, flashcardId, isCorrect, responseTimeMs = null, sessionStartTime = new Date()) {
+export async function recordPracticeAttemptWithSession(
+  userId,
+  flashcardId,
+  isCorrect,
+  responseTimeMs = null,
+  sessionStartTime = new Date()
+) {
   // Get current box before any updates
   const currentResult = await query(
     `SELECT current_box FROM flashcard_leitner_progress 
@@ -479,7 +508,14 @@ export async function recordPracticeAttemptWithSession(userId, flashcardId, isCo
   const currentAttemptNumber = currentAttemptCount + 1;
 
   // Track this session attempt
-  await trackSessionAttempt(userId, flashcardId, sessionStartTime, currentAttemptNumber, isCorrect, responseTimeMs);
+  await trackSessionAttempt(
+    userId,
+    flashcardId,
+    sessionStartTime,
+    currentAttemptNumber,
+    isCorrect,
+    responseTimeMs
+  );
 
   // Record in practice history
   await query(
@@ -505,22 +541,22 @@ export async function recordPracticeAttemptWithSession(userId, flashcardId, isCo
     sessionData: {
       sessionStartTime,
       isComplete: !needsMoreAttempts,
-      feedback: needsMoreAttempts 
+      feedback: needsMoreAttempts
         ? `Attempt ${currentAttemptNumber}/${totalAttemptsNeeded}. Keep going!`
         : `All ${totalAttemptsNeeded} attempts complete!`,
-    }
+    },
   };
 }
 
 /**
  * Calculate next review date based on Leitner box
  * Box 1: Tomorrow (1 day)
-   * Box 2: 3 days from now
-   * Box 3: 7 days from now
-   *
-   * @param {number} boxNumber - Target box number
-   * @returns {Date} Next review date
-   */
+ * Box 2: 3 days from now
+ * Box 3: 7 days from now
+ *
+ * @param {number} boxNumber - Target box number
+ * @returns {Date} Next review date
+ */
 function calculateNextReviewDate(boxNumber) {
   const now = new Date();
   let daysToAdd = 1;
@@ -731,7 +767,7 @@ export async function resetUserLeitnerStats(userId) {
  *   50% success rate = 3.0 (medium)
  *   25% success rate = 4.0 (hard)
  *   0% success rate = 5.0 (very hard)
- * 
+ *
  * @param {number} successRate - Decimal between 0 and 1 (0-100%)
  * @returns {number} Difficulty score 1.0-5.0
  */
@@ -739,19 +775,19 @@ function calculateDifficultyFromSuccessRate(successRate) {
   // Clamp success rate to 0-1
   const rate = Math.max(0, Math.min(1, successRate));
   // Convert to difficulty: 1.0 = very easy (100% success), 5.0 = very hard (0% success)
-  return parseFloat((5.0 - (rate * 4.0)).toFixed(2));
+  return parseFloat((5.0 - rate * 4.0).toFixed(2));
 }
 
 /**
  * Update difficulty score for a flashcard based on performance data
  * For shared cards: uses all users' performance
  * For private cards: uses only that user's performance
- * 
+ *
  * @param {string} flashcardId - Flashcard ID
- * @param {string} userId - User ID (for private cards)
+ * @param {string} _userId - User ID (for private cards) - currently unused but kept for API compatibility
  * @returns {Promise<object>} Update result with old/new scores
  */
-export async function updateDifficultyScore(flashcardId, userId = null) {
+export async function updateDifficultyScore(flashcardId, _userId = null) {
   try {
     // Get flashcard info
     const cardResult = await query(
@@ -823,7 +859,14 @@ export async function updateDifficultyScore(flashcardId, userId = null) {
         `INSERT INTO difficulty_history 
          (flashcard_id, old_score, new_score, calculation_basis, sample_size, success_rate)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [flashcardId, oldScore, newScore, calculationBasis, sampleSize, (successRate * 100).toFixed(2)]
+        [
+          flashcardId,
+          oldScore,
+          newScore,
+          calculationBasis,
+          sampleSize,
+          (successRate * 100).toFixed(2),
+        ]
       );
     }
 
@@ -845,7 +888,7 @@ export async function updateDifficultyScore(flashcardId, userId = null) {
 /**
  * Batch update difficulty scores for all flashcards in a class/lesson
  * Useful to run periodically to keep difficulties current
- * 
+ *
  * @param {string} userId - User ID (for filtering private cards)
  * @param {string} lessonFilter - Optional: filter by lesson name
  * @returns {Promise<array>} Array of update results
@@ -885,7 +928,7 @@ export async function batchUpdateDifficultyScores(userId, lessonFilter = null) {
 /**
  * Get difficulty statistics for all cards
  * Returns distribution of difficulty scores
- * 
+ *
  * @param {string} userId - User ID
  * @returns {Promise<object>} Difficulty statistics
  */

@@ -8,7 +8,6 @@ import { query } from '../db/connection.mjs';
 import {
   initializeAllCardsForUser,
   getDueCardsForToday,
-  getNextPracticeCard,
   getNextCatchUpCard,
   recordPracticeAttempt,
   recordPracticeAttemptWithSession,
@@ -17,11 +16,9 @@ import {
   getPracticeStreak,
   getReviewSchedule,
   getTodaysSummary,
-  getCardRepetitionsNeeded,
   updateDifficultyScore,
   batchUpdateDifficultyScores,
   getDifficultyStats,
-  checkNeedsMoreAttempts,
 } from '../auth/practice.mjs';
 
 const router = express.Router();
@@ -120,7 +117,7 @@ router.get('/daily', async (req, res) => {
 /**
  * GET /api/practice/next
  * Get the next random card for practice from due cards with multiple choice options
- * Query params: 
+ * Query params:
  *   ?catchUp=true to get any available card (not just due today)
  *   ?class=Bio101&category=Taxonomy to filter by class/category/lesson
  */
@@ -132,15 +129,18 @@ router.get('/next', async (req, res) => {
 
     const userId = req.session.userId;
     const catchUpMode = req.query.catchUp === 'true';
-    
+
     // Extract filters from query params
     const filters = {
       class: req.query.class || null,
       lesson: req.query.lesson || null,
       category: req.query.category || null,
     };
-    
-    console.log(`[DEBUG] practice/next - User ID from session: ${userId}, Catch-up mode: ${catchUpMode}, Filters:`, filters);
+
+    console.log(
+      `[DEBUG] practice/next - User ID from session: ${userId}, Catch-up mode: ${catchUpMode}, Filters:`,
+      filters
+    );
 
     // Initialize any new flashcards
     await initializeAllCardsForUser(userId);
@@ -149,7 +149,9 @@ router.get('/next', async (req, res) => {
     let nextCard;
     if (catchUpMode) {
       nextCard = await getNextCatchUpCard(userId);
-      console.log(`[DEBUG] practice/next (CATCH-UP) - Next card: ${nextCard ? nextCard.question.substring(0, 50) : 'null'}`);
+      console.log(
+        `[DEBUG] practice/next (CATCH-UP) - Next card: ${nextCard ? nextCard.question.substring(0, 50) : 'null'}`
+      );
     } else {
       // Pass filters to getDueCardsForToday
       const dueCards = await getDueCardsForToday(userId, filters);
@@ -159,7 +161,9 @@ router.get('/next', async (req, res) => {
       } else {
         nextCard = null;
       }
-      console.log(`[DEBUG] practice/next - Next card: ${nextCard ? nextCard.question.substring(0, 50) : 'null'}`);
+      console.log(
+        `[DEBUG] practice/next - Next card: ${nextCard ? nextCard.question.substring(0, 50) : 'null'}`
+      );
     }
 
     if (!nextCard) {
@@ -230,15 +234,15 @@ router.post('/answer', async (req, res) => {
     }
 
     // Get the card to get the correct answer for feedback
-    const cardResult = await query(`
+    const cardResult = await query(
+      `
       SELECT f.answer, COALESCE(p.current_box, 1) as current_box 
       FROM flashcards f 
       LEFT JOIN flashcard_leitner_progress p ON f.flashcard_id = p.flashcard_id AND p.user_id = $2 
       WHERE f.flashcard_id = $1
-    `, [
-      flashcardId,
-      userId,
-    ]);
+    `,
+      [flashcardId, userId]
+    );
 
     if (cardResult.rows.length === 0) {
       return res.status(404).json({
@@ -252,10 +256,16 @@ router.post('/answer', async (req, res) => {
     // Use session-aware tracking if sessionStartTime provided (enhanced mode)
     // Otherwise fall back to simple tracking (backward compatibility)
     let result;
-    
+
     if (sessionStartTime) {
       const sessionDate = new Date(sessionStartTime);
-      result = await recordPracticeAttemptWithSession(userId, flashcardId, isCorrect, null, sessionDate);
+      result = await recordPracticeAttemptWithSession(
+        userId,
+        flashcardId,
+        isCorrect,
+        null,
+        sessionDate
+      );
     } else {
       // Backward compatible: single attempt mode
       const progress = await recordPracticeAttempt(userId, flashcardId, isCorrect, null);
@@ -264,7 +274,7 @@ router.post('/answer', async (req, res) => {
         needsMoreAttempts: false,
         attemptNumber: 1,
         totalNeeded: 1,
-        sessionData: { isComplete: true }
+        sessionData: { isComplete: true },
       };
     }
 
@@ -288,12 +298,14 @@ router.post('/answer', async (req, res) => {
         attemptNumber: result.attemptNumber,
         totalNeeded: result.totalNeeded,
         feedback: result.sessionData.feedback,
-      }
+      },
     });
   } catch (error) {
     console.error('Error recording practice attempt:', error.message);
     console.error('Stack:', error.stack);
-    res.status(500).json({ status: 'error', error: 'Failed to record answer', details: error.message });
+    res
+      .status(500)
+      .json({ status: 'error', error: 'Failed to record answer', details: error.message });
   }
 });
 

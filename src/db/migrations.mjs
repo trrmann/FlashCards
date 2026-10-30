@@ -330,12 +330,12 @@ const migrations = [
           created_at TIMESTAMP DEFAULT NOW()
         )`
       );
-      
+
       // Create index separately for PostgreSQL compatibility
       await query(
         `CREATE INDEX idx_session_card ON session_card_attempts (user_id, flashcard_id, session_start_time)`
       );
-      
+
       console.log('✓ Created session_card_attempts table');
     },
   },
@@ -483,7 +483,7 @@ const addCategoryMigration = {
 };
 
 // Add it to migrations if not present
-if (!migrations.some(m => m.name === 'add_category_to_flashcards')) {
+if (!migrations.some((m) => m.name === 'add_category_to_flashcards')) {
   migrations.push(addCategoryMigration);
 }
 

@@ -452,7 +452,9 @@ router.post('/users/:userId/reset-stats', requireAuth, requireAdmin, async (req,
     // Reset the user's Leitner progress
     const result = await resetUserLeitnerStats(userId);
 
-    console.log(`Admin ${req.session.userId} reset stats for user ${userId}: ${result.cardsReset} cards reset`);
+    console.log(
+      `Admin ${req.session.userId} reset stats for user ${userId}: ${result.cardsReset} cards reset`
+    );
 
     return res.status(200).json({
       status: 'success',

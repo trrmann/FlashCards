@@ -66,6 +66,7 @@ NOT used for wrong answers:
 ## How It Works (Technical Flow)
 
 ### Step 1: User Selects Filters on Entries Page
+
 ```
 ┌─────────────────────────────────────┐
 │  📊 Study Filters                   │
@@ -81,6 +82,7 @@ NOT used for wrong answers:
 ```
 
 ### Step 2: Navigate to Practice Page
+
 ```
 Practice Page Loads
   ↓
@@ -96,6 +98,7 @@ Builds URL with filters
 ```
 
 ### Step 3: Backend Receives & Filters
+
 ```
 Route: GET /api/practice/next?class=Spanish*&category=verbs
 
@@ -112,6 +115,7 @@ Backend:
 ```
 
 ### Step 4: Frontend Displays Result
+
 ```
 ┌──────────────────────────────────┐
 │ Q: "to go"                       │
@@ -131,7 +135,9 @@ Backend:
 ## Code Locations
 
 ### 1. Filter Reading (Frontend)
+
 **File:** `src/views/practice.ejs`
+
 ```javascript
 // Reads filters from sessionStorage (lines 569-580)
 const studyFiltersJson = sessionStorage.getItem('studyFilters');
@@ -144,7 +150,9 @@ if (filters.category) url += `&category=${encodeURIComponent(filters.category)}`
 ```
 
 ### 2. Filter Pattern Conversion (Backend)
+
 **File:** `src/auth/practice.mjs`
+
 ```javascript
 // Converts wildcards to SQL patterns (lines 8-16)
 function getFilterPattern(filterValue) {
@@ -158,17 +166,19 @@ function getFilterPattern(filterValue) {
 ```
 
 ### 3. Main Card Filtering
+
 **File:** `src/auth/practice.mjs` - `getDueCardsForToday()` (lines 183-243)
+
 ```javascript
 // Accepts filters parameter
 export async function getDueCardsForToday(userId, filters = {}) {
   // Build parameterized WHERE clauses
   if (classPattern) {
     filterConditions.push(`f.class ILIKE $${paramIndex++}`);
-    queryParams.push(classPattern);  // Safe: parameterized value
+    queryParams.push(classPattern); // Safe: parameterized value
   }
   // ... same for lesson and category
-  
+
   // Execute with all params
   const result = await query(`SELECT ... WHERE ... ${filterClause}`, queryParams);
   return result.rows;
@@ -176,7 +186,9 @@ export async function getDueCardsForToday(userId, filters = {}) {
 ```
 
 ### 4. Wrong Answer Filtering
+
 **File:** `src/auth/practice.mjs` - `generateMultipleChoiceOptions()` (lines 295-348)
+
 ```javascript
 // Get wrong answers matching class AND category
 const wrongAnswersResult = await query(
@@ -194,7 +206,9 @@ const wrongAnswersResult = await query(
 ```
 
 ### 5. API Endpoint Integration
+
 **File:** `src/routes/practice.mjs` - GET `/api/practice/next` (lines 126-169)
+
 ```javascript
 // Extract filters from query params (lines 139-142)
 const filters = {
@@ -208,7 +222,9 @@ const dueCards = await getDueCardsForToday(userId, filters);
 ```
 
 ### 6. Database Migration
+
 **File:** `src/db/migrations.mjs` (lines 454-476)
+
 ```javascript
 {
   name: 'add_category_to_flashcards',
@@ -225,6 +241,7 @@ const dueCards = await getDueCardsForToday(userId, filters);
 ## Key Features Implemented
 
 ### ✅ Wildcard Support
+
 ```
 Filter: "Bio*"          Matches:
   "Biology 101"         ✓
@@ -238,6 +255,7 @@ Filter: "English Connect"  Matches:
 ```
 
 ### ✅ Class/Category Matching for Distractors
+
 ```
 Practice Card:
   Class: "Spanish 101"
@@ -251,23 +269,28 @@ Wrong Answer Sources - ALL must have:
 ```
 
 ### ✅ SQL Injection Safe
+
 All user values are parameterized - NOT concatenated into SQL:
+
 ```javascript
 // ✅ SAFE - Value is parameter
-query(`... WHERE class ILIKE $1`, [userValue])
+query(`... WHERE class ILIKE $1`, [userValue]);
 
 // ❌ DANGEROUS - Value is interpolated (NOT USED)
-query(`... WHERE class ILIKE '${userValue}'`)
+query(`... WHERE class ILIKE '${userValue}'`);
 ```
 
 ### ✅ Fully Dynamic
+
 No hard-coded class/category/lesson values:
+
 - Works with "Spanish 101" ✓
 - Works with "Intro to French" ✓
 - Works with "Piano Basics - Advanced" ✓
 - Works with any future custom values ✓
 
 ### ✅ Backward Compatible
+
 - Existing cards work unchanged
 - category field is optional (NULL safe)
 - Old practice sessions still work
@@ -278,26 +301,28 @@ No hard-coded class/category/lesson values:
 ## Testing Verification
 
 ### Filter Logic Tests ✅
+
 ```
 Test 1: Class ILIKE "English Connect"
   Query: SELECT ... WHERE class ILIKE 'English Connect'
   Result: ✓ Returns 1 card
-  
+
 Test 2: Class ILIKE "English%" (wildcard)
   Query: SELECT ... WHERE class ILIKE 'English%'
   Result: ✓ Returns 1 card
-  
+
 Test 3: Combined: class ILIKE "English%" AND category ILIKE "vocabulary"
   Query: SELECT ... WHERE class ILIKE 'English%' AND category ILIKE 'vocabulary'
   Result: ✓ Returns 1 card
 ```
 
 ### Distractor Generation Tests ✅
+
 ```
 Test: Generate options for a card
   Class: "English Connect"
   Category: "vocabulary"
-  
+
   Result:
   ✓ Got 2 options total
   ✓ 1 correct answer
@@ -306,13 +331,14 @@ Test: Generate options for a card
 ```
 
 ### Integration Tests ✅
+
 ```
 Full Flow: Filters → sessionStorage → query params → backend → SQL → results
   Status: ✓ PASS
-  
+
 Safety: Parameterized queries throughout
   Status: ✓ PASS
-  
+
 Data-Driven: No hard-coded values
   Status: ✓ PASS
 ```
@@ -321,18 +347,18 @@ Data-Driven: No hard-coded values
 
 ## Summary Table
 
-| Feature | Implementation | Status |
-|---------|-----------------|--------|
-| Main cards limited to header | getDueCardsForToday(filters) | ✅ Complete |
-| Wildcard support | getFilterPattern() + ILIKE | ✅ Complete |
+| Feature                            | Implementation                         | Status      |
+| ---------------------------------- | -------------------------------------- | ----------- |
+| Main cards limited to header       | getDueCardsForToday(filters)           | ✅ Complete |
+| Wildcard support                   | getFilterPattern() + ILIKE             | ✅ Complete |
 | Wrong answers match class/category | generateMultipleChoiceOptions() filter | ✅ Complete |
-| Wrong answers vary by lesson | Query doesn't filter on lesson | ✅ Complete |
-| No hard-coded values | All parameterized queries | ✅ Complete |
-| SQL injection safe | Using $N placeholders | ✅ Complete |
-| Dynamic with user data | Reads from database, not config | ✅ Complete |
-| Backward compatible | Optional fields, no breaking changes | ✅ Complete |
-| Auto-migration | Migration runs on startup | ✅ Complete |
-| Tested | Integration tests passing | ✅ Complete |
+| Wrong answers vary by lesson       | Query doesn't filter on lesson         | ✅ Complete |
+| No hard-coded values               | All parameterized queries              | ✅ Complete |
+| SQL injection safe                 | Using $N placeholders                  | ✅ Complete |
+| Dynamic with user data             | Reads from database, not config        | ✅ Complete |
+| Backward compatible                | Optional fields, no breaking changes   | ✅ Complete |
+| Auto-migration                     | Migration runs on startup              | ✅ Complete |
+| Tested                             | Integration tests passing              | ✅ Complete |
 
 ---
 
@@ -348,12 +374,15 @@ Data-Driven: No hard-coded values
 ## Usage Instructions
 
 ### 1. Create Cards with Metadata
+
 Go to Entries page and create cards with:
+
 - Class: "Spanish 101" (or any value)
 - Category: "verbs" (or any value)
 - Lesson: "Past Tense" (or any value)
 
 ### 2. Apply Filters Before Practice
+
 1. On Entries page, expand "📊 Study Filters"
 2. Enter filter values (with optional wildcards):
    - Class: "Spanish*" (or exact)
@@ -362,12 +391,15 @@ Go to Entries page and create cards with:
 3. Click "Apply Filters"
 
 ### 3. Go to Practice
+
 Practice page automatically reads filters from sessionStorage and applies them:
+
 - Only shows cards matching filters
 - Wrong answers from same class/category
 - Wrong answers can be different lessons
 
 ### 4. Clear Filters
+
 To practice all cards, click "Clear All" in filters panel before practice session.
 
 ---
@@ -375,6 +407,7 @@ To practice all cards, click "Clear All" in filters panel before practice sessio
 ## Questions?
 
 The implementation is:
+
 - **Data-driven** - Works with any class/category/lesson names
 - **Safe** - Uses parameterized queries, no SQL injection
 - **Tested** - Integration tests verify filtering works
