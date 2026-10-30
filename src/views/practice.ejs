@@ -499,23 +499,31 @@
 
       // Load the first card when page loads
       document.addEventListener('DOMContentLoaded', async () => {
-        const dueTodayCount = <%= summary.dueTodayCount %>;
-        const totalCards = <%= stats.total %>;
-        
-        if (totalCards === 0) {
-          // No cards at all - direct to entries page
+        try {
+          const dueTodayCount = <%= summary.dueTodayCount %>;
+          const totalCards = <%= stats.total %>;
+          
+          if (totalCards === 0) {
+            // No cards at all - direct to entries page
+            const section = document.querySelector('.practice-section');
+            section.innerHTML = `
+              <h2>📚 No Questions Yet</h2>
+              <p>You haven't added any flashcards yet. Get started by adding your first cards!</p>
+              <a href="/entries" class="btn btn-primary" style="display: inline-block; margin-top: 1rem; padding: 0.75rem 1.5rem; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Go to Entries</a>
+            `;
+          } else if (dueTodayCount > 0) {
+            await loadNextCard();
+          } else {
+            // Cards exist but none due
+            const section = document.querySelector('.practice-section');
+            section.innerHTML = '<h2>🎉 Great Job!</h2><p>No cards are due for study today. Come back later to continue practicing!</p>';
+          }
+        } catch (error) {
+          console.error('Error initializing practice page:', error);
           const section = document.querySelector('.practice-section');
-          section.innerHTML = `
-            <h2>📚 No Questions Yet</h2>
-            <p>You haven't added any flashcards yet. Get started by adding your first cards!</p>
-            <a href="/entries" class="btn btn-primary" style="display: inline-block; margin-top: 1rem; padding: 0.75rem 1.5rem; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Go to Entries</a>
-          `;
-        } else if (dueTodayCount > 0) {
-          await loadNextCard();
-        } else {
-          // Cards exist but none due
-          const section = document.querySelector('.practice-section');
-          section.innerHTML = '<h2>🎉 Great Job!</h2><p>No cards are due for study today. Come back later to continue practicing!</p>';
+          if (section) {
+            section.innerHTML = '<h2>Error</h2><p>Failed to load practice page. Please refresh.</p>';
+          }
         }
       });
 

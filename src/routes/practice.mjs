@@ -30,10 +30,12 @@ router.get('/', async (req, res) => {
     }
 
     const userId = req.session.userId;
+    console.log(`[PRACTICE PAGE LOAD] User ID: ${userId}, User: ${req.session.user?.username}`);
 
     // Initialize any new flashcards for this user
     try {
       await initializeAllCardsForUser(userId);
+      console.log(`[PRACTICE] Initialized cards for user ${userId}`);
     } catch (error) {
       console.error('Error in initializeAllCardsForUser:', error.message);
       throw error;
