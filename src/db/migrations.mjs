@@ -228,7 +228,7 @@ const migrations = [
       await query(
         `CREATE TABLE flashcard_leitner_progress (
           id SERIAL PRIMARY KEY,
-          flashcard_id INTEGER NOT NULL REFERENCES flashcards(flashcard_id) ON DELETE CASCADE,
+          flashcard_id UUID NOT NULL REFERENCES flashcards(flashcard_id) ON DELETE CASCADE,
           user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
           current_box INTEGER NOT NULL DEFAULT 1 CHECK (current_box IN (1, 2, 3)),
           last_reviewed TIMESTAMP,
@@ -264,7 +264,7 @@ const migrations = [
       await query(
         `CREATE TABLE practice_history (
           id SERIAL PRIMARY KEY,
-          flashcard_id INTEGER NOT NULL REFERENCES flashcards(flashcard_id) ON DELETE CASCADE,
+          flashcard_id UUID NOT NULL REFERENCES flashcards(flashcard_id) ON DELETE CASCADE,
           user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
           leitner_box INTEGER NOT NULL CHECK (leitner_box IN (1, 2, 3)),
           correct BOOLEAN NOT NULL,

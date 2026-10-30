@@ -131,11 +131,6 @@ app.get('/', async (req, res) => {
   res.render('home', { siteData });
 });
 
-app.get('/practice', async (req, res) => {
-  siteData.setTitle('Practice');
-  res.render('practice', { siteData });
-});
-
 app.get('/quiz', async (req, res) => {
   siteData.setTitle('Quiz');
   res.render('quiz', { siteData });
