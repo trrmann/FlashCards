@@ -539,7 +539,10 @@
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
           
-          const response = await fetch('/api/practice/next', { signal: controller.signal });
+          const response = await fetch('/api/practice/next', { 
+            signal: controller.signal,
+            credentials: 'include'  // Important: send cookies with request
+          });
           clearTimeout(timeoutId);
           
           console.log('[loadNextCard] Response status:', response.status);
@@ -605,6 +608,7 @@
           const response = await fetch('/api/practice/answer', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',  // Important: send cookies with request
             body: JSON.stringify({
               flashcardId: currentCard.flashcard_id,
               selectedOptionIndex: optionIndex,
