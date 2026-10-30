@@ -669,25 +669,40 @@
             const statusMsg = document.getElementById('status-message');
             const questionBox = document.querySelector('.question-box');
             const optionsContainer = document.getElementById('options-container');
-            
+
             questionBox.style.display = 'none';
             optionsContainer.style.display = 'none';
             statusMsg.style.display = 'block';
-            
+
+            let diagnosticHTML = '';
+            if (data.diagnostic) {
+              const d = data.diagnostic;
+              diagnosticHTML = `
+                <details style="margin-top: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #ffc107;">
+                  <summary style="cursor: pointer; font-weight: bold; color: #333;">📋 What entries are missing?</summary>
+                  <div style="margin-top: 1rem; font-size: 0.95rem;">
+                    <p><strong>Current Card:</strong> ${d.currentCard.question}</p>
+                    <p><strong>Class:</strong> ${d.currentCard.class}</p>
+                    <p><strong>Category:</strong> ${d.currentCard.category}</p>
+                    <p><strong>Lesson:</strong> ${d.currentCard.lesson}</p>
+                    <hr style="margin: 1rem 0; border: none; border-top: 1px solid #ddd;">
+                    <p><strong>Available wrong answers:</strong> ${d.availableWrongAnswers}</p>
+                    <p><strong>More needed:</strong> ${d.neededWrongAnswers}</p>
+                    <p style="margin-top: 1rem; padding: 0.75rem; background: #fff3cd; border-left: 3px solid #ffc107; border-radius: 2px;">
+                      ${d.message}
+                    </p>
+                  </div>
+                </details>
+              `;
+            }
+
             statusMsg.innerHTML = `
               <h2>📝 More Entries Needed</h2>
               <p>${data.message}</p>
+              ${diagnosticHTML}
               <a href="/entries" class="btn btn-primary" style="display: inline-block; margin-top: 1rem; padding: 0.75rem 1.5rem; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Add More Flashcards</a>
             `;
           } else if (!data.card) {
-            // No more cards - show appropriate message
-            const statusMsg = document.getElementById('status-message');
-            const questionBox = document.querySelector('.question-box');
-            const optionsContainer = document.getElementById('options-container');
-            
-            questionBox.style.display = 'none';
-            optionsContainer.style.display = 'none';
-            statusMsg.style.display = 'block';
             
             if (catchUpMode) {
               statusMsg.innerHTML = `

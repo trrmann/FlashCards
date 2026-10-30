@@ -184,7 +184,7 @@ router.get('/next', async (req, res) => {
     const options = await generateMultipleChoiceOptions(userId, nextCard, 4);
 
     // Check if not enough options available (need at least 2: 1 correct + 1 wrong)
-    if (options === null) {
+    if (options && options.insufficientOptions) {
       return res.json({
         status: 'success',
         message:
@@ -192,6 +192,7 @@ router.get('/next', async (req, res) => {
         card: null,
         options: null,
         insufficientEntries: true,
+        diagnostic: options.diagnostic,
       });
     }
 

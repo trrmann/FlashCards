@@ -317,7 +317,7 @@ export async function getNextCatchUpCard(userId) {
  * @param {string} userId - User ID
  * @param {object} correctCard - The correct card object (must include class and category)
  * @param {number} optionCount - Number of options (default 4)
- * @returns {Promise<array|null>} Array of shuffled options with {text, isCorrect}, or null if not enough options (< 2 total)
+ * @returns {Promise<array|object>} Array of shuffled options OR {insufficientOptions: true, diagnostic: {...}}
  */
 export async function generateMultipleChoiceOptions(userId, correctCard, optionCount = 4) {
   console.log(
@@ -423,10 +423,28 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
 
   // Check if we have at least 2 options (1 correct + 1 wrong)
   console.log(
-    `[DEBUG] generateMultipleChoiceOptions - Total options: ${options.length}, Returning: ${options.length >= 2 ? 'options' : 'null (insufficient)'}`
+    `[DEBUG] generateMultipleChoiceOptions - Total options: ${options.length}, Returning: ${options.length >= 2 ? 'options' : 'diagnostic (insufficient)'}`
   );
   if (options.length < 2) {
-    return null;
+    // Return diagnostic information about what's missing
+    const wrongAnswerCount = options.length - 1; // Subtract the correct answer
+    const neededCount = optionCount - 1 - wrongAnswerCount; // How many more wrong answers needed
+
+    return {
+      insufficientOptions: true,
+      diagnostic: {
+        currentCard: {
+          question: correctCard.question.substring(0, 60),
+          class: correctCard.class || '(No Class)',
+          category: correctCard.category || '(No Category)',
+          lesson: correctCard.lesson || '(No Lesson)',
+        },
+        availableWrongAnswers: wrongAnswerCount,
+        neededWrongAnswers: neededCount,
+        totalOptionsNeeded: optionCount,
+        message: `Add at least ${neededCount} more flashcard${neededCount !== 1 ? 's' : ''} with Class: "${correctCard.class || 'empty'}" and Category: "${correctCard.category || 'empty'}" to create proper multiple choice options.`,
+      },
+    };
   }
 
   // Shuffle the options randomly
