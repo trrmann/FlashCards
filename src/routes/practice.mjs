@@ -195,8 +195,7 @@ router.post('/answer', async (req, res) => {
     }
 
     // Get the card to validate the answer
-    const { query: dbQuery } = await import('../db/connection.mjs');
-    const cardResult = await dbQuery('SELECT answer FROM flashcards WHERE flashcard_id = $1', [
+    const cardResult = await query('SELECT answer FROM flashcards WHERE flashcard_id = $1', [
       flashcardId,
     ]);
 
@@ -210,7 +209,7 @@ router.post('/answer', async (req, res) => {
     const correctAnswer = cardResult.rows[0].answer;
 
     // Get the card object for generating options
-    const cardFullResult = await dbQuery('SELECT * FROM flashcards WHERE flashcard_id = $1', [
+    const cardFullResult = await query('SELECT * FROM flashcards WHERE flashcard_id = $1', [
       flashcardId,
     ]);
 
@@ -248,8 +247,9 @@ router.post('/answer', async (req, res) => {
       progress: updatedProgress,
     });
   } catch (error) {
-    console.error('Error recording practice attempt:', error);
-    res.status(500).json({ status: 'error', error: 'Failed to record answer' });
+    console.error('Error recording practice attempt:', error.message);
+    console.error('Stack:', error.stack);
+    res.status(500).json({ status: 'error', error: 'Failed to record answer', details: error.message });
   }
 });
 
