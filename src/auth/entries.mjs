@@ -96,7 +96,6 @@ export async function getUserFlashcardsFiltered(userId, filters = {}) {
   if (filters.category) {
     sql += ` AND category = $${paramIndex}`;
     params.push(filters.category);
-    paramIndex += 1;
   }
 
   sql += ` ORDER BY created_at DESC`;
