@@ -558,7 +558,62 @@
         await loadNextCard();
       }
 
-      async function loadNextCard() {
+      /**
+       * Refresh dashboard stats based on active filters
+       */
+      async function refreshStatsForActiveFilters() {
+        try {
+          // Get active filters from sessionStorage
+          const studyFiltersJson = sessionStorage.getItem('studyFilters');
+          const filters = studyFiltersJson ? JSON.parse(studyFiltersJson) : {};
+
+          // Build URL with filter parameters
+          let url = '/api/practice/stats';
+          if (filters.class) url += `?class=${encodeURIComponent(filters.class)}`;
+          if (filters.lesson) url += `${filters.class ? '&' : '?'}lesson=${encodeURIComponent(filters.lesson)}`;
+          if (filters.category) url += `${filters.class || filters.lesson ? '&' : '?'}category=${encodeURIComponent(filters.category)}`;
+
+          console.log('[refreshStatsForActiveFilters] Fetching stats from ' + url);
+
+          const response = await fetch(url, {
+            credentials: 'include',
+          });
+
+          if (!response.ok) {
+            console.error('[refreshStatsForActiveFilters] Error:', response.status);
+            return;
+          }
+
+          const data = await response.json();
+          if (data.status === 'success' && data.stats) {
+            // Update the stats cards in the dashboard
+            const box1Card = document.querySelector('.stats-card .number');
+            if (box1Card) {
+              const cards = document.querySelectorAll('.stats-card .number');
+              if (cards.length >= 3) {
+                cards[0].textContent = data.stats.box1;
+                cards[1].textContent = data.stats.box2;
+                cards[2].textContent = data.stats.box3;
+              }
+            }
+
+            console.log(
+              `[refreshStatsForActiveFilters] Updated stats: box1=${data.stats.box1}, box2=${data.stats.box2}, box3=${data.stats.box3}`
+            );
+          }
+        } catch (error) {
+          console.error('[refreshStatsForActiveFilters] Error:', error);
+        }
+      }
+
+      // Listen for filter changes from the filter panel
+      window.addEventListener('filtersChanged', async () => {
+        console.log('[filtersChanged event] Filters changed, refreshing stats...');
+        await refreshStatsForActiveFilters();
+        // Optionally reload the current card if filters changed
+        await loadNextCard();
+      });
+
         answered = false;
         const feedbackEl = document.getElementById('feedback-message');
         const nextBtn = document.getElementById('next-button');

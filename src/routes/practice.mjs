@@ -328,6 +328,7 @@ router.post('/answer', async (req, res) => {
 /**
  * GET /api/practice/stats
  * Get practice statistics and progress
+ * Query params: class, lesson, category (optional filters)
  */
 router.get('/stats', async (req, res) => {
   try {
@@ -336,8 +337,23 @@ router.get('/stats', async (req, res) => {
     }
 
     const userId = req.session.userId;
-    const stats = await getProgressStats(userId);
+
+    // Extract filters from query params
+    const filters = {
+      class: req.query.class || null,
+      lesson: req.query.lesson || null,
+      category: req.query.category || null,
+    };
+
+    console.log(`[DEBUG] practice/stats - User ID: ${userId}, Filters:`, filters);
+
+    // Get stats with filters applied
+    const stats = await getProgressStats(userId, filters);
     const streak = await getPracticeStreak(userId);
+
+    console.log(
+      `[DEBUG] practice/stats - Stats returned: box1=${stats.box1}, box2=${stats.box2}, box3=${stats.box3}`
+    );
 
     res.json({
       status: 'success',

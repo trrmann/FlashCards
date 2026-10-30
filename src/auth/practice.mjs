@@ -609,15 +609,55 @@ function calculateNextReviewDate(boxNumber) {
  * @param {string} userId - User ID
  * @returns {Promise<object>} Statistics object
  */
-export async function getProgressStats(userId) {
-  // Count cards in each box
+/**
+ * Get progress statistics for user
+ * @param {string} userId - User ID
+ * @param {object} filters - Optional filters {class, lesson, category} to limit stats to specific cards
+ * @returns {Promise<object>} Box counts and accuracy stats
+ */
+export async function getProgressStats(userId, filters = {}) {
+  // Build filter conditions (same as getDueCardsForToday)
+  const filterConditions = [];
+  const queryParams = [userId];
+  let paramIndex = 2;
+
+  const classPattern = getFilterPattern(filters.class);
+  if (classPattern) {
+    filterConditions.push(`f.class ILIKE $${paramIndex}`);
+    queryParams.push(classPattern);
+    paramIndex += 1;
+  }
+
+  const lessonPattern = getFilterPattern(filters.lesson);
+  if (lessonPattern) {
+    filterConditions.push(`f.lesson ILIKE $${paramIndex}`);
+    queryParams.push(lessonPattern);
+    paramIndex += 1;
+  }
+
+  const categoryPattern = getFilterPattern(filters.category);
+  if (categoryPattern) {
+    filterConditions.push(`f.category ILIKE $${paramIndex}`);
+    queryParams.push(categoryPattern);
+  }
+
+  const filterClause = filterConditions.length > 0 ? 'AND ' + filterConditions.join(' AND ') : '';
+
+  console.log(
+    `[DEBUG] getProgressStats - Filters: class=${filters.class}, lesson=${filters.lesson}, category=${filters.category}`,
+    `Filter SQL: ${filterClause}`
+  );
+
+  // Count cards in each box with filters applied
   const boxCountsResult = await query(
-    `SELECT current_box, COUNT(*) as count
-     FROM flashcard_leitner_progress
-     WHERE user_id = $1
-     GROUP BY current_box
-     ORDER BY current_box`,
-    [userId]
+    `SELECT p.current_box, COUNT(*) as count
+     FROM flashcard_leitner_progress p
+     JOIN flashcards f ON p.flashcard_id = f.flashcard_id
+     WHERE p.user_id = $1
+     ${filterClause}
+     GROUP BY p.current_box
+     ORDER BY p.current_box`,
+    queryParams
   );
 
   const boxCounts = { box1: 0, box2: 0, box3: 0 };
@@ -627,7 +667,11 @@ export async function getProgressStats(userId) {
     if (row.current_box === 3) boxCounts.box3 = parseInt(row.count);
   });
 
-  // Get overall correct/incorrect counts
+  console.log(
+    `[DEBUG] getProgressStats - Box counts: box1=${boxCounts.box1}, box2=${boxCounts.box2}, box3=${boxCounts.box3}`
+  );
+
+  // Get overall correct/incorrect counts (not filtered, for overall accuracy)
   const attemptsResult = await query(
     `SELECT 
        SUM(CASE WHEN correct THEN 1 ELSE 0 END) as total_correct,
