@@ -224,6 +224,12 @@ export async function getDueCardsForToday(userId, filters = {}) {
 
   const filterClause = filterConditions.length > 0 ? 'AND ' + filterConditions.join(' AND ') : '';
 
+  console.log(
+    `[DEBUG] getDueCardsForToday - Filters: class=${filters.class}, lesson=${filters.lesson}, category=${filters.category}`,
+    `Filter patterns: class=${classPattern}, lesson=${lessonPattern}, category=${categoryPattern}`,
+    `SQL WHERE: (${boxCondition}) ${filterClause}`
+  );
+
   const result = await query(
     `SELECT f.*, p.current_box, p.times_correct, p.times_incorrect, p.last_reviewed, p.next_review
      FROM flashcards f
@@ -235,6 +241,8 @@ export async function getDueCardsForToday(userId, filters = {}) {
      ORDER BY p.current_box ASC, p.last_reviewed ASC NULLS FIRST`,
     queryParams
   );
+
+  console.log(`[DEBUG] getDueCardsForToday - Result count: ${result.rows.length}`);
 
   return result.rows;
 }
@@ -337,6 +345,7 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
   if (shouldShowCorrectAnswer) {
     // Standard mode: show correct answer with wrong answers as distractors
     // Wrong answers must match class AND category (but can be different lesson)
+    // Use COALESCE to handle NULL values: NULL = NULL should match
     const wrongAnswersResult = await query(
       `SELECT answer 
        FROM (
@@ -346,8 +355,8 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
          AND flashcard_id != $2 
          AND answer IS NOT NULL
          AND answer != $3
-         AND class = $4
-         AND category = $5
+         AND COALESCE(class, '') = COALESCE($4, '')
+         AND COALESCE(category, '') = COALESCE($5, '')
        ) AS distinct_answers
        ORDER BY RANDOM() 
        LIMIT $6`,
@@ -368,6 +377,7 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
   } else {
     // "None of the above" mode: show wrong answers only, with "None of the above" as correct option
     // Wrong answers must match class AND category (but can be different lesson)
+    // Use COALESCE to handle NULL values: NULL = NULL should match
     const wrongAnswersResult = await query(
       `SELECT answer 
        FROM (
@@ -377,8 +387,8 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
          AND flashcard_id != $2 
          AND answer IS NOT NULL
          AND answer != $3
-         AND class = $4
-         AND category = $5
+         AND COALESCE(class, '') = COALESCE($4, '')
+         AND COALESCE(category, '') = COALESCE($5, '')
        ) AS distinct_answers
        ORDER BY RANDOM() 
        LIMIT $6`,

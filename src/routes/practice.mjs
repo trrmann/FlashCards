@@ -155,6 +155,10 @@ router.get('/next', async (req, res) => {
     } else {
       // Pass filters to getDueCardsForToday
       const dueCards = await getDueCardsForToday(userId, filters);
+      console.log(
+        `[DEBUG] practice/next - Due cards found: ${dueCards.length}`,
+        dueCards.length > 0 ? `First card: ${dueCards[0].question.substring(0, 50)}` : 'none'
+      );
       if (dueCards.length > 0) {
         const randomIndex = Math.floor(Math.random() * dueCards.length);
         nextCard = dueCards[randomIndex];
