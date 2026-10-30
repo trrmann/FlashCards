@@ -643,6 +643,7 @@ export async function recordPracticeAttemptWithSession(
     const current = progressResult.rows[0];
     let newTimesCorrect = current.times_correct;
     let newTimesIncorrect = current.times_incorrect;
+    let newBox = current.current_box;
 
     if (isCorrect) {
       newTimesCorrect += 1;
@@ -650,22 +651,72 @@ export async function recordPracticeAttemptWithSession(
       newTimesIncorrect += 1;
     }
 
-    // Update times_correct and times_incorrect with every attempt
-    await query(
-      `UPDATE flashcard_leitner_progress
-       SET times_correct = $1,
-           times_incorrect = $2,
-           updated_at = NOW()
-       WHERE flashcard_id = $3 AND user_id = $4`,
-      [newTimesCorrect, newTimesIncorrect, flashcardId, userId]
-    );
-    console.log(`[recordPracticeAttemptWithSession] Updated attempt counts: correct=${newTimesCorrect}, incorrect=${newTimesIncorrect}`);
+    // When session is complete, apply box progression logic
+    if (!needsMoreAttempts) {
+      // All attempts done - now determine box progression based on overall session performance
+      // Count correct vs incorrect in this entire session
+      const sessionStatsResult = await query(
+        `SELECT 
+           SUM(CASE WHEN was_correct THEN 1 ELSE 0 END) as session_correct,
+           SUM(CASE WHEN NOT was_correct THEN 1 ELSE 0 END) as session_incorrect,
+           COUNT(*) as total_attempts
+         FROM session_card_attempts
+         WHERE flashcard_id = $1 AND user_id = $2 AND session_start_time = $3`,
+        [flashcardId, userId, sessionStartTime]
+      );
+
+      const sessionStats = sessionStatsResult.rows[0] || {};
+      const sessionCorrect = parseInt(sessionStats.session_correct) || 0;
+      const sessionIncorrect = parseInt(sessionStats.session_incorrect) || 0;
+
+      console.log(`[recordPracticeAttemptWithSession] Session complete: correct=${sessionCorrect}, incorrect=${sessionIncorrect}`);
+
+      // Box progression: ALL attempts must be correct to promote, ANY incorrect means demote
+      if (sessionIncorrect === 0 && sessionCorrect > 0) {
+        // All correct - promote to next box (unless already at Box 3)
+        if (newBox < 3) {
+          newBox += 1;
+          console.log(`[recordPracticeAttemptWithSession] Promoting card from Box ${newBox - 1} to Box ${newBox}`);
+        }
+      } else if (sessionIncorrect > 0) {
+        // Any incorrect - demote back to Box 1
+        console.log(`[recordPracticeAttemptWithSession] Demoting card to Box 1 (had ${sessionIncorrect} incorrect)`);
+        newBox = 1;
+      }
+    }
+
+    // Update times_correct, times_incorrect, and potentially current_box
+    const nextReview = !needsMoreAttempts ? calculateNextReviewDate(newBox) : null;
+    
+    if (!needsMoreAttempts) {
+      // Session complete - update all fields
+      await query(
+        `UPDATE flashcard_leitner_progress
+         SET times_correct = $1,
+             times_incorrect = $2,
+             current_box = $3,
+             last_reviewed = NOW(),
+             next_review = $4,
+             updated_at = NOW()
+         WHERE flashcard_id = $5 AND user_id = $6`,
+        [newTimesCorrect, newTimesIncorrect, newBox, nextReview, flashcardId, userId]
+      );
+      console.log(`[recordPracticeAttemptWithSession] Session complete update: correct=${newTimesCorrect}, incorrect=${newTimesIncorrect}, box=${newBox}`);
+    } else {
+      // Session in progress - update only attempt counts
+      await query(
+        `UPDATE flashcard_leitner_progress
+         SET times_correct = $1,
+             times_incorrect = $2,
+             updated_at = NOW()
+         WHERE flashcard_id = $3 AND user_id = $4`,
+        [newTimesCorrect, newTimesIncorrect, flashcardId, userId]
+      );
+      console.log(`[recordPracticeAttemptWithSession] Mid-session update: correct=${newTimesCorrect}, incorrect=${newTimesIncorrect}`);
+    }
   }
 
   // Return session data
-  // Note: Card box progression and practice_history recording is already handled above
-  // via the attempts loop that updates times_correct/times_incorrect and calls
-  // recordPracticeAttempt which moves the card to the next box when all attempts are done
   return {
     needsMoreAttempts,
     attemptNumber: currentAttemptNumber,
