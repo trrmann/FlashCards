@@ -551,13 +551,13 @@
   const isLoggedIn = <%= isLoggedIn ? 'true' : 'false' %>;
 
   if (isLoggedIn) {
-    document.addEventListener('DOMContentLoaded', () => {
-      initializeEntriesPage();
+    document.addEventListener('DOMContentLoaded', async () => {
+      await initializeEntriesPage();
     });
   }
 
-  function initializeEntriesPage() {
-    refreshAllMetadataOptions();
+  async function initializeEntriesPage() {
+    await refreshAllMetadataOptions();
     setupCreateForm();
     loadUserEntries();
     loadSharedEntries();
