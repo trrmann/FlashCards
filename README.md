@@ -1,0 +1,1 @@
+# all documentation for this project is to be stored in the documents folder, this is the only documentation file allowed in the root folder, used as a placeholder to refer to the true source of documentation
