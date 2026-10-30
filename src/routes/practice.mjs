@@ -179,6 +179,18 @@ router.get('/next', async (req, res) => {
     // Generate multiple choice options
     const options = await generateMultipleChoiceOptions(userId, nextCard, 4);
 
+    // Check if not enough options available (need at least 2: 1 correct + 1 wrong)
+    if (options === null) {
+      return res.json({
+        status: 'success',
+        message:
+          'Not enough entries in this category to practice. Add more flashcards to create multiple choice options.',
+        card: null,
+        options: null,
+        insufficientEntries: true,
+      });
+    }
+
     // Check if "None of the above" is in the options
     const hasNoneOfAbove = options.some((opt) => opt.isNoneOfAbove === true);
 

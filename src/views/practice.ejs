@@ -608,6 +608,21 @@
 
             // Display multiple choice options
             displayOptions();
+          } else if (data.insufficientEntries) {
+            // Not enough entries to create multiple choice options
+            const statusMsg = document.getElementById('status-message');
+            const questionBox = document.querySelector('.question-box');
+            const optionsContainer = document.getElementById('options-container');
+            
+            questionBox.style.display = 'none';
+            optionsContainer.style.display = 'none';
+            statusMsg.style.display = 'block';
+            
+            statusMsg.innerHTML = `
+              <h2>📝 More Entries Needed</h2>
+              <p>${data.message}</p>
+              <a href="/entries" class="btn btn-primary" style="display: inline-block; margin-top: 1rem; padding: 0.75rem 1.5rem; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Add More Flashcards</a>
+            `;
           } else if (!data.card) {
             // No more cards - show appropriate message
             const statusMsg = document.getElementById('status-message');

@@ -309,7 +309,7 @@ export async function getNextCatchUpCard(userId) {
  * @param {string} userId - User ID
  * @param {object} correctCard - The correct card object (must include class and category)
  * @param {number} optionCount - Number of options (default 4)
- * @returns {Promise<array>} Array of shuffled options with {text, isCorrect}
+ * @returns {Promise<array|null>} Array of shuffled options with {text, isCorrect}, or null if not enough options (< 2 total)
  */
 export async function generateMultipleChoiceOptions(userId, correctCard, optionCount = 4) {
   // Get the none_of_above_count for this card
@@ -397,6 +397,11 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
     });
 
     options.push({ text: 'None of the above', isCorrect: true, isNoneOfAbove: true });
+  }
+
+  // Check if we have at least 2 options (1 correct + 1 wrong)
+  if (options.length < 2) {
+    return null;
   }
 
   // Shuffle the options randomly
