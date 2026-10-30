@@ -32,13 +32,42 @@ router.get('/', async (req, res) => {
     const userId = req.session.userId;
 
     // Initialize any new flashcards for this user
-    await initializeAllCardsForUser(userId);
+    try {
+      await initializeAllCardsForUser(userId);
+    } catch (error) {
+      console.error('Error in initializeAllCardsForUser:', error.message);
+      throw error;
+    }
 
     // Get statistics and schedule
-    const stats = await getProgressStats(userId);
-    const schedule = await getReviewSchedule(userId);
-    const summary = await getTodaysSummary(userId);
-    const streak = await getPracticeStreak(userId);
+    let stats, schedule, summary, streak;
+    try {
+      stats = await getProgressStats(userId);
+    } catch (error) {
+      console.error('Error in getProgressStats:', error.message);
+      throw error;
+    }
+
+    try {
+      schedule = await getReviewSchedule(userId);
+    } catch (error) {
+      console.error('Error in getReviewSchedule:', error.message);
+      throw error;
+    }
+
+    try {
+      summary = await getTodaysSummary(userId);
+    } catch (error) {
+      console.error('Error in getTodaysSummary:', error.message);
+      throw error;
+    }
+
+    try {
+      streak = await getPracticeStreak(userId);
+    } catch (error) {
+      console.error('Error in getPracticeStreak:', error.message);
+      throw error;
+    }
 
     res.render('practice', {
       title: 'Practice Study - Leitner System',
@@ -50,7 +79,7 @@ router.get('/', async (req, res) => {
       isLoggedIn: true,
     });
   } catch (error) {
-    console.error('Error loading practice page:', error);
+    console.error('Error loading practice page:', error.message, error.stack);
     res.status(500).json({ status: 'error', error: 'Failed to load practice page' });
   }
 });

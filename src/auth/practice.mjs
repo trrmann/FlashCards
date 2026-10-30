@@ -368,21 +368,27 @@ export async function getProgressStats(userId) {
  * @returns {Promise<number>} Current streak length
  */
 export async function getPracticeStreak(userId) {
+  // Get recent practice attempts ordered by date
   const result = await query(
-    `WITH streak_data AS (
-       SELECT correct,
-              ROW_NUMBER() OVER (ORDER BY created_at DESC) as rn,
-              ROW_NUMBER() OVER (ORDER BY created_at DESC) FILTER (WHERE NOT correct) as grp
-       FROM practice_history
-       WHERE user_id = $1
-     )
-     SELECT COUNT(*) as streak
-     FROM streak_data
-     WHERE correct AND grp IS NULL`,
+    `SELECT correct, created_at
+     FROM practice_history
+     WHERE user_id = $1
+     ORDER BY created_at DESC
+     LIMIT 100`,
     [userId]
   );
 
-  return parseInt(result.rows[0].streak) || 0;
+  // Count consecutive correct answers from most recent
+  let streak = 0;
+  for (const row of result.rows) {
+    if (row.correct) {
+      streak += 1;
+    } else {
+      break;
+    }
+  }
+
+  return streak;
 }
 
 /**
