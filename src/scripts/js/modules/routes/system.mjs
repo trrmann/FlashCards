@@ -7,7 +7,7 @@ import express from 'express';
 import { validateEmail, validatePassword, validateUsername } from '../auth/validator.mjs';
 import { query } from '../db/connection.mjs';
 import { createUser } from '../auth/user.mjs';
-import { getExpirationWarning } from '../db/dbExpiration.mjs';
+import { getExpirationWarning } from '../db/connection.mjs';
 
 const router = express.Router();
 
