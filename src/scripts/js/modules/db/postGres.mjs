@@ -282,7 +282,7 @@ export const testQuery = async () => {
 /**
  * Database Initialization Script for FlashCards
  * Initializes PostgreSQL database schema and creates required tables
- * Usage: node src/scripts/js/modules/db/connection.mjs
+ * Usage: node src/scripts/js/modules/db/postGres.mjs
  */
 
 // Load environment variables

@@ -3,7 +3,7 @@
  * Handles flashcard CRUD operations and sharing
  */
 
-import { query } from '../db/connection.mjs';
+import { query } from '../db/postGres.mjs';
 
 /**
  * Create a new flashcard entry

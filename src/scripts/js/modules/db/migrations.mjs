@@ -3,7 +3,7 @@
  * Handles schema changes and updates
  */
 
-import { query } from '../../../../scripts/js/modules/db/connection.mjs';
+import { query } from './postGres.mjs';
 
 /**
  * List of all migrations to run

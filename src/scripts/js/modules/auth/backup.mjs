@@ -4,7 +4,7 @@
  * Includes schema, users, entries, quizzes, and practice history
  */
 
-import { query, getClient } from '../db/connection.mjs';
+import { query, getClient } from '../db/postGres.mjs';
 
 /**
  * Export complete application data

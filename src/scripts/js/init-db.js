@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { initializeDatabaseSchema } from './connection.mjs';
+import { initializeDatabaseSchema } from './modules/db/postGres.mjs';
 
 // Run initialization
 initializeDatabaseSchema();

@@ -10,7 +10,7 @@ import {
   healthCheck,
   query,
   pool,
-} from './src/scripts/js/modules/db/connection.mjs';
+} from './src/scripts/js/modules/db/postGres.mjs';
 import { runMigrations } from './src/scripts/js/modules/db/migrations.mjs';
 import authRoutes from './src/scripts/js/modules/routes/auth.mjs';
 import userRoutes from './src/scripts/js/modules/routes/users.mjs';

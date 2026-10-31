@@ -5,7 +5,7 @@
  * Supports filtering by class/category/lesson with wildcard support
  */
 
-import { query } from '../db/connection.mjs';
+import { query } from '../db/postGres.mjs';
 
 /**
  * Convert filter pattern to SQL LIKE pattern with wildcard support
