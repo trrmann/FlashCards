@@ -6,7 +6,7 @@ import pgSession from 'connect-pg-simple';
 
 import { appSiteData } from './src/scripts/js/appSiteData.js';
 import {
-  initializeDatabase,
+  initializeDatabaseConnection,
   healthCheck,
   query,
   pool,
@@ -227,7 +227,7 @@ app.listen(port, async () => {
   console.log(`Server running in ${NODE_ENV} mode on port ${port}`);
 
   // Initialize database connection
-  const dbReady = await initializeDatabase();
+  const dbReady = await initializeDatabaseConnection();
   if (!dbReady) {
     console.warn('⚠️ Warning: Database connection failed. Some features may be unavailable.');
   } else {

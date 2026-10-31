@@ -10,7 +10,7 @@ The FlashCards application now has a complete PostgreSQL database setup with con
 
 ### 1. Database Initialization Script
 
-- **File:** `src/scripts/js/modules/db/init-db.mjs`
+- **File:** `src/scripts/js/modules/db/connection.mjs`
 - **Status:** ✅ Successfully created all 7 tables in Render PostgreSQL
 - **Features:**
   - Automatic SSL configuration for external connections
@@ -70,7 +70,7 @@ The FlashCards application now has a complete PostgreSQL database setup with con
 
 ```bash
 # Create all tables in Render PostgreSQL
-node src/scripts/js/modules/db/init-db.mjs
+node src/scripts/js/modules/db/connection.mjs
 ```
 
 ### Test Database Connection
@@ -245,7 +245,7 @@ PGPASSWORD=<password> psql -h dpg-dbhnuks9v7es73beg8mg-a.virginia-postgres.rende
 
 - **Database Schema:** `documents/DATABASE_SCHEMA.md`
 - **Connection Module:** `src/scripts/js/modules/db/connection.mjs`
-- **Initialization Script:** `src/scripts/js/modules/db/init-db.mjs`
+- **Initialization Script:** `src/scripts/js/modules/db/connection.mjs`
 - **Render Dashboard:** https://dashboard.render.com
 - **PostgreSQL Docs:** https://www.postgresql.org/docs/
 
