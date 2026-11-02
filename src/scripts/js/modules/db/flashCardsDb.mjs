@@ -16,16 +16,16 @@ export class FlashCardsDatabase extends PostgresDatabase {
       'pg/flashcards-postgres-schema.sql',
       this.constructor.sqlRoot
     );
-    const sqlNames = [
-      'Extensions',
-      'Users Table',
-      'Flashcards Table',
-      'Leitner Boxes Table',
-      'Quizzes Table',
-      'Quiz Questions Table',
-      'Quiz Results Table',
-      'Import/Export Logs Table',
-    ];
+
+    const describeStatement = (sql) => {
+      const match = sql.match(
+        /CREATE\s+(TABLE|INDEX|EXTENSION)(?:\s+IF\s+NOT\s+EXISTS)?\s+("?[\w-]+"?)/i
+      );
+      if (match) {
+        return `${match[1].toUpperCase()} ${match[2]}`;
+      }
+      return sql.replace(/\s+/g, ' ').slice(0, 40);
+    };
 
     const client = await this.pool.connect();
 
@@ -40,7 +40,7 @@ export class FlashCardsDatabase extends PostgresDatabase {
 
       for (let i = 0; i < allSQL.length; i += 1) {
         try {
-          process.stdout.write(`[${i + 1}/${allSQL.length}] ${sqlNames[i]}... `);
+          process.stdout.write(`[${i + 1}/${allSQL.length}] ${describeStatement(allSQL[i])}... `);
           await client.query(allSQL[i]);
           console.log('✅');
         } catch (error) {

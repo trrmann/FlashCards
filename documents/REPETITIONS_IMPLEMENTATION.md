@@ -270,7 +270,9 @@ if (data.session && data.session.needsMoreAttempts) {
 
 ## Deployment Notes
 
-1. **Database Migrations**: Both migrations in `migrations.mjs` run on server startup
+1. **Database Schema**: The `session_card_attempts` table and `session_streak` column are
+   created by the SQL bootstrap (`src/scripts/sql/pg/flashcards-postgres-schema.sql`),
+   which runs idempotently on server startup
    - Creates `session_card_attempts` table
    - Adds `session_streak` column (idempotent)
 
