@@ -6,6 +6,7 @@ import pgSession from 'connect-pg-simple';
 
 import { appSiteData } from './src/scripts/js/appSiteData.js';
 import { flashCardsDb } from './src/scripts/js/modules/db/flashCardsDb.mjs';
+import { userAuthService } from './src/scripts/js/modules/auth/user.mjs';
 import authRoutes from './src/scripts/js/modules/routes/auth.mjs';
 import userRoutes from './src/scripts/js/modules/routes/users.mjs';
 import adminRoutes from './src/scripts/js/modules/routes/admin.mjs';
@@ -102,14 +103,11 @@ app.use(async (req, res, next) => {
     res.locals.isLoggedIn = true;
 
     try {
-      const user = await flashCardsDb.query(
-        'SELECT full_name, is_admin FROM users WHERE user_id = $1',
-        [req.session.userId]
-      );
-      if (user.rows.length > 0) {
-        res.locals.fullName = user.rows[0].full_name;
-        res.locals.isAdmin = user.rows[0].is_admin;
-        siteData.setName(user.rows[0].full_name);
+      const user = await userAuthService.getUserDisplayInfo(req.session.userId);
+      if (user) {
+        res.locals.fullName = user.full_name;
+        res.locals.isAdmin = user.is_admin;
+        siteData.setName(user.full_name);
       } else {
         res.locals.fullName = '';
         res.locals.isAdmin = false;
@@ -153,8 +151,7 @@ app.get('/login', async (req, res) => {
 
   try {
     // Check if any users exist
-    const result = await flashCardsDb.query('SELECT COUNT(*) as count FROM users');
-    userCount = parseInt(result.rows[0].count, 10);
+    userCount = await userAuthService.countUsers();
     needsSetup = userCount === 0;
   } catch (error) {
     console.error('Error checking user count:', error);

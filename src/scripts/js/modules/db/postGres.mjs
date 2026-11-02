@@ -48,7 +48,36 @@ export class PostgresDatabase {
   static loadSqlStatements(relativePath, sqlRoot = this.sqlRoot) {
     const filePath = path.join(sqlRoot, relativePath);
     const sql = fs.readFileSync(filePath, 'utf8');
+    return this.splitSqlStatements(sql);
+  }
 
+  static loadNamedSqlStatements(relativePath, sqlRoot = this.sqlRoot) {
+    const filePath = path.join(sqlRoot, relativePath);
+    const sql = fs.readFileSync(filePath, 'utf8');
+    const sections = sql.split(/^--\s*Query:\s*(\S+)\s*$/m);
+    const named = {};
+
+    for (let i = 1; i < sections.length; i += 2) {
+      const name = sections[i];
+      const statements = this.splitSqlStatements(sections[i + 1]);
+
+      if (statements.length !== 1) {
+        throw new Error(
+          `Expected exactly one SQL statement for query "${name}" in ${relativePath}, found ${statements.length}`
+        );
+      }
+
+      if (named[name]) {
+        throw new Error(`Duplicate SQL query name "${name}" in ${relativePath}`);
+      }
+
+      named[name] = statements[0];
+    }
+
+    return named;
+  }
+
+  static splitSqlStatements(sql) {
     const statements = [];
     let currentStatement = '';
     let inSingleQuote = false;
@@ -200,28 +229,31 @@ export class PostgresDatabase {
     });
   }
 
+  static #introspectionQueries = null;
+
+  static get introspectionQueries() {
+    if (!this.#introspectionQueries) {
+      this.#introspectionQueries = PostgresDatabase.loadNamedSqlStatements(
+        'pg/postgres-introspection.sql',
+        PostgresDatabase.sqlRoot
+      );
+    }
+    return this.#introspectionQueries;
+  }
+
   async tableExists(tableName) {
-    const result = await this.query(
-      `SELECT EXISTS (
-        SELECT 1
-        FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = $1
-      ) AS exists`,
-      [tableName]
-    );
+    const result = await this.query(this.constructor.introspectionQueries.table_exists, [
+      tableName,
+    ]);
 
     return Boolean(result.rows[0]?.exists);
   }
 
   async columnExists(tableName, columnName) {
-    const result = await this.query(
-      `SELECT EXISTS (
-        SELECT 1
-        FROM information_schema.columns
-        WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2
-      ) AS exists`,
-      [tableName, columnName]
-    );
+    const result = await this.query(this.constructor.introspectionQueries.column_exists, [
+      tableName,
+      columnName,
+    ]);
 
     return Boolean(result.rows[0]?.exists);
   }
@@ -239,7 +271,7 @@ export class PostgresDatabase {
   async initializeDatabaseConnection() {
     try {
       const client = await this.pool.connect();
-      await client.query('SELECT NOW()');
+      await client.query(this.constructor.introspectionQueries.connection_probe);
       client.release();
       console.log(`✅ Database connected: ${this.config.host}`);
       return true;
@@ -269,7 +301,7 @@ export class PostgresDatabase {
 
   async healthCheck() {
     try {
-      await this.query('SELECT 1 as status');
+      await this.query(this.constructor.introspectionQueries.health_check);
       return {
         status: 'healthy',
         database: this.config.database,

@@ -5,6 +5,11 @@
 
 import { flashCardsDb } from '../db/flashCardsDb.mjs';
 
+const entriesQueries = flashCardsDb.constructor.loadNamedSqlStatements(
+  'pg/entries-queries.sql',
+  flashCardsDb.constructor.sqlRoot
+);
+
 /**
  * Create a new flashcard entry
  * @param {string} userId - User ID who owns the entry
@@ -23,12 +28,15 @@ export async function createFlashcard(
   category = null,
   flashClass = null
 ) {
-  const result = await flashCardsDb.query(
-    `INSERT INTO flashcards (user_id, question, answer, created_by, lesson, category, class, is_private)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, true)
-     RETURNING flashcard_id, question, answer, lesson, category, class, is_private, created_at`,
-    [userId, question, answer, userId, lesson, category, flashClass]
-  );
+  const result = await flashCardsDb.query(entriesQueries.insert_flashcard, [
+    userId,
+    question,
+    answer,
+    userId,
+    lesson,
+    category,
+    flashClass,
+  ]);
 
   return result.rows[0];
 }
@@ -39,13 +47,7 @@ export async function createFlashcard(
  * @returns {Promise<array>} Array of flashcards
  */
 export async function getUserFlashcards(userId) {
-  const result = await flashCardsDb.query(
-    `SELECT flashcard_id, question, answer, lesson, category, class, is_private, created_at
-     FROM flashcards 
-     WHERE created_by = $1
-     ORDER BY created_at DESC`,
-    [userId]
-  );
+  const result = await flashCardsDb.query(entriesQueries.select_user_flashcards, [userId]);
 
   return result.rows;
 }
@@ -57,13 +59,10 @@ export async function getUserFlashcards(userId) {
  * @returns {Promise<object>} Flashcard object or null
  */
 export async function getFlashcardByQuestion(userId, question) {
-  const result = await flashCardsDb.query(
-    `SELECT flashcard_id, question, answer, lesson, category, class, is_private, created_at
-     FROM flashcards 
-     WHERE created_by = $1 AND question = $2
-     LIMIT 1`,
-    [userId, question]
-  );
+  const result = await flashCardsDb.query(entriesQueries.select_flashcard_by_question, [
+    userId,
+    question,
+  ]);
 
   return result.rows[0] || null;
 }
@@ -75,32 +74,34 @@ export async function getFlashcardByQuestion(userId, question) {
  * @returns {Promise<array>} Array of filtered flashcards
  */
 export async function getUserFlashcardsFiltered(userId, filters = {}) {
-  let sql = `SELECT flashcard_id, question, answer, lesson, category, class, is_private, created_at
-             FROM flashcards 
-             WHERE created_by = $1`;
+  const filterConditions = [];
   const params = [userId];
   let paramIndex = 2;
 
   if (filters.class) {
-    sql += ` AND class = $${paramIndex}`;
+    filterConditions.push(`AND class = $${paramIndex}`);
     params.push(filters.class);
     paramIndex += 1;
   }
 
   if (filters.lesson) {
-    sql += ` AND lesson = $${paramIndex}`;
+    filterConditions.push(`AND lesson = $${paramIndex}`);
     params.push(filters.lesson);
     paramIndex += 1;
   }
 
   if (filters.category) {
-    sql += ` AND category = $${paramIndex}`;
+    filterConditions.push(`AND category = $${paramIndex}`);
     params.push(filters.category);
   }
 
-  sql += ` ORDER BY created_at DESC`;
-
-  const result = await flashCardsDb.query(sql, params);
+  const result = await flashCardsDb.query(
+    entriesQueries.select_user_flashcards_filtered_template.replace(
+      '{{filter_clause}}',
+      filterConditions.join('\n  ')
+    ),
+    params
+  );
   return result.rows;
 }
 
@@ -111,21 +112,10 @@ export async function getUserFlashcardsFiltered(userId, filters = {}) {
  * @returns {Promise<object>} Flashcard object or null
  */
 export async function getFlashcard(flashcardId, userId) {
-  const result = await flashCardsDb.query(
-    `SELECT f.flashcard_id, f.question, f.answer, f.lesson, f.category, f.class, f.is_private, f.created_by, f.created_at,
-            u.username, u.full_name
-     FROM flashcards f
-     LEFT JOIN users u ON f.created_by = u.user_id
-     WHERE f.flashcard_id = $1
-       AND (f.created_by = $2 OR EXISTS (
-         SELECT 1 FROM flashcard_shares 
-         WHERE flashcard_id = $1 
-           AND recipient_id = $2 
-           AND status != 'revoked'
-           AND recipient_status = 'accepted'
-       ))`,
-    [flashcardId, userId]
-  );
+  const result = await flashCardsDb.query(entriesQueries.select_flashcard_with_access, [
+    flashcardId,
+    userId,
+  ]);
 
   return result.rows[0] || null;
 }
@@ -139,10 +129,9 @@ export async function getFlashcard(flashcardId, userId) {
  */
 export async function updateFlashcard(flashcardId, userId, updates) {
   // Verify ownership
-  const checkResult = await flashCardsDb.query(
-    'SELECT created_by FROM flashcards WHERE flashcard_id = $1',
-    [flashcardId]
-  );
+  const checkResult = await flashCardsDb.query(entriesQueries.select_flashcard_owner, [
+    flashcardId,
+  ]);
 
   if (checkResult.rows.length === 0 || checkResult.rows[0].created_by !== userId) {
     return null;
@@ -168,8 +157,9 @@ export async function updateFlashcard(flashcardId, userId, updates) {
   values.push(flashcardId);
 
   const result = await flashCardsDb.query(
-    `UPDATE flashcards SET ${fields.join(', ')} WHERE flashcard_id = $${paramCount}
-     RETURNING flashcard_id, question, answer, lesson, category, class, is_private, created_at`,
+    entriesQueries.update_flashcard_template
+      .replace('{{columns}}', fields.join(', '))
+      .replace('{{flashcard_id}}', `$${paramCount}`),
     values
   );
 
@@ -183,10 +173,7 @@ export async function updateFlashcard(flashcardId, userId, updates) {
  * @returns {Promise<boolean>} True if deleted
  */
 export async function deleteFlashcard(flashcardId, userId) {
-  const result = await flashCardsDb.query(
-    'DELETE FROM flashcards WHERE flashcard_id = $1 AND created_by = $2',
-    [flashcardId, userId]
-  );
+  const result = await flashCardsDb.query(entriesQueries.delete_flashcard, [flashcardId, userId]);
 
   return result.rowCount > 0;
 }
@@ -200,10 +187,9 @@ export async function deleteFlashcard(flashcardId, userId) {
  */
 export async function shareFlashcard(flashcardId, ownerId, recipientId) {
   // Verify ownership
-  const checkResult = await flashCardsDb.query(
-    'SELECT created_by FROM flashcards WHERE flashcard_id = $1',
-    [flashcardId]
-  );
+  const checkResult = await flashCardsDb.query(entriesQueries.select_flashcard_owner, [
+    flashcardId,
+  ]);
 
   if (checkResult.rows.length === 0 || checkResult.rows[0].created_by !== ownerId) {
     throw new Error('Not authorized to share this flashcard');
@@ -215,14 +201,11 @@ export async function shareFlashcard(flashcardId, ownerId, recipientId) {
   }
 
   // Insert or update share (ON CONFLICT to handle existing shares)
-  const result = await flashCardsDb.query(
-    `INSERT INTO flashcard_shares (owner_id, recipient_id, flashcard_id, status, recipient_status)
-     VALUES ($1, $2, $3, 'active', 'pending')
-     ON CONFLICT (owner_id, recipient_id, flashcard_id) 
-     DO UPDATE SET status = 'active', recipient_status = COALESCE(flashcard_shares.recipient_status, 'pending')
-     RETURNING share_id, owner_id, recipient_id, flashcard_id, status, recipient_status, shared_at`,
-    [ownerId, recipientId, flashcardId]
-  );
+  const result = await flashCardsDb.query(entriesQueries.upsert_flashcard_share, [
+    ownerId,
+    recipientId,
+    flashcardId,
+  ]);
 
   return result.rows[0];
 }
@@ -235,12 +218,11 @@ export async function shareFlashcard(flashcardId, ownerId, recipientId) {
  * @returns {Promise<boolean>} True if revoked
  */
 export async function revokeShare(flashcardId, ownerId, recipientId) {
-  const result = await flashCardsDb.query(
-    `UPDATE flashcard_shares 
-     SET status = 'revoked', revoked_at = NOW()
-     WHERE flashcard_id = $1 AND owner_id = $2 AND recipient_id = $3`,
-    [flashcardId, ownerId, recipientId]
-  );
+  const result = await flashCardsDb.query(entriesQueries.revoke_flashcard_share, [
+    flashcardId,
+    ownerId,
+    recipientId,
+  ]);
 
   return result.rowCount > 0;
 }
@@ -252,13 +234,10 @@ export async function revokeShare(flashcardId, ownerId, recipientId) {
  * @returns {Promise<object>} Updated share
  */
 export async function acceptShare(shareId, recipientId) {
-  const result = await flashCardsDb.query(
-    `UPDATE flashcard_shares 
-     SET recipient_status = 'accepted', accepted_at = NOW()
-     WHERE share_id = $1 AND recipient_id = $2
-     RETURNING share_id, owner_id, recipient_id, flashcard_id, status, recipient_status`,
-    [shareId, recipientId]
-  );
+  const result = await flashCardsDb.query(entriesQueries.accept_flashcard_share, [
+    shareId,
+    recipientId,
+  ]);
 
   return result.rows[0] || null;
 }
@@ -271,13 +250,10 @@ export async function acceptShare(shareId, recipientId) {
  * Note: Rejection is not reported back to owner
  */
 export async function rejectShare(shareId, recipientId) {
-  const result = await flashCardsDb.query(
-    `UPDATE flashcard_shares 
-     SET recipient_status = 'rejected', rejected_at = NOW()
-     WHERE share_id = $1 AND recipient_id = $2
-     RETURNING share_id, owner_id, recipient_id, flashcard_id, status, recipient_status`,
-    [shareId, recipientId]
-  );
+  const result = await flashCardsDb.query(entriesQueries.reject_flashcard_share, [
+    shareId,
+    recipientId,
+  ]);
 
   return result.rows[0] || null;
 }
@@ -288,19 +264,7 @@ export async function rejectShare(shareId, recipientId) {
  * @returns {Promise<array>} Array of pending shares
  */
 export async function getPendingShares(recipientId) {
-  const result = await flashCardsDb.query(
-    `SELECT fs.share_id, fs.owner_id, fs.flashcard_id, fs.recipient_status, fs.shared_at,
-            u.username, u.full_name,
-            f.question, f.answer, f.lesson
-     FROM flashcard_shares fs
-     JOIN users u ON fs.owner_id = u.user_id
-     JOIN flashcards f ON fs.flashcard_id = f.flashcard_id
-     WHERE fs.recipient_id = $1 
-       AND fs.status != 'revoked'
-       AND fs.recipient_status = 'pending'
-     ORDER BY fs.shared_at DESC`,
-    [recipientId]
-  );
+  const result = await flashCardsDb.query(entriesQueries.select_pending_shares, [recipientId]);
 
   return result.rows;
 }
@@ -311,19 +275,7 @@ export async function getPendingShares(recipientId) {
  * @returns {Promise<array>} Array of accepted shares
  */
 export async function getAcceptedShares(recipientId) {
-  const result = await flashCardsDb.query(
-    `SELECT fs.share_id, fs.owner_id, fs.flashcard_id, fs.recipient_status, fs.accepted_at,
-            u.username, u.full_name,
-            f.question, f.answer, f.lesson, f.created_at
-     FROM flashcard_shares fs
-     JOIN users u ON fs.owner_id = u.user_id
-     JOIN flashcards f ON fs.flashcard_id = f.flashcard_id
-     WHERE fs.recipient_id = $1 
-       AND fs.status != 'revoked'
-       AND fs.recipient_status = 'accepted'
-     ORDER BY fs.accepted_at DESC`,
-    [recipientId]
-  );
+  const result = await flashCardsDb.query(entriesQueries.select_accepted_shares, [recipientId]);
 
   return result.rows;
 }
@@ -334,17 +286,51 @@ export async function getAcceptedShares(recipientId) {
  * @returns {Promise<array>} Array of shares
  */
 export async function getOwnedShares(ownerId) {
-  const result = await flashCardsDb.query(
-    `SELECT fs.share_id, fs.recipient_id, fs.flashcard_id, fs.status, fs.recipient_status, fs.shared_at,
-            u.username, u.full_name,
-            f.question, f.answer
-     FROM flashcard_shares fs
-     JOIN users u ON fs.recipient_id = u.user_id
-     JOIN flashcards f ON fs.flashcard_id = f.flashcard_id
-     WHERE fs.owner_id = $1
-     ORDER BY fs.shared_at DESC`,
-    [ownerId]
-  );
+  const result = await flashCardsDb.query(entriesQueries.select_owned_shares, [ownerId]);
 
   return result.rows;
+}
+
+/**
+ * Get distinct classes visible to a user (owned or created)
+ * @param {string} userId - User ID
+ * @returns {Promise<array>} Array of class names
+ */
+export async function getDistinctClasses(userId) {
+  const result = await flashCardsDb.query(entriesQueries.select_distinct_classes, [userId]);
+  return result.rows.map((row) => row.class);
+}
+
+/**
+ * Get distinct lessons visible to a user (owned or created)
+ * @param {string} userId - User ID
+ * @returns {Promise<array>} Array of lesson names
+ */
+export async function getDistinctLessons(userId) {
+  const result = await flashCardsDb.query(entriesQueries.select_distinct_lessons, [userId]);
+  return result.rows.map((row) => row.lesson);
+}
+
+/**
+ * Get distinct categories visible to a user (owned or created)
+ * @param {string} userId - User ID
+ * @returns {Promise<array>} Array of category names
+ */
+export async function getDistinctCategories(userId) {
+  const result = await flashCardsDb.query(entriesQueries.select_distinct_categories, [userId]);
+  return result.rows.map((row) => row.category);
+}
+
+/**
+ * Get distinct lessons for a specific class visible to a user
+ * @param {string} className - Class name
+ * @param {string} userId - User ID
+ * @returns {Promise<array>} Array of lesson names
+ */
+export async function getDistinctLessonsForClass(className, userId) {
+  const result = await flashCardsDb.query(entriesQueries.select_distinct_lessons_for_class, [
+    className,
+    userId,
+  ]);
+  return result.rows.map((row) => row.lesson);
 }

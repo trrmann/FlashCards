@@ -49,12 +49,7 @@ export class FlashCardsDatabase extends PostgresDatabase {
         }
       }
 
-      const result = await client.query(`
-        SELECT table_name 
-        FROM information_schema.tables 
-        WHERE table_schema = 'public'
-        ORDER BY table_name;
-      `);
+      const result = await client.query(this.constructor.introspectionQueries.list_public_tables);
 
       console.log(`Created ${result.rows.length} tables:`);
       result.rows.forEach((row) => {

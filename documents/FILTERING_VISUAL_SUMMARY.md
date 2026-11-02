@@ -223,7 +223,7 @@ const dueCards = await getDueCardsForToday(userId, filters);
 
 ### 6. Database Migration
 
-**File:** `src/scripts/js/modules/db/migrations.mjs` (lines 454-476)
+**File:** `src/scripts/js/modules/db/migrations.mjs` (lines 454-476) _(module since removed; schema now lives in `src/scripts/sql/pg/flashcards-postgres-schema.sql`)_
 
 ```javascript
 {

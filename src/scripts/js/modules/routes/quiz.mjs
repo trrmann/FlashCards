@@ -1,6 +1,11 @@
 import express from 'express';
 import { flashCardsDb } from '../db/flashCardsDb.mjs';
 
+const quizQueries = flashCardsDb.constructor.loadNamedSqlStatements(
+  'pg/quiz-queries.sql',
+  flashCardsDb.constructor.sqlRoot
+);
+
 const router = express.Router();
 
 /**
@@ -75,47 +80,34 @@ router.post('/start', async (req, res) => {
     if (req.query.category) filters.category = req.query.category;
 
     // Fetch user's flashcards
-    let flashcards;
-    if (Object.keys(filters).length > 0) {
-      // Build dynamic WHERE clause for filters
-      let whereClause = 'WHERE created_by = $1 AND is_private = true';
-      const params = [req.session.userId];
-      let paramIndex = 2;
+    const filterConditions = [];
+    const params = [req.session.userId];
+    let paramIndex = 2;
 
-      if (filters.class) {
-        whereClause += ` AND class = $${paramIndex}`;
-        params.push(filters.class);
-        paramIndex++;
-      }
-      if (filters.lesson) {
-        whereClause += ` AND lesson = $${paramIndex}`;
-        params.push(filters.lesson);
-        paramIndex++;
-      }
-      if (filters.category) {
-        whereClause += ` AND category = $${paramIndex}`;
-        params.push(filters.category);
-        paramIndex++;
-      }
-
-      const result = await flashCardsDb.query(
-        `SELECT flashcard_id, question, answer, difficulty_score 
-         FROM flashcards 
-         ${whereClause}
-         ORDER BY RANDOM()`,
-        params
-      );
-      flashcards = result.rows;
-    } else {
-      const result = await flashCardsDb.query(
-        `SELECT flashcard_id, question, answer, difficulty_score 
-         FROM flashcards 
-         WHERE created_by = $1 AND is_private = true
-         ORDER BY RANDOM()`,
-        [req.session.userId]
-      );
-      flashcards = result.rows;
+    if (filters.class) {
+      filterConditions.push(`AND class = $${paramIndex}`);
+      params.push(filters.class);
+      paramIndex++;
     }
+    if (filters.lesson) {
+      filterConditions.push(`AND lesson = $${paramIndex}`);
+      params.push(filters.lesson);
+      paramIndex++;
+    }
+    if (filters.category) {
+      filterConditions.push(`AND category = $${paramIndex}`);
+      params.push(filters.category);
+      paramIndex++;
+    }
+
+    const result = await flashCardsDb.query(
+      quizQueries.select_quiz_cards_template.replace(
+        '{{filter_clause}}',
+        filterConditions.join('\n  ')
+      ),
+      params
+    );
+    const flashcards = result.rows;
 
     if (flashcards.length === 0) {
       return res.status(400).json({
@@ -128,26 +120,21 @@ router.post('/start', async (req, res) => {
     const selectedQuestions = selectRandomQuestions(flashcards, flashcards.length);
 
     // Create a new quiz record
-    const quizResult = await flashCardsDb.query(
-      `INSERT INTO quizzes (user_id, name, description) 
-       VALUES ($1, $2, $3) 
-       RETURNING quiz_id`,
-      [
-        req.session.userId,
-        `Quiz - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`,
-        Object.keys(filters).length > 0 ? JSON.stringify(filters) : null,
-      ]
-    );
+    const quizResult = await flashCardsDb.query(quizQueries.insert_quiz, [
+      req.session.userId,
+      `Quiz - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`,
+      Object.keys(filters).length > 0 ? JSON.stringify(filters) : null,
+    ]);
 
     const quizId = quizResult.rows[0].quiz_id;
 
     // Add selected questions to quiz_questions table
     for (let i = 0; i < selectedQuestions.length; i++) {
-      await flashCardsDb.query(
-        `INSERT INTO quiz_questions (quiz_id, card_id, order_index) 
-         VALUES ($1, $2, $3)`,
-        [quizId, selectedQuestions[i].flashcard_id, i + 1]
-      );
+      await flashCardsDb.query(quizQueries.insert_quiz_question, [
+        quizId,
+        selectedQuestions[i].flashcard_id,
+        i + 1,
+      ]);
     }
 
     return res.status(200).json({
@@ -189,10 +176,10 @@ router.post('/:quizId/submit', async (req, res) => {
     }
 
     // Verify quiz belongs to user
-    const quizCheck = await flashCardsDb.query(
-      'SELECT quiz_id FROM quizzes WHERE quiz_id = $1 AND user_id = $2',
-      [quizId, req.session.userId]
-    );
+    const quizCheck = await flashCardsDb.query(quizQueries.select_quiz_owned, [
+      quizId,
+      req.session.userId,
+    ]);
 
     if (quizCheck.rows.length === 0) {
       return res.status(404).json({
@@ -207,12 +194,13 @@ router.post('/:quizId/submit', async (req, res) => {
     const score = Math.round((correctAnswers / totalQuestions) * 100);
 
     // Store quiz result
-    const resultInsert = await flashCardsDb.query(
-      `INSERT INTO quiz_results (user_id, quiz_id, score, total_questions, correct_answers) 
-       VALUES ($1, $2, $3, $4, $5) 
-       RETURNING result_id, score, correct_answers, total_questions`,
-      [req.session.userId, quizId, score, totalQuestions, correctAnswers]
-    );
+    const resultInsert = await flashCardsDb.query(quizQueries.insert_quiz_result, [
+      req.session.userId,
+      quizId,
+      score,
+      totalQuestions,
+      correctAnswers,
+    ]);
 
     const result = resultInsert.rows[0];
 
@@ -240,22 +228,9 @@ router.get('/history', async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const result = await flashCardsDb.query(
-      `SELECT 
-        q.quiz_id,
-        q.name,
-        q.description,
-        q.created_at,
-        MAX(qr.score) as best_score,
-        COUNT(DISTINCT qr.result_id) as attempt_count,
-        qr.taken_at as last_taken
-      FROM quizzes q
-      LEFT JOIN quiz_results qr ON q.quiz_id = qr.quiz_id
-      WHERE q.user_id = $1
-      GROUP BY q.quiz_id, q.name, q.description, q.created_at, qr.taken_at
-      ORDER BY q.created_at DESC`,
-      [req.session.userId]
-    );
+    const result = await flashCardsDb.query(quizQueries.select_quizzes_with_results, [
+      req.session.userId,
+    ]);
 
     return res.status(200).json({
       status: 'success',
@@ -280,10 +255,10 @@ router.get('/:quizId/results', async (req, res) => {
     const { quizId } = req.params;
 
     // Verify quiz belongs to user
-    const quizCheck = await flashCardsDb.query(
-      'SELECT quiz_id FROM quizzes WHERE quiz_id = $1 AND user_id = $2',
-      [quizId, req.session.userId]
-    );
+    const quizCheck = await flashCardsDb.query(quizQueries.select_quiz_owned, [
+      quizId,
+      req.session.userId,
+    ]);
 
     if (quizCheck.rows.length === 0) {
       return res.status(404).json({
@@ -293,13 +268,7 @@ router.get('/:quizId/results', async (req, res) => {
     }
 
     // Get all results for this quiz
-    const results = await flashCardsDb.query(
-      `SELECT result_id, score, correct_answers, total_questions, taken_at
-       FROM quiz_results 
-       WHERE quiz_id = $1
-       ORDER BY taken_at DESC`,
-      [quizId]
-    );
+    const results = await flashCardsDb.query(quizQueries.select_quiz_results, [quizId]);
 
     // Get best score
     const bestResult = results.rows[0];
@@ -327,12 +296,9 @@ router.get('/metadata/classes', async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const result = await flashCardsDb.query(
-      `SELECT DISTINCT class FROM flashcards 
-       WHERE class IS NOT NULL AND created_by = $1
-       ORDER BY class ASC`,
-      [req.session.userId]
-    );
+    const result = await flashCardsDb.query(quizQueries.select_distinct_classes, [
+      req.session.userId,
+    ]);
 
     return res.status(200).json({
       status: 'success',
@@ -356,12 +322,10 @@ router.get('/metadata/lessons/:className', async (req, res) => {
 
     const { className } = req.params;
 
-    const result = await flashCardsDb.query(
-      `SELECT DISTINCT lesson FROM flashcards 
-       WHERE lesson IS NOT NULL AND class = $1 AND created_by = $2
-       ORDER BY lesson ASC`,
-      [encodeURIComponent(className), req.session.userId]
-    );
+    const result = await flashCardsDb.query(quizQueries.select_distinct_lessons_for_class, [
+      encodeURIComponent(className),
+      req.session.userId,
+    ]);
 
     return res.status(200).json({
       status: 'success',
@@ -383,12 +347,9 @@ router.get('/metadata/categories', async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const result = await flashCardsDb.query(
-      `SELECT DISTINCT category FROM flashcards 
-       WHERE category IS NOT NULL AND created_by = $1
-       ORDER BY category ASC`,
-      [req.session.userId]
-    );
+    const result = await flashCardsDb.query(quizQueries.select_distinct_categories, [
+      req.session.userId,
+    ]);
 
     return res.status(200).json({
       status: 'success',

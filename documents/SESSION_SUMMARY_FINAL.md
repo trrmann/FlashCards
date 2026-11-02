@@ -180,7 +180,7 @@ Difficulty reflects current performance
 
 | File                                       | Changes                                   | Lines |
 | ------------------------------------------ | ----------------------------------------- | ----- |
-| src/scripts/js/modules/db/migrations.mjs   | 2 new migrations (sessions, difficulty)   | +73   |
+| src/scripts/js/modules/db/migrations.mjs   | 2 new migrations (sessions, difficulty); module since removed - schema now in src/scripts/sql/pg | +73   |
 | src/scripts/js/modules/auth/practice.mjs   | 8 new functions (sessions + difficulty)   | +392  |
 | src/scripts/js/modules/routes/practice.mjs | Updated answer endpoint + 3 new endpoints | +120  |
 | src/views/practice.ejs                     | Session tracking + attempt counter UI     | +35   |

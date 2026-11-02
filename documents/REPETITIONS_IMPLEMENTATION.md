@@ -292,7 +292,7 @@ if (data.session && data.session.needsMoreAttempts) {
 
 ## Files Modified
 
-- ✅ `src/scripts/js/modules/db/migrations.mjs` - Added 2 new migrations
+- ✅ `src/scripts/js/modules/db/migrations.mjs` - Added 2 new migrations _(module since removed; schema now lives in `src/scripts/sql/pg/flashcards-postgres-schema.sql`)_
 - ✅ `src/scripts/js/modules/auth/practice.mjs` - Added 5 new session-aware functions
 - ✅ `src/scripts/js/modules/routes/practice.mjs` - Updated /api/practice/answer endpoint and imports
 - ✅ `src/views/practice.ejs` - Added session tracking and attempt counter display

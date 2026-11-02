@@ -6,31 +6,10 @@
 import { flashCardsDb } from '../db/flashCardsDb.mjs';
 import { hashPassword, comparePassword } from './validator.mjs';
 
-const authQueryStatements = flashCardsDb.constructor.loadSqlStatements(
+const authSqlQueries = flashCardsDb.constructor.loadNamedSqlStatements(
   'pg/auth-user-queries.sql',
   flashCardsDb.constructor.sqlRoot
 );
-
-const authSqlQueries = {
-  create_user: authQueryStatements[0],
-  find_user_by_username: authQueryStatements[1],
-  find_user_by_email: authQueryStatements[2],
-  find_user_by_id: authQueryStatements[3],
-  update_user_profile_template: authQueryStatements[4],
-  get_all_users: authQueryStatements[5],
-  disable_user: authQueryStatements[6],
-  enable_user: authQueryStatements[7],
-  delete_import_export_logs: authQueryStatements[8],
-  delete_quiz_results: authQueryStatements[9],
-  delete_quiz_questions: authQueryStatements[10],
-  delete_quizzes: authQueryStatements[11],
-  delete_leitner_boxes: authQueryStatements[12],
-  delete_flashcards: authQueryStatements[13],
-  delete_user: authQueryStatements[14],
-  get_is_admin: authQueryStatements[15],
-  update_last_page_visited: authQueryStatements[16],
-  get_last_page_visited: authQueryStatements[17],
-};
 
 class UserAuthService {
   constructor(database = flashCardsDb) {
@@ -174,6 +153,29 @@ class UserAuthService {
   async isEmailAvailable(email) {
     const user = await this.findUserByEmail(email);
     return !user;
+  }
+
+  async countUsers() {
+    const result = await this.database.query(authSqlQueries.count_users);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  async setUserAdmin(userId) {
+    await this.database.query(authSqlQueries.set_user_admin, [userId]);
+  }
+
+  async updateUserPassword(userId, newPassword) {
+    const passwordHash = await hashPassword(newPassword);
+    const result = await this.database.query(authSqlQueries.update_user_password, [
+      passwordHash,
+      userId,
+    ]);
+    return result.rows[0] || null;
+  }
+
+  async getUserDisplayInfo(userId) {
+    const result = await this.database.query(authSqlQueries.get_user_display, [userId]);
+    return result.rows[0] || null;
   }
 }
 

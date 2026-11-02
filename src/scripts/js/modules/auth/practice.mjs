@@ -7,6 +7,11 @@
 
 import { flashCardsDb } from '../db/flashCardsDb.mjs';
 
+const practiceQueries = flashCardsDb.constructor.loadNamedSqlStatements(
+  'pg/practice-queries.sql',
+  flashCardsDb.constructor.sqlRoot
+);
+
 /**
  * Convert filter pattern to SQL LIKE pattern with wildcard support
  * "Bio*" becomes "Bio%" for SQL LIKE
@@ -48,14 +53,11 @@ export function getCardRepetitionsNeeded(boxNumber) {
  * @returns {Promise<number>} Number of attempts in current session
  */
 export async function getSessionAttemptCount(userId, flashcardId, sessionStartTime) {
-  const result = await flashCardsDb.query(
-    `SELECT COUNT(*) as attempt_count 
-     FROM session_card_attempts
-     WHERE user_id = $1 
-     AND flashcard_id = $2 
-     AND session_start_time = $3`,
-    [userId, flashcardId, sessionStartTime]
-  );
+  const result = await flashCardsDb.query(practiceQueries.count_session_attempts, [
+    userId,
+    flashcardId,
+    sessionStartTime,
+  ]);
   return parseInt(result.rows[0].attempt_count) || 0;
 }
 
@@ -77,13 +79,14 @@ export async function trackSessionAttempt(
   wasCorrect,
   responseTimeMs = null
 ) {
-  const result = await flashCardsDb.query(
-    `INSERT INTO session_card_attempts 
-     (flashcard_id, user_id, session_start_time, attempt_number, was_correct, response_time_ms)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING *`,
-    [flashcardId, userId, sessionStartTime, attemptNumber, wasCorrect, responseTimeMs]
-  );
+  const result = await flashCardsDb.query(practiceQueries.insert_session_attempt, [
+    flashcardId,
+    userId,
+    sessionStartTime,
+    attemptNumber,
+    wasCorrect,
+    responseTimeMs,
+  ]);
   return result.rows[0];
 }
 
@@ -116,24 +119,20 @@ export async function checkNeedsMoreAttempts(userId, flashcardId, boxNumber, ses
  */
 export async function initializeLeitnerForFlashcard(userId, flashcardId) {
   // Check if already initialized
-  const existingResult = await flashCardsDb.query(
-    `SELECT * FROM flashcard_leitner_progress 
-     WHERE user_id = $1 AND flashcard_id = $2`,
-    [userId, flashcardId]
-  );
+  const existingResult = await flashCardsDb.query(practiceQueries.select_leitner_progress, [
+    flashcardId,
+    userId,
+  ]);
 
   if (existingResult.rows.length > 0) {
     return existingResult.rows[0];
   }
 
   // Initialize new progress record (starts in Box 1)
-  const result = await flashCardsDb.query(
-    `INSERT INTO flashcard_leitner_progress 
-     (flashcard_id, user_id, current_box, last_reviewed, next_review, times_correct, times_incorrect)
-     VALUES ($1, $2, 1, NULL, NOW(), 0, 0)
-     RETURNING *`,
-    [flashcardId, userId]
-  );
+  const result = await flashCardsDb.query(practiceQueries.insert_leitner_progress, [
+    flashcardId,
+    userId,
+  ]);
 
   return result.rows[0];
 }
@@ -144,17 +143,9 @@ export async function initializeLeitnerForFlashcard(userId, flashcardId) {
  * @returns {Promise<number>} Number of cards initialized
  */
 export async function initializeAllCardsForUser(userId) {
-  const result = await flashCardsDb.query(
-    `INSERT INTO flashcard_leitner_progress (flashcard_id, user_id, current_box, last_reviewed, next_review, times_correct, times_incorrect)
-     SELECT flashcard_id, $1, 1, NULL, NOW(), 0, 0
-     FROM flashcards
-     WHERE created_by = $1
-     AND flashcard_id NOT IN (
-       SELECT flashcard_id FROM flashcard_leitner_progress WHERE user_id = $1
-     )
-     RETURNING id`,
-    [userId]
-  );
+  const result = await flashCardsDb.query(practiceQueries.insert_leitner_progress_for_all_cards, [
+    userId,
+  ]);
 
   return result.rows.length;
 }
@@ -224,37 +215,13 @@ export async function getDueCardsForToday(userId, filters = {}) {
 
   const filterClause = filterConditions.length > 0 ? 'AND ' + filterConditions.join(' AND ') : '';
 
-  console.log(
-    `[DEBUG] getDueCardsForToday - Filters: class=${filters.class}, lesson=${filters.lesson}, category=${filters.category}`,
-    `Filter patterns: class=${classPattern}, lesson=${lessonPattern}, category=${categoryPattern}`,
-    `SQL WHERE: (${boxCondition}) ${filterClause}`,
-    `Query params:`,
-    queryParams
-  );
-
   const result = await flashCardsDb.query(
-    `SELECT f.*, p.current_box, p.times_correct, p.times_incorrect, p.last_reviewed, p.next_review
-     FROM flashcards f
-     JOIN flashcard_leitner_progress p ON f.flashcard_id = p.flashcard_id
-     WHERE f.created_by = $1
-     AND (${boxCondition})
-     AND (p.next_review IS NULL OR p.next_review <= NOW())
-     ${filterClause}
-     ORDER BY p.current_box ASC, p.last_reviewed ASC NULLS FIRST`,
+    practiceQueries.select_due_cards_template
+      .replace('{{box_condition}}', boxCondition)
+      .replace('{{filter_clause}}', filterClause),
     queryParams
   );
 
-  console.log(`[DEBUG] getDueCardsForToday - ACTUAL SQL QUERY:`);
-  console.log(
-    `  SELECT f.*, p.current_box, p.times_correct, p.times_incorrect, p.last_reviewed, p.next_review`
-  );
-  console.log(`  FROM flashcards f`);
-  console.log(`  JOIN flashcard_leitner_progress p ON f.flashcard_id = p.flashcard_id`);
-  console.log(`  WHERE f.created_by = $1 (${userId})`);
-  console.log(`  AND (${boxCondition})`);
-  console.log(`  AND (p.next_review IS NULL OR p.next_review <= NOW())`);
-  console.log(`  ${filterClause}`);
-  console.log(`  Query params:`, queryParams);
   console.log(`[DEBUG] getDueCardsForToday - Result count: ${result.rows.length}`);
 
   return result.rows;
@@ -267,14 +234,7 @@ export async function getDueCardsForToday(userId, filters = {}) {
  * @returns {Promise<array>} Array of flashcards in the box
  */
 export async function getCardsInBox(userId, boxNumber) {
-  const result = await flashCardsDb.query(
-    `SELECT f.*, p.current_box, p.times_correct, p.times_incorrect, p.last_reviewed, p.next_review
-     FROM flashcards f
-     JOIN flashcard_leitner_progress p ON f.flashcard_id = p.flashcard_id
-     WHERE f.created_by = $1 AND p.current_box = $2
-     ORDER BY p.last_reviewed ASC NULLS FIRST`,
-    [userId, boxNumber]
-  );
+  const result = await flashCardsDb.query(practiceQueries.select_cards_in_box, [userId, boxNumber]);
 
   return result.rows;
 }
@@ -304,16 +264,7 @@ export async function getNextPracticeCard(userId) {
  */
 export async function getNextCatchUpCard(userId) {
   // Get any card from boxes 1 or 2 (not mastered)
-  const result = await flashCardsDb.query(
-    `SELECT f.*, p.current_box, p.times_correct, p.times_incorrect, p.last_reviewed, p.next_review
-     FROM flashcards f
-     JOIN flashcard_leitner_progress p ON f.flashcard_id = p.flashcard_id
-     WHERE f.created_by = $1
-     AND (p.current_box = 1 OR p.current_box = 2)
-     ORDER BY RANDOM()
-     LIMIT 1`,
-    [userId]
-  );
+  const result = await flashCardsDb.query(practiceQueries.select_catch_up_card, [userId]);
 
   if (result.rows.length === 0) {
     return null;
@@ -338,12 +289,10 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
   );
 
   // Get the none_of_above_count for this card
-  const progressResult = await flashCardsDb.query(
-    `SELECT none_of_above_count, times_correct, times_incorrect 
-     FROM flashcard_leitner_progress 
-     WHERE flashcard_id = $1 AND user_id = $2`,
-    [correctCard.flashcard_id, userId]
-  );
+  const progressResult = await flashCardsDb.query(practiceQueries.select_leitner_counters, [
+    correctCard.flashcard_id,
+    userId,
+  ]);
 
   let noneOfAboveCount = 0;
   let totalAttempts = 0;
@@ -363,29 +312,14 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
     // Standard mode: show correct answer with wrong answers as distractors
     // Wrong answers must match class AND category (but can be different lesson)
     // Use COALESCE to handle NULL values: NULL = NULL should match
-    const wrongAnswersResult = await flashCardsDb.query(
-      `SELECT answer 
-       FROM (
-         SELECT DISTINCT answer 
-         FROM flashcards 
-         WHERE created_by = $1 
-         AND flashcard_id != $2 
-         AND answer IS NOT NULL
-         AND answer != $3
-         AND COALESCE(class, '') = COALESCE($4, '')
-         AND COALESCE(category, '') = COALESCE($5, '')
-       ) AS distinct_answers
-       ORDER BY RANDOM() 
-       LIMIT $6`,
-      [
-        userId,
-        correctCard.flashcard_id,
-        correctCard.answer,
-        correctCard.class,
-        correctCard.category,
-        optionCount - 1,
-      ]
-    );
+    const wrongAnswersResult = await flashCardsDb.query(practiceQueries.select_wrong_answers, [
+      userId,
+      correctCard.flashcard_id,
+      correctCard.answer,
+      correctCard.class,
+      correctCard.category,
+      optionCount - 1,
+    ]);
 
     options.push({ text: correctCard.answer, isCorrect: true });
     wrongAnswersResult.rows.forEach((row) => {
@@ -399,29 +333,14 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
     // "None of the above" mode: show wrong answers only, with "None of the above" as correct option
     // Wrong answers must match class AND category (but can be different lesson)
     // Use COALESCE to handle NULL values: NULL = NULL should match
-    const wrongAnswersResult = await flashCardsDb.query(
-      `SELECT answer 
-       FROM (
-         SELECT DISTINCT answer 
-         FROM flashcards 
-         WHERE created_by = $1 
-         AND flashcard_id != $2 
-         AND answer IS NOT NULL
-         AND answer != $3
-         AND COALESCE(class, '') = COALESCE($4, '')
-         AND COALESCE(category, '') = COALESCE($5, '')
-       ) AS distinct_answers
-       ORDER BY RANDOM() 
-       LIMIT $6`,
-      [
-        userId,
-        correctCard.flashcard_id,
-        correctCard.answer,
-        correctCard.class,
-        correctCard.category,
-        optionCount - 1,
-      ]
-    );
+    const wrongAnswersResult = await flashCardsDb.query(practiceQueries.select_wrong_answers, [
+      userId,
+      correctCard.flashcard_id,
+      correctCard.answer,
+      correctCard.class,
+      correctCard.category,
+      optionCount - 1,
+    ]);
 
     wrongAnswersResult.rows.forEach((row) => {
       options.push({ text: row.answer, isCorrect: false });
@@ -480,10 +399,9 @@ export async function recordPracticeAttempt(
   filterContext = null
 ) {
   // Get the flashcard to access its class, lesson, category
-  const cardResult = await flashCardsDb.query(
-    `SELECT class, lesson, category FROM flashcards WHERE flashcard_id = $1`,
-    [flashcardId]
-  );
+  const cardResult = await flashCardsDb.query(practiceQueries.select_card_classification, [
+    flashcardId,
+  ]);
 
   let cardClass = null;
   let cardLesson = null;
@@ -504,20 +422,21 @@ export async function recordPracticeAttempt(
   }
 
   // Record in history with filter context
-  await flashCardsDb.query(
-    `INSERT INTO practice_history (flashcard_id, user_id, leitner_box, correct, response_time_ms, class, lesson, category)
-     SELECT $1, $2, p.current_box, $3, $4, $5, $6, $7
-     FROM flashcard_leitner_progress p
-     WHERE p.flashcard_id = $1 AND p.user_id = $2`,
-    [flashcardId, userId, isCorrect, responseTimeMs, cardClass, cardLesson, cardCategory]
-  );
+  await flashCardsDb.query(practiceQueries.insert_practice_history_from_progress, [
+    flashcardId,
+    userId,
+    isCorrect,
+    responseTimeMs,
+    cardClass,
+    cardLesson,
+    cardCategory,
+  ]);
 
   // Get current progress
-  const currentResult = await flashCardsDb.query(
-    `SELECT * FROM flashcard_leitner_progress 
-     WHERE flashcard_id = $1 AND user_id = $2`,
-    [flashcardId, userId]
-  );
+  const currentResult = await flashCardsDb.query(practiceQueries.select_leitner_progress, [
+    flashcardId,
+    userId,
+  ]);
 
   if (currentResult.rows.length === 0) {
     return null;
@@ -542,18 +461,14 @@ export async function recordPracticeAttempt(
 
   // Update progress with new box and schedule next review
   const nextReview = calculateNextReviewDate(newBox);
-  const updateResult = await flashCardsDb.query(
-    `UPDATE flashcard_leitner_progress
-     SET current_box = $1,
-         last_reviewed = NOW(),
-         next_review = $2,
-         times_correct = $3,
-         times_incorrect = $4,
-         updated_at = NOW()
-     WHERE flashcard_id = $5 AND user_id = $6
-     RETURNING *`,
-    [newBox, nextReview, newTimesCorrect, newTimesIncorrect, flashcardId, userId]
-  );
+  const updateResult = await flashCardsDb.query(practiceQueries.update_leitner_after_attempt, [
+    newBox,
+    nextReview,
+    newTimesCorrect,
+    newTimesIncorrect,
+    flashcardId,
+    userId,
+  ]);
 
   // Update difficulty score in background (non-blocking)
   // This allows difficulty to adapt automatically as users practice
@@ -585,11 +500,10 @@ export async function recordPracticeAttemptWithSession(
   filterContext = null
 ) {
   // Get current box before any updates
-  const currentResult = await flashCardsDb.query(
-    `SELECT current_box FROM flashcard_leitner_progress 
-     WHERE flashcard_id = $1 AND user_id = $2`,
-    [flashcardId, userId]
-  );
+  const currentResult = await flashCardsDb.query(practiceQueries.select_current_box, [
+    flashcardId,
+    userId,
+  ]);
 
   if (currentResult.rows.length === 0) {
     return null;
@@ -621,10 +535,9 @@ export async function recordPracticeAttemptWithSession(
   }
 
   // Get the flashcard to access its class, lesson, category
-  const cardResult = await flashCardsDb.query(
-    `SELECT class, lesson, category FROM flashcards WHERE flashcard_id = $1`,
-    [flashcardId]
-  );
+  const cardResult = await flashCardsDb.query(practiceQueries.select_card_classification, [
+    flashcardId,
+  ]);
 
   let cardClass = null;
   let cardLesson = null;
@@ -646,21 +559,16 @@ export async function recordPracticeAttemptWithSession(
 
   // Record in practice history with filter context
   try {
-    const historyResult = await flashCardsDb.query(
-      `INSERT INTO practice_history (flashcard_id, user_id, leitner_box, correct, response_time_ms, class, lesson, category)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING id`,
-      [
-        flashcardId,
-        userId,
-        currentBox,
-        isCorrect,
-        responseTimeMs,
-        cardClass,
-        cardLesson,
-        cardCategory,
-      ]
-    );
+    const historyResult = await flashCardsDb.query(practiceQueries.insert_practice_history, [
+      flashcardId,
+      userId,
+      currentBox,
+      isCorrect,
+      responseTimeMs,
+      cardClass,
+      cardLesson,
+      cardCategory,
+    ]);
     console.log(
       `[practice_history] Success - recorded with id: ${historyResult.rows[0]?.id}, filter: class=${cardClass}, lesson=${cardLesson}, category=${cardCategory}`
     );
@@ -675,11 +583,10 @@ export async function recordPracticeAttemptWithSession(
 
   // Update attempt counts EVERY time (not just when complete)
   // This ensures times_correct and times_incorrect are tracked per attempt
-  const progressResult = await flashCardsDb.query(
-    `SELECT * FROM flashcard_leitner_progress 
-     WHERE flashcard_id = $1 AND user_id = $2`,
-    [flashcardId, userId]
-  );
+  const progressResult = await flashCardsDb.query(practiceQueries.select_leitner_progress, [
+    flashcardId,
+    userId,
+  ]);
 
   if (progressResult.rows.length > 0) {
     const current = progressResult.rows[0];
@@ -697,15 +604,11 @@ export async function recordPracticeAttemptWithSession(
     if (!needsMoreAttempts) {
       // All attempts done - now determine box progression based on overall session performance
       // Count correct vs incorrect in this entire session
-      const sessionStatsResult = await flashCardsDb.query(
-        `SELECT 
-           SUM(CASE WHEN was_correct THEN 1 ELSE 0 END) as session_correct,
-           SUM(CASE WHEN NOT was_correct THEN 1 ELSE 0 END) as session_incorrect,
-           COUNT(*) as total_attempts
-         FROM session_card_attempts
-         WHERE flashcard_id = $1 AND user_id = $2 AND session_start_time = $3`,
-        [flashcardId, userId, sessionStartTime]
-      );
+      const sessionStatsResult = await flashCardsDb.query(practiceQueries.select_session_stats, [
+        flashcardId,
+        userId,
+        sessionStartTime,
+      ]);
 
       const sessionStats = sessionStatsResult.rows[0] || {};
       const sessionCorrect = parseInt(sessionStats.session_correct) || 0;
@@ -738,30 +641,25 @@ export async function recordPracticeAttemptWithSession(
 
     if (!needsMoreAttempts) {
       // Session complete - update all fields
-      await flashCardsDb.query(
-        `UPDATE flashcard_leitner_progress
-         SET times_correct = $1,
-             times_incorrect = $2,
-             current_box = $3,
-             last_reviewed = NOW(),
-             next_review = $4,
-             updated_at = NOW()
-         WHERE flashcard_id = $5 AND user_id = $6`,
-        [newTimesCorrect, newTimesIncorrect, newBox, nextReview, flashcardId, userId]
-      );
+      await flashCardsDb.query(practiceQueries.update_leitner_session_complete, [
+        newTimesCorrect,
+        newTimesIncorrect,
+        newBox,
+        nextReview,
+        flashcardId,
+        userId,
+      ]);
       console.log(
         `[recordPracticeAttemptWithSession] Session complete update: correct=${newTimesCorrect}, incorrect=${newTimesIncorrect}, box=${newBox}`
       );
     } else {
       // Session in progress - update only attempt counts
-      await flashCardsDb.query(
-        `UPDATE flashcard_leitner_progress
-         SET times_correct = $1,
-             times_incorrect = $2,
-             updated_at = NOW()
-         WHERE flashcard_id = $3 AND user_id = $4`,
-        [newTimesCorrect, newTimesIncorrect, flashcardId, userId]
-      );
+      await flashCardsDb.query(practiceQueries.update_leitner_mid_session, [
+        newTimesCorrect,
+        newTimesIncorrect,
+        flashcardId,
+        userId,
+      ]);
       console.log(
         `[recordPracticeAttemptWithSession] Mid-session update: correct=${newTimesCorrect}, incorrect=${newTimesIncorrect}`
       );
@@ -855,13 +753,7 @@ export async function getProgressStats(userId, filters = {}) {
 
   // Count cards in each box with filters applied
   const boxCountsResult = await flashCardsDb.query(
-    `SELECT p.current_box, COUNT(*) as count
-     FROM flashcard_leitner_progress p
-     JOIN flashcards f ON p.flashcard_id = f.flashcard_id
-     WHERE p.user_id = $1
-     ${filterClause}
-     GROUP BY p.current_box
-     ORDER BY p.current_box`,
+    practiceQueries.select_box_counts_template.replace('{{filter_clause}}', filterClause),
     queryParams
   );
 
@@ -881,14 +773,7 @@ export async function getProgressStats(userId, filters = {}) {
   // practice_history filter fields (ph.class, ph.lesson, ph.category) which represent
   // what filters were active when the attempt was made, not the card's actual properties
   const attemptsResult = await flashCardsDb.query(
-    `SELECT 
-       SUM(CASE WHEN ph.correct THEN 1 ELSE 0 END) as total_correct,
-       SUM(CASE WHEN NOT ph.correct THEN 1 ELSE 0 END) as total_incorrect,
-       COUNT(*) as total_attempts
-     FROM practice_history ph
-     JOIN flashcards f ON ph.flashcard_id = f.flashcard_id
-     WHERE ph.user_id = $1
-     ${filterClause}`,
+    practiceQueries.select_attempt_totals_template.replace('{{filter_clause}}', filterClause),
     queryParams
   );
 
@@ -919,14 +804,7 @@ export async function getProgressStats(userId, filters = {}) {
  */
 export async function getPracticeStreak(userId) {
   // Get recent practice attempts ordered by date
-  const result = await flashCardsDb.query(
-    `SELECT correct, created_at
-     FROM practice_history
-     WHERE user_id = $1
-     ORDER BY created_at DESC
-     LIMIT 100`,
-    [userId]
-  );
+  const result = await flashCardsDb.query(practiceQueries.select_recent_practice_results, [userId]);
 
   // Count consecutive correct answers from most recent
   let streak = 0;
@@ -1022,14 +900,7 @@ export async function getTodaysSummary(userId, filters = {}) {
 
   // Get today's practice attempts (with filters applied)
   const todayResult = await flashCardsDb.query(
-    `SELECT COUNT(*) as attempts,
-            SUM(CASE WHEN correct THEN 1 ELSE 0 END) as correct,
-            SUM(CASE WHEN NOT correct THEN 1 ELSE 0 END) as incorrect
-     FROM practice_history ph
-     LEFT JOIN flashcards f ON ph.flashcard_id = f.flashcard_id
-     WHERE ph.user_id = $1
-     AND DATE(ph.created_at) = CURRENT_DATE
-     ${filterClause}`,
+    practiceQueries.select_todays_summary_template.replace('{{filter_clause}}', filterClause),
     queryParams
   );
 
@@ -1051,18 +922,7 @@ export async function getTodaysSummary(userId, filters = {}) {
  */
 export async function resetUserLeitnerStats(userId) {
   // Reset all Leitner progress for this user's cards
-  const result = await flashCardsDb.query(
-    `UPDATE flashcard_leitner_progress
-     SET current_box = 1,
-         last_reviewed = NULL,
-         next_review = NOW(),
-         times_correct = 0,
-         times_incorrect = 0,
-         none_of_above_count = 0
-     WHERE user_id = $1
-     RETURNING flashcard_id`,
-    [userId]
-  );
+  const result = await flashCardsDb.query(practiceQueries.reset_user_leitner_progress, [userId]);
 
   return {
     cardsReset: result.rows.length,
@@ -1103,10 +963,7 @@ function calculateDifficultyFromSuccessRate(successRate) {
 export async function updateDifficultyScore(flashcardId, _userId = null) {
   try {
     // Get flashcard info
-    const cardResult = await flashCardsDb.query(
-      `SELECT is_private, created_by FROM flashcards WHERE flashcard_id = $1`,
-      [flashcardId]
-    );
+    const cardResult = await flashCardsDb.query(practiceQueries.select_card_privacy, [flashcardId]);
 
     if (cardResult.rows.length === 0) {
       return { error: 'Flashcard not found' };
@@ -1115,10 +972,9 @@ export async function updateDifficultyScore(flashcardId, _userId = null) {
     const { is_private, created_by } = cardResult.rows[0];
 
     // Get current difficulty
-    const currentResult = await flashCardsDb.query(
-      `SELECT difficulty_score FROM flashcards WHERE flashcard_id = $1`,
-      [flashcardId]
-    );
+    const currentResult = await flashCardsDb.query(practiceQueries.select_card_difficulty_score, [
+      flashcardId,
+    ]);
     const oldScore = currentResult.rows[0].difficulty_score;
 
     let successRate = 0;
@@ -1127,12 +983,10 @@ export async function updateDifficultyScore(flashcardId, _userId = null) {
 
     if (is_private) {
       // Private card: use only the owner's data
-      const ownerStats = await flashCardsDb.query(
-        `SELECT COUNT(*) as total, SUM(CASE WHEN correct THEN 1 ELSE 0 END) as correct
-         FROM practice_history
-         WHERE flashcard_id = $1 AND user_id = $2`,
-        [flashcardId, created_by]
-      );
+      const ownerStats = await flashCardsDb.query(practiceQueries.select_owner_practice_stats, [
+        flashcardId,
+        created_by,
+      ]);
 
       sampleSize = parseInt(ownerStats.rows[0].total) || 0;
       const correctCount = parseInt(ownerStats.rows[0].correct) || 0;
@@ -1140,12 +994,9 @@ export async function updateDifficultyScore(flashcardId, _userId = null) {
       calculationBasis = `Owner only (${sampleSize} attempts)`;
     } else {
       // Shared card: use all users' data
-      const sharedStats = await flashCardsDb.query(
-        `SELECT COUNT(*) as total, SUM(CASE WHEN correct THEN 1 ELSE 0 END) as correct
-         FROM practice_history
-         WHERE flashcard_id = $1`,
-        [flashcardId]
-      );
+      const sharedStats = await flashCardsDb.query(practiceQueries.select_all_practice_stats, [
+        flashcardId,
+      ]);
 
       sampleSize = parseInt(sharedStats.rows[0].total) || 0;
       const correctCount = parseInt(sharedStats.rows[0].correct) || 0;
@@ -1157,30 +1008,22 @@ export async function updateDifficultyScore(flashcardId, _userId = null) {
     const newScore = calculateDifficultyFromSuccessRate(successRate);
 
     // Update the difficulty score
-    await flashCardsDb.query(
-      `UPDATE flashcards 
-       SET difficulty_score = $1,
-           last_difficulty_update = NOW(),
-           difficulty_calc_base = $2
-       WHERE flashcard_id = $3`,
-      [newScore, is_private ? 'individual' : 'shared', flashcardId]
-    );
+    await flashCardsDb.query(practiceQueries.update_card_difficulty, [
+      newScore,
+      is_private ? 'individual' : 'shared',
+      flashcardId,
+    ]);
 
     // Record in difficulty history
     if (newScore !== oldScore) {
-      await flashCardsDb.query(
-        `INSERT INTO difficulty_history 
-         (flashcard_id, old_score, new_score, calculation_basis, sample_size, success_rate)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [
-          flashcardId,
-          oldScore,
-          newScore,
-          calculationBasis,
-          sampleSize,
-          (successRate * 100).toFixed(2),
-        ]
-      );
+      await flashCardsDb.query(practiceQueries.insert_difficulty_history, [
+        flashcardId,
+        oldScore,
+        newScore,
+        calculationBasis,
+        sampleSize,
+        (successRate * 100).toFixed(2),
+      ]);
     }
 
     return {
@@ -1209,19 +1052,20 @@ export async function updateDifficultyScore(flashcardId, _userId = null) {
 export async function batchUpdateDifficultyScores(userId, lessonFilter = null) {
   try {
     // Get all flashcards (public and user's private ones)
-    let query_text = `
-      SELECT DISTINCT flashcard_id 
-      FROM flashcards 
-      WHERE is_private = false OR created_by = $1
-    `;
+    const lessonFilterClause = lessonFilter ? 'AND lesson = $2' : '';
     const params = [userId];
 
     if (lessonFilter) {
-      query_text += ` AND lesson = $2`;
       params.push(lessonFilter);
     }
 
-    const cardsResult = await flashCardsDb.query(query_text, params);
+    const cardsResult = await flashCardsDb.query(
+      practiceQueries.select_cards_for_difficulty_update_template.replace(
+        '{{lesson_filter}}',
+        lessonFilterClause
+      ),
+      params
+    );
     const updates = [];
 
     for (const row of cardsResult.rows) {
@@ -1247,25 +1091,35 @@ export async function batchUpdateDifficultyScores(userId, lessonFilter = null) {
  */
 export async function getDifficultyStats(userId) {
   try {
-    const result = await flashCardsDb.query(
-      `SELECT 
-        COUNT(*) as total_cards,
-        ROUND(AVG(difficulty_score), 2) as avg_difficulty,
-        MIN(difficulty_score) as easiest,
-        MAX(difficulty_score) as hardest,
-        COUNT(CASE WHEN difficulty_score >= 1.0 AND difficulty_score < 2.0 THEN 1 END) as very_easy,
-        COUNT(CASE WHEN difficulty_score >= 2.0 AND difficulty_score < 3.0 THEN 1 END) as easy,
-        COUNT(CASE WHEN difficulty_score >= 3.0 AND difficulty_score < 4.0 THEN 1 END) as medium,
-        COUNT(CASE WHEN difficulty_score >= 4.0 AND difficulty_score < 5.0 THEN 1 END) as hard,
-        COUNT(CASE WHEN difficulty_score >= 5.0 THEN 1 END) as very_hard
-       FROM flashcards
-       WHERE is_private = false OR created_by = $1`,
-      [userId]
-    );
+    const result = await flashCardsDb.query(practiceQueries.select_difficulty_stats, [userId]);
 
     return result.rows[0];
   } catch (error) {
     console.error('Error getting difficulty stats:', error);
     return { error: error.message };
   }
+}
+
+/**
+ * Increment the "None of the above" presentation counter for a card
+ * @param {string} flashcardId - Flashcard ID
+ * @param {string} userId - User ID
+ * @returns {Promise<void>}
+ */
+export async function incrementNoneOfAboveCount(flashcardId, userId) {
+  await flashCardsDb.query(practiceQueries.increment_none_of_above_count, [flashcardId, userId]);
+}
+
+/**
+ * Get a card's answer along with its current Leitner box for a user
+ * @param {string} flashcardId - Flashcard ID
+ * @param {string} userId - User ID
+ * @returns {Promise<object|null>} { answer, current_box } or null
+ */
+export async function getCardAnswerWithBox(flashcardId, userId) {
+  const result = await flashCardsDb.query(practiceQueries.select_card_answer_with_box, [
+    flashcardId,
+    userId,
+  ]);
+  return result.rows[0] || null;
 }

@@ -6,7 +6,6 @@
 import express from 'express';
 import { userAuthService } from '../auth/user.mjs';
 import { validatePassword, validateEmail, validateUsername } from '../auth/validator.mjs';
-import { flashCardsDb } from '../db/flashCardsDb.mjs';
 
 const router = express.Router();
 
@@ -82,8 +81,7 @@ router.post('/register', express.json(), async (req, res) => {
     }
 
     // Check if this is the first user
-    const userCountResult = await flashCardsDb.query('SELECT COUNT(*) as count FROM users');
-    const userCount = parseInt(userCountResult.rows[0].count, 10);
+    const userCount = await userAuthService.countUsers();
     const isFirstUser = userCount === 0;
 
     // Create user
@@ -91,9 +89,7 @@ router.post('/register', express.json(), async (req, res) => {
 
     // If first user, set as admin
     if (isFirstUser) {
-      await flashCardsDb.query('UPDATE users SET is_admin = true WHERE user_id = $1', [
-        user.user_id,
-      ]);
+      await userAuthService.setUserAdmin(user.user_id);
       user.is_admin = true;
     }
 

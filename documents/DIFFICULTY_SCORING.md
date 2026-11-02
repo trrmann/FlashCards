@@ -409,7 +409,7 @@ For shared cards:
 
 ## Files Modified
 
-- ✅ `src/scripts/js/modules/db/migrations.mjs` - Added difficulty migration
+- ✅ `src/scripts/js/modules/db/migrations.mjs` - Added difficulty migration _(module since removed; schema now lives in `src/scripts/sql/pg/flashcards-postgres-schema.sql`)_
 - ✅ `src/scripts/js/modules/auth/practice.mjs` - Added 3 difficulty functions
 - ✅ `src/scripts/js/modules/routes/practice.mjs` - Added 3 API endpoints
 

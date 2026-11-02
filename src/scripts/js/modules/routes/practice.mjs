@@ -4,7 +4,6 @@
  */
 
 import express from 'express';
-import { flashCardsDb } from '../db/flashCardsDb.mjs';
 import {
   initializeAllCardsForUser,
   getDueCardsForToday,
@@ -19,6 +18,8 @@ import {
   updateDifficultyScore,
   batchUpdateDifficultyScores,
   getDifficultyStats,
+  incrementNoneOfAboveCount,
+  getCardAnswerWithBox,
 } from '../auth/practice.mjs';
 
 const router = express.Router();
@@ -204,12 +205,7 @@ router.get('/next', async (req, res) => {
 
     // If showing "None of the above", increment the counter
     if (hasNoneOfAbove) {
-      await flashCardsDb.query(
-        `UPDATE flashcard_leitner_progress 
-         SET none_of_above_count = none_of_above_count + 1 
-         WHERE flashcard_id = $1 AND user_id = $2`,
-        [nextCard.flashcard_id, userId]
-      );
+      await incrementNoneOfAboveCount(nextCard.flashcard_id, userId);
     }
 
     res.json({
@@ -271,24 +267,16 @@ router.post('/answer', async (req, res) => {
     );
 
     // Get the card to get the correct answer for feedback
-    const cardResult = await flashCardsDb.query(
-      `
-      SELECT f.answer, COALESCE(p.current_box, 1) as current_box 
-      FROM flashcards f 
-      LEFT JOIN flashcard_leitner_progress p ON f.flashcard_id = p.flashcard_id AND p.user_id = $2 
-      WHERE f.flashcard_id = $1
-    `,
-      [flashcardId, userId]
-    );
+    const card = await getCardAnswerWithBox(flashcardId, userId);
 
-    if (cardResult.rows.length === 0) {
+    if (!card) {
       return res.status(404).json({
         status: 'error',
         error: 'Flashcard not found',
       });
     }
 
-    const correctAnswer = cardResult.rows[0].answer;
+    const correctAnswer = card.answer;
 
     // Build filter context
     const filterContext = {

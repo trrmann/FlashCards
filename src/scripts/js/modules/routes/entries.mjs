@@ -19,8 +19,12 @@ import {
   getPendingShares,
   getAcceptedShares,
   getOwnedShares,
+  getDistinctClasses,
+  getDistinctLessons,
+  getDistinctCategories,
+  getDistinctLessonsForClass,
 } from '../auth/entries.mjs';
-import { flashCardsDb } from '../db/flashCardsDb.mjs';
+import { userAuthService } from '../auth/user.mjs';
 
 const router = express.Router();
 
@@ -359,19 +363,16 @@ router.post('/:flashcardId/share', express.json(), async (req, res) => {
     }
 
     // Get recipient ID from username
-    const recipientResult = await flashCardsDb.query(
-      'SELECT user_id FROM users WHERE username = $1',
-      [recipientUsername]
-    );
+    const recipient = await userAuthService.findUserByUsername(recipientUsername);
 
-    if (recipientResult.rows.length === 0) {
+    if (!recipient) {
       return res.status(404).json({
         status: 'error',
         message: 'Recipient user not found',
       });
     }
 
-    const recipientId = recipientResult.rows[0].user_id;
+    const recipientId = recipient.user_id;
 
     const share = await shareFlashcard(req.params.flashcardId, req.session.userId, recipientId);
 
@@ -564,16 +565,11 @@ router.get('/metadata/classes', async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const result = await flashCardsDb.query(
-      `SELECT DISTINCT class FROM flashcards 
-       WHERE class IS NOT NULL AND (created_by = $1 OR user_id = $1)
-       ORDER BY class ASC`,
-      [req.session.userId]
-    );
+    const classes = await getDistinctClasses(req.session.userId);
 
     return res.status(200).json({
       status: 'success',
-      classes: result.rows.map((row) => row.class),
+      classes,
     });
   } catch (error) {
     console.error('Get classes error:', error.message);
@@ -591,16 +587,11 @@ router.get('/metadata/lessons', async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const result = await flashCardsDb.query(
-      `SELECT DISTINCT lesson FROM flashcards 
-       WHERE lesson IS NOT NULL AND (created_by = $1 OR user_id = $1)
-       ORDER BY lesson ASC`,
-      [req.session.userId]
-    );
+    const lessons = await getDistinctLessons(req.session.userId);
 
     return res.status(200).json({
       status: 'success',
-      lessons: result.rows.map((row) => row.lesson),
+      lessons,
     });
   } catch (error) {
     console.error('Get lessons error:', error.message);
@@ -618,16 +609,11 @@ router.get('/metadata/categories', async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const result = await flashCardsDb.query(
-      `SELECT DISTINCT category FROM flashcards 
-       WHERE category IS NOT NULL AND (created_by = $1 OR user_id = $1)
-       ORDER BY category ASC`,
-      [req.session.userId]
-    );
+    const categories = await getDistinctCategories(req.session.userId);
 
     return res.status(200).json({
       status: 'success',
-      categories: result.rows.map((row) => row.category),
+      categories,
     });
   } catch (error) {
     console.error('Get categories error:', error.message);
@@ -647,18 +633,11 @@ router.get('/metadata/lessons/:className', async (req, res) => {
 
     const { className } = req.params;
 
-    const result = await flashCardsDb.query(
-      `SELECT DISTINCT lesson FROM flashcards 
-       WHERE lesson IS NOT NULL 
-       AND class = $1 
-       AND (created_by = $2 OR user_id = $2)
-       ORDER BY lesson ASC`,
-      [className, req.session.userId]
-    );
+    const lessons = await getDistinctLessonsForClass(className, req.session.userId);
 
     return res.status(200).json({
       status: 'success',
-      lessons: result.rows.map((row) => row.lesson),
+      lessons,
     });
   } catch (error) {
     console.error('Get lessons for class error:', error.message);

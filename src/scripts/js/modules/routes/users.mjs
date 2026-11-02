@@ -5,8 +5,7 @@
 
 import express from 'express';
 import { userAuthService } from '../auth/user.mjs';
-import { validateEmail, validatePassword, hashPassword } from '../auth/validator.mjs';
-import { flashCardsDb } from '../db/flashCardsDb.mjs';
+import { validateEmail, validatePassword } from '../auth/validator.mjs';
 
 const router = express.Router();
 
@@ -133,16 +132,10 @@ router.put('/password', requireAuth, express.json(), async (req, res) => {
       });
     }
 
-    // Hash new password
-    const passwordHash = await hashPassword(password);
+    // Update password in database (hashing happens in the service)
+    const updatedUser = await userAuthService.updateUserPassword(req.session.userId, password);
 
-    // Update password in database
-    const result = await flashCardsDb.query(
-      'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE user_id = $2 RETURNING user_id, username, email',
-      [passwordHash, req.session.userId]
-    );
-
-    if (result.rows.length === 0) {
+    if (!updatedUser) {
       return res.status(404).json({
         status: 'error',
         message: 'User not found',

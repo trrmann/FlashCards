@@ -57,3 +57,16 @@ RETURNING last_page_visited;
 
 -- Query: get_last_page_visited
 SELECT last_page_visited FROM users WHERE user_id = $1;
+
+-- Query: count_users
+SELECT COUNT(*) AS count FROM users;
+
+-- Query: set_user_admin
+UPDATE users SET is_admin = true WHERE user_id = $1;
+
+-- Query: update_user_password
+UPDATE users SET password_hash = $1, updated_at = NOW() WHERE user_id = $2
+RETURNING user_id, username, email;
+
+-- Query: get_user_display
+SELECT full_name, is_admin FROM users WHERE user_id = $1;

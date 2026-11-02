@@ -8,6 +8,11 @@ import { validateEmail, validatePassword, validateUsername } from '../auth/valid
 import { flashCardsDb } from '../db/flashCardsDb.mjs';
 import { userAuthService } from '../auth/user.mjs';
 
+const systemQueries = flashCardsDb.constructor.loadNamedSqlStatements(
+  'pg/system-queries.sql',
+  flashCardsDb.constructor.sqlRoot
+);
+
 const router = express.Router();
 
 /**
@@ -16,8 +21,7 @@ const router = express.Router();
  */
 router.get('/setup-status', async (req, res) => {
   try {
-    const result = await flashCardsDb.query('SELECT COUNT(*) as user_count FROM users');
-    const userCount = parseInt(result.rows[0].user_count);
+    const userCount = await userAuthService.countUsers();
 
     return res.status(200).json({
       status: 'success',
@@ -42,8 +46,7 @@ router.get('/setup-status', async (req, res) => {
 router.post('/initial-setup', express.json(), async (req, res) => {
   try {
     // Check if any users already exist
-    const userCheckResult = await flashCardsDb.query('SELECT COUNT(*) as user_count FROM users');
-    const userCount = parseInt(userCheckResult.rows[0].user_count);
+    const userCount = await userAuthService.countUsers();
 
     if (userCount > 0) {
       return res.status(403).json({
@@ -149,7 +152,9 @@ router.get('/database-status', async (req, res) => {
 
     for (const table of tables) {
       try {
-        const result = await flashCardsDb.query(`SELECT COUNT(*) as count FROM ${table}`);
+        const result = await flashCardsDb.query(
+          systemQueries.count_table_rows_template.replace('{{table}}', table)
+        );
         tableStatus[table] = {
           exists: true,
           rowCount: parseInt(result.rows[0].count),

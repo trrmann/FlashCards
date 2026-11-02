@@ -6,6 +6,11 @@
 
 import { flashCardsDb } from '../db/flashCardsDb.mjs';
 
+const backupQueries = flashCardsDb.constructor.loadNamedSqlStatements(
+  'pg/backup-queries.sql',
+  flashCardsDb.constructor.sqlRoot
+);
+
 /**
  * Export complete application data
  * Includes schema metadata and all user data
@@ -35,12 +40,7 @@ export async function exportApplicationData() {
     try {
       // Get table structure
       const structureResult = await flashCardsDb.query(
-        `
-        SELECT column_name, data_type, is_nullable, column_default
-        FROM information_schema.columns
-        WHERE table_name = $1
-        ORDER BY ordinal_position
-      `,
+        flashCardsDb.constructor.introspectionQueries.select_table_columns,
         [table]
       );
 
@@ -50,7 +50,9 @@ export async function exportApplicationData() {
       };
 
       // Get table data
-      const dataResult = await flashCardsDb.query(`SELECT * FROM ${table}`);
+      const dataResult = await flashCardsDb.query(
+        backupQueries.select_all_rows_template.replace('{{table}}', table)
+      );
       backup.data[table] = dataResult.rows;
     } catch (error) {
       console.warn(`Warning: Could not export table ${table}:`, error.message);
@@ -106,7 +108,7 @@ export async function importApplicationData(backup) {
 
     for (const table of clearOrder) {
       try {
-        await client.query(`DELETE FROM ${table}`);
+        await client.query(backupQueries.delete_all_rows_template.replace('{{table}}', table));
       } catch (error) {
         results.warnings.push(`Could not clear ${table}: ${error.message}`);
       }
@@ -133,11 +135,14 @@ export async function importApplicationData(backup) {
           continue;
         }
 
-        // Build dynamic insert statement
+        // Build insert statement from the backup row shape
         const row = tableData[0];
         const columns = Object.keys(row);
         const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
-        const insertStatement = `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders})`;
+        const insertStatement = backupQueries.insert_row_template
+          .replace('{{table}}', table)
+          .replace('{{columns}}', columns.join(', '))
+          .replace('{{placeholders}}', placeholders);
 
         let imported = 0;
         for (const dataRow of tableData) {
@@ -182,11 +187,14 @@ export async function logImportExport(
   status = 'success',
   errorMessage = null
 ) {
-  await flashCardsDb.query(
-    `INSERT INTO import_export_logs (user_id, action, record_count, status, error_message)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [userId, action, recordCount, status, errorMessage]
-  );
+  const normalizedStatus = status === 'success' ? 'completed' : status;
+  await flashCardsDb.query(backupQueries.insert_import_export_log, [
+    userId,
+    action.toUpperCase(),
+    recordCount,
+    normalizedStatus,
+    errorMessage,
+  ]);
 }
 
 /**
@@ -196,17 +204,9 @@ export async function logImportExport(
  * @returns {Promise<array>} History records
  */
 export async function getImportExportHistory(userId = null, limit = 100) {
-  let queryStr = 'SELECT * FROM import_export_logs';
-  const params = [];
+  const result = userId
+    ? await flashCardsDb.query(backupQueries.select_import_export_history_for_user, [userId, limit])
+    : await flashCardsDb.query(backupQueries.select_import_export_history, [limit]);
 
-  if (userId) {
-    queryStr += ' WHERE user_id = $1';
-    params.push(userId);
-  }
-
-  queryStr += ' ORDER BY created_at DESC LIMIT $' + (params.length + 1);
-  params.push(limit);
-
-  const result = await flashCardsDb.query(queryStr, params);
   return result.rows;
 }
