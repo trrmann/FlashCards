@@ -91,6 +91,9 @@
         <div class="entries-header">
           <h2>Your Flashcards</h2>
           <div class="entries-actions">
+            <button class="btn btn-primary" id="share-selected-btn" title="Share all checked flashcards">
+              📤 Share Selected
+            </button>
             <button class="btn btn-secondary" id="export-btn" title="Export all entries or filtered selection">
               📥 Export
             </button>
@@ -116,18 +119,19 @@
       <!-- Share Dialog -->
       <div id="share-dialog" class="share-dialog-overlay" style="display: none;">
         <div class="share-dialog">
-          <h3>Share Flashcard</h3>
+          <h3>Share <span id="share-dialog-count">Flashcard</span></h3>
           <p>
-            Pick a user from the directory of public users, or type the exact
-            username of a user who is not listed.
+            Pick users from the directory of public users, or type the exact
+            usernames of users who are not listed. Separate multiple usernames
+            with commas.
           </p>
           <div class="form-group">
-            <label for="share-username">Username</label>
+            <label for="share-username">Username(s)</label>
             <input
               id="share-username"
               type="text"
               list="share-username-options"
-              placeholder="Select or type a username"
+              placeholder="user1, user2, ..."
               autocomplete="off"
             />
             <datalist id="share-username-options"></datalist>
@@ -599,6 +603,18 @@
   .share-dialog input {
     width: 100%;
   }
+
+  .entry-select-label {
+    display: flex;
+    align-items: flex-start;
+    padding: 0.25rem 0.5rem 0 0;
+  }
+
+  .entry-select {
+    width: 1.1rem;
+    height: 1.1rem;
+    cursor: pointer;
+  }
 </style>
 
 <script>
@@ -791,6 +807,9 @@
           .map(
             (entry) => `
           <div class="entry-card">
+            <label class="entry-select-label" title="Select for batch share">
+              <input type="checkbox" class="entry-select" data-flashcard-id="${entry.flashcard_id}" />
+            </label>
             <div class="entry-content">
               <div class="entry-question">${escapeHtml(entry.question)}</div>
               <div class="entry-answer">
@@ -1079,7 +1098,7 @@
     });
   }
 
-  let shareDialogEntryId = null;
+  let shareDialogEntryIds = [];
 
   async function loadShareDirectory() {
     try {
@@ -1100,8 +1119,11 @@
     }
   }
 
-  function shareEntry(entryId) {
-    shareDialogEntryId = entryId;
+  function openShareDialog(entryIds) {
+    shareDialogEntryIds = entryIds;
+    const count = entryIds.length;
+    document.getElementById('share-dialog-count').textContent =
+      count === 1 ? 'Flashcard' : count + ' Flashcards';
     document.getElementById('share-dialog-status').innerHTML = '';
     document.getElementById('share-username').value = '';
     document.getElementById('share-dialog').style.display = 'flex';
@@ -1109,32 +1131,61 @@
     document.getElementById('share-username').focus();
   }
 
+  function shareEntry(entryId) {
+    openShareDialog([entryId]);
+  }
+
+  function shareSelectedEntries() {
+    const ids = [...document.querySelectorAll('.entry-select:checked')].map(
+      (checkbox) => checkbox.dataset.flashcardId
+    );
+    if (ids.length === 0) {
+      alert('Check at least one flashcard to share');
+      return;
+    }
+    openShareDialog(ids);
+  }
+
   function closeShareDialog() {
-    shareDialogEntryId = null;
+    shareDialogEntryIds = [];
     document.getElementById('share-dialog').style.display = 'none';
   }
 
   async function confirmShare() {
-    const username = document.getElementById('share-username').value.trim();
+    const usernames = document
+      .getElementById('share-username')
+      .value.split(',')
+      .map((name) => name.trim())
+      .filter(Boolean);
     const statusDiv = document.getElementById('share-dialog-status');
 
-    if (!username) {
-      statusDiv.innerHTML = '<p class="error">Enter or select a username</p>';
+    if (usernames.length === 0) {
+      statusDiv.innerHTML = '<p class="error">Enter or select at least one username</p>';
       return;
     }
 
     try {
-      const response = await fetch(`/api/entries/${shareDialogEntryId}/share`, {
+      const response = await fetch('/api/entries/share-batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ recipientUsername: username }),
+        body: JSON.stringify({
+          flashcardIds: shareDialogEntryIds,
+          recipientUsernames: usernames,
+        }),
       });
       const data = await response.json();
 
       if (data.status === 'success') {
+        let summary = data.message;
+        if (data.unknownUsernames && data.unknownUsernames.length > 0) {
+          summary += ' | Unknown users: ' + data.unknownUsernames.join(', ');
+        }
+        if (data.failures && data.failures.length > 0) {
+          summary += ' | ' + data.failures.length + ' failure(s)';
+        }
         closeShareDialog();
-        alert('Shared with ' + username);
+        alert(summary);
         loadUserEntries();
       } else {
         statusDiv.innerHTML = `<p class="error">${data.message}</p>`;
@@ -1147,8 +1198,10 @@
   document.addEventListener('DOMContentLoaded', () => {
     const confirmBtn = document.getElementById('share-confirm-btn');
     const cancelBtn = document.getElementById('share-cancel-btn');
+    const shareSelectedBtn = document.getElementById('share-selected-btn');
     if (confirmBtn) confirmBtn.addEventListener('click', confirmShare);
     if (cancelBtn) cancelBtn.addEventListener('click', closeShareDialog);
+    if (shareSelectedBtn) shareSelectedBtn.addEventListener('click', shareSelectedEntries);
   });
 
   async function deleteEntry(entryId) {

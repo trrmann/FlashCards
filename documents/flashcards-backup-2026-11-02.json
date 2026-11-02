@@ -1,0 +1,1124 @@
+{
+  "version": "2.0",
+  "exportedAt": "2026-11-02T18:05:44.436Z",
+  "schema": {
+    "users": {
+      "columns": [
+        {
+          "column_name": "user_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "column_name": "username",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "email",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "password_hash",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "full_name",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        },
+        {
+          "column_name": "updated_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        },
+        {
+          "column_name": "status",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": "'active'::character varying"
+        },
+        {
+          "column_name": "last_page_visited",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": "'/'::character varying"
+        },
+        {
+          "column_name": "last_visited_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        }
+      ],
+      "exists": true
+    },
+    "roles": {
+      "columns": [
+        {
+          "column_name": "role_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "column_name": "role_name",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "description",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        }
+      ],
+      "exists": true
+    },
+    "rights": {
+      "columns": [
+        {
+          "column_name": "right_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "column_name": "right_key",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "description",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        }
+      ],
+      "exists": true
+    },
+    "role_rights": {
+      "columns": [
+        {
+          "column_name": "role_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "right_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        }
+      ],
+      "exists": true
+    },
+    "user_roles": {
+      "columns": [
+        {
+          "column_name": "user_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "role_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        }
+      ],
+      "exists": true
+    },
+    "user_rights": {
+      "columns": [
+        {
+          "column_name": "user_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "right_key",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "granted",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "true"
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        },
+        {
+          "column_name": "updated_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        }
+      ],
+      "exists": true
+    },
+    "lessons": {
+      "columns": [
+        {
+          "column_name": "lesson_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "column_name": "user_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "name",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "description",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        },
+        {
+          "column_name": "updated_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        }
+      ],
+      "exists": true
+    },
+    "flashcards": {
+      "columns": [
+        {
+          "column_name": "flashcard_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "column_name": "user_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "question",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "answer",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "category",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "difficulty",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        },
+        {
+          "column_name": "updated_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        },
+        {
+          "column_name": "lesson",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "is_public",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": "false"
+        },
+        {
+          "column_name": "lesson_id",
+          "data_type": "uuid",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "is_private",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "true"
+        },
+        {
+          "column_name": "created_by",
+          "data_type": "uuid",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "class",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "difficulty_score",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": "3.00"
+        },
+        {
+          "column_name": "last_difficulty_update",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        },
+        {
+          "column_name": "difficulty_calc_base",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": "'individual'::character varying"
+        }
+      ],
+      "exists": true
+    },
+    "flashcard_shares": {
+      "columns": [
+        {
+          "column_name": "share_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "column_name": "owner_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "recipient_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "flashcard_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "status",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": "'pending'::character varying"
+        },
+        {
+          "column_name": "recipient_status",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": "'pending'::character varying"
+        },
+        {
+          "column_name": "shared_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        },
+        {
+          "column_name": "accepted_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "rejected_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "revoked_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": null
+        }
+      ],
+      "exists": true
+    },
+    "leitner_boxes": {
+      "columns": [
+        {
+          "column_name": "box_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "column_name": "user_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "card_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "box_number",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "review_count",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": "0"
+        },
+        {
+          "column_name": "correct_count",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": "0"
+        },
+        {
+          "column_name": "last_reviewed",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "next_review",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        },
+        {
+          "column_name": "updated_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        }
+      ],
+      "exists": true
+    },
+    "flashcard_leitner_progress": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": "nextval('flashcard_leitner_progress_id_seq'::regclass)"
+        },
+        {
+          "column_name": "flashcard_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "user_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "current_box",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": "1"
+        },
+        {
+          "column_name": "last_reviewed",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "next_review",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        },
+        {
+          "column_name": "times_correct",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": "0"
+        },
+        {
+          "column_name": "times_incorrect",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": "0"
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        },
+        {
+          "column_name": "updated_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        },
+        {
+          "column_name": "none_of_above_count",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": "0"
+        },
+        {
+          "column_name": "session_streak",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": "0"
+        }
+      ],
+      "exists": true
+    },
+    "practice_history": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": "nextval('practice_history_id_seq'::regclass)"
+        },
+        {
+          "column_name": "flashcard_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "user_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "leitner_box",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "correct",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "response_time_ms",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        },
+        {
+          "column_name": "class",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "lesson",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "category",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null
+        }
+      ],
+      "exists": true
+    },
+    "session_card_attempts": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": "nextval('session_card_attempts_id_seq'::regclass)"
+        },
+        {
+          "column_name": "flashcard_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "user_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "session_start_time",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "attempt_number",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "was_correct",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "response_time_ms",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        }
+      ],
+      "exists": true
+    },
+    "difficulty_history": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": "nextval('difficulty_history_id_seq'::regclass)"
+        },
+        {
+          "column_name": "flashcard_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "old_score",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "new_score",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "calculation_basis",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "sample_size",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "success_rate",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        }
+      ],
+      "exists": true
+    },
+    "quizzes": {
+      "columns": [
+        {
+          "column_name": "quiz_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "column_name": "user_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "name",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "description",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        },
+        {
+          "column_name": "updated_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        }
+      ],
+      "exists": true
+    },
+    "quiz_questions": {
+      "columns": [
+        {
+          "column_name": "quiz_question_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "column_name": "quiz_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "card_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "order_index",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        }
+      ],
+      "exists": true
+    },
+    "quiz_results": {
+      "columns": [
+        {
+          "column_name": "result_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "column_name": "user_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "quiz_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "score",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "total_questions",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "correct_answers",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "taken_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        }
+      ],
+      "exists": true
+    },
+    "import_export_logs": {
+      "columns": [
+        {
+          "column_name": "log_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "column_name": "user_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "action",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "column_name": "file_name",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "cards_processed",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": "0"
+        },
+        {
+          "column_name": "status",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": "'pending'::character varying"
+        },
+        {
+          "column_name": "error_message",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        },
+        {
+          "column_name": "updated_at",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "now()"
+        }
+      ],
+      "exists": true
+    }
+  },
+  "data": {
+    "users": [
+      {
+        "user_id": "ce8b10de-d16c-49ba-bf2b-cfd3153763bd",
+        "username": "tmann",
+        "email": "tracy.mann1@adusa.com",
+        "password_hash": "$2b$10$otqeZ3vnvTF.0dtWekn/1..shEV2Uxz1hp7AyFDPbot8DGq8mzgI6",
+        "full_name": "Tracy",
+        "created_at": "2026-10-29T23:02:31.398Z",
+        "updated_at": "2026-10-30T00:34:56.302Z",
+        "status": "active",
+        "last_page_visited": "/profile",
+        "last_visited_at": "2026-11-02T18:05:33.386Z"
+      },
+      {
+        "user_id": "25e62dde-f8d3-4b6b-a1a1-12eca9145de8",
+        "username": "clint",
+        "email": "cl@ad.com",
+        "password_hash": "$2b$10$TIWrzHvNBwKjM/1sKSwQfuIJqs4T/8pakiA3iv5OFy/5IUophjbNq",
+        "full_name": "Clint",
+        "created_at": "2026-10-30T01:02:35.008Z",
+        "updated_at": "2026-10-30T01:02:35.008Z",
+        "status": "active",
+        "last_page_visited": "/entries",
+        "last_visited_at": "2026-10-30T01:04:50.307Z"
+      },
+      {
+        "user_id": "b1e8ff6f-0595-409b-9d8c-aeacf3fb4a9c",
+        "username": "haydee",
+        "email": "bellinaperte@hotmail.com",
+        "password_hash": "$2b$10$dEoxsRS8.EZANh1rFAMVdOxC0iC0wMcu5q.b1wAcisRiAbwp66bXy",
+        "full_name": "Haydee",
+        "created_at": "2026-10-29T23:08:18.874Z",
+        "updated_at": "2026-10-29T23:08:18.874Z",
+        "status": "active",
+        "last_page_visited": "/entries",
+        "last_visited_at": "2026-10-30T04:53:25.578Z"
+      }
+    ],
+    "roles": [
+      {
+        "role_id": "1ee43883-78d3-4947-b6af-534010519de2",
+        "role_name": "admin",
+        "description": "System administrator with full management access",
+        "created_at": "2026-11-02T22:25:00.249Z"
+      },
+      {
+        "role_id": "6aab1b27-52b2-446b-9a84-68da651246a4",
+        "role_name": "user",
+        "description": "Standard application user",
+        "created_at": "2026-11-02T22:25:00.249Z"
+      }
+    ],
+    "rights": [],
+    "role_rights": [],
+    "user_roles": [
+      {
+        "user_id": "25e62dde-f8d3-4b6b-a1a1-12eca9145de8",
+        "role_id": "6aab1b27-52b2-446b-9a84-68da651246a4",
+        "created_at": "2026-11-02T22:25:00.307Z"
+      },
+      {
+        "user_id": "ce8b10de-d16c-49ba-bf2b-cfd3153763bd",
+        "role_id": "6aab1b27-52b2-446b-9a84-68da651246a4",
+        "created_at": "2026-11-02T22:25:00.307Z"
+      },
+      {
+        "user_id": "b1e8ff6f-0595-409b-9d8c-aeacf3fb4a9c",
+        "role_id": "6aab1b27-52b2-446b-9a84-68da651246a4",
+        "created_at": "2026-11-02T22:25:00.307Z"
+      },
+      {
+        "user_id": "ce8b10de-d16c-49ba-bf2b-cfd3153763bd",
+        "role_id": "1ee43883-78d3-4947-b6af-534010519de2",
+        "created_at": "2026-11-02T22:25:00.326Z"
+      }
+    ],
+    "user_rights": [],
+    "lessons": [],
+    "flashcards": [
+      {
+        "flashcard_id": "bf86ee15-f2a6-4577-97d8-08cb216db0bd",
+        "user_id": "b1e8ff6f-0595-409b-9d8c-aeacf3fb4a9c",
+        "question": "Allow",
+        "answer": "to permit",
+        "category": "vocabulary",
+        "difficulty": null,
+        "created_at": "2026-10-30T04:55:03.555Z",
+        "updated_at": "2026-10-30T04:55:03.555Z",
+        "lesson": "Week 01",
+        "is_public": false,
+        "lesson_id": null,
+        "is_private": true,
+        "created_by": "b1e8ff6f-0595-409b-9d8c-aeacf3fb4a9c",
+        "class": "English Connect",
+        "difficulty_score": "3.00",
+        "last_difficulty_update": "2026-10-30T06:26:38.075Z",
+        "difficulty_calc_base": "individual"
+      }
+    ],
+    "flashcard_shares": [],
+    "leitner_boxes": [],
+    "flashcard_leitner_progress": [],
+    "practice_history": [],
+    "session_card_attempts": [],
+    "difficulty_history": [],
+    "quizzes": [
+      {
+        "quiz_id": "61684a62-b4b3-4d88-a38a-7af2f2d487be",
+        "user_id": "ce8b10de-d16c-49ba-bf2b-cfd3153763bd",
+        "name": "Quiz - 10/30/2026 2:09:35 AM",
+        "description": null,
+        "created_at": "2026-10-30T10:09:35.617Z",
+        "updated_at": "2026-10-30T10:09:35.617Z"
+      },
+      {
+        "quiz_id": "d8d69b57-4304-4f0b-9a0a-f5c10218f72a",
+        "user_id": "ce8b10de-d16c-49ba-bf2b-cfd3153763bd",
+        "name": "Quiz - 10/30/2026 2:12:49 AM",
+        "description": null,
+        "created_at": "2026-10-30T10:12:49.054Z",
+        "updated_at": "2026-10-30T10:12:49.054Z"
+      },
+      {
+        "quiz_id": "24869df5-61a0-4914-af43-17f178dc0b80",
+        "user_id": "ce8b10de-d16c-49ba-bf2b-cfd3153763bd",
+        "name": "Quiz - 10/30/2026 2:16:33 AM",
+        "description": null,
+        "created_at": "2026-10-30T10:16:33.054Z",
+        "updated_at": "2026-10-30T10:16:33.054Z"
+      },
+      {
+        "quiz_id": "e1e6fc44-5b02-47e3-90fd-fcec99203d3c",
+        "user_id": "ce8b10de-d16c-49ba-bf2b-cfd3153763bd",
+        "name": "Quiz - 10/30/2026 12:58:57 PM",
+        "description": null,
+        "created_at": "2026-10-30T16:58:57.945Z",
+        "updated_at": "2026-10-30T16:58:57.945Z"
+      },
+      {
+        "quiz_id": "9a97f14c-8d4f-4ee1-8977-3819a3b5e559",
+        "user_id": "ce8b10de-d16c-49ba-bf2b-cfd3153763bd",
+        "name": "Quiz - 10/30/2026 1:04:54 PM",
+        "description": null,
+        "created_at": "2026-10-30T17:04:54.628Z",
+        "updated_at": "2026-10-30T17:04:54.628Z"
+      }
+    ],
+    "quiz_questions": [],
+    "quiz_results": [
+      {
+        "result_id": "1ac49164-7879-4500-9368-2c317bb5525f",
+        "user_id": "ce8b10de-d16c-49ba-bf2b-cfd3153763bd",
+        "quiz_id": "61684a62-b4b3-4d88-a38a-7af2f2d487be",
+        "score": 0,
+        "total_questions": 10,
+        "correct_answers": 0,
+        "taken_at": "2026-10-30T10:10:25.774Z",
+        "created_at": "2026-10-30T10:10:25.774Z"
+      },
+      {
+        "result_id": "fa46b183-6fab-414e-ba81-d22ea1515d10",
+        "user_id": "ce8b10de-d16c-49ba-bf2b-cfd3153763bd",
+        "quiz_id": "d8d69b57-4304-4f0b-9a0a-f5c10218f72a",
+        "score": 0,
+        "total_questions": 10,
+        "correct_answers": 0,
+        "taken_at": "2026-10-30T10:13:03.472Z",
+        "created_at": "2026-10-30T10:13:03.472Z"
+      },
+      {
+        "result_id": "20266477-c270-4501-ae4c-4cfa31788f1c",
+        "user_id": "ce8b10de-d16c-49ba-bf2b-cfd3153763bd",
+        "quiz_id": "e1e6fc44-5b02-47e3-90fd-fcec99203d3c",
+        "score": 60,
+        "total_questions": 10,
+        "correct_answers": 6,
+        "taken_at": "2026-10-30T17:00:24.385Z",
+        "created_at": "2026-10-30T17:00:24.385Z"
+      },
+      {
+        "result_id": "ab5e516e-6b99-43ec-9cfa-2bdc7dbce471",
+        "user_id": "ce8b10de-d16c-49ba-bf2b-cfd3153763bd",
+        "quiz_id": "9a97f14c-8d4f-4ee1-8977-3819a3b5e559",
+        "score": 100,
+        "total_questions": 8,
+        "correct_answers": 8,
+        "taken_at": "2026-10-30T17:05:34.826Z",
+        "created_at": "2026-10-30T17:05:34.826Z"
+      }
+    ],
+    "import_export_logs": []
+  },
+  "metadata": {
+    "totalTables": 18,
+    "totalUsers": 3,
+    "totalFlashcards": 1,
+    "totalQuizzes": 5,
+    "totalQuizResults": 4
+  }
+}

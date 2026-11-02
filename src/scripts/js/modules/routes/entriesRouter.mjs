@@ -345,6 +345,68 @@ class EntriesRouter extends BaseRouter {
     });
 
     /**
+     * POST /api/entries/share-batch
+     * Share multiple flashcards with multiple recipients in one request.
+     * Body: { flashcardIds: string[], recipientUsernames: string[] }
+     * Recipients may be public (combo box) or typed exact usernames.
+     */
+    router.post('/share-batch', express.json(), async (req, res) => {
+      try {
+        if (!req.session.userId) {
+          return res.status(401).json({ status: 'error', message: 'Not authenticated' });
+        }
+
+        const flashcardIds = Array.isArray(req.body.flashcardIds) ? req.body.flashcardIds : [];
+        const recipientUsernames = Array.isArray(req.body.recipientUsernames)
+          ? [...new Set(req.body.recipientUsernames.map((u) => String(u).trim()).filter(Boolean))]
+          : [];
+
+        if (flashcardIds.length === 0 || recipientUsernames.length === 0) {
+          return res.status(400).json({
+            status: 'error',
+            message: 'flashcardIds and recipientUsernames must be non-empty arrays',
+          });
+        }
+
+        // Resolve recipients (case-insensitive); collect unknown names
+        const recipients = [];
+        const unknownUsernames = [];
+        for (const username of recipientUsernames) {
+          const user = await userAuthService.findUserByUsernameInsensitive(username);
+          if (user) {
+            recipients.push({ user_id: user.user_id, username: user.username });
+          } else {
+            unknownUsernames.push(username);
+          }
+        }
+
+        if (recipients.length === 0) {
+          return res.status(404).json({
+            status: 'error',
+            message: `No recipients found: ${unknownUsernames.join(', ')}`,
+          });
+        }
+
+        const results = await entriesService.shareFlashcardsBatch(
+          req.session.userId,
+          flashcardIds,
+          recipients
+        );
+
+        return res.status(results.shared > 0 ? 201 : 400).json({
+          status: results.shared > 0 ? 'success' : 'error',
+          message: `Shared ${results.shared} of ${flashcardIds.length * recipientUsernames.length} share(s)`,
+          shared: results.shared,
+          failures: results.failures,
+          unknownUsernames,
+        });
+      } catch (error) {
+        console.error('Batch share error:', error.message);
+        return res.status(500).json({ status: 'error', message: 'Failed to share flashcards' });
+      }
+    });
+
+    /**
      * POST /api/entries/:flashcardId/share
      * Share a flashcard with another user
      */

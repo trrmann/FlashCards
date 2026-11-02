@@ -195,6 +195,36 @@ class EntriesService {
    * @param {string} recipientId - User ID to share with
    * @returns {Promise<object>} Share object
    */
+  /**
+   * Share multiple flashcards with multiple recipients in one operation.
+   * Attempts every flashcard/recipient pair; failures are collected per
+   * pair rather than aborting the batch.
+   * @param {string} ownerId - User ID who owns the flashcards
+   * @param {string[]} flashcardIds - Flashcards to share
+   * @param {Array<{user_id: string, username: string}>} recipients - Resolved recipients
+   * @returns {Promise<{shared: number, failures: Array<{flashcardId: string, username: string, error: string}>}>}
+   */
+  async shareFlashcardsBatch(ownerId, flashcardIds, recipients) {
+    const results = { shared: 0, failures: [] };
+
+    for (const flashcardId of flashcardIds) {
+      for (const recipient of recipients) {
+        try {
+          await this.shareFlashcard(flashcardId, ownerId, recipient.user_id);
+          results.shared += 1;
+        } catch (error) {
+          results.failures.push({
+            flashcardId,
+            username: recipient.username,
+            error: error.message,
+          });
+        }
+      }
+    }
+
+    return results;
+  }
+
   async shareFlashcard(flashcardId, ownerId, recipientId) {
     // Verify ownership
     const checkResult = await this.database.query(this.constructor.queries.select_flashcard_owner, [
