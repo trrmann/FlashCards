@@ -1,0 +1,29 @@
+<p>
+  Our mission is to help <%= siteData.getName() %> <span id="mission-study-text">study</span>.
+</p>
+<script>
+  // Show the active study-filter class in the mission statement when one is
+  // set (same sessionStorage state the filter panel maintains); otherwise
+  // the message stays as plain "study".
+  (function initializeMissionStudyText() {
+    function applyMissionStudyText() {
+      try {
+        const stored = sessionStorage.getItem('studyFilters');
+        const filters = stored ? JSON.parse(stored) : null;
+        const className = filters && filters.class ? String(filters.class).trim() : '';
+        const target = document.getElementById('mission-study-text');
+        if (target) {
+          target.textContent = className ? 'study for ' + className : 'study';
+        }
+      } catch (error) {
+        console.error('Failed to apply mission study text:', error);
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', applyMissionStudyText);
+    } else {
+      applyMissionStudyText();
+    }
+  })();
+</script>

@@ -4,8 +4,7 @@
     <div class="intro-block">
       <h1><%= siteData.getTitle() %></h1>
       <h2>Welcome to <%= siteData.getName() %><%= siteData.getNameHeadingHelp() %>Flash Card Service!</h2>
-      <p>Our mission is to help <%= siteData.getName() %> study for English Connect.</p>
-    </div>
+      <%- include('partials/mission') %>    </div>
 
   <!-- Check if no users exist and show registration form -->
   <% if (typeof needsSetup !== 'undefined' && needsSetup) { %>
