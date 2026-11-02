@@ -5,9 +5,8 @@
 
 import express from 'express';
 import { validateEmail, validatePassword, validateUsername } from '../auth/validator.mjs';
-import { query } from '../db/postGres.mjs';
-import { createUser } from '../auth/user.mjs';
-import { getExpirationWarning } from '../db/postGres.mjs';
+import { flashCardsDb } from '../db/flashCardsDb.mjs';
+import { userAuthService } from '../auth/user.mjs';
 
 const router = express.Router();
 
@@ -17,7 +16,7 @@ const router = express.Router();
  */
 router.get('/setup-status', async (req, res) => {
   try {
-    const result = await query('SELECT COUNT(*) as user_count FROM users');
+    const result = await flashCardsDb.query('SELECT COUNT(*) as user_count FROM users');
     const userCount = parseInt(result.rows[0].user_count);
 
     return res.status(200).json({
@@ -43,7 +42,7 @@ router.get('/setup-status', async (req, res) => {
 router.post('/initial-setup', express.json(), async (req, res) => {
   try {
     // Check if any users already exist
-    const userCheckResult = await query('SELECT COUNT(*) as user_count FROM users');
+    const userCheckResult = await flashCardsDb.query('SELECT COUNT(*) as user_count FROM users');
     const userCount = parseInt(userCheckResult.rows[0].user_count);
 
     if (userCount > 0) {
@@ -101,7 +100,7 @@ router.post('/initial-setup', express.json(), async (req, res) => {
     }
 
     // Create the first user
-    const user = await createUser(username, email, password, fullName || null);
+    const user = await userAuthService.createUser(username, email, password, fullName || null);
 
     // Set session
     req.session.userId = user.user_id;
@@ -150,7 +149,7 @@ router.get('/database-status', async (req, res) => {
 
     for (const table of tables) {
       try {
-        const result = await query(`SELECT COUNT(*) as count FROM ${table}`);
+        const result = await flashCardsDb.query(`SELECT COUNT(*) as count FROM ${table}`);
         tableStatus[table] = {
           exists: true,
           rowCount: parseInt(result.rows[0].count),
@@ -185,7 +184,7 @@ router.get('/database-status', async (req, res) => {
  */
 router.get('/db-expiration-warning', (req, res) => {
   try {
-    const warning = getExpirationWarning();
+    const warning = flashCardsDb.getExpirationWarning();
     return res.status(200).json({
       status: 'success',
       warning,

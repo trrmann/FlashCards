@@ -1091,7 +1091,7 @@
       try {
         // Get current filters
         const filters = window.getStudyFilters ? window.getStudyFilters() : {};
-        
+
         // Build query string
         const queryParams = new URLSearchParams();
         if (filters.class) queryParams.append('class', filters.class);
@@ -1099,15 +1099,26 @@
         if (filters.category) queryParams.append('category', filters.category);
 
         const url = `/api/entries/export${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-        
+
         // Fetch the export data with credentials to include session cookie
         const response = await fetch(url, {
-          credentials: 'include'
+          credentials: 'include',
         });
-        
+
         if (!response.ok) {
-          const errorData = await response.json();
-          alert('Error: ' + (errorData.message || 'Failed to export entries'));
+          let errorMessage = 'Failed to export entries';
+
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch {
+            const fallbackText = await response.text();
+            if (fallbackText) {
+              errorMessage = fallbackText;
+            }
+          }
+
+          alert('Error: ' + errorMessage);
           return;
         }
 
@@ -1136,8 +1147,8 @@
   // Import entries
   const importBtn = document.getElementById('import-btn');
   const importFileInput = document.getElementById('import-file-input');
-  
-  if (importBtn) {
+
+  if (importBtn && importFileInput) {
     importBtn.addEventListener('click', () => {
       importFileInput.click();
     });
@@ -1152,47 +1163,48 @@
         const fileContent = await file.text();
         const importData = JSON.parse(fileContent);
 
-        if (!Array.isArray(importData.entries) && !Array.isArray(importData)) {
-        alert('Invalid file format. Expected JSON with entries array.');
-        return;
+        if (!importData || (!Array.isArray(importData.entries) && !Array.isArray(importData))) {
+          alert('Invalid file format. Expected JSON with entries array.');
+          return;
+        }
+
+        const entries = Array.isArray(importData) ? importData : importData.entries;
+
+        if (entries.length === 0) {
+          alert('No entries found in file.');
+          return;
+        }
+
+        if (!confirm(`Import ${entries.length} flashcards? This will add them to your entries.`)) {
+          return;
+        }
+
+        // Send import request
+        const response = await fetch('/api/entries/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ entries }),
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+          const message =
+            data.updated > 0
+              ? `✓ Imported ${data.count} flashcards (${data.created} new, ${data.updated} updated)`
+              : `✓ Imported ${data.count} flashcards`;
+          alert(message);
+          loadUserEntries();
+        } else {
+          alert('Error: ' + data.message);
+        }
+      } catch (error) {
+        alert('Import failed: ' + error.message);
+      } finally {
+        // Reset file input
+        e.target.value = '';
       }
-
-      const entries = Array.isArray(importData) ? importData : importData.entries;
-
-      if (entries.length === 0) {
-        alert('No entries found in file.');
-        return;
-      }
-
-      if (!confirm(`Import ${entries.length} flashcards? This will add them to your entries.`)) {
-        return;
-      }
-
-      // Send import request
-      const response = await fetch('/api/entries/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ entries }),
-      });
-
-      const data = await response.json();
-
-      if (data.status === 'success') {
-        const message = data.updated > 0 
-          ? `✓ Imported ${data.count} flashcards (${data.created} new, ${data.updated} updated)`
-          : `✓ Imported ${data.count} flashcards`;
-        alert(message);
-        loadUserEntries();
-      } else {
-        alert('Error: ' + data.message);
-      }
-    } catch (error) {
-      alert('Import failed: ' + error.message);
-    } finally {
-      // Reset file input
-      e.target.value = '';
-    }
     });
   }
 

@@ -20,7 +20,7 @@ import {
   getAcceptedShares,
   getOwnedShares,
 } from '../auth/entries.mjs';
-import { query } from '../db/postGres.mjs';
+import { flashCardsDb } from '../db/flashCardsDb.mjs';
 
 const router = express.Router();
 
@@ -359,9 +359,10 @@ router.post('/:flashcardId/share', express.json(), async (req, res) => {
     }
 
     // Get recipient ID from username
-    const recipientResult = await query('SELECT user_id FROM users WHERE username = $1', [
-      recipientUsername,
-    ]);
+    const recipientResult = await flashCardsDb.query(
+      'SELECT user_id FROM users WHERE username = $1',
+      [recipientUsername]
+    );
 
     if (recipientResult.rows.length === 0) {
       return res.status(404).json({
@@ -563,7 +564,7 @@ router.get('/metadata/classes', async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const result = await query(
+    const result = await flashCardsDb.query(
       `SELECT DISTINCT class FROM flashcards 
        WHERE class IS NOT NULL AND (created_by = $1 OR user_id = $1)
        ORDER BY class ASC`,
@@ -590,7 +591,7 @@ router.get('/metadata/lessons', async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const result = await query(
+    const result = await flashCardsDb.query(
       `SELECT DISTINCT lesson FROM flashcards 
        WHERE lesson IS NOT NULL AND (created_by = $1 OR user_id = $1)
        ORDER BY lesson ASC`,
@@ -617,7 +618,7 @@ router.get('/metadata/categories', async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const result = await query(
+    const result = await flashCardsDb.query(
       `SELECT DISTINCT category FROM flashcards 
        WHERE category IS NOT NULL AND (created_by = $1 OR user_id = $1)
        ORDER BY category ASC`,
@@ -646,7 +647,7 @@ router.get('/metadata/lessons/:className', async (req, res) => {
 
     const { className } = req.params;
 
-    const result = await query(
+    const result = await flashCardsDb.query(
       `SELECT DISTINCT lesson FROM flashcards 
        WHERE lesson IS NOT NULL 
        AND class = $1 

@@ -117,12 +117,14 @@ Server Structure:
 
 **Access Methods**
 
-1. **Primary**: Node.js `pg` library for application queries
+1. **Primary**: `PostgresDatabase` + `FlashCardsDatabase` classes in `src/scripts/js/modules/db`
 2. **Admin/Monitoring**: pgAdmin 4 (local desktop app)
    - Connection: Render PostgreSQL URL
    - For schema inspection, data export, manual queries
 
 **Schema Organization**
+
+The application schema is bootstrapped from SQL files under `src/scripts/sql/pg`, not from an in-process migration runner. `FlashCardsDatabase.initializeSchema()` loads `flashcards-postgres-schema.sql` and executes the statements in order. The generic `PostgresDatabase` class owns the shared SQL loading, connection config, and environment bootstrap, while the app-specific subclass is responsible for schema startup.
 
 ```sql
 -- Core Authentication & User Management
@@ -205,6 +207,14 @@ CREATE TABLE import_export_logs (
 ```
 
 ---
+
+## Bootstrap Model
+
+The live runtime uses the object-based database bootstrap path:
+
+- `PostgresDatabase` handles environment setup, pool config, generic query helpers, and static SQL file loading.
+- `FlashCardsDatabase` extends the base class and initializes the app schema from `src/scripts/sql/pg/flashcards-postgres-schema.sql`.
+- No migration module or migration runner remains in the active startup path.
 
 ## Data Flow
 

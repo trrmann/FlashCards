@@ -5,13 +5,7 @@ import session from 'express-session';
 import pgSession from 'connect-pg-simple';
 
 import { appSiteData } from './src/scripts/js/appSiteData.js';
-import {
-  initializeDatabaseConnection,
-  healthCheck,
-  query,
-  pool,
-} from './src/scripts/js/modules/db/postGres.mjs';
-import { runMigrations } from './src/scripts/js/modules/db/migrations.mjs';
+import { flashCardsDb } from './src/scripts/js/modules/db/flashCardsDb.mjs';
 import authRoutes from './src/scripts/js/modules/routes/auth.mjs';
 import userRoutes from './src/scripts/js/modules/routes/users.mjs';
 import adminRoutes from './src/scripts/js/modules/routes/admin.mjs';
@@ -64,7 +58,7 @@ const isSecure = NODE_ENV === 'production';
 
 const sessionConfig = {
   store: new PgSession({
-    pool: pool,
+    pool: flashCardsDb.pool,
     tableName: 'session',
     errorLog: (error) => {
       console.error('❌ Session store error:', error.message);
@@ -108,9 +102,10 @@ app.use(async (req, res, next) => {
     res.locals.isLoggedIn = true;
 
     try {
-      const user = await query('SELECT full_name, is_admin FROM users WHERE user_id = $1', [
-        req.session.userId,
-      ]);
+      const user = await flashCardsDb.query(
+        'SELECT full_name, is_admin FROM users WHERE user_id = $1',
+        [req.session.userId]
+      );
       if (user.rows.length > 0) {
         res.locals.fullName = user.rows[0].full_name;
         res.locals.isAdmin = user.rows[0].is_admin;
@@ -158,7 +153,7 @@ app.get('/login', async (req, res) => {
 
   try {
     // Check if any users exist
-    const result = await query('SELECT COUNT(*) as count FROM users');
+    const result = await flashCardsDb.query('SELECT COUNT(*) as count FROM users');
     userCount = parseInt(result.rows[0].count, 10);
     needsSetup = userCount === 0;
   } catch (error) {
@@ -219,19 +214,16 @@ app.use('/api/admin', adminRoutes);
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
-  const health = await healthCheck();
+  const health = await flashCardsDb.healthCheck();
   res.status(health.status === 'healthy' ? 200 : 503).json(health);
 });
 
 app.listen(port, async () => {
   console.log(`Server running in ${NODE_ENV} mode on port ${port}`);
 
-  // Initialize database connection
-  const dbReady = await initializeDatabaseConnection();
+  // Initialize database connection and schema
+  const dbReady = await flashCardsDb.initializeDatabaseConnection();
   if (!dbReady) {
     console.warn('⚠️ Warning: Database connection failed. Some features may be unavailable.');
-  } else {
-    // Run database migrations
-    await runMigrations();
   }
 });

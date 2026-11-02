@@ -4,7 +4,7 @@
  */
 
 import express from 'express';
-import { query } from '../db/postGres.mjs';
+import { flashCardsDb } from '../db/flashCardsDb.mjs';
 import {
   initializeAllCardsForUser,
   getDueCardsForToday,
@@ -204,7 +204,7 @@ router.get('/next', async (req, res) => {
 
     // If showing "None of the above", increment the counter
     if (hasNoneOfAbove) {
-      await query(
+      await flashCardsDb.query(
         `UPDATE flashcard_leitner_progress 
          SET none_of_above_count = none_of_above_count + 1 
          WHERE flashcard_id = $1 AND user_id = $2`,
@@ -271,7 +271,7 @@ router.post('/answer', async (req, res) => {
     );
 
     // Get the card to get the correct answer for feedback
-    const cardResult = await query(
+    const cardResult = await flashCardsDb.query(
       `
       SELECT f.answer, COALESCE(p.current_box, 1) as current_box 
       FROM flashcards f 

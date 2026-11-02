@@ -4,7 +4,7 @@
  * Includes schema, users, entries, quizzes, and practice history
  */
 
-import { query, getClient } from '../db/postGres.mjs';
+import { flashCardsDb } from '../db/flashCardsDb.mjs';
 
 /**
  * Export complete application data
@@ -34,7 +34,7 @@ export async function exportApplicationData() {
   for (const table of tables) {
     try {
       // Get table structure
-      const structureResult = await query(
+      const structureResult = await flashCardsDb.query(
         `
         SELECT column_name, data_type, is_nullable, column_default
         FROM information_schema.columns
@@ -50,7 +50,7 @@ export async function exportApplicationData() {
       };
 
       // Get table data
-      const dataResult = await query(`SELECT * FROM ${table}`);
+      const dataResult = await flashCardsDb.query(`SELECT * FROM ${table}`);
       backup.data[table] = dataResult.rows;
     } catch (error) {
       console.warn(`Warning: Could not export table ${table}:`, error.message);
@@ -74,146 +74,16 @@ export async function exportApplicationData() {
 }
 
 /**
- * Rebuild database schema from backup
- * Creates all tables if they don't exist
- * @returns {Promise<object>} Migration results
- */
-export async function rebuildSchema() {
-  const results = {
-    created: [],
-    skipped: [],
-    failed: [],
-  };
-
-  const schemaDefinitions = {
-    users: `
-      CREATE TABLE IF NOT EXISTS users (
-        user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        username VARCHAR(50) UNIQUE NOT NULL,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
-        full_name VARCHAR(255),
-        is_admin BOOLEAN DEFAULT false,
-        status VARCHAR(20) DEFAULT 'active',
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW(),
-        last_page_visited VARCHAR(255) DEFAULT '/' NOT NULL,
-        last_visited_at TIMESTAMP DEFAULT NOW()
-      )
-    `,
-    flashcards: `
-      CREATE TABLE IF NOT EXISTS flashcards (
-        flashcard_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        question TEXT NOT NULL,
-        answer TEXT NOT NULL,
-        created_by UUID REFERENCES users(user_id) ON DELETE CASCADE,
-        is_private BOOLEAN NOT NULL DEFAULT true,
-        lesson VARCHAR(255),
-        category VARCHAR(255),
-        class VARCHAR(255),
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
-      )
-    `,
-    flashcard_shares: `
-      CREATE TABLE IF NOT EXISTS flashcard_shares (
-        share_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        owner_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-        recipient_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-        flashcard_id UUID NOT NULL REFERENCES flashcards(flashcard_id) ON DELETE CASCADE,
-        status VARCHAR(20) NOT NULL DEFAULT 'pending',
-        recipient_status VARCHAR(20) NOT NULL DEFAULT 'pending',
-        shared_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        accepted_at TIMESTAMP,
-        rejected_at TIMESTAMP,
-        revoked_at TIMESTAMP,
-        UNIQUE(owner_id, recipient_id, flashcard_id)
-      )
-    `,
-    leitner_boxes: `
-      CREATE TABLE IF NOT EXISTS leitner_boxes (
-        box_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-        flashcard_id UUID NOT NULL REFERENCES flashcards(flashcard_id) ON DELETE CASCADE,
-        box_number INTEGER NOT NULL DEFAULT 1,
-        review_date DATE,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW(),
-        UNIQUE(user_id, flashcard_id)
-      )
-    `,
-    quizzes: `
-      CREATE TABLE IF NOT EXISTS quizzes (
-        quiz_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-        title VARCHAR(255) NOT NULL,
-        description TEXT,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
-      )
-    `,
-    quiz_questions: `
-      CREATE TABLE IF NOT EXISTS quiz_questions (
-        quiz_question_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        quiz_id UUID NOT NULL REFERENCES quizzes(quiz_id) ON DELETE CASCADE,
-        flashcard_id UUID NOT NULL REFERENCES flashcards(flashcard_id) ON DELETE CASCADE,
-        created_at TIMESTAMP DEFAULT NOW()
-      )
-    `,
-    quiz_results: `
-      CREATE TABLE IF NOT EXISTS quiz_results (
-        result_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        quiz_id UUID NOT NULL REFERENCES quizzes(quiz_id) ON DELETE CASCADE,
-        user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-        total_questions INTEGER NOT NULL DEFAULT 0,
-        correct_answers INTEGER NOT NULL DEFAULT 0,
-        score_percentage DECIMAL(5, 2) DEFAULT 0,
-        completed_at TIMESTAMP DEFAULT NOW()
-      )
-    `,
-    import_export_logs: `
-      CREATE TABLE IF NOT EXISTS import_export_logs (
-        log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
-        action VARCHAR(20) NOT NULL,
-        record_count INTEGER,
-        status VARCHAR(20) NOT NULL DEFAULT 'success',
-        error_message TEXT,
-        created_at TIMESTAMP DEFAULT NOW()
-      )
-    `,
-  };
-
-  for (const [tableName, createStatement] of Object.entries(schemaDefinitions)) {
-    try {
-      await query(createStatement);
-      results.created.push(tableName);
-    } catch (error) {
-      if (error.message.includes('already exists')) {
-        results.skipped.push(tableName);
-      } else {
-        results.failed.push({
-          table: tableName,
-          error: error.message,
-        });
-      }
-    }
-  }
-
-  return results;
-}
-
-/**
- * Import application data from backup
- * WARNING: This will clear existing data and replace it
+ * Import application data from backup.
+ * The schema is bootstrapped via the database object's SQL-file initialization
+ * and is intentionally not rebuilt here.
+ * WARNING: This will clear existing data and replace it.
  * @param {object} backup - Backup object from exportApplicationData
- * @param {boolean} rebuildFirst - Whether to rebuild schema first
  * @returns {Promise<object>} Import results
  */
-export async function importApplicationData(backup, rebuildFirst = false) {
-  const client = await getClient();
+export async function importApplicationData(backup) {
+  const client = await flashCardsDb.getClient();
   const results = {
-    schemaRebuilt: false,
     imported: {},
     failed: {},
     warnings: [],
@@ -221,13 +91,6 @@ export async function importApplicationData(backup, rebuildFirst = false) {
 
   try {
     await client.query('BEGIN');
-
-    // Rebuild schema if requested
-    if (rebuildFirst) {
-      const schemaResults = await rebuildSchema();
-      results.schemaRebuilt = true;
-      results.schemaResults = schemaResults;
-    }
 
     // Clear existing data (in reverse dependency order)
     const clearOrder = [
@@ -319,7 +182,7 @@ export async function logImportExport(
   status = 'success',
   errorMessage = null
 ) {
-  await query(
+  await flashCardsDb.query(
     `INSERT INTO import_export_logs (user_id, action, record_count, status, error_message)
      VALUES ($1, $2, $3, $4, $5)`,
     [userId, action, recordCount, status, errorMessage]
@@ -344,6 +207,6 @@ export async function getImportExportHistory(userId = null, limit = 100) {
   queryStr += ' ORDER BY created_at DESC LIMIT $' + (params.length + 1);
   params.push(limit);
 
-  const result = await query(queryStr, params);
+  const result = await flashCardsDb.query(queryStr, params);
   return result.rows;
 }

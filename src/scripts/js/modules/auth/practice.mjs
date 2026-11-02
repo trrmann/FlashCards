@@ -5,7 +5,7 @@
  * Supports filtering by class/category/lesson with wildcard support
  */
 
-import { query } from '../db/postGres.mjs';
+import { flashCardsDb } from '../db/flashCardsDb.mjs';
 
 /**
  * Convert filter pattern to SQL LIKE pattern with wildcard support
@@ -48,7 +48,7 @@ export function getCardRepetitionsNeeded(boxNumber) {
  * @returns {Promise<number>} Number of attempts in current session
  */
 export async function getSessionAttemptCount(userId, flashcardId, sessionStartTime) {
-  const result = await query(
+  const result = await flashCardsDb.query(
     `SELECT COUNT(*) as attempt_count 
      FROM session_card_attempts
      WHERE user_id = $1 
@@ -77,7 +77,7 @@ export async function trackSessionAttempt(
   wasCorrect,
   responseTimeMs = null
 ) {
-  const result = await query(
+  const result = await flashCardsDb.query(
     `INSERT INTO session_card_attempts 
      (flashcard_id, user_id, session_start_time, attempt_number, was_correct, response_time_ms)
      VALUES ($1, $2, $3, $4, $5, $6)
@@ -116,7 +116,7 @@ export async function checkNeedsMoreAttempts(userId, flashcardId, boxNumber, ses
  */
 export async function initializeLeitnerForFlashcard(userId, flashcardId) {
   // Check if already initialized
-  const existingResult = await query(
+  const existingResult = await flashCardsDb.query(
     `SELECT * FROM flashcard_leitner_progress 
      WHERE user_id = $1 AND flashcard_id = $2`,
     [userId, flashcardId]
@@ -127,7 +127,7 @@ export async function initializeLeitnerForFlashcard(userId, flashcardId) {
   }
 
   // Initialize new progress record (starts in Box 1)
-  const result = await query(
+  const result = await flashCardsDb.query(
     `INSERT INTO flashcard_leitner_progress 
      (flashcard_id, user_id, current_box, last_reviewed, next_review, times_correct, times_incorrect)
      VALUES ($1, $2, 1, NULL, NOW(), 0, 0)
@@ -144,7 +144,7 @@ export async function initializeLeitnerForFlashcard(userId, flashcardId) {
  * @returns {Promise<number>} Number of cards initialized
  */
 export async function initializeAllCardsForUser(userId) {
-  const result = await query(
+  const result = await flashCardsDb.query(
     `INSERT INTO flashcard_leitner_progress (flashcard_id, user_id, current_box, last_reviewed, next_review, times_correct, times_incorrect)
      SELECT flashcard_id, $1, 1, NULL, NOW(), 0, 0
      FROM flashcards
@@ -232,7 +232,7 @@ export async function getDueCardsForToday(userId, filters = {}) {
     queryParams
   );
 
-  const result = await query(
+  const result = await flashCardsDb.query(
     `SELECT f.*, p.current_box, p.times_correct, p.times_incorrect, p.last_reviewed, p.next_review
      FROM flashcards f
      JOIN flashcard_leitner_progress p ON f.flashcard_id = p.flashcard_id
@@ -267,7 +267,7 @@ export async function getDueCardsForToday(userId, filters = {}) {
  * @returns {Promise<array>} Array of flashcards in the box
  */
 export async function getCardsInBox(userId, boxNumber) {
-  const result = await query(
+  const result = await flashCardsDb.query(
     `SELECT f.*, p.current_box, p.times_correct, p.times_incorrect, p.last_reviewed, p.next_review
      FROM flashcards f
      JOIN flashcard_leitner_progress p ON f.flashcard_id = p.flashcard_id
@@ -304,7 +304,7 @@ export async function getNextPracticeCard(userId) {
  */
 export async function getNextCatchUpCard(userId) {
   // Get any card from boxes 1 or 2 (not mastered)
-  const result = await query(
+  const result = await flashCardsDb.query(
     `SELECT f.*, p.current_box, p.times_correct, p.times_incorrect, p.last_reviewed, p.next_review
      FROM flashcards f
      JOIN flashcard_leitner_progress p ON f.flashcard_id = p.flashcard_id
@@ -338,7 +338,7 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
   );
 
   // Get the none_of_above_count for this card
-  const progressResult = await query(
+  const progressResult = await flashCardsDb.query(
     `SELECT none_of_above_count, times_correct, times_incorrect 
      FROM flashcard_leitner_progress 
      WHERE flashcard_id = $1 AND user_id = $2`,
@@ -363,7 +363,7 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
     // Standard mode: show correct answer with wrong answers as distractors
     // Wrong answers must match class AND category (but can be different lesson)
     // Use COALESCE to handle NULL values: NULL = NULL should match
-    const wrongAnswersResult = await query(
+    const wrongAnswersResult = await flashCardsDb.query(
       `SELECT answer 
        FROM (
          SELECT DISTINCT answer 
@@ -399,7 +399,7 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
     // "None of the above" mode: show wrong answers only, with "None of the above" as correct option
     // Wrong answers must match class AND category (but can be different lesson)
     // Use COALESCE to handle NULL values: NULL = NULL should match
-    const wrongAnswersResult = await query(
+    const wrongAnswersResult = await flashCardsDb.query(
       `SELECT answer 
        FROM (
          SELECT DISTINCT answer 
@@ -480,7 +480,7 @@ export async function recordPracticeAttempt(
   filterContext = null
 ) {
   // Get the flashcard to access its class, lesson, category
-  const cardResult = await query(
+  const cardResult = await flashCardsDb.query(
     `SELECT class, lesson, category FROM flashcards WHERE flashcard_id = $1`,
     [flashcardId]
   );
@@ -504,7 +504,7 @@ export async function recordPracticeAttempt(
   }
 
   // Record in history with filter context
-  await query(
+  await flashCardsDb.query(
     `INSERT INTO practice_history (flashcard_id, user_id, leitner_box, correct, response_time_ms, class, lesson, category)
      SELECT $1, $2, p.current_box, $3, $4, $5, $6, $7
      FROM flashcard_leitner_progress p
@@ -513,7 +513,7 @@ export async function recordPracticeAttempt(
   );
 
   // Get current progress
-  const currentResult = await query(
+  const currentResult = await flashCardsDb.query(
     `SELECT * FROM flashcard_leitner_progress 
      WHERE flashcard_id = $1 AND user_id = $2`,
     [flashcardId, userId]
@@ -542,7 +542,7 @@ export async function recordPracticeAttempt(
 
   // Update progress with new box and schedule next review
   const nextReview = calculateNextReviewDate(newBox);
-  const updateResult = await query(
+  const updateResult = await flashCardsDb.query(
     `UPDATE flashcard_leitner_progress
      SET current_box = $1,
          last_reviewed = NOW(),
@@ -585,7 +585,7 @@ export async function recordPracticeAttemptWithSession(
   filterContext = null
 ) {
   // Get current box before any updates
-  const currentResult = await query(
+  const currentResult = await flashCardsDb.query(
     `SELECT current_box FROM flashcard_leitner_progress 
      WHERE flashcard_id = $1 AND user_id = $2`,
     [flashcardId, userId]
@@ -621,7 +621,7 @@ export async function recordPracticeAttemptWithSession(
   }
 
   // Get the flashcard to access its class, lesson, category
-  const cardResult = await query(
+  const cardResult = await flashCardsDb.query(
     `SELECT class, lesson, category FROM flashcards WHERE flashcard_id = $1`,
     [flashcardId]
   );
@@ -646,7 +646,7 @@ export async function recordPracticeAttemptWithSession(
 
   // Record in practice history with filter context
   try {
-    const historyResult = await query(
+    const historyResult = await flashCardsDb.query(
       `INSERT INTO practice_history (flashcard_id, user_id, leitner_box, correct, response_time_ms, class, lesson, category)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id`,
@@ -675,7 +675,7 @@ export async function recordPracticeAttemptWithSession(
 
   // Update attempt counts EVERY time (not just when complete)
   // This ensures times_correct and times_incorrect are tracked per attempt
-  const progressResult = await query(
+  const progressResult = await flashCardsDb.query(
     `SELECT * FROM flashcard_leitner_progress 
      WHERE flashcard_id = $1 AND user_id = $2`,
     [flashcardId, userId]
@@ -697,7 +697,7 @@ export async function recordPracticeAttemptWithSession(
     if (!needsMoreAttempts) {
       // All attempts done - now determine box progression based on overall session performance
       // Count correct vs incorrect in this entire session
-      const sessionStatsResult = await query(
+      const sessionStatsResult = await flashCardsDb.query(
         `SELECT 
            SUM(CASE WHEN was_correct THEN 1 ELSE 0 END) as session_correct,
            SUM(CASE WHEN NOT was_correct THEN 1 ELSE 0 END) as session_incorrect,
@@ -738,7 +738,7 @@ export async function recordPracticeAttemptWithSession(
 
     if (!needsMoreAttempts) {
       // Session complete - update all fields
-      await query(
+      await flashCardsDb.query(
         `UPDATE flashcard_leitner_progress
          SET times_correct = $1,
              times_incorrect = $2,
@@ -754,7 +754,7 @@ export async function recordPracticeAttemptWithSession(
       );
     } else {
       // Session in progress - update only attempt counts
-      await query(
+      await flashCardsDb.query(
         `UPDATE flashcard_leitner_progress
          SET times_correct = $1,
              times_incorrect = $2,
@@ -854,7 +854,7 @@ export async function getProgressStats(userId, filters = {}) {
   );
 
   // Count cards in each box with filters applied
-  const boxCountsResult = await query(
+  const boxCountsResult = await flashCardsDb.query(
     `SELECT p.current_box, COUNT(*) as count
      FROM flashcard_leitner_progress p
      JOIN flashcards f ON p.flashcard_id = f.flashcard_id
@@ -880,7 +880,7 @@ export async function getProgressStats(userId, filters = {}) {
   // IMPORTANT: Filter by CARD properties (f.class, f.lesson, f.category), NOT by
   // practice_history filter fields (ph.class, ph.lesson, ph.category) which represent
   // what filters were active when the attempt was made, not the card's actual properties
-  const attemptsResult = await query(
+  const attemptsResult = await flashCardsDb.query(
     `SELECT 
        SUM(CASE WHEN ph.correct THEN 1 ELSE 0 END) as total_correct,
        SUM(CASE WHEN NOT ph.correct THEN 1 ELSE 0 END) as total_incorrect,
@@ -919,7 +919,7 @@ export async function getProgressStats(userId, filters = {}) {
  */
 export async function getPracticeStreak(userId) {
   // Get recent practice attempts ordered by date
-  const result = await query(
+  const result = await flashCardsDb.query(
     `SELECT correct, created_at
      FROM practice_history
      WHERE user_id = $1
@@ -1021,7 +1021,7 @@ export async function getTodaysSummary(userId, filters = {}) {
   const filterClause = filterConditions.length > 0 ? 'AND ' + filterConditions.join(' AND ') : '';
 
   // Get today's practice attempts (with filters applied)
-  const todayResult = await query(
+  const todayResult = await flashCardsDb.query(
     `SELECT COUNT(*) as attempts,
             SUM(CASE WHEN correct THEN 1 ELSE 0 END) as correct,
             SUM(CASE WHEN NOT correct THEN 1 ELSE 0 END) as incorrect
@@ -1051,7 +1051,7 @@ export async function getTodaysSummary(userId, filters = {}) {
  */
 export async function resetUserLeitnerStats(userId) {
   // Reset all Leitner progress for this user's cards
-  const result = await query(
+  const result = await flashCardsDb.query(
     `UPDATE flashcard_leitner_progress
      SET current_box = 1,
          last_reviewed = NULL,
@@ -1103,7 +1103,7 @@ function calculateDifficultyFromSuccessRate(successRate) {
 export async function updateDifficultyScore(flashcardId, _userId = null) {
   try {
     // Get flashcard info
-    const cardResult = await query(
+    const cardResult = await flashCardsDb.query(
       `SELECT is_private, created_by FROM flashcards WHERE flashcard_id = $1`,
       [flashcardId]
     );
@@ -1115,7 +1115,7 @@ export async function updateDifficultyScore(flashcardId, _userId = null) {
     const { is_private, created_by } = cardResult.rows[0];
 
     // Get current difficulty
-    const currentResult = await query(
+    const currentResult = await flashCardsDb.query(
       `SELECT difficulty_score FROM flashcards WHERE flashcard_id = $1`,
       [flashcardId]
     );
@@ -1127,7 +1127,7 @@ export async function updateDifficultyScore(flashcardId, _userId = null) {
 
     if (is_private) {
       // Private card: use only the owner's data
-      const ownerStats = await query(
+      const ownerStats = await flashCardsDb.query(
         `SELECT COUNT(*) as total, SUM(CASE WHEN correct THEN 1 ELSE 0 END) as correct
          FROM practice_history
          WHERE flashcard_id = $1 AND user_id = $2`,
@@ -1140,7 +1140,7 @@ export async function updateDifficultyScore(flashcardId, _userId = null) {
       calculationBasis = `Owner only (${sampleSize} attempts)`;
     } else {
       // Shared card: use all users' data
-      const sharedStats = await query(
+      const sharedStats = await flashCardsDb.query(
         `SELECT COUNT(*) as total, SUM(CASE WHEN correct THEN 1 ELSE 0 END) as correct
          FROM practice_history
          WHERE flashcard_id = $1`,
@@ -1157,7 +1157,7 @@ export async function updateDifficultyScore(flashcardId, _userId = null) {
     const newScore = calculateDifficultyFromSuccessRate(successRate);
 
     // Update the difficulty score
-    await query(
+    await flashCardsDb.query(
       `UPDATE flashcards 
        SET difficulty_score = $1,
            last_difficulty_update = NOW(),
@@ -1168,7 +1168,7 @@ export async function updateDifficultyScore(flashcardId, _userId = null) {
 
     // Record in difficulty history
     if (newScore !== oldScore) {
-      await query(
+      await flashCardsDb.query(
         `INSERT INTO difficulty_history 
          (flashcard_id, old_score, new_score, calculation_basis, sample_size, success_rate)
          VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -1221,7 +1221,7 @@ export async function batchUpdateDifficultyScores(userId, lessonFilter = null) {
       params.push(lessonFilter);
     }
 
-    const cardsResult = await query(query_text, params);
+    const cardsResult = await flashCardsDb.query(query_text, params);
     const updates = [];
 
     for (const row of cardsResult.rows) {
@@ -1247,7 +1247,7 @@ export async function batchUpdateDifficultyScores(userId, lessonFilter = null) {
  */
 export async function getDifficultyStats(userId) {
   try {
-    const result = await query(
+    const result = await flashCardsDb.query(
       `SELECT 
         COUNT(*) as total_cards,
         ROUND(AVG(difficulty_score), 2) as avg_difficulty,

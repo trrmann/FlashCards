@@ -67,20 +67,9 @@ Phase 4 introduces flashcard entry management with privacy controls and lesson t
 - DELETE /api/lessons/:id - Delete lesson
 - GET /api/lessons/:id/cards - Get cards in lesson
 
-## Migration
+## Database bootstrap
 
-Run the migration to add the new columns and tables:
-
-```bash
-node src/scripts/js/modules/add-lesson-and-sharing.mjs
-```
-
-This script:
-
-1. Adds `lesson` column to flashcards (VARCHAR)
-2. Adds `is_public` column to flashcards (BOOLEAN)
-3. Creates lessons table with proper indexes
-4. Adds `lesson_id` FK column to flashcards
+The schema is initialized through the application database object, which reads the PostgreSQL schema from `src/scripts/sql/pg/flashcards-postgres-schema.sql` and executes it via `FlashCardsDatabase.initializeSchema()`. The legacy one-off lesson-sharing migration script has been removed; the startup path now uses the canonical SQL-file bootstrap instead.
 
 ## Next Steps
 

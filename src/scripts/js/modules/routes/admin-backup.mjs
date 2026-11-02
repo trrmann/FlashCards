@@ -7,11 +7,10 @@ import express from 'express';
 import {
   exportApplicationData,
   importApplicationData,
-  rebuildSchema,
   logImportExport,
   getImportExportHistory,
 } from '../auth/backup.mjs';
-import { isAdmin } from '../auth/user.mjs';
+import { userAuthService } from '../auth/user.mjs';
 
 const router = express.Router();
 
@@ -23,7 +22,7 @@ const requireAdmin = async (req, res, next) => {
     return res.status(401).json({ status: 'error', message: 'Not authenticated' });
   }
 
-  const adminStatus = await isAdmin(req.session.userId);
+  const adminStatus = await userAuthService.isAdmin(req.session.userId);
   if (!adminStatus) {
     return res.status(403).json({ status: 'error', message: 'Admin access required' });
   }
@@ -70,12 +69,13 @@ router.get('/backup/export', requireAdmin, async (req, res) => {
 /**
  * POST /api/admin/backup/import
  * Import application data from backup
- * WARNING: This will clear all existing data and replace it
- * Options: rebuild (boolean) - rebuild schema from scratch first
+ * WARNING: This will clear all existing data and replace it.
+ * The schema is bootstrapped by the database initialization path and is
+ * intentionally not rebuilt here.
  */
 router.post('/backup/import', requireAdmin, express.json(), async (req, res) => {
   try {
-    const { backup, rebuild } = req.body;
+    const { backup } = req.body;
 
     if (!backup || !backup.data) {
       return res.status(400).json({
@@ -84,7 +84,7 @@ router.post('/backup/import', requireAdmin, express.json(), async (req, res) => 
       });
     }
 
-    const results = await importApplicationData(backup, rebuild === true);
+    const results = await importApplicationData(backup);
 
     const totalImported = Object.values(results.imported).reduce((a, b) => a + b, 0);
 
@@ -103,31 +103,6 @@ router.post('/backup/import', requireAdmin, express.json(), async (req, res) => 
     return res.status(500).json({
       status: 'error',
       message: 'Failed to import application data',
-      error: error.message,
-    });
-  }
-});
-
-/**
- * POST /api/admin/backup/rebuild-schema
- * Rebuild database schema from scratch
- * Creates all tables if they don't exist
- */
-router.post('/backup/rebuild-schema', requireAdmin, async (req, res) => {
-  try {
-    const results = await rebuildSchema();
-
-    return res.status(200).json({
-      status: 'success',
-      message: 'Database schema rebuilt successfully',
-      results,
-    });
-  } catch (error) {
-    console.error('Schema rebuild error:', error.message);
-
-    return res.status(500).json({
-      status: 'error',
-      message: 'Failed to rebuild schema',
       error: error.message,
     });
   }

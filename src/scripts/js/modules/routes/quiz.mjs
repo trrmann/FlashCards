@@ -1,5 +1,5 @@
 import express from 'express';
-import { query } from '../db/postGres.mjs';
+import { flashCardsDb } from '../db/flashCardsDb.mjs';
 
 const router = express.Router();
 
@@ -98,7 +98,7 @@ router.post('/start', async (req, res) => {
         paramIndex++;
       }
 
-      const result = await query(
+      const result = await flashCardsDb.query(
         `SELECT flashcard_id, question, answer, difficulty_score 
          FROM flashcards 
          ${whereClause}
@@ -107,7 +107,7 @@ router.post('/start', async (req, res) => {
       );
       flashcards = result.rows;
     } else {
-      const result = await query(
+      const result = await flashCardsDb.query(
         `SELECT flashcard_id, question, answer, difficulty_score 
          FROM flashcards 
          WHERE created_by = $1 AND is_private = true
@@ -128,7 +128,7 @@ router.post('/start', async (req, res) => {
     const selectedQuestions = selectRandomQuestions(flashcards, flashcards.length);
 
     // Create a new quiz record
-    const quizResult = await query(
+    const quizResult = await flashCardsDb.query(
       `INSERT INTO quizzes (user_id, name, description) 
        VALUES ($1, $2, $3) 
        RETURNING quiz_id`,
@@ -143,7 +143,7 @@ router.post('/start', async (req, res) => {
 
     // Add selected questions to quiz_questions table
     for (let i = 0; i < selectedQuestions.length; i++) {
-      await query(
+      await flashCardsDb.query(
         `INSERT INTO quiz_questions (quiz_id, card_id, order_index) 
          VALUES ($1, $2, $3)`,
         [quizId, selectedQuestions[i].flashcard_id, i + 1]
@@ -189,7 +189,7 @@ router.post('/:quizId/submit', async (req, res) => {
     }
 
     // Verify quiz belongs to user
-    const quizCheck = await query(
+    const quizCheck = await flashCardsDb.query(
       'SELECT quiz_id FROM quizzes WHERE quiz_id = $1 AND user_id = $2',
       [quizId, req.session.userId]
     );
@@ -207,7 +207,7 @@ router.post('/:quizId/submit', async (req, res) => {
     const score = Math.round((correctAnswers / totalQuestions) * 100);
 
     // Store quiz result
-    const resultInsert = await query(
+    const resultInsert = await flashCardsDb.query(
       `INSERT INTO quiz_results (user_id, quiz_id, score, total_questions, correct_answers) 
        VALUES ($1, $2, $3, $4, $5) 
        RETURNING result_id, score, correct_answers, total_questions`,
@@ -240,7 +240,7 @@ router.get('/history', async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const result = await query(
+    const result = await flashCardsDb.query(
       `SELECT 
         q.quiz_id,
         q.name,
@@ -280,7 +280,7 @@ router.get('/:quizId/results', async (req, res) => {
     const { quizId } = req.params;
 
     // Verify quiz belongs to user
-    const quizCheck = await query(
+    const quizCheck = await flashCardsDb.query(
       'SELECT quiz_id FROM quizzes WHERE quiz_id = $1 AND user_id = $2',
       [quizId, req.session.userId]
     );
@@ -293,7 +293,7 @@ router.get('/:quizId/results', async (req, res) => {
     }
 
     // Get all results for this quiz
-    const results = await query(
+    const results = await flashCardsDb.query(
       `SELECT result_id, score, correct_answers, total_questions, taken_at
        FROM quiz_results 
        WHERE quiz_id = $1
@@ -327,7 +327,7 @@ router.get('/metadata/classes', async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const result = await query(
+    const result = await flashCardsDb.query(
       `SELECT DISTINCT class FROM flashcards 
        WHERE class IS NOT NULL AND created_by = $1
        ORDER BY class ASC`,
@@ -356,7 +356,7 @@ router.get('/metadata/lessons/:className', async (req, res) => {
 
     const { className } = req.params;
 
-    const result = await query(
+    const result = await flashCardsDb.query(
       `SELECT DISTINCT lesson FROM flashcards 
        WHERE lesson IS NOT NULL AND class = $1 AND created_by = $2
        ORDER BY lesson ASC`,
@@ -383,7 +383,7 @@ router.get('/metadata/categories', async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const result = await query(
+    const result = await flashCardsDb.query(
       `SELECT DISTINCT category FROM flashcards 
        WHERE category IS NOT NULL AND created_by = $1
        ORDER BY category ASC`,

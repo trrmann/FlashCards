@@ -4,15 +4,9 @@
  */
 
 import express from 'express';
-import {
-  createUser,
-  authenticateUser,
-  findUserById,
-  isUsernameAvailable,
-  isEmailAvailable,
-} from '../auth/user.mjs';
+import { userAuthService } from '../auth/user.mjs';
 import { validatePassword, validateEmail, validateUsername } from '../auth/validator.mjs';
-import { query } from '../db/postGres.mjs';
+import { flashCardsDb } from '../db/flashCardsDb.mjs';
 
 const router = express.Router();
 
@@ -70,7 +64,7 @@ router.post('/register', express.json(), async (req, res) => {
     }
 
     // Check if username is available
-    const usernameAvailable = await isUsernameAvailable(username);
+    const usernameAvailable = await userAuthService.isUsernameAvailable(username);
     if (!usernameAvailable) {
       return res.status(400).json({
         status: 'error',
@@ -79,7 +73,7 @@ router.post('/register', express.json(), async (req, res) => {
     }
 
     // Check if email is available
-    const emailAvailable = await isEmailAvailable(email);
+    const emailAvailable = await userAuthService.isEmailAvailable(email);
     if (!emailAvailable) {
       return res.status(400).json({
         status: 'error',
@@ -88,16 +82,18 @@ router.post('/register', express.json(), async (req, res) => {
     }
 
     // Check if this is the first user
-    const userCountResult = await query('SELECT COUNT(*) as count FROM users');
+    const userCountResult = await flashCardsDb.query('SELECT COUNT(*) as count FROM users');
     const userCount = parseInt(userCountResult.rows[0].count, 10);
     const isFirstUser = userCount === 0;
 
     // Create user
-    const user = await createUser(username, email, password, fullName || null);
+    const user = await userAuthService.createUser(username, email, password, fullName || null);
 
     // If first user, set as admin
     if (isFirstUser) {
-      await query('UPDATE users SET is_admin = true WHERE user_id = $1', [user.user_id]);
+      await flashCardsDb.query('UPDATE users SET is_admin = true WHERE user_id = $1', [
+        user.user_id,
+      ]);
       user.is_admin = true;
     }
 
@@ -157,7 +153,7 @@ router.post('/login', express.json(), async (req, res) => {
     }
 
     // Authenticate user
-    const user = await authenticateUser(username, password);
+    const user = await userAuthService.authenticateUser(username, password);
 
     if (!user) {
       return res.status(401).json({
@@ -167,8 +163,7 @@ router.post('/login', express.json(), async (req, res) => {
     }
 
     // Get user's last visited page
-    const { getLastPageVisited } = await import('../auth/user.mjs');
-    const lastPage = await getLastPageVisited(user.user_id);
+    const lastPage = await userAuthService.getLastPageVisited(user.user_id);
 
     // Set session
     req.session.userId = user.user_id;
@@ -242,7 +237,7 @@ router.get('/current', async (req, res) => {
       });
     }
 
-    const user = await findUserById(req.session.userId);
+    const user = await userAuthService.findUserById(req.session.userId);
 
     if (!user) {
       req.session.destroy();

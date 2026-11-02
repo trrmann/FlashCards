@@ -3,7 +3,7 @@
  * Handles flashcard CRUD operations and sharing
  */
 
-import { query } from '../db/postGres.mjs';
+import { flashCardsDb } from '../db/flashCardsDb.mjs';
 
 /**
  * Create a new flashcard entry
@@ -23,7 +23,7 @@ export async function createFlashcard(
   category = null,
   flashClass = null
 ) {
-  const result = await query(
+  const result = await flashCardsDb.query(
     `INSERT INTO flashcards (user_id, question, answer, created_by, lesson, category, class, is_private)
      VALUES ($1, $2, $3, $4, $5, $6, $7, true)
      RETURNING flashcard_id, question, answer, lesson, category, class, is_private, created_at`,
@@ -39,7 +39,7 @@ export async function createFlashcard(
  * @returns {Promise<array>} Array of flashcards
  */
 export async function getUserFlashcards(userId) {
-  const result = await query(
+  const result = await flashCardsDb.query(
     `SELECT flashcard_id, question, answer, lesson, category, class, is_private, created_at
      FROM flashcards 
      WHERE created_by = $1
@@ -57,7 +57,7 @@ export async function getUserFlashcards(userId) {
  * @returns {Promise<object>} Flashcard object or null
  */
 export async function getFlashcardByQuestion(userId, question) {
-  const result = await query(
+  const result = await flashCardsDb.query(
     `SELECT flashcard_id, question, answer, lesson, category, class, is_private, created_at
      FROM flashcards 
      WHERE created_by = $1 AND question = $2
@@ -100,7 +100,7 @@ export async function getUserFlashcardsFiltered(userId, filters = {}) {
 
   sql += ` ORDER BY created_at DESC`;
 
-  const result = await query(sql, params);
+  const result = await flashCardsDb.query(sql, params);
   return result.rows;
 }
 
@@ -111,7 +111,7 @@ export async function getUserFlashcardsFiltered(userId, filters = {}) {
  * @returns {Promise<object>} Flashcard object or null
  */
 export async function getFlashcard(flashcardId, userId) {
-  const result = await query(
+  const result = await flashCardsDb.query(
     `SELECT f.flashcard_id, f.question, f.answer, f.lesson, f.category, f.class, f.is_private, f.created_by, f.created_at,
             u.username, u.full_name
      FROM flashcards f
@@ -139,9 +139,10 @@ export async function getFlashcard(flashcardId, userId) {
  */
 export async function updateFlashcard(flashcardId, userId, updates) {
   // Verify ownership
-  const checkResult = await query('SELECT created_by FROM flashcards WHERE flashcard_id = $1', [
-    flashcardId,
-  ]);
+  const checkResult = await flashCardsDb.query(
+    'SELECT created_by FROM flashcards WHERE flashcard_id = $1',
+    [flashcardId]
+  );
 
   if (checkResult.rows.length === 0 || checkResult.rows[0].created_by !== userId) {
     return null;
@@ -166,7 +167,7 @@ export async function updateFlashcard(flashcardId, userId, updates) {
 
   values.push(flashcardId);
 
-  const result = await query(
+  const result = await flashCardsDb.query(
     `UPDATE flashcards SET ${fields.join(', ')} WHERE flashcard_id = $${paramCount}
      RETURNING flashcard_id, question, answer, lesson, category, class, is_private, created_at`,
     values
@@ -182,10 +183,10 @@ export async function updateFlashcard(flashcardId, userId, updates) {
  * @returns {Promise<boolean>} True if deleted
  */
 export async function deleteFlashcard(flashcardId, userId) {
-  const result = await query('DELETE FROM flashcards WHERE flashcard_id = $1 AND created_by = $2', [
-    flashcardId,
-    userId,
-  ]);
+  const result = await flashCardsDb.query(
+    'DELETE FROM flashcards WHERE flashcard_id = $1 AND created_by = $2',
+    [flashcardId, userId]
+  );
 
   return result.rowCount > 0;
 }
@@ -199,9 +200,10 @@ export async function deleteFlashcard(flashcardId, userId) {
  */
 export async function shareFlashcard(flashcardId, ownerId, recipientId) {
   // Verify ownership
-  const checkResult = await query('SELECT created_by FROM flashcards WHERE flashcard_id = $1', [
-    flashcardId,
-  ]);
+  const checkResult = await flashCardsDb.query(
+    'SELECT created_by FROM flashcards WHERE flashcard_id = $1',
+    [flashcardId]
+  );
 
   if (checkResult.rows.length === 0 || checkResult.rows[0].created_by !== ownerId) {
     throw new Error('Not authorized to share this flashcard');
@@ -213,7 +215,7 @@ export async function shareFlashcard(flashcardId, ownerId, recipientId) {
   }
 
   // Insert or update share (ON CONFLICT to handle existing shares)
-  const result = await query(
+  const result = await flashCardsDb.query(
     `INSERT INTO flashcard_shares (owner_id, recipient_id, flashcard_id, status, recipient_status)
      VALUES ($1, $2, $3, 'active', 'pending')
      ON CONFLICT (owner_id, recipient_id, flashcard_id) 
@@ -233,7 +235,7 @@ export async function shareFlashcard(flashcardId, ownerId, recipientId) {
  * @returns {Promise<boolean>} True if revoked
  */
 export async function revokeShare(flashcardId, ownerId, recipientId) {
-  const result = await query(
+  const result = await flashCardsDb.query(
     `UPDATE flashcard_shares 
      SET status = 'revoked', revoked_at = NOW()
      WHERE flashcard_id = $1 AND owner_id = $2 AND recipient_id = $3`,
@@ -250,7 +252,7 @@ export async function revokeShare(flashcardId, ownerId, recipientId) {
  * @returns {Promise<object>} Updated share
  */
 export async function acceptShare(shareId, recipientId) {
-  const result = await query(
+  const result = await flashCardsDb.query(
     `UPDATE flashcard_shares 
      SET recipient_status = 'accepted', accepted_at = NOW()
      WHERE share_id = $1 AND recipient_id = $2
@@ -269,7 +271,7 @@ export async function acceptShare(shareId, recipientId) {
  * Note: Rejection is not reported back to owner
  */
 export async function rejectShare(shareId, recipientId) {
-  const result = await query(
+  const result = await flashCardsDb.query(
     `UPDATE flashcard_shares 
      SET recipient_status = 'rejected', rejected_at = NOW()
      WHERE share_id = $1 AND recipient_id = $2
@@ -286,7 +288,7 @@ export async function rejectShare(shareId, recipientId) {
  * @returns {Promise<array>} Array of pending shares
  */
 export async function getPendingShares(recipientId) {
-  const result = await query(
+  const result = await flashCardsDb.query(
     `SELECT fs.share_id, fs.owner_id, fs.flashcard_id, fs.recipient_status, fs.shared_at,
             u.username, u.full_name,
             f.question, f.answer, f.lesson
@@ -309,7 +311,7 @@ export async function getPendingShares(recipientId) {
  * @returns {Promise<array>} Array of accepted shares
  */
 export async function getAcceptedShares(recipientId) {
-  const result = await query(
+  const result = await flashCardsDb.query(
     `SELECT fs.share_id, fs.owner_id, fs.flashcard_id, fs.recipient_status, fs.accepted_at,
             u.username, u.full_name,
             f.question, f.answer, f.lesson, f.created_at
@@ -332,7 +334,7 @@ export async function getAcceptedShares(recipientId) {
  * @returns {Promise<array>} Array of shares
  */
 export async function getOwnedShares(ownerId) {
-  const result = await query(
+  const result = await flashCardsDb.query(
     `SELECT fs.share_id, fs.recipient_id, fs.flashcard_id, fs.status, fs.recipient_status, fs.shared_at,
             u.username, u.full_name,
             f.question, f.answer

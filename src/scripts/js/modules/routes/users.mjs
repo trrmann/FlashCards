@@ -4,9 +4,9 @@
  */
 
 import express from 'express';
-import { findUserById, updateUserProfile } from '../auth/user.mjs';
+import { userAuthService } from '../auth/user.mjs';
 import { validateEmail, validatePassword, hashPassword } from '../auth/validator.mjs';
-import { query } from '../db/postGres.mjs';
+import { flashCardsDb } from '../db/flashCardsDb.mjs';
 
 const router = express.Router();
 
@@ -29,7 +29,7 @@ function requireAuth(req, res, next) {
  */
 router.get('/profile', requireAuth, async (req, res) => {
   try {
-    const user = await findUserById(req.session.userId);
+    const user = await userAuthService.findUserById(req.session.userId);
 
     if (!user) {
       req.session.destroy();
@@ -84,7 +84,7 @@ router.put('/profile', requireAuth, express.json(), async (req, res) => {
     }
 
     // Update user
-    const updatedUser = await updateUserProfile(req.session.userId, updates);
+    const updatedUser = await userAuthService.updateUserProfile(req.session.userId, updates);
 
     if (!updatedUser) {
       return res.status(404).json({
@@ -137,7 +137,7 @@ router.put('/password', requireAuth, express.json(), async (req, res) => {
     const passwordHash = await hashPassword(password);
 
     // Update password in database
-    const result = await query(
+    const result = await flashCardsDb.query(
       'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE user_id = $2 RETURNING user_id, username, email',
       [passwordHash, req.session.userId]
     );

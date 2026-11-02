@@ -4,22 +4,11 @@
  */
 
 import express from 'express';
-import {
-  createUser,
-  getAllUsers,
-  findUserById,
-  disableUser,
-  enableUser,
-  deleteUser,
-  isAdmin,
-  isUsernameAvailable,
-  isEmailAvailable,
-} from '../auth/user.mjs';
+import { userAuthService } from '../auth/user.mjs';
 import { validatePassword, validateEmail, validateUsername } from '../auth/validator.mjs';
 import {
   exportApplicationData,
   importApplicationData,
-  rebuildSchema,
   logImportExport,
   getImportExportHistory,
 } from '../auth/backup.mjs';
@@ -44,7 +33,7 @@ function requireAuth(req, res, next) {
  * Middleware to check if user is admin
  */
 async function requireAdmin(req, res, next) {
-  const adminStatus = await isAdmin(req.session.userId);
+  const adminStatus = await userAuthService.isAdmin(req.session.userId);
   if (!adminStatus) {
     return res.status(403).json({
       status: 'error',
@@ -60,7 +49,7 @@ async function requireAdmin(req, res, next) {
  */
 router.get('/users', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const users = await getAllUsers();
+    const users = await userAuthService.getAllUsers();
 
     return res.status(200).json({
       status: 'success',
@@ -120,7 +109,7 @@ router.post('/users', requireAuth, requireAdmin, express.json(), async (req, res
     }
 
     // Check if username is available
-    const usernameAvailable = await isUsernameAvailable(username);
+    const usernameAvailable = await userAuthService.isUsernameAvailable(username);
     if (!usernameAvailable) {
       return res.status(400).json({
         status: 'error',
@@ -129,7 +118,7 @@ router.post('/users', requireAuth, requireAdmin, express.json(), async (req, res
     }
 
     // Check if email is available
-    const emailAvailable = await isEmailAvailable(email);
+    const emailAvailable = await userAuthService.isEmailAvailable(email);
     if (!emailAvailable) {
       return res.status(400).json({
         status: 'error',
@@ -138,7 +127,7 @@ router.post('/users', requireAuth, requireAdmin, express.json(), async (req, res
     }
 
     // Create user
-    const user = await createUser(username, email, password, fullName || null);
+    const user = await userAuthService.createUser(username, email, password, fullName || null);
 
     return res.status(201).json({
       status: 'success',
@@ -168,7 +157,7 @@ router.post('/users', requireAuth, requireAdmin, express.json(), async (req, res
 router.get('/users/:userId', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
-    const user = await findUserById(userId);
+    const user = await userAuthService.findUserById(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -206,7 +195,7 @@ router.post('/users/:userId/disable', requireAuth, requireAdmin, async (req, res
       });
     }
 
-    const user = await disableUser(userId);
+    const user = await userAuthService.disableUser(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -236,7 +225,7 @@ router.post('/users/:userId/disable', requireAuth, requireAdmin, async (req, res
 router.post('/users/:userId/enable', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
-    const user = await enableUser(userId);
+    const user = await userAuthService.enableUser(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -275,7 +264,7 @@ router.delete('/users/:userId', requireAuth, requireAdmin, async (req, res) => {
       });
     }
 
-    await deleteUser(userId);
+    await userAuthService.deleteUser(userId);
 
     return res.status(200).json({
       status: 'success',
@@ -333,13 +322,13 @@ router.get('/backup/export', requireAdmin, async (req, res) => {
 
 /**
  * POST /api/admin/backup/import
- * Import application data from backup
- * WARNING: This will clear all existing data and replace it
- * Options: rebuild (boolean) - rebuild schema from scratch first
+ * Import application data from backup.
+ * The database schema is initialized via the repository's SQL-file bootstrap process.
+ * WARNING: This will clear all existing data and replace it.
  */
 router.post('/backup/import', requireAdmin, express.json(), async (req, res) => {
   try {
-    const { backup, rebuild } = req.body;
+    const { backup } = req.body;
 
     if (!backup || !backup.data) {
       return res.status(400).json({
@@ -348,7 +337,7 @@ router.post('/backup/import', requireAdmin, express.json(), async (req, res) => 
       });
     }
 
-    const results = await importApplicationData(backup, rebuild === true);
+    const results = await importApplicationData(backup);
 
     const totalImported = Object.values(results.imported).reduce((a, b) => a + b, 0);
 
@@ -367,31 +356,6 @@ router.post('/backup/import', requireAdmin, express.json(), async (req, res) => 
     return res.status(500).json({
       status: 'error',
       message: 'Failed to import application data',
-      error: error.message,
-    });
-  }
-});
-
-/**
- * POST /api/admin/backup/rebuild-schema
- * Rebuild database schema from scratch
- * Creates all tables if they don't exist
- */
-router.post('/backup/rebuild-schema', requireAdmin, async (req, res) => {
-  try {
-    const results = await rebuildSchema();
-
-    return res.status(200).json({
-      status: 'success',
-      message: 'Database schema rebuilt successfully',
-      results,
-    });
-  } catch (error) {
-    console.error('Schema rebuild error:', error.message);
-
-    return res.status(500).json({
-      status: 'error',
-      message: 'Failed to rebuild schema',
       error: error.message,
     });
   }
@@ -441,7 +405,7 @@ router.post('/users/:userId/reset-stats', requireAuth, requireAdmin, async (req,
     }
 
     // Verify the target user exists
-    const user = await findUserById(userId);
+    const user = await userAuthService.findUserById(userId);
     if (!user) {
       return res.status(404).json({
         status: 'error',

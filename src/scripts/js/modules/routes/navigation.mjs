@@ -4,7 +4,7 @@
  */
 
 import express from 'express';
-import { updateLastPageVisited, getLastPageVisited } from '../auth/user.mjs';
+import { userAuthService } from '../auth/user.mjs';
 
 const router = express.Router();
 
@@ -47,7 +47,7 @@ router.post('/track', express.json(), async (req, res) => {
     }
 
     // Update last page visited
-    await updateLastPageVisited(req.session.userId, normalizedPage);
+    await userAuthService.updateLastPageVisited(req.session.userId, normalizedPage);
 
     return res.status(200).json({
       status: 'success',
@@ -78,7 +78,7 @@ router.get('/last-page', async (req, res) => {
       });
     }
 
-    const lastPage = await getLastPageVisited(req.session.userId);
+    const lastPage = await userAuthService.getLastPageVisited(req.session.userId);
 
     return res.status(200).json({
       status: 'success',
