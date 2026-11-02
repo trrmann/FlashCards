@@ -1,7 +1,13 @@
 -- Query: select_quiz_cards_template
-SELECT flashcard_id, question, answer, difficulty_score
-FROM flashcards
-WHERE created_by = $1 AND is_private = true
+SELECT f.flashcard_id, f.question, f.answer, f.difficulty_score
+FROM flashcards f
+WHERE (f.created_by = $1 OR EXISTS (
+    SELECT 1 FROM flashcard_shares fs
+    WHERE fs.flashcard_id = f.flashcard_id
+      AND fs.recipient_id = $1
+      AND fs.status != 'revoked'
+      AND fs.recipient_status = 'accepted'
+  ))
   {{filter_clause}}
 ORDER BY RANDOM();
 
@@ -44,16 +50,34 @@ WHERE quiz_id = $1
 ORDER BY taken_at DESC;
 
 -- Query: select_distinct_classes
-SELECT DISTINCT class FROM flashcards
-WHERE class IS NOT NULL AND created_by = $1
-ORDER BY class ASC;
+SELECT DISTINCT f.class FROM flashcards f
+WHERE f.class IS NOT NULL AND (f.created_by = $1 OR EXISTS (
+    SELECT 1 FROM flashcard_shares fs
+    WHERE fs.flashcard_id = f.flashcard_id
+      AND fs.recipient_id = $1
+      AND fs.status != 'revoked'
+      AND fs.recipient_status = 'accepted'
+  ))
+ORDER BY f.class ASC;
 
 -- Query: select_distinct_lessons_for_class
-SELECT DISTINCT lesson FROM flashcards
-WHERE lesson IS NOT NULL AND class = $1 AND created_by = $2
-ORDER BY lesson ASC;
+SELECT DISTINCT f.lesson FROM flashcards f
+WHERE f.lesson IS NOT NULL AND f.class = $1 AND (f.created_by = $2 OR EXISTS (
+    SELECT 1 FROM flashcard_shares fs
+    WHERE fs.flashcard_id = f.flashcard_id
+      AND fs.recipient_id = $2
+      AND fs.status != 'revoked'
+      AND fs.recipient_status = 'accepted'
+  ))
+ORDER BY f.lesson ASC;
 
 -- Query: select_distinct_categories
-SELECT DISTINCT category FROM flashcards
-WHERE category IS NOT NULL AND created_by = $1
-ORDER BY category ASC;
+SELECT DISTINCT f.category FROM flashcards f
+WHERE f.category IS NOT NULL AND (f.created_by = $1 OR EXISTS (
+    SELECT 1 FROM flashcard_shares fs
+    WHERE fs.flashcard_id = f.flashcard_id
+      AND fs.recipient_id = $1
+      AND fs.status != 'revoked'
+      AND fs.recipient_status = 'accepted'
+  ))
+ORDER BY f.category ASC;

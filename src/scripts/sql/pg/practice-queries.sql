@@ -18,10 +18,16 @@ WHERE flashcard_id = $1 AND user_id = $2;
 -- Query: insert_leitner_progress_for_all_cards
 INSERT INTO flashcard_leitner_progress
   (flashcard_id, user_id, current_box, last_reviewed, next_review, times_correct, times_incorrect)
-SELECT flashcard_id, $1, 1, NULL, NOW(), 0, 0
-FROM flashcards
-WHERE created_by = $1
-  AND flashcard_id NOT IN (
+SELECT f.flashcard_id, $1, 1, NULL, NOW(), 0, 0
+FROM flashcards f
+WHERE (f.created_by = $1 OR EXISTS (
+    SELECT 1 FROM flashcard_shares fs
+    WHERE fs.flashcard_id = f.flashcard_id
+      AND fs.recipient_id = $1
+      AND fs.status != 'revoked'
+      AND fs.recipient_status = 'accepted'
+  ))
+  AND f.flashcard_id NOT IN (
     SELECT flashcard_id FROM flashcard_leitner_progress WHERE user_id = $1
   )
 RETURNING id;
@@ -30,7 +36,14 @@ RETURNING id;
 SELECT f.*, p.current_box, p.times_correct, p.times_incorrect, p.last_reviewed, p.next_review
 FROM flashcards f
 JOIN flashcard_leitner_progress p ON f.flashcard_id = p.flashcard_id
-WHERE f.created_by = $1
+WHERE (f.created_by = $1 OR EXISTS (
+    SELECT 1 FROM flashcard_shares fs
+    WHERE fs.flashcard_id = f.flashcard_id
+      AND fs.recipient_id = $1
+      AND fs.status != 'revoked'
+      AND fs.recipient_status = 'accepted'
+  ))
+  AND p.user_id = $1
   AND ({{box_condition}})
   AND (p.next_review IS NULL OR p.next_review <= NOW())
   {{filter_clause}}
@@ -40,7 +53,14 @@ ORDER BY p.current_box ASC, p.last_reviewed ASC NULLS FIRST;
 SELECT f.*, p.current_box, p.times_correct, p.times_incorrect, p.last_reviewed, p.next_review
 FROM flashcards f
 JOIN flashcard_leitner_progress p ON f.flashcard_id = p.flashcard_id
-WHERE f.created_by = $1
+WHERE (f.created_by = $1 OR EXISTS (
+    SELECT 1 FROM flashcard_shares fs
+    WHERE fs.flashcard_id = f.flashcard_id
+      AND fs.recipient_id = $1
+      AND fs.status != 'revoked'
+      AND fs.recipient_status = 'accepted'
+  ))
+  AND p.user_id = $1
   AND (p.current_box = 1 OR p.current_box = 2)
 ORDER BY RANDOM()
 LIMIT 1;
@@ -54,9 +74,15 @@ WHERE flashcard_id = $1 AND user_id = $2;
 SELECT answer
 FROM (
   SELECT DISTINCT answer
-  FROM flashcards
-  WHERE created_by = $1
-    AND flashcard_id != $2
+  FROM flashcards f
+  WHERE (f.created_by = $1 OR EXISTS (
+    SELECT 1 FROM flashcard_shares fs
+    WHERE fs.flashcard_id = f.flashcard_id
+      AND fs.recipient_id = $1
+      AND fs.status != 'revoked'
+      AND fs.recipient_status = 'accepted'
+  ))
+    AND f.flashcard_id != $2
     AND answer IS NOT NULL
     AND answer != $3
     AND COALESCE(class, '') = COALESCE($4, '')
@@ -126,6 +152,13 @@ SELECT p.current_box, COUNT(*) AS count
 FROM flashcard_leitner_progress p
 JOIN flashcards f ON p.flashcard_id = f.flashcard_id
 WHERE p.user_id = $1
+  AND (f.created_by = $1 OR EXISTS (
+    SELECT 1 FROM flashcard_shares fs
+    WHERE fs.flashcard_id = f.flashcard_id
+      AND fs.recipient_id = $1
+      AND fs.status != 'revoked'
+      AND fs.recipient_status = 'accepted'
+  ))
   {{filter_clause}}
 GROUP BY p.current_box
 ORDER BY p.current_box;
@@ -138,6 +171,13 @@ SELECT
 FROM practice_history ph
 JOIN flashcards f ON ph.flashcard_id = f.flashcard_id
 WHERE ph.user_id = $1
+  AND (f.created_by = $1 OR EXISTS (
+    SELECT 1 FROM flashcard_shares fs
+    WHERE fs.flashcard_id = f.flashcard_id
+      AND fs.recipient_id = $1
+      AND fs.status != 'revoked'
+      AND fs.recipient_status = 'accepted'
+  ))
   {{filter_clause}};
 
 -- Query: select_recent_practice_results
@@ -152,9 +192,16 @@ SELECT COUNT(*) AS attempts,
        SUM(CASE WHEN correct THEN 1 ELSE 0 END) AS correct,
        SUM(CASE WHEN NOT correct THEN 1 ELSE 0 END) AS incorrect
 FROM practice_history ph
-LEFT JOIN flashcards f ON ph.flashcard_id = f.flashcard_id
+JOIN flashcards f ON ph.flashcard_id = f.flashcard_id
 WHERE ph.user_id = $1
   AND DATE(ph.created_at) = CURRENT_DATE
+  AND (f.created_by = $1 OR EXISTS (
+    SELECT 1 FROM flashcard_shares fs
+    WHERE fs.flashcard_id = f.flashcard_id
+      AND fs.recipient_id = $1
+      AND fs.status != 'revoked'
+      AND fs.recipient_status = 'accepted'
+  ))
   {{filter_clause}};
 
 -- Query: reset_user_leitner_progress

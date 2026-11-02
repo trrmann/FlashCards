@@ -1,0 +1,233 @@
+{
+  "version": "1.0",
+  "exportedAt": "2026-11-02T20:20:21.326Z",
+  "exportedBy": "p40007y",
+  "filters": null,
+  "count": 28,
+  "entries": [
+    {
+      "question": "How can Fusion connect workflows beyond Workfront itself?",
+      "answer": "It provides connectors for other applications and ways to connect to services with public APIs.",
+      "lesson": "07 - Integration Concepts",
+      "category": "Integrations",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "What is one possible Fusion automation involving a Workfront request queue?",
+      "answer": "A scenario could watch a queue and create template-based projects from requests; this is a possible design, not proof it is enabled in a particular organization.",
+      "lesson": "07 - Integration Concepts",
+      "category": "Integrations",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "What does a scenario represent in Workfront Fusion?",
+      "answer": "A scenario represents a workflow that watches for data and performs configured actions to transfer or transform it.",
+      "lesson": "07 - Integration Concepts",
+      "category": "Integrations",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "What is Adobe Workfront Fusion designed to do?",
+      "answer": "Fusion automates processes by linking actions within and between applications and services.",
+      "lesson": "07 - Integration Concepts",
+      "category": "Integrations",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "Why should you distinguish project, task and issue information when interpreting Workfront reporting?",
+      "answer": "They represent different work objects, so the meaning of a record and its relationship to the project must be understood before drawing conclusions.",
+      "lesson": "06 - Reports and Dashboards",
+      "category": "Reporting",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "How can you connect report evidence to a training project instead of relying on the report's total row count?",
+      "answer": "Locate matching project or work-record identifiers and explain how the displayed information relates to the training work.",
+      "lesson": "06 - Reports and Dashboards",
+      "category": "Reporting",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "How does a dashboard differ from a report in Workfront?",
+      "answer": "A dashboard assembles reports and other supported views into one place rather than representing one report alone.",
+      "lesson": "06 - Reports and Dashboards",
+      "category": "Reporting",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "What is the main purpose of a Workfront report?",
+      "answer": "A report presents selected Workfront record information so users can inspect and understand work.",
+      "lesson": "06 - Reports and Dashboards",
+      "category": "Reporting",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "What evidence shows that a document-review exercise went beyond simply uploading a file?",
+      "answer": "The document/version is identifiable and the agreed review or approval decision is visible with its reviewer and relevant comments or date.",
+      "lesson": "05 - Documents and Review",
+      "category": "Document Review",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "Why should you confirm the review workflow rather than assume every Workfront deployment uses the same proofing viewer?",
+      "answer": "Storage and integration choices affect review capabilities; Adobe cloud storage can use Frame.io-based review rather than Workfront proofing.",
+      "lesson": "05 - Documents and Review",
+      "category": "Document Review",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "How does a document approval differ from a proof review?",
+      "answer": "Document approval records a decision on a file; proof review provides a review experience with markup and feedback tools.",
+      "lesson": "05 - Documents and Review",
+      "category": "Document Review",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "What is a document in the context of Workfront work records?",
+      "answer": "A document is a file associated with work context such as a project, task or issue.",
+      "lesson": "05 - Documents and Review",
+      "category": "Document Review",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "Why is a submission confirmation alone insufficient to demonstrate a request-routing exercise?",
+      "answer": "You must also inspect the resulting issue and verify its actual destination, responsibility and observed status.",
+      "lesson": "04 - Requests and Routing",
+      "category": "Request Intake",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "What can happen to a Workfront request after submission and triage?",
+      "answer": "It can be assigned for handling or converted to a task or project under the configured process; conversion is not automatic for every request.",
+      "lesson": "04 - Requests and Routing",
+      "category": "Request Intake",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "What role do queue topics and routing rules play in Workfront intake?",
+      "answer": "Queue topics classify requests, while configured routing rules help direct submitted work to the intended destination or owner.",
+      "lesson": "04 - Requests and Routing",
+      "category": "Request Intake",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "What does a Workfront request queue provide?",
+      "answer": "A request queue is a configured intake route for submitting unplanned work into Workfront.",
+      "lesson": "04 - Requests and Routing",
+      "category": "Request Intake",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "After creating a training project from a template, what should you inspect before assigning or progressing tasks?",
+      "answer": "Inspect copied tasks, assignments, dates and settings, then use the agreed training assignee and permitted lifecycle changes.",
+      "lesson": "03 - Projects Templates and Tasks",
+      "category": "Project Planning",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "How do planned hours differ from task duration?",
+      "answer": "Planned hours express expected effort; duration expresses the scheduled time span over which a task is planned.",
+      "lesson": "03 - Projects Templates and Tasks",
+      "category": "Project Planning",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "What kinds of information can a Workfront template transfer into a new project?",
+      "answer": "Template configuration can transfer tasks, assignments, durations, documents, custom forms and other project information.",
+      "lesson": "03 - Projects Templates and Tasks",
+      "category": "Project Planning",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "What is a Workfront project template used for?",
+      "answer": "A project template provides a reusable plan and settings that can be copied into a new project.",
+      "lesson": "03 - Projects Templates and Tasks",
+      "category": "Project Planning",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "Does seeing a Workfront menu or creation button prove you can edit every object in that area?",
+      "answer": "No. Relevant license/access capabilities and permissions on the specific object must also allow the action.",
+      "lesson": "02 - Navigation and Access",
+      "category": "Navigation and Access",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "Why might two Workfront users see different options in the Main Menu?",
+      "answer": "License type and assigned layout-template configuration can change the navigation options a user sees.",
+      "lesson": "02 - Navigation and Access",
+      "category": "Navigation and Access",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "Which Workfront navigation destination commonly organizes a user's daily work?",
+      "answer": "Home is the usual personal-work landing area, although an administrator can configure a different landing page.",
+      "lesson": "02 - Navigation and Access",
+      "category": "Navigation and Access",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "Which Workfront navigation control opens areas such as Projects, Requests and Reports?",
+      "answer": "The Main Menu provides navigation to the Workfront areas available to your account.",
+      "lesson": "02 - Navigation and Access",
+      "category": "Navigation and Access",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "Which Workfront objects can organize multiple projects for higher-level oversight?",
+      "answer": "Portfolios and programs group projects; programs can organize projects within a portfolio.",
+      "lesson": "01 - Objects and Terminology",
+      "category": "Objects and Terminology",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "Which Workfront object commonly tracks an incoming request or an unexpected problem?",
+      "answer": "An issue represents unplanned work such as an incoming request or problem within a project.",
+      "lesson": "01 - Objects and Terminology",
+      "category": "Objects and Terminology",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "Which Workfront object represents a planned unit of work within a project?",
+      "answer": "A task describes a planned work unit, with responsibility and progress tracked within its project.",
+      "lesson": "01 - Objects and Terminology",
+      "category": "Objects and Terminology",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    },
+    {
+      "question": "Which Workfront object organizes a planned outcome and holds its related tasks and issues?",
+      "answer": "A project is the work container for a planned outcome and its associated tasks and issues.",
+      "lesson": "01 - Objects and Terminology",
+      "category": "Objects and Terminology",
+      "class": "Core Workfront Learnings and Hands-On Training Basics - Tracy (MRT-2134)",
+      "is_private": true
+    }
+  ]
+}

@@ -106,22 +106,46 @@ ORDER BY fs.shared_at DESC;
 
 -- Query: select_distinct_classes
 SELECT DISTINCT class FROM flashcards
-WHERE class IS NOT NULL AND (created_by = $1 OR user_id = $1)
+WHERE class IS NOT NULL AND (created_by = $1 OR user_id = $1 OR EXISTS (
+    SELECT 1 FROM flashcard_shares fs
+    WHERE fs.flashcard_id = flashcards.flashcard_id
+      AND fs.recipient_id = $1
+      AND fs.status != 'revoked'
+      AND fs.recipient_status = 'accepted'
+  ))
 ORDER BY class ASC;
 
 -- Query: select_distinct_lessons
 SELECT DISTINCT lesson FROM flashcards
-WHERE lesson IS NOT NULL AND (created_by = $1 OR user_id = $1)
+WHERE lesson IS NOT NULL AND (created_by = $1 OR user_id = $1 OR EXISTS (
+    SELECT 1 FROM flashcard_shares fs
+    WHERE fs.flashcard_id = flashcards.flashcard_id
+      AND fs.recipient_id = $1
+      AND fs.status != 'revoked'
+      AND fs.recipient_status = 'accepted'
+  ))
 ORDER BY lesson ASC;
 
 -- Query: select_distinct_categories
 SELECT DISTINCT category FROM flashcards
-WHERE category IS NOT NULL AND (created_by = $1 OR user_id = $1)
+WHERE category IS NOT NULL AND (created_by = $1 OR user_id = $1 OR EXISTS (
+    SELECT 1 FROM flashcard_shares fs
+    WHERE fs.flashcard_id = flashcards.flashcard_id
+      AND fs.recipient_id = $1
+      AND fs.status != 'revoked'
+      AND fs.recipient_status = 'accepted'
+  ))
 ORDER BY category ASC;
 
 -- Query: select_distinct_lessons_for_class
 SELECT DISTINCT lesson FROM flashcards
 WHERE lesson IS NOT NULL
   AND class = $1
-  AND (created_by = $2 OR user_id = $2)
+  AND (created_by = $2 OR user_id = $2 OR EXISTS (
+    SELECT 1 FROM flashcard_shares fs
+    WHERE fs.flashcard_id = flashcards.flashcard_id
+      AND fs.recipient_id = $2
+      AND fs.status != 'revoked'
+      AND fs.recipient_status = 'accepted'
+  ))
 ORDER BY lesson ASC;
