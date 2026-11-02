@@ -5,12 +5,12 @@
 
 import { flashCardsDb } from '../db/flashCardsDb.mjs';
 
-const entriesQueries = flashCardsDb.constructor.loadNamedSqlStatements(
-  'pg/entries-queries.sql',
-  flashCardsDb.constructor.sqlRoot
-);
-
 class EntriesService {
+  static queries = flashCardsDb.constructor.loadNamedSqlStatements(
+    'pg/entries-queries.sql',
+    flashCardsDb.constructor.sqlRoot
+  );
+
   constructor(database = flashCardsDb) {
     this.database = database;
   }
@@ -33,7 +33,7 @@ class EntriesService {
     category = null,
     flashClass = null
   ) {
-    const result = await this.database.query(entriesQueries.insert_flashcard, [
+    const result = await this.database.query(this.constructor.queries.insert_flashcard, [
       userId,
       question,
       answer,
@@ -52,7 +52,9 @@ class EntriesService {
    * @returns {Promise<array>} Array of flashcards
    */
   async getUserFlashcards(userId) {
-    const result = await this.database.query(entriesQueries.select_user_flashcards, [userId]);
+    const result = await this.database.query(this.constructor.queries.select_user_flashcards, [
+      userId,
+    ]);
 
     return result.rows;
   }
@@ -64,10 +66,10 @@ class EntriesService {
    * @returns {Promise<object>} Flashcard object or null
    */
   async getFlashcardByQuestion(userId, question) {
-    const result = await this.database.query(entriesQueries.select_flashcard_by_question, [
-      userId,
-      question,
-    ]);
+    const result = await this.database.query(
+      this.constructor.queries.select_flashcard_by_question,
+      [userId, question]
+    );
 
     return result.rows[0] || null;
   }
@@ -101,7 +103,7 @@ class EntriesService {
     }
 
     const result = await this.database.query(
-      entriesQueries.select_user_flashcards_filtered_template.replace(
+      this.constructor.queries.select_user_flashcards_filtered_template.replace(
         '{{filter_clause}}',
         filterConditions.join('\n  ')
       ),
@@ -117,10 +119,10 @@ class EntriesService {
    * @returns {Promise<object>} Flashcard object or null
    */
   async getFlashcard(flashcardId, userId) {
-    const result = await this.database.query(entriesQueries.select_flashcard_with_access, [
-      flashcardId,
-      userId,
-    ]);
+    const result = await this.database.query(
+      this.constructor.queries.select_flashcard_with_access,
+      [flashcardId, userId]
+    );
 
     return result.rows[0] || null;
   }
@@ -134,7 +136,7 @@ class EntriesService {
    */
   async updateFlashcard(flashcardId, userId, updates) {
     // Verify ownership
-    const checkResult = await this.database.query(entriesQueries.select_flashcard_owner, [
+    const checkResult = await this.database.query(this.constructor.queries.select_flashcard_owner, [
       flashcardId,
     ]);
 
@@ -162,7 +164,7 @@ class EntriesService {
     values.push(flashcardId);
 
     const result = await this.database.query(
-      entriesQueries.update_flashcard_template
+      this.constructor.queries.update_flashcard_template
         .replace('{{columns}}', fields.join(', '))
         .replace('{{flashcard_id}}', `$${paramCount}`),
       values
@@ -178,7 +180,7 @@ class EntriesService {
    * @returns {Promise<boolean>} True if deleted
    */
   async deleteFlashcard(flashcardId, userId) {
-    const result = await this.database.query(entriesQueries.delete_flashcard, [
+    const result = await this.database.query(this.constructor.queries.delete_flashcard, [
       flashcardId,
       userId,
     ]);
@@ -195,7 +197,7 @@ class EntriesService {
    */
   async shareFlashcard(flashcardId, ownerId, recipientId) {
     // Verify ownership
-    const checkResult = await this.database.query(entriesQueries.select_flashcard_owner, [
+    const checkResult = await this.database.query(this.constructor.queries.select_flashcard_owner, [
       flashcardId,
     ]);
 
@@ -209,7 +211,7 @@ class EntriesService {
     }
 
     // Insert or update share (ON CONFLICT to handle existing shares)
-    const result = await this.database.query(entriesQueries.upsert_flashcard_share, [
+    const result = await this.database.query(this.constructor.queries.upsert_flashcard_share, [
       ownerId,
       recipientId,
       flashcardId,
@@ -226,7 +228,7 @@ class EntriesService {
    * @returns {Promise<boolean>} True if revoked
    */
   async revokeShare(flashcardId, ownerId, recipientId) {
-    const result = await this.database.query(entriesQueries.revoke_flashcard_share, [
+    const result = await this.database.query(this.constructor.queries.revoke_flashcard_share, [
       flashcardId,
       ownerId,
       recipientId,
@@ -242,7 +244,7 @@ class EntriesService {
    * @returns {Promise<object>} Updated share
    */
   async acceptShare(shareId, recipientId) {
-    const result = await this.database.query(entriesQueries.accept_flashcard_share, [
+    const result = await this.database.query(this.constructor.queries.accept_flashcard_share, [
       shareId,
       recipientId,
     ]);
@@ -258,7 +260,7 @@ class EntriesService {
    * Note: Rejection is not reported back to owner
    */
   async rejectShare(shareId, recipientId) {
-    const result = await this.database.query(entriesQueries.reject_flashcard_share, [
+    const result = await this.database.query(this.constructor.queries.reject_flashcard_share, [
       shareId,
       recipientId,
     ]);
@@ -272,7 +274,9 @@ class EntriesService {
    * @returns {Promise<array>} Array of pending shares
    */
   async getPendingShares(recipientId) {
-    const result = await this.database.query(entriesQueries.select_pending_shares, [recipientId]);
+    const result = await this.database.query(this.constructor.queries.select_pending_shares, [
+      recipientId,
+    ]);
 
     return result.rows;
   }
@@ -283,7 +287,9 @@ class EntriesService {
    * @returns {Promise<array>} Array of accepted shares
    */
   async getAcceptedShares(recipientId) {
-    const result = await this.database.query(entriesQueries.select_accepted_shares, [recipientId]);
+    const result = await this.database.query(this.constructor.queries.select_accepted_shares, [
+      recipientId,
+    ]);
 
     return result.rows;
   }
@@ -294,7 +300,9 @@ class EntriesService {
    * @returns {Promise<array>} Array of shares
    */
   async getOwnedShares(ownerId) {
-    const result = await this.database.query(entriesQueries.select_owned_shares, [ownerId]);
+    const result = await this.database.query(this.constructor.queries.select_owned_shares, [
+      ownerId,
+    ]);
 
     return result.rows;
   }
@@ -305,7 +313,9 @@ class EntriesService {
    * @returns {Promise<array>} Array of class names
    */
   async getDistinctClasses(userId) {
-    const result = await this.database.query(entriesQueries.select_distinct_classes, [userId]);
+    const result = await this.database.query(this.constructor.queries.select_distinct_classes, [
+      userId,
+    ]);
     return result.rows.map((row) => row.class);
   }
 
@@ -315,7 +325,9 @@ class EntriesService {
    * @returns {Promise<array>} Array of lesson names
    */
   async getDistinctLessons(userId) {
-    const result = await this.database.query(entriesQueries.select_distinct_lessons, [userId]);
+    const result = await this.database.query(this.constructor.queries.select_distinct_lessons, [
+      userId,
+    ]);
     return result.rows.map((row) => row.lesson);
   }
 
@@ -325,7 +337,9 @@ class EntriesService {
    * @returns {Promise<array>} Array of category names
    */
   async getDistinctCategories(userId) {
-    const result = await this.database.query(entriesQueries.select_distinct_categories, [userId]);
+    const result = await this.database.query(this.constructor.queries.select_distinct_categories, [
+      userId,
+    ]);
     return result.rows.map((row) => row.category);
   }
 
@@ -336,10 +350,10 @@ class EntriesService {
    * @returns {Promise<array>} Array of lesson names
    */
   async getDistinctLessonsForClass(className, userId) {
-    const result = await this.database.query(entriesQueries.select_distinct_lessons_for_class, [
-      className,
-      userId,
-    ]);
+    const result = await this.database.query(
+      this.constructor.queries.select_distinct_lessons_for_class,
+      [className, userId]
+    );
     return result.rows.map((row) => row.lesson);
   }
 }

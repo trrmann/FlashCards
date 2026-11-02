@@ -6,12 +6,12 @@
 
 import { flashCardsDb } from '../db/flashCardsDb.mjs';
 
-const backupQueries = flashCardsDb.constructor.loadNamedSqlStatements(
-  'pg/backup-queries.sql',
-  flashCardsDb.constructor.sqlRoot
-);
-
 class BackupService {
+  static queries = flashCardsDb.constructor.loadNamedSqlStatements(
+    'pg/backup-queries.sql',
+    flashCardsDb.constructor.sqlRoot
+  );
+
   constructor(database = flashCardsDb) {
     this.database = database;
   }
@@ -56,7 +56,7 @@ class BackupService {
 
         // Get table data
         const dataResult = await this.database.query(
-          backupQueries.select_all_rows_template.replace('{{table}}', table)
+          this.constructor.queries.select_all_rows_template.replace('{{table}}', table)
         );
         backup.data[table] = dataResult.rows;
       } catch (error) {
@@ -113,7 +113,9 @@ class BackupService {
 
       for (const table of clearOrder) {
         try {
-          await client.query(backupQueries.delete_all_rows_template.replace('{{table}}', table));
+          await client.query(
+            this.constructor.queries.delete_all_rows_template.replace('{{table}}', table)
+          );
         } catch (error) {
           results.warnings.push(`Could not clear ${table}: ${error.message}`);
         }
@@ -144,7 +146,7 @@ class BackupService {
           const row = tableData[0];
           const columns = Object.keys(row);
           const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
-          const insertStatement = backupQueries.insert_row_template
+          const insertStatement = this.constructor.queries.insert_row_template
             .replace('{{table}}', table)
             .replace('{{columns}}', columns.join(', '))
             .replace('{{placeholders}}', placeholders);
@@ -187,7 +189,7 @@ class BackupService {
    */
   async logImportExport(userId, action, recordCount, status = 'success', errorMessage = null) {
     const normalizedStatus = status === 'success' ? 'completed' : status;
-    await this.database.query(backupQueries.insert_import_export_log, [
+    await this.database.query(this.constructor.queries.insert_import_export_log, [
       userId,
       action.toUpperCase(),
       recordCount,
@@ -204,11 +206,11 @@ class BackupService {
    */
   async getImportExportHistory(userId = null, limit = 100) {
     const result = userId
-      ? await this.database.query(backupQueries.select_import_export_history_for_user, [
+      ? await this.database.query(this.constructor.queries.select_import_export_history_for_user, [
           userId,
           limit,
         ])
-      : await this.database.query(backupQueries.select_import_export_history, [limit]);
+      : await this.database.query(this.constructor.queries.select_import_export_history, [limit]);
 
     return result.rows;
   }

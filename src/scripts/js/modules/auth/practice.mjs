@@ -7,12 +7,12 @@
 
 import { flashCardsDb } from '../db/flashCardsDb.mjs';
 
-const practiceQueries = flashCardsDb.constructor.loadNamedSqlStatements(
-  'pg/practice-queries.sql',
-  flashCardsDb.constructor.sqlRoot
-);
-
 class PracticeService {
+  static queries = flashCardsDb.constructor.loadNamedSqlStatements(
+    'pg/practice-queries.sql',
+    flashCardsDb.constructor.sqlRoot
+  );
+
   constructor(database = flashCardsDb) {
     this.database = database;
   }
@@ -58,7 +58,7 @@ class PracticeService {
    * @returns {Promise<number>} Number of attempts in current session
    */
   async getSessionAttemptCount(userId, flashcardId, sessionStartTime) {
-    const result = await this.database.query(practiceQueries.count_session_attempts, [
+    const result = await this.database.query(this.constructor.queries.count_session_attempts, [
       userId,
       flashcardId,
       sessionStartTime,
@@ -84,7 +84,7 @@ class PracticeService {
     wasCorrect,
     responseTimeMs = null
   ) {
-    const result = await this.database.query(practiceQueries.insert_session_attempt, [
+    const result = await this.database.query(this.constructor.queries.insert_session_attempt, [
       flashcardId,
       userId,
       sessionStartTime,
@@ -102,7 +102,7 @@ class PracticeService {
    */
   async initializeAllCardsForUser(userId) {
     const result = await this.database.query(
-      practiceQueries.insert_leitner_progress_for_all_cards,
+      this.constructor.queries.insert_leitner_progress_for_all_cards,
       [userId]
     );
 
@@ -175,7 +175,7 @@ class PracticeService {
     const filterClause = filterConditions.length > 0 ? 'AND ' + filterConditions.join(' AND ') : '';
 
     const result = await this.database.query(
-      practiceQueries.select_due_cards_template
+      this.constructor.queries.select_due_cards_template
         .replace('{{box_condition}}', boxCondition)
         .replace('{{filter_clause}}', filterClause),
       queryParams
@@ -194,7 +194,9 @@ class PracticeService {
    */
   async getNextCatchUpCard(userId) {
     // Get any card from boxes 1 or 2 (not mastered)
-    const result = await this.database.query(practiceQueries.select_catch_up_card, [userId]);
+    const result = await this.database.query(this.constructor.queries.select_catch_up_card, [
+      userId,
+    ]);
 
     if (result.rows.length === 0) {
       return null;
@@ -219,10 +221,10 @@ class PracticeService {
     );
 
     // Get the none_of_above_count for this card
-    const progressResult = await this.database.query(practiceQueries.select_leitner_counters, [
-      correctCard.flashcard_id,
-      userId,
-    ]);
+    const progressResult = await this.database.query(
+      this.constructor.queries.select_leitner_counters,
+      [correctCard.flashcard_id, userId]
+    );
 
     let noneOfAboveCount = 0;
     let totalAttempts = 0;
@@ -242,14 +244,17 @@ class PracticeService {
       // Standard mode: show correct answer with wrong answers as distractors
       // Wrong answers must match class AND category (but can be different lesson)
       // Use COALESCE to handle NULL values: NULL = NULL should match
-      const wrongAnswersResult = await this.database.query(practiceQueries.select_wrong_answers, [
-        userId,
-        correctCard.flashcard_id,
-        correctCard.answer,
-        correctCard.class,
-        correctCard.category,
-        optionCount - 1,
-      ]);
+      const wrongAnswersResult = await this.database.query(
+        this.constructor.queries.select_wrong_answers,
+        [
+          userId,
+          correctCard.flashcard_id,
+          correctCard.answer,
+          correctCard.class,
+          correctCard.category,
+          optionCount - 1,
+        ]
+      );
 
       options.push({ text: correctCard.answer, isCorrect: true });
       wrongAnswersResult.rows.forEach((row) => {
@@ -263,14 +268,17 @@ class PracticeService {
       // "None of the above" mode: show wrong answers only, with "None of the above" as correct option
       // Wrong answers must match class AND category (but can be different lesson)
       // Use COALESCE to handle NULL values: NULL = NULL should match
-      const wrongAnswersResult = await this.database.query(practiceQueries.select_wrong_answers, [
-        userId,
-        correctCard.flashcard_id,
-        correctCard.answer,
-        correctCard.class,
-        correctCard.category,
-        optionCount - 1,
-      ]);
+      const wrongAnswersResult = await this.database.query(
+        this.constructor.queries.select_wrong_answers,
+        [
+          userId,
+          correctCard.flashcard_id,
+          correctCard.answer,
+          correctCard.class,
+          correctCard.category,
+          optionCount - 1,
+        ]
+      );
 
       wrongAnswersResult.rows.forEach((row) => {
         options.push({ text: row.answer, isCorrect: false });
@@ -329,9 +337,10 @@ class PracticeService {
     filterContext = null
   ) {
     // Get the flashcard to access its class, lesson, category
-    const cardResult = await this.database.query(practiceQueries.select_card_classification, [
-      flashcardId,
-    ]);
+    const cardResult = await this.database.query(
+      this.constructor.queries.select_card_classification,
+      [flashcardId]
+    );
 
     let cardClass = null;
     let cardLesson = null;
@@ -352,7 +361,7 @@ class PracticeService {
     }
 
     // Record in history with filter context
-    await this.database.query(practiceQueries.insert_practice_history_from_progress, [
+    await this.database.query(this.constructor.queries.insert_practice_history_from_progress, [
       flashcardId,
       userId,
       isCorrect,
@@ -363,10 +372,10 @@ class PracticeService {
     ]);
 
     // Get current progress
-    const currentResult = await this.database.query(practiceQueries.select_leitner_progress, [
-      flashcardId,
-      userId,
-    ]);
+    const currentResult = await this.database.query(
+      this.constructor.queries.select_leitner_progress,
+      [flashcardId, userId]
+    );
 
     if (currentResult.rows.length === 0) {
       return null;
@@ -391,14 +400,10 @@ class PracticeService {
 
     // Update progress with new box and schedule next review
     const nextReview = this.calculateNextReviewDate(newBox);
-    const updateResult = await this.database.query(practiceQueries.update_leitner_after_attempt, [
-      newBox,
-      nextReview,
-      newTimesCorrect,
-      newTimesIncorrect,
-      flashcardId,
-      userId,
-    ]);
+    const updateResult = await this.database.query(
+      this.constructor.queries.update_leitner_after_attempt,
+      [newBox, nextReview, newTimesCorrect, newTimesIncorrect, flashcardId, userId]
+    );
 
     // Update difficulty score in background (non-blocking)
     // This allows difficulty to adapt automatically as users practice
@@ -430,7 +435,7 @@ class PracticeService {
     filterContext = null
   ) {
     // Get current box before any updates
-    const currentResult = await this.database.query(practiceQueries.select_current_box, [
+    const currentResult = await this.database.query(this.constructor.queries.select_current_box, [
       flashcardId,
       userId,
     ]);
@@ -469,9 +474,10 @@ class PracticeService {
     }
 
     // Get the flashcard to access its class, lesson, category
-    const cardResult = await this.database.query(practiceQueries.select_card_classification, [
-      flashcardId,
-    ]);
+    const cardResult = await this.database.query(
+      this.constructor.queries.select_card_classification,
+      [flashcardId]
+    );
 
     let cardClass = null;
     let cardLesson = null;
@@ -493,16 +499,19 @@ class PracticeService {
 
     // Record in practice history with filter context
     try {
-      const historyResult = await this.database.query(practiceQueries.insert_practice_history, [
-        flashcardId,
-        userId,
-        currentBox,
-        isCorrect,
-        responseTimeMs,
-        cardClass,
-        cardLesson,
-        cardCategory,
-      ]);
+      const historyResult = await this.database.query(
+        this.constructor.queries.insert_practice_history,
+        [
+          flashcardId,
+          userId,
+          currentBox,
+          isCorrect,
+          responseTimeMs,
+          cardClass,
+          cardLesson,
+          cardCategory,
+        ]
+      );
       console.log(
         `[practice_history] Success - recorded with id: ${historyResult.rows[0]?.id}, filter: class=${cardClass}, lesson=${cardLesson}, category=${cardCategory}`
       );
@@ -517,10 +526,10 @@ class PracticeService {
 
     // Update attempt counts EVERY time (not just when complete)
     // This ensures times_correct and times_incorrect are tracked per attempt
-    const progressResult = await this.database.query(practiceQueries.select_leitner_progress, [
-      flashcardId,
-      userId,
-    ]);
+    const progressResult = await this.database.query(
+      this.constructor.queries.select_leitner_progress,
+      [flashcardId, userId]
+    );
 
     if (progressResult.rows.length > 0) {
       const current = progressResult.rows[0];
@@ -538,11 +547,10 @@ class PracticeService {
       if (!needsMoreAttempts) {
         // All attempts done - now determine box progression based on overall session performance
         // Count correct vs incorrect in this entire session
-        const sessionStatsResult = await this.database.query(practiceQueries.select_session_stats, [
-          flashcardId,
-          userId,
-          sessionStartTime,
-        ]);
+        const sessionStatsResult = await this.database.query(
+          this.constructor.queries.select_session_stats,
+          [flashcardId, userId, sessionStartTime]
+        );
 
         const sessionStats = sessionStatsResult.rows[0] || {};
         const sessionCorrect = parseInt(sessionStats.session_correct) || 0;
@@ -575,7 +583,7 @@ class PracticeService {
 
       if (!needsMoreAttempts) {
         // Session complete - update all fields
-        await this.database.query(practiceQueries.update_leitner_session_complete, [
+        await this.database.query(this.constructor.queries.update_leitner_session_complete, [
           newTimesCorrect,
           newTimesIncorrect,
           newBox,
@@ -588,7 +596,7 @@ class PracticeService {
         );
       } else {
         // Session in progress - update only attempt counts
-        await this.database.query(practiceQueries.update_leitner_mid_session, [
+        await this.database.query(this.constructor.queries.update_leitner_mid_session, [
           newTimesCorrect,
           newTimesIncorrect,
           flashcardId,
@@ -687,7 +695,10 @@ class PracticeService {
 
     // Count cards in each box with filters applied
     const boxCountsResult = await this.database.query(
-      practiceQueries.select_box_counts_template.replace('{{filter_clause}}', filterClause),
+      this.constructor.queries.select_box_counts_template.replace(
+        '{{filter_clause}}',
+        filterClause
+      ),
       queryParams
     );
 
@@ -707,7 +718,10 @@ class PracticeService {
     // practice_history filter fields (ph.class, ph.lesson, ph.category) which represent
     // what filters were active when the attempt was made, not the card's actual properties
     const attemptsResult = await this.database.query(
-      practiceQueries.select_attempt_totals_template.replace('{{filter_clause}}', filterClause),
+      this.constructor.queries.select_attempt_totals_template.replace(
+        '{{filter_clause}}',
+        filterClause
+      ),
       queryParams
     );
 
@@ -738,9 +752,10 @@ class PracticeService {
    */
   async getPracticeStreak(userId) {
     // Get recent practice attempts ordered by date
-    const result = await this.database.query(practiceQueries.select_recent_practice_results, [
-      userId,
-    ]);
+    const result = await this.database.query(
+      this.constructor.queries.select_recent_practice_results,
+      [userId]
+    );
 
     // Count consecutive correct answers from most recent
     let streak = 0;
@@ -836,7 +851,10 @@ class PracticeService {
 
     // Get today's practice attempts (with filters applied)
     const todayResult = await this.database.query(
-      practiceQueries.select_todays_summary_template.replace('{{filter_clause}}', filterClause),
+      this.constructor.queries.select_todays_summary_template.replace(
+        '{{filter_clause}}',
+        filterClause
+      ),
       queryParams
     );
 
@@ -858,7 +876,9 @@ class PracticeService {
    */
   async resetUserLeitnerStats(userId) {
     // Reset all Leitner progress for this user's cards
-    const result = await this.database.query(practiceQueries.reset_user_leitner_progress, [userId]);
+    const result = await this.database.query(this.constructor.queries.reset_user_leitner_progress, [
+      userId,
+    ]);
 
     return {
       cardsReset: result.rows.length,
@@ -899,7 +919,7 @@ class PracticeService {
   async updateDifficultyScore(flashcardId, _userId = null) {
     try {
       // Get flashcard info
-      const cardResult = await this.database.query(practiceQueries.select_card_privacy, [
+      const cardResult = await this.database.query(this.constructor.queries.select_card_privacy, [
         flashcardId,
       ]);
 
@@ -911,7 +931,7 @@ class PracticeService {
 
       // Get current difficulty
       const currentResult = await this.database.query(
-        practiceQueries.select_card_difficulty_score,
+        this.constructor.queries.select_card_difficulty_score,
         [flashcardId]
       );
       const oldScore = currentResult.rows[0].difficulty_score;
@@ -922,10 +942,10 @@ class PracticeService {
 
       if (is_private) {
         // Private card: use only the owner's data
-        const ownerStats = await this.database.query(practiceQueries.select_owner_practice_stats, [
-          flashcardId,
-          created_by,
-        ]);
+        const ownerStats = await this.database.query(
+          this.constructor.queries.select_owner_practice_stats,
+          [flashcardId, created_by]
+        );
 
         sampleSize = parseInt(ownerStats.rows[0].total) || 0;
         const correctCount = parseInt(ownerStats.rows[0].correct) || 0;
@@ -933,9 +953,10 @@ class PracticeService {
         calculationBasis = `Owner only (${sampleSize} attempts)`;
       } else {
         // Shared card: use all users' data
-        const sharedStats = await this.database.query(practiceQueries.select_all_practice_stats, [
-          flashcardId,
-        ]);
+        const sharedStats = await this.database.query(
+          this.constructor.queries.select_all_practice_stats,
+          [flashcardId]
+        );
 
         sampleSize = parseInt(sharedStats.rows[0].total) || 0;
         const correctCount = parseInt(sharedStats.rows[0].correct) || 0;
@@ -947,7 +968,7 @@ class PracticeService {
       const newScore = this.calculateDifficultyFromSuccessRate(successRate);
 
       // Update the difficulty score
-      await this.database.query(practiceQueries.update_card_difficulty, [
+      await this.database.query(this.constructor.queries.update_card_difficulty, [
         newScore,
         is_private ? 'individual' : 'shared',
         flashcardId,
@@ -955,7 +976,7 @@ class PracticeService {
 
       // Record in difficulty history
       if (newScore !== oldScore) {
-        await this.database.query(practiceQueries.insert_difficulty_history, [
+        await this.database.query(this.constructor.queries.insert_difficulty_history, [
           flashcardId,
           oldScore,
           newScore,
@@ -999,7 +1020,7 @@ class PracticeService {
       }
 
       const cardsResult = await this.database.query(
-        practiceQueries.select_cards_for_difficulty_update_template.replace(
+        this.constructor.queries.select_cards_for_difficulty_update_template.replace(
           '{{lesson_filter}}',
           lessonFilterClause
         ),
@@ -1030,7 +1051,9 @@ class PracticeService {
    */
   async getDifficultyStats(userId) {
     try {
-      const result = await this.database.query(practiceQueries.select_difficulty_stats, [userId]);
+      const result = await this.database.query(this.constructor.queries.select_difficulty_stats, [
+        userId,
+      ]);
 
       return result.rows[0];
     } catch (error) {
@@ -1046,7 +1069,10 @@ class PracticeService {
    * @returns {Promise<void>}
    */
   async incrementNoneOfAboveCount(flashcardId, userId) {
-    await this.database.query(practiceQueries.increment_none_of_above_count, [flashcardId, userId]);
+    await this.database.query(this.constructor.queries.increment_none_of_above_count, [
+      flashcardId,
+      userId,
+    ]);
   }
 
   /**
@@ -1056,7 +1082,7 @@ class PracticeService {
    * @returns {Promise<object|null>} { answer, current_box } or null
    */
   async getCardAnswerWithBox(flashcardId, userId) {
-    const result = await this.database.query(practiceQueries.select_card_answer_with_box, [
+    const result = await this.database.query(this.constructor.queries.select_card_answer_with_box, [
       flashcardId,
       userId,
     ]);

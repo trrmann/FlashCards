@@ -5,16 +5,16 @@
 
 import bcrypt from 'bcrypt';
 
-const SALT_ROUNDS = 10;
-
 class ValidationService {
+  static SALT_ROUNDS = 10;
+
   /**
    * Hash a password with bcrypt
    * @param {string} password - Plain text password
    * @returns {Promise<string>} Hashed password
    */
   async hashPassword(password) {
-    return bcrypt.hash(password, SALT_ROUNDS);
+    return bcrypt.hash(password, this.constructor.SALT_ROUNDS);
   }
 
   /**

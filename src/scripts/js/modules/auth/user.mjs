@@ -6,19 +6,19 @@
 import { flashCardsDb } from '../db/flashCardsDb.mjs';
 import { validationService } from './validator.mjs';
 
-const authSqlQueries = flashCardsDb.constructor.loadNamedSqlStatements(
-  'pg/auth-user-queries.sql',
-  flashCardsDb.constructor.sqlRoot
-);
-
 class UserAuthService {
+  static queries = flashCardsDb.constructor.loadNamedSqlStatements(
+    'pg/auth-user-queries.sql',
+    flashCardsDb.constructor.sqlRoot
+  );
+
   constructor(database = flashCardsDb) {
     this.database = database;
   }
 
   async createUser(username, email, password, fullName = null) {
     const passwordHash = await validationService.hashPassword(password);
-    const result = await this.database.query(authSqlQueries.create_user, [
+    const result = await this.database.query(this.constructor.queries.create_user, [
       username,
       email,
       passwordHash,
@@ -29,17 +29,19 @@ class UserAuthService {
   }
 
   async findUserByUsername(username) {
-    const result = await this.database.query(authSqlQueries.find_user_by_username, [username]);
+    const result = await this.database.query(this.constructor.queries.find_user_by_username, [
+      username,
+    ]);
     return result.rows[0] || null;
   }
 
   async findUserByEmail(email) {
-    const result = await this.database.query(authSqlQueries.find_user_by_email, [email]);
+    const result = await this.database.query(this.constructor.queries.find_user_by_email, [email]);
     return result.rows[0] || null;
   }
 
   async findUserById(userId) {
-    const result = await this.database.query(authSqlQueries.find_user_by_id, [userId]);
+    const result = await this.database.query(this.constructor.queries.find_user_by_id, [userId]);
     return result.rows[0] || null;
   }
 
@@ -79,7 +81,7 @@ class UserAuthService {
       return this.findUserById(userId);
     }
 
-    const updateTemplate = authSqlQueries.update_user_profile_template;
+    const updateTemplate = this.constructor.queries.update_user_profile_template;
     const query = updateTemplate
       .replace('{{columns}}', [...fields, 'updated_at = NOW()'].join(', '))
       .replace('{{user_id}}', `$${paramCount}`);
@@ -91,17 +93,23 @@ class UserAuthService {
   }
 
   async getAllUsers() {
-    const result = await this.database.query(authSqlQueries.get_all_users);
+    const result = await this.database.query(this.constructor.queries.get_all_users);
     return result.rows;
   }
 
   async disableUser(userId) {
-    const result = await this.database.query(authSqlQueries.disable_user, ['disabled', userId]);
+    const result = await this.database.query(this.constructor.queries.disable_user, [
+      'disabled',
+      userId,
+    ]);
     return result.rows[0];
   }
 
   async enableUser(userId) {
-    const result = await this.database.query(authSqlQueries.enable_user, ['active', userId]);
+    const result = await this.database.query(this.constructor.queries.enable_user, [
+      'active',
+      userId,
+    ]);
     return result.rows[0];
   }
 
@@ -110,13 +118,13 @@ class UserAuthService {
 
     try {
       await client.query('BEGIN');
-      await client.query(authSqlQueries.delete_import_export_logs, [userId]);
-      await client.query(authSqlQueries.delete_quiz_results, [userId]);
-      await client.query(authSqlQueries.delete_quiz_questions, [userId]);
-      await client.query(authSqlQueries.delete_quizzes, [userId]);
-      await client.query(authSqlQueries.delete_leitner_boxes, [userId]);
-      await client.query(authSqlQueries.delete_flashcards, [userId]);
-      await client.query(authSqlQueries.delete_user, [userId]);
+      await client.query(this.constructor.queries.delete_import_export_logs, [userId]);
+      await client.query(this.constructor.queries.delete_quiz_results, [userId]);
+      await client.query(this.constructor.queries.delete_quiz_questions, [userId]);
+      await client.query(this.constructor.queries.delete_quizzes, [userId]);
+      await client.query(this.constructor.queries.delete_leitner_boxes, [userId]);
+      await client.query(this.constructor.queries.delete_flashcards, [userId]);
+      await client.query(this.constructor.queries.delete_user, [userId]);
       await client.query('COMMIT');
       return true;
     } catch (error) {
@@ -128,12 +136,12 @@ class UserAuthService {
   }
 
   async isAdmin(userId) {
-    const result = await this.database.query(authSqlQueries.get_is_admin, [userId]);
+    const result = await this.database.query(this.constructor.queries.get_is_admin, [userId]);
     return result.rows.length > 0 && result.rows[0].is_admin;
   }
 
   async updateLastPageVisited(userId, page) {
-    const result = await this.database.query(authSqlQueries.update_last_page_visited, [
+    const result = await this.database.query(this.constructor.queries.update_last_page_visited, [
       page,
       userId,
     ]);
@@ -141,7 +149,9 @@ class UserAuthService {
   }
 
   async getLastPageVisited(userId) {
-    const result = await this.database.query(authSqlQueries.get_last_page_visited, [userId]);
+    const result = await this.database.query(this.constructor.queries.get_last_page_visited, [
+      userId,
+    ]);
     return result.rows[0]?.last_page_visited || '/';
   }
 
@@ -156,17 +166,17 @@ class UserAuthService {
   }
 
   async countUsers() {
-    const result = await this.database.query(authSqlQueries.count_users);
+    const result = await this.database.query(this.constructor.queries.count_users);
     return parseInt(result.rows[0].count, 10);
   }
 
   async setUserAdmin(userId) {
-    await this.database.query(authSqlQueries.set_user_admin, [userId]);
+    await this.database.query(this.constructor.queries.set_user_admin, [userId]);
   }
 
   async updateUserPassword(userId, newPassword) {
     const passwordHash = await validationService.hashPassword(newPassword);
-    const result = await this.database.query(authSqlQueries.update_user_password, [
+    const result = await this.database.query(this.constructor.queries.update_user_password, [
       passwordHash,
       userId,
     ]);
@@ -174,7 +184,7 @@ class UserAuthService {
   }
 
   async getUserDisplayInfo(userId) {
-    const result = await this.database.query(authSqlQueries.get_user_display, [userId]);
+    const result = await this.database.query(this.constructor.queries.get_user_display, [userId]);
     return result.rows[0] || null;
   }
 }
