@@ -4,23 +4,7 @@
  */
 
 import express from 'express';
-import {
-  initializeAllCardsForUser,
-  getDueCardsForToday,
-  getNextCatchUpCard,
-  recordPracticeAttempt,
-  recordPracticeAttemptWithSession,
-  generateMultipleChoiceOptions,
-  getProgressStats,
-  getPracticeStreak,
-  getReviewSchedule,
-  getTodaysSummary,
-  updateDifficultyScore,
-  batchUpdateDifficultyScores,
-  getDifficultyStats,
-  incrementNoneOfAboveCount,
-  getCardAnswerWithBox,
-} from '../auth/practice.mjs';
+import { practiceService } from '../auth/practice.mjs';
 
 const router = express.Router();
 
@@ -39,7 +23,7 @@ router.get('/', async (req, res) => {
 
     // Initialize any new flashcards for this user
     try {
-      await initializeAllCardsForUser(userId);
+      await practiceService.initializeAllCardsForUser(userId);
       console.log(`[PRACTICE] Initialized cards for user ${userId}`);
     } catch (error) {
       console.error('Error in initializeAllCardsForUser:', error.message);
@@ -49,28 +33,28 @@ router.get('/', async (req, res) => {
     // Get statistics and schedule
     let stats, schedule, summary, streak;
     try {
-      stats = await getProgressStats(userId);
+      stats = await practiceService.getProgressStats(userId);
     } catch (error) {
       console.error('Error in getProgressStats:', error.message);
       throw error;
     }
 
     try {
-      schedule = await getReviewSchedule(userId);
+      schedule = await practiceService.getReviewSchedule(userId);
     } catch (error) {
       console.error('Error in getReviewSchedule:', error.message);
       throw error;
     }
 
     try {
-      summary = await getTodaysSummary(userId);
+      summary = await practiceService.getTodaysSummary(userId);
     } catch (error) {
       console.error('Error in getTodaysSummary:', error.message);
       throw error;
     }
 
     try {
-      streak = await getPracticeStreak(userId);
+      streak = await practiceService.getPracticeStreak(userId);
     } catch (error) {
       console.error('Error in getPracticeStreak:', error.message);
       throw error;
@@ -102,7 +86,7 @@ router.get('/daily', async (req, res) => {
     }
 
     const userId = req.session.userId;
-    const dueCards = await getDueCardsForToday(userId);
+    const dueCards = await practiceService.getDueCardsForToday(userId);
 
     res.json({
       status: 'success',
@@ -144,18 +128,18 @@ router.get('/next', async (req, res) => {
     );
 
     // Initialize any new flashcards
-    await initializeAllCardsForUser(userId);
+    await practiceService.initializeAllCardsForUser(userId);
 
     // Get next card based on mode, passing filters
     let nextCard;
     if (catchUpMode) {
-      nextCard = await getNextCatchUpCard(userId);
+      nextCard = await practiceService.getNextCatchUpCard(userId);
       console.log(
         `[DEBUG] practice/next (CATCH-UP) - Next card: ${nextCard ? nextCard.question.substring(0, 50) : 'null'}`
       );
     } else {
       // Pass filters to getDueCardsForToday
-      const dueCards = await getDueCardsForToday(userId, filters);
+      const dueCards = await practiceService.getDueCardsForToday(userId, filters);
       console.log(
         `[DEBUG] practice/next - Due cards found: ${dueCards.length}`,
         dueCards.length > 0 ? `First card: ${dueCards[0].question.substring(0, 50)}` : 'none'
@@ -185,7 +169,7 @@ router.get('/next', async (req, res) => {
     }
 
     // Generate multiple choice options
-    const options = await generateMultipleChoiceOptions(userId, nextCard, 4);
+    const options = await practiceService.generateMultipleChoiceOptions(userId, nextCard, 4);
 
     // Check if not enough options available (need at least 2: 1 correct + 1 wrong)
     if (options && options.insufficientOptions) {
@@ -205,7 +189,7 @@ router.get('/next', async (req, res) => {
 
     // If showing "None of the above", increment the counter
     if (hasNoneOfAbove) {
-      await incrementNoneOfAboveCount(nextCard.flashcard_id, userId);
+      await practiceService.incrementNoneOfAboveCount(nextCard.flashcard_id, userId);
     }
 
     res.json({
@@ -267,7 +251,7 @@ router.post('/answer', async (req, res) => {
     );
 
     // Get the card to get the correct answer for feedback
-    const card = await getCardAnswerWithBox(flashcardId, userId);
+    const card = await practiceService.getCardAnswerWithBox(flashcardId, userId);
 
     if (!card) {
       return res.status(404).json({
@@ -292,7 +276,7 @@ router.post('/answer', async (req, res) => {
     if (sessionStartTime) {
       console.log('[ANSWER] Using session-aware tracking');
       const sessionDate = new Date(sessionStartTime);
-      result = await recordPracticeAttemptWithSession(
+      result = await practiceService.recordPracticeAttemptWithSession(
         userId,
         flashcardId,
         isCorrect,
@@ -307,7 +291,7 @@ router.post('/answer', async (req, res) => {
     } else {
       // Backward compatible: single attempt mode
       console.log('[ANSWER] Using simple tracking (no session)');
-      const progress = await recordPracticeAttempt(
+      const progress = await practiceService.recordPracticeAttempt(
         userId,
         flashcardId,
         isCorrect,
@@ -377,8 +361,8 @@ router.get('/stats', async (req, res) => {
     console.log(`[DEBUG] practice/stats - User ID: ${userId}, Filters:`, filters);
 
     // Get stats with filters applied
-    const stats = await getProgressStats(userId, filters);
-    const streak = await getPracticeStreak(userId);
+    const stats = await practiceService.getProgressStats(userId, filters);
+    const streak = await practiceService.getPracticeStreak(userId);
 
     console.log(
       `[DEBUG] practice/stats - Stats returned: box1=${stats.box1}, box2=${stats.box2}, box3=${stats.box3}`
@@ -406,7 +390,7 @@ router.get('/schedule', async (req, res) => {
     }
 
     const userId = req.session.userId;
-    const schedule = await getReviewSchedule(userId);
+    const schedule = await practiceService.getReviewSchedule(userId);
 
     res.json({
       status: 'success',
@@ -438,7 +422,7 @@ router.get('/summary', async (req, res) => {
       category: req.query.category || null,
     };
 
-    const summary = await getTodaysSummary(userId, filters);
+    const summary = await practiceService.getTodaysSummary(userId, filters);
 
     res.json({
       status: 'success',
@@ -470,7 +454,7 @@ router.post('/difficulty/update-single', async (req, res) => {
       });
     }
 
-    const result = await updateDifficultyScore(flashcardId, userId);
+    const result = await practiceService.updateDifficultyScore(flashcardId, userId);
 
     if (result.error) {
       return res.status(404).json({ status: 'error', error: result.error });
@@ -499,7 +483,7 @@ router.post('/difficulty/update-batch', async (req, res) => {
     const userId = req.session.userId;
     const { lesson } = req.body;
 
-    const results = await batchUpdateDifficultyScores(userId, lesson || null);
+    const results = await practiceService.batchUpdateDifficultyScores(userId, lesson || null);
 
     const changed = results.filter((r) => r.changed).length;
     const errors = results.filter((r) => r.error).length;
@@ -531,7 +515,7 @@ router.get('/difficulty/stats', async (req, res) => {
     }
 
     const userId = req.session.userId;
-    const stats = await getDifficultyStats(userId);
+    const stats = await practiceService.getDifficultyStats(userId);
 
     if (stats.error) {
       return res.status(500).json({ status: 'error', error: stats.error });

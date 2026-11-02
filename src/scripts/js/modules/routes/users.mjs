@@ -5,7 +5,7 @@
 
 import express from 'express';
 import { userAuthService } from '../auth/user.mjs';
-import { validateEmail, validatePassword } from '../auth/validator.mjs';
+import { validationService } from '../auth/validator.mjs';
 
 const router = express.Router();
 
@@ -73,7 +73,7 @@ router.put('/profile', requireAuth, express.json(), async (req, res) => {
     }
 
     if (email !== undefined) {
-      if (!validateEmail(email)) {
+      if (!validationService.validateEmail(email)) {
         return res.status(400).json({
           status: 'error',
           message: 'Invalid email address',
@@ -123,7 +123,7 @@ router.put('/password', requireAuth, express.json(), async (req, res) => {
     }
 
     // Validate password
-    const validation = validatePassword(password);
+    const validation = validationService.validatePassword(password);
     if (!validation.valid) {
       return res.status(400).json({
         status: 'error',

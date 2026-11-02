@@ -5,7 +5,7 @@
 
 import express from 'express';
 import { userAuthService } from '../auth/user.mjs';
-import { validatePassword, validateEmail, validateUsername } from '../auth/validator.mjs';
+import { validationService } from '../auth/validator.mjs';
 
 const router = express.Router();
 
@@ -35,7 +35,7 @@ router.post('/register', express.json(), async (req, res) => {
     }
 
     // Validate username
-    const usernameValidation = validateUsername(username);
+    const usernameValidation = validationService.validateUsername(username);
     if (!usernameValidation.valid) {
       return res.status(400).json({
         status: 'error',
@@ -45,7 +45,7 @@ router.post('/register', express.json(), async (req, res) => {
     }
 
     // Validate email
-    if (!validateEmail(email)) {
+    if (!validationService.validateEmail(email)) {
       return res.status(400).json({
         status: 'error',
         message: 'Invalid email address',
@@ -53,7 +53,7 @@ router.post('/register', express.json(), async (req, res) => {
     }
 
     // Validate password
-    const passwordValidation = validatePassword(password);
+    const passwordValidation = validationService.validatePassword(password);
     if (!passwordValidation.valid) {
       return res.status(400).json({
         status: 'error',

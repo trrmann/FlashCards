@@ -4,26 +4,7 @@
  */
 
 import express from 'express';
-import {
-  createFlashcard,
-  getUserFlashcards,
-  getUserFlashcardsFiltered,
-  getFlashcard,
-  getFlashcardByQuestion,
-  updateFlashcard,
-  deleteFlashcard,
-  shareFlashcard,
-  revokeShare,
-  acceptShare,
-  rejectShare,
-  getPendingShares,
-  getAcceptedShares,
-  getOwnedShares,
-  getDistinctClasses,
-  getDistinctLessons,
-  getDistinctCategories,
-  getDistinctLessonsForClass,
-} from '../auth/entries.mjs';
+import { entriesService } from '../auth/entries.mjs';
 import { userAuthService } from '../auth/user.mjs';
 
 const router = express.Router();
@@ -47,7 +28,7 @@ router.post('/', express.json(), async (req, res) => {
       });
     }
 
-    const flashcard = await createFlashcard(
+    const flashcard = await entriesService.createFlashcard(
       req.session.userId,
       question,
       answer,
@@ -87,9 +68,9 @@ router.get('/', async (req, res) => {
     // Use filtered query if filters provided, otherwise get all
     let flashcards;
     if (Object.keys(filters).length > 0) {
-      flashcards = await getUserFlashcardsFiltered(req.session.userId, filters);
+      flashcards = await entriesService.getUserFlashcardsFiltered(req.session.userId, filters);
     } else {
-      flashcards = await getUserFlashcards(req.session.userId);
+      flashcards = await entriesService.getUserFlashcards(req.session.userId);
     }
 
     return res.status(200).json({
@@ -124,9 +105,9 @@ router.get('/export', async (req, res) => {
     // Get entries
     let flashcards;
     if (Object.keys(filters).length > 0) {
-      flashcards = await getUserFlashcardsFiltered(req.session.userId, filters);
+      flashcards = await entriesService.getUserFlashcardsFiltered(req.session.userId, filters);
     } else {
-      flashcards = await getUserFlashcards(req.session.userId);
+      flashcards = await entriesService.getUserFlashcards(req.session.userId);
     }
 
     // Create export object
@@ -211,20 +192,27 @@ router.post('/import', express.json({ limit: '50mb' }), async (req, res) => {
     for (const entry of validEntries) {
       try {
         // Check if flashcard with same question already exists
-        const existingCard = await getFlashcardByQuestion(req.session.userId, entry.question);
+        const existingCard = await entriesService.getFlashcardByQuestion(
+          req.session.userId,
+          entry.question
+        );
 
         if (existingCard) {
           // Update existing flashcard
-          const updated = await updateFlashcard(existingCard.flashcard_id, req.session.userId, {
-            answer: entry.answer,
-            lesson: entry.lesson || null,
-            category: entry.category || null,
-            class: entry.class || null,
-          });
+          const updated = await entriesService.updateFlashcard(
+            existingCard.flashcard_id,
+            req.session.userId,
+            {
+              answer: entry.answer,
+              lesson: entry.lesson || null,
+              category: entry.category || null,
+              class: entry.class || null,
+            }
+          );
           updatedCards.push(updated);
         } else {
           // Create new flashcard
-          const card = await createFlashcard(
+          const card = await entriesService.createFlashcard(
             req.session.userId,
             entry.question,
             entry.answer,
@@ -268,7 +256,7 @@ router.get('/:flashcardId', async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const flashcard = await getFlashcard(req.params.flashcardId, req.session.userId);
+    const flashcard = await entriesService.getFlashcard(req.params.flashcardId, req.session.userId);
 
     if (!flashcard) {
       return res.status(404).json({ status: 'error', message: 'Flashcard not found' });
@@ -294,7 +282,11 @@ router.put('/:flashcardId', express.json(), async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const updated = await updateFlashcard(req.params.flashcardId, req.session.userId, req.body);
+    const updated = await entriesService.updateFlashcard(
+      req.params.flashcardId,
+      req.session.userId,
+      req.body
+    );
 
     if (!updated) {
       return res.status(403).json({
@@ -324,7 +316,10 @@ router.delete('/:flashcardId', async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const deleted = await deleteFlashcard(req.params.flashcardId, req.session.userId);
+    const deleted = await entriesService.deleteFlashcard(
+      req.params.flashcardId,
+      req.session.userId
+    );
 
     if (!deleted) {
       return res.status(403).json({
@@ -374,7 +369,11 @@ router.post('/:flashcardId/share', express.json(), async (req, res) => {
 
     const recipientId = recipient.user_id;
 
-    const share = await shareFlashcard(req.params.flashcardId, req.session.userId, recipientId);
+    const share = await entriesService.shareFlashcard(
+      req.params.flashcardId,
+      req.session.userId,
+      recipientId
+    );
 
     return res.status(201).json({
       status: 'success',
@@ -406,7 +405,11 @@ router.post('/:flashcardId/revoke', express.json(), async (req, res) => {
       });
     }
 
-    const revoked = await revokeShare(req.params.flashcardId, req.session.userId, recipientId);
+    const revoked = await entriesService.revokeShare(
+      req.params.flashcardId,
+      req.session.userId,
+      recipientId
+    );
 
     if (!revoked) {
       return res.status(404).json({
@@ -435,7 +438,7 @@ router.post('/shares/:shareId/accept', express.json(), async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const share = await acceptShare(req.params.shareId, req.session.userId);
+    const share = await entriesService.acceptShare(req.params.shareId, req.session.userId);
 
     if (!share) {
       return res.status(404).json({
@@ -466,7 +469,7 @@ router.post('/shares/:shareId/reject', express.json(), async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const share = await rejectShare(req.params.shareId, req.session.userId);
+    const share = await entriesService.rejectShare(req.params.shareId, req.session.userId);
 
     if (!share) {
       return res.status(404).json({
@@ -496,7 +499,7 @@ router.get('/shares/pending', async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const shares = await getPendingShares(req.session.userId);
+    const shares = await entriesService.getPendingShares(req.session.userId);
 
     return res.status(200).json({
       status: 'success',
@@ -519,7 +522,7 @@ router.get('/shares/accepted', async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const shares = await getAcceptedShares(req.session.userId);
+    const shares = await entriesService.getAcceptedShares(req.session.userId);
 
     return res.status(200).json({
       status: 'success',
@@ -542,7 +545,7 @@ router.get('/shared-by-me', async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const shares = await getOwnedShares(req.session.userId);
+    const shares = await entriesService.getOwnedShares(req.session.userId);
 
     return res.status(200).json({
       status: 'success',
@@ -565,7 +568,7 @@ router.get('/metadata/classes', async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const classes = await getDistinctClasses(req.session.userId);
+    const classes = await entriesService.getDistinctClasses(req.session.userId);
 
     return res.status(200).json({
       status: 'success',
@@ -587,7 +590,7 @@ router.get('/metadata/lessons', async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const lessons = await getDistinctLessons(req.session.userId);
+    const lessons = await entriesService.getDistinctLessons(req.session.userId);
 
     return res.status(200).json({
       status: 'success',
@@ -609,7 +612,7 @@ router.get('/metadata/categories', async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Not authenticated' });
     }
 
-    const categories = await getDistinctCategories(req.session.userId);
+    const categories = await entriesService.getDistinctCategories(req.session.userId);
 
     return res.status(200).json({
       status: 'success',
@@ -633,7 +636,7 @@ router.get('/metadata/lessons/:className', async (req, res) => {
 
     const { className } = req.params;
 
-    const lessons = await getDistinctLessonsForClass(className, req.session.userId);
+    const lessons = await entriesService.getDistinctLessonsForClass(className, req.session.userId);
 
     return res.status(200).json({
       status: 'success',

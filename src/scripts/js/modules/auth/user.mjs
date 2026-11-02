@@ -4,7 +4,7 @@
  */
 
 import { flashCardsDb } from '../db/flashCardsDb.mjs';
-import { hashPassword, comparePassword } from './validator.mjs';
+import { validationService } from './validator.mjs';
 
 const authSqlQueries = flashCardsDb.constructor.loadNamedSqlStatements(
   'pg/auth-user-queries.sql',
@@ -17,7 +17,7 @@ class UserAuthService {
   }
 
   async createUser(username, email, password, fullName = null) {
-    const passwordHash = await hashPassword(password);
+    const passwordHash = await validationService.hashPassword(password);
     const result = await this.database.query(authSqlQueries.create_user, [
       username,
       email,
@@ -50,7 +50,7 @@ class UserAuthService {
       return null;
     }
 
-    const passwordMatch = await comparePassword(password, user.password_hash);
+    const passwordMatch = await validationService.comparePassword(password, user.password_hash);
 
     if (!passwordMatch) {
       return null;
@@ -165,7 +165,7 @@ class UserAuthService {
   }
 
   async updateUserPassword(userId, newPassword) {
-    const passwordHash = await hashPassword(newPassword);
+    const passwordHash = await validationService.hashPassword(newPassword);
     const result = await this.database.query(authSqlQueries.update_user_password, [
       passwordHash,
       userId,

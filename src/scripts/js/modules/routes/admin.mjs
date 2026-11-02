@@ -5,14 +5,9 @@
 
 import express from 'express';
 import { userAuthService } from '../auth/user.mjs';
-import { validatePassword, validateEmail, validateUsername } from '../auth/validator.mjs';
-import {
-  exportApplicationData,
-  importApplicationData,
-  logImportExport,
-  getImportExportHistory,
-} from '../auth/backup.mjs';
-import { resetUserLeitnerStats } from '../auth/practice.mjs';
+import { validationService } from '../auth/validator.mjs';
+import { backupService } from '../auth/backup.mjs';
+import { practiceService } from '../auth/practice.mjs';
 
 const router = express.Router();
 
@@ -84,18 +79,18 @@ router.post('/users', requireAuth, requireAdmin, express.json(), async (req, res
     const errors = [];
 
     // Validate username
-    const usernameValidation = validateUsername(username);
+    const usernameValidation = validationService.validateUsername(username);
     if (!usernameValidation.valid) {
       errors.push(...usernameValidation.errors);
     }
 
     // Validate email
-    if (!validateEmail(email)) {
+    if (!validationService.validateEmail(email)) {
       errors.push('Invalid email address');
     }
 
     // Validate password
-    const passwordValidation = validatePassword(password);
+    const passwordValidation = validationService.validatePassword(password);
     if (!passwordValidation.valid) {
       errors.push(...passwordValidation.errors);
     }
@@ -291,9 +286,9 @@ router.delete('/users/:userId', requireAuth, requireAdmin, async (req, res) => {
  */
 router.get('/backup/export', requireAdmin, async (req, res) => {
   try {
-    const backup = await exportApplicationData();
+    const backup = await backupService.exportApplicationData();
 
-    await logImportExport(
+    await backupService.logImportExport(
       req.session.userId,
       'export',
       backup.metadata.totalFlashcards +
@@ -310,7 +305,7 @@ router.get('/backup/export', requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('Export error:', error.message);
 
-    await logImportExport(req.session.userId, 'export', 0, 'failed', error.message);
+    await backupService.logImportExport(req.session.userId, 'export', 0, 'failed', error.message);
 
     return res.status(500).json({
       status: 'error',
@@ -337,11 +332,11 @@ router.post('/backup/import', requireAdmin, express.json(), async (req, res) => 
       });
     }
 
-    const results = await importApplicationData(backup);
+    const results = await backupService.importApplicationData(backup);
 
     const totalImported = Object.values(results.imported).reduce((a, b) => a + b, 0);
 
-    await logImportExport(req.session.userId, 'import', totalImported, 'success');
+    await backupService.logImportExport(req.session.userId, 'import', totalImported, 'success');
 
     return res.status(200).json({
       status: 'success',
@@ -351,7 +346,7 @@ router.post('/backup/import', requireAdmin, express.json(), async (req, res) => 
   } catch (error) {
     console.error('Import error:', error.message);
 
-    await logImportExport(req.session.userId, 'import', 0, 'failed', error.message);
+    await backupService.logImportExport(req.session.userId, 'import', 0, 'failed', error.message);
 
     return res.status(500).json({
       status: 'error',
@@ -370,7 +365,7 @@ router.get('/backup/history', requireAdmin, async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit || '100'), 1000);
 
-    const history = await getImportExportHistory(null, limit);
+    const history = await backupService.getImportExportHistory(null, limit);
 
     return res.status(200).json({
       status: 'success',
@@ -414,7 +409,7 @@ router.post('/users/:userId/reset-stats', requireAuth, requireAdmin, async (req,
     }
 
     // Reset the user's Leitner progress
-    const result = await resetUserLeitnerStats(userId);
+    const result = await practiceService.resetUserLeitnerStats(userId);
 
     console.log(
       `Admin ${req.session.userId} reset stats for user ${userId}: ${result.cardsReset} cards reset`
