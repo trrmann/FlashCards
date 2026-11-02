@@ -62,8 +62,9 @@ class PracticeRouter extends BaseRouter {
           throw error;
         }
 
+        res.locals.siteData.setTitle('Practice');
+
         res.render('practice', {
-          title: 'Practice Study - Leitner System',
           stats,
           schedule,
           summary,

@@ -61,18 +61,18 @@
     <nav>
       <ul>
         <!-- Home - Always visible -->
-        <li><a href="/">Home</a></li>
+        <li><a href="/" <%- locals.activePage === 'home' ? 'class="active"' : '' %>>Home</a></li>
 
         <!-- Navigation when user is logged in -->
         <% if (isLoggedIn) { %>
-          <li><a href="/practice">Practice</a></li>
-          <li><a href="/quiz">Quiz</a></li>
-          <li><a href="/entries">Entries</a></li>
-          <li><a href="/profile">Profile</a></li>
-          <li><a href="/logout">Logout</a></li>
+          <li><a href="/practice" <%- locals.activePage === 'practice' ? 'class="active"' : '' %>>Practice</a></li>
+          <li><a href="/quiz" <%- locals.activePage === 'quiz' ? 'class="active"' : '' %>>Quiz</a></li>
+          <li><a href="/entries" <%- locals.activePage === 'entries' ? 'class="active"' : '' %>>Entries</a></li>
+          <li><a href="/profile" <%- locals.activePage === 'profile' ? 'class="active"' : '' %>>Profile</a></li>
+          <li><a href="/logout" <%- locals.activePage === 'logout' ? 'class="active"' : '' %>>Logout</a></li>
         <% } else { %>
           <!-- Navigation when user is NOT logged in -->
-          <li><a href="/login">Login</a></li>
+          <li><a href="/login" <%- locals.activePage === 'login' ? 'class="active"' : '' %>>Login</a></li>
         <% } %>
       </ul>
     </nav>
@@ -111,5 +111,3 @@
       // Refresh warning every minute to update countdown
       setInterval(initializeDbExpirationWarning, 60000);
     </script>
-  </body>
-</html>

@@ -184,12 +184,12 @@ export class PreviewTestSuite {
         const response = await fetch(url);
         const html = await response.text();
 
-        const result = await this.htmlValidator.validate(html);
+        const result = await this.htmlValidator.validateString(html);
 
         if (result.valid) {
           this.results.addTest(`HTML Validation: ${endpoint.name}`, 'PASS');
         } else {
-          const errorCount = result.getErrors().length;
+          const errorCount = result.errorCount;
           this.results.addTest(
             `HTML Validation: ${endpoint.name}`,
             'WARN',

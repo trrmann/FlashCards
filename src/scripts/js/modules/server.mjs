@@ -127,6 +127,9 @@ export class Server {
    * Middleware: populate res.locals and site data with the session user's info.
    */
   async userContextMiddleware(req, res, next) {
+    // Expose shared site data to all views (page routers rely on this).
+    res.locals.siteData = this.siteData;
+
     if (req.session.userId) {
       res.locals.userId = req.session.userId;
       res.locals.isLoggedIn = true;
@@ -134,9 +137,9 @@ export class Server {
       try {
         const user = await userAuthService.getUserDisplayInfo(req.session.userId);
         if (user) {
-          res.locals.fullName = user.full_name;
+          res.locals.fullName = user.full_name || '';
           res.locals.isAdmin = user.is_admin;
-          this.siteData.setName(user.full_name);
+          this.siteData.setName(user.full_name || '');
         } else {
           res.locals.fullName = '';
           res.locals.isAdmin = false;

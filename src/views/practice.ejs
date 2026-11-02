@@ -1,10 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Practice Study - Leitner System</title>
-    <link rel="stylesheet" href="/css/styles.css" />
+<%- include('partials/header', { activePage: 'practice' }) %>
+
     <style>
       .practice-container {
         max-width: 900px;
@@ -350,74 +345,7 @@
           width: 100%;
         }
       }
-
-      /* Database Expiration Warning Styles */
-      .db-expiration-warning {
-        padding: 12px 20px;
-        text-align: center;
-        font-weight: 500;
-        animation-duration: 2s;
-        animation-timing-function: ease-in-out;
-      }
-
-      .db-expiration-warning.warning {
-        background-color: #fff3cd;
-        color: #856404;
-        border-bottom: 2px solid #ffc107;
-      }
-
-      .db-expiration-warning.critical {
-        background-color: #f8d7da;
-        color: #721c24;
-        border-bottom: 2px solid #dc3545;
-      }
-
-      .db-expiration-warning.critical-1day {
-        background-color: #f8d7da;
-        color: #721c24;
-        border-bottom: 2px solid #dc3545;
-        animation: flash-critical 1s infinite;
-      }
-
-      .db-expiration-warning.expired {
-        background-color: #721c24;
-        color: #ffffff;
-        border-bottom: 2px solid #dc3545;
-        animation: flash-critical 0.5s infinite;
-      }
-
-      @keyframes flash-critical {
-        0%, 100% {
-          background-color: #f8d7da;
-          color: #721c24;
-        }
-        50% {
-          background-color: #dc3545;
-          color: #ffffff;
-        }
-      }
     </style>
-  </head>
-  <body>
-    <!-- Database Expiration Warning -->
-    <div id="db-warning-container"></div>
-
-    <nav>
-      <ul>
-        <li><a href="/">Home</a></li>
-        <% if (isLoggedIn) { %>
-        <li><a href="/entries">Entries</a></li>
-        <li><a href="/practice" class="active">Practice</a></li>
-        <li><a href="/quiz">Quiz</a></li>
-        <li><a href="/profile">Profile</a></li>
-        <li><a href="/api/auth/logout">Logout</a></li>
-        <% } else { %>
-        <li><a href="/login">Login</a></li>
-        <% } %>
-      </ul>
-    </nav>
-
-    <%- include('partials/filter-panel') %>
 
     <div class="practice-container">
       <h1>🎓 Practice Study - Leitner System</h1>
@@ -547,36 +475,6 @@
       let sessionStartTime = null;
       let currentAttemptCount = 1;
       let currentTotalAttempts = 1;
-
-      // Fetch and display database expiration warning
-      async function initializeDbExpirationWarning() {
-        try {
-          const response = await fetch('/api/system/db-expiration-warning');
-          const data = await response.json();
-          
-          const container = document.getElementById('db-warning-container');
-          container.innerHTML = ''; // Clear previous warning
-          
-          if (data.warning && data.warning.message) {
-            const warningDiv = document.createElement('div');
-            warningDiv.className = `db-expiration-warning ${data.warning.level}`;
-            warningDiv.textContent = data.warning.message;
-            container.appendChild(warningDiv);
-          }
-        } catch (error) {
-          console.error('Failed to load database expiration warning:', error);
-        }
-      }
-
-      // Initialize warning when page loads
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeDbExpirationWarning);
-      } else {
-        initializeDbExpirationWarning();
-      }
-
-      // Refresh warning every minute to update countdown
-      setInterval(initializeDbExpirationWarning, 60000);
 
       // Load the first card when page loads
       document.addEventListener('DOMContentLoaded', async () => {
@@ -1015,5 +913,5 @@
         }
       }
     </script>
-  </body>
-</html>
+
+<%- include('partials/footer') %>
