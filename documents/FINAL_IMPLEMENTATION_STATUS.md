@@ -26,12 +26,12 @@ Successfully implemented **dynamic header/class/category filtering** for practic
 
 ### Files Modified (4 files, ~140 lines)
 
-| File                                         | Changes                                   | Status    |
-| -------------------------------------------- | ----------------------------------------- | --------- |
-| `src/scripts/js/modules/auth/practiceService.mjs`   | +66 lines                                 | ✅ Linted |
+| File                                               | Changes                                   | Status    |
+| -------------------------------------------------- | ----------------------------------------- | --------- |
+| `src/scripts/js/modules/auth/practiceService.mjs`  | +66 lines                                 | ✅ Linted |
 | `src/scripts/js/modules/routes/practiceRouter.mjs` | +24 lines                                 | ✅ Linted |
-| `src/views/practice.ejs`                     | +13 lines                                 | ✅ Linted |
-| `src/scripts/js/modules/db/postgresDatabase.mjs`     | +shared DB lifecycle and SQL file loading | ✅ Linted |
+| `src/views/practice.ejs`                           | +13 lines                                 | ✅ Linted |
+| `src/scripts/js/modules/db/postgresDatabase.mjs`   | +shared DB lifecycle and SQL file loading | ✅ Linted |
 
 ### Linting Fixes Applied
 

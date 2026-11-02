@@ -12,7 +12,7 @@ import { TestResults } from './testResults.mjs';
 
 export class PreviewTestSuite {
   static config = {
-    baseURL: 'http://localhost:5000',
+    baseURL: process.env.TEST_BASE_URL || 'http://localhost:5000',
     timeout: 30000,
     retries: 2,
 
@@ -28,12 +28,12 @@ export class PreviewTestSuite {
     ],
 
     // Lighthouse thresholds
+    // Note: the 'pwa' category was removed in Lighthouse 12 and must not be requested.
     lighthouseThresholds: {
       performance: 50,
       accessibility: 80,
       'best-practices': 80,
       seo: 80,
-      pwa: 50,
     },
 
     // CSS validation options
@@ -140,7 +140,7 @@ export class PreviewTestSuite {
           logLevel: 'error',
           output: 'json',
           port: new URL(this.browser.wsEndpoint()).port,
-          onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo', 'pwa'],
+          onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'],
         });
 
         const scores = runnerResult.lhr.categories;

@@ -271,12 +271,12 @@ Before deploying to Render:
 
 ## File Locations Where Variables Are Used
 
-| File                                       | Variables Used                 |
-| ------------------------------------------ | ------------------------------ |
-| `server.js`                                | NODE_ENV, PORT, SESSION_SECRET |
-| `src/scripts/js/modules/db/postgresDatabase.mjs`   | NODE_ENV, DB_PG_*, RENDER      |
+| File                                             | Variables Used                 |
+| ------------------------------------------------ | ------------------------------ |
+| `server.js`                                      | NODE_ENV, PORT, SESSION_SECRET |
+| `src/scripts/js/modules/db/postgresDatabase.mjs` | NODE_ENV, DB_PG_*, RENDER      |
 | `src/scripts/js/modules/routes/systemRouter.mjs` | DB_PG_DATABASE                 |
-| `src/scripts/js/modules/db/postgresDatabase.mjs`   | DB_PG_*, RENDER                |
+| `src/scripts/js/modules/db/postgresDatabase.mjs` | DB_PG_*, RENDER                |
 
 ---
 

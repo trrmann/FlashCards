@@ -280,12 +280,12 @@ run_comprehensive_tests() {
     
     cd "${PROJECT_ROOT}"
     
-    # Run preview tests
-    if npm run test:preview >> "${LOG_FILE}" 2>&1; then
+    # Run preview tests against the preview server
+    if TEST_BASE_URL="http://localhost:${PORT_PREVIEW}" npm run test:preview >> "${LOG_FILE}" 2>&1; then
         log SUCCESS "All preview tests passed"
         return 0
     else
-        local test_output=$(npm run test:preview 2>&1)
+        local test_output=$(TEST_BASE_URL="http://localhost:${PORT_PREVIEW}" npm run test:preview 2>&1)
         log ERROR "Preview tests failed"
         echo "" >> "${LOG_FILE}"
         echo "═════════════════════════════════════════════" >> "${LOG_FILE}"
