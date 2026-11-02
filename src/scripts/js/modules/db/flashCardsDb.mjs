@@ -62,15 +62,7 @@ export class FlashCardsDatabase extends PostgresDatabase {
       client.release();
     }
   }
-
-  async testQuery() {
-    console.warn(
-      'FlashCardsDatabase.testQuery() is a development helper and should not be used in production code.'
-    );
-    return [];
-  }
 }
 
 export const flashCardsDb = new FlashCardsDatabase();
-export const flashCardDB = flashCardsDb;
 export default flashCardsDb;
