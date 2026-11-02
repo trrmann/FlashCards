@@ -1,0 +1,849 @@
+{
+  "version": "1.0",
+  "exportedAt": "2026-11-02T20:52:10.842Z",
+  "exportedBy": "tmann",
+  "filters": null,
+  "count": 105,
+  "entries": [
+    {
+      "question": "¿Cómo se dice el saludo matutino 'buenos días' en inglés?",
+      "answer": "Good morning",
+      "lesson": "01 - Beginner: Everyday Basics & Core Nouns",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the expression of gratitude 'gracias' in Spanish?",
+      "answer": "Gracias",
+      "lesson": "01 - Beginner: Everyday Basics & Core Nouns",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice la palabra de cortesía 'por favor' en inglés?",
+      "answer": "Please",
+      "lesson": "01 - Beginner: Everyday Basics & Core Nouns",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the vital liquid element 'the water' in Spanish?",
+      "answer": "El agua",
+      "lesson": "01 - Beginner: Everyday Basics & Core Nouns",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the domestic shelter 'the house' in Spanish?",
+      "answer": "La casa",
+      "lesson": "01 - Beginner: Everyday Basics & Core Nouns",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice el sustantivo interpersonal 'amigo' en inglés?",
+      "answer": "Friend",
+      "lesson": "01 - Beginner: Everyday Basics & Core Nouns",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the sustenance word 'comida' in English?",
+      "answer": "Food",
+      "lesson": "01 - Beginner: Everyday Basics & Core Nouns",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the primary white dairy beverage 'the milk' in Spanish?",
+      "answer": "La leche",
+      "lesson": "01 - Beginner: Everyday Basics & Core Nouns",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice la despedida nocturna 'buenas noches' en inglés?",
+      "answer": "Good night",
+      "lesson": "01 - Beginner: Everyday Basics & Core Nouns",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the reading object 'the book' in Spanish?",
+      "answer": "El libro",
+      "lesson": "01 - Beginner: Everyday Basics & Core Nouns",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice la despedida básica 'adiós' en inglés?",
+      "answer": "Goodbye",
+      "lesson": "01 - Beginner: Everyday Basics & Core Nouns",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the populated geographic place 'the city' in Spanish?",
+      "answer": "La ciudad",
+      "lesson": "01 - Beginner: Everyday Basics & Core Nouns",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the financial medium of exchange 'el dinero' in English?",
+      "answer": "Money",
+      "lesson": "01 - Beginner: Everyday Basics & Core Nouns",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice el concepto de grupo de parentesco 'familia' en inglés?",
+      "answer": "Family",
+      "lesson": "01 - Beginner: Everyday Basics & Core Nouns",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the temporal measure 'el tiempo' in English?",
+      "answer": "Time",
+      "lesson": "01 - Beginner: Everyday Basics & Core Nouns",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the fundamental verb for permanent essence or origin 'to be' in Spanish?",
+      "answer": "Ser",
+      "lesson": "02 - Beginner: Essential Verbs & Pronouns",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice el verbo de estado temporal o ubicación 'to be' en español?",
+      "answer": "Estar",
+      "lesson": "02 - Beginner: Essential Verbs & Pronouns",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the verb for possession 'to have' in Spanish?",
+      "answer": "Tener",
+      "lesson": "02 - Beginner: Essential Verbs & Pronouns",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice el verbo de movimiento y traslado 'to go' en español?",
+      "answer": "Ir",
+      "lesson": "02 - Beginner: Essential Verbs & Pronouns",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the first-person singular subject pronoun 'yo' in English?",
+      "answer": "I",
+      "lesson": "02 - Beginner: Essential Verbs & Pronouns",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice el verbo de acción general o fabricación 'to do' en español?",
+      "answer": "Hacer",
+      "lesson": "02 - Beginner: Essential Verbs & Pronouns",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the informal second-person singular pronoun 'tú' in English?",
+      "answer": "You",
+      "lesson": "02 - Beginner: Essential Verbs & Pronouns",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice el verbo de comunicación verbal 'to speak' en español?",
+      "answer": "Hablar",
+      "lesson": "02 - Beginner: Essential Verbs & Pronouns",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the intentional verb for desire 'to want' in Spanish?",
+      "answer": "Querer",
+      "lesson": "02 - Beginner: Essential Verbs & Pronouns",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice el pronombre de sujeto plural integrado 'we' en español?",
+      "answer": "Nosotros",
+      "lesson": "02 - Beginner: Essential Verbs & Pronouns",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the basic metabolic verb 'to eat' in Spanish?",
+      "answer": "Comer",
+      "lesson": "02 - Beginner: Essential Verbs & Pronouns",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice el verbo de requerimiento u obligación 'to need' en español?",
+      "answer": "Necesitar",
+      "lesson": "02 - Beginner: Essential Verbs & Pronouns",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the sensory visual verb 'to see' in Spanish?",
+      "answer": "Ver",
+      "lesson": "02 - Beginner: Essential Verbs & Pronouns",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dicen los pronombres individuales de tercera persona 'he' y 'she' en español?",
+      "answer": "Él y ella",
+      "lesson": "02 - Beginner: Essential Verbs & Pronouns",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the approach movement verb 'to come' in Spanish?",
+      "answer": "Venir",
+      "lesson": "02 - Beginner: Essential Verbs & Pronouns",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice el adjetivo cromático elemental 'blue' en español?",
+      "answer": "Azul",
+      "lesson": "03 - Beginner: Descriptive Adjectives & Modifiers",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the physical scale adjective 'big' in Spanish?",
+      "answer": "Grande",
+      "lesson": "03 - Beginner: Descriptive Adjectives & Modifiers",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice el adjetivo de escala reducida 'small' en español?",
+      "answer": "Pequeño",
+      "lesson": "03 - Beginner: Descriptive Adjectives & Modifiers",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the positive emotional modifier 'happy' in Spanish?",
+      "answer": "Feliz",
+      "lesson": "03 - Beginner: Descriptive Adjectives & Modifiers",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice el descriptor de estado de novedad 'new' en español?",
+      "answer": "Nuevo",
+      "lesson": "03 - Beginner: Descriptive Adjectives & Modifiers",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the low temperature modifier 'cold' in Spanish?",
+      "answer": "Frío",
+      "lesson": "03 - Beginner: Descriptive Adjectives & Modifiers",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the high temperature descriptor 'hot' in Spanish?",
+      "answer": "Caliente",
+      "lesson": "03 - Beginner: Descriptive Adjectives & Modifiers",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice el calificador cualitativo positivo 'good' en español?",
+      "answer": "Bueno",
+      "lesson": "03 - Beginner: Descriptive Adjectives & Modifiers",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the calificador cualitativo negativo 'bad' in Spanish?",
+      "answer": "Malo",
+      "lesson": "03 - Beginner: Descriptive Adjectives & Modifiers",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice el descriptor estético agradable 'beautiful' en español?",
+      "answer": "Hermoso",
+      "lesson": "03 - Beginner: Descriptive Adjectives & Modifiers",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the complexity modifier for execution 'easy' in Spanish?",
+      "answer": "Fácil",
+      "lesson": "03 - Beginner: Descriptive Adjectives & Modifiers",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice el calificador de alta complejidad estructural 'difficult' en español?",
+      "answer": "Difícil",
+      "lesson": "03 - Beginner: Descriptive Adjectives & Modifiers",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the vivid baseline primary color 'red' in Spanish?",
+      "answer": "Rojo",
+      "lesson": "03 - Beginner: Descriptive Adjectives & Modifiers",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice el modificador de alta velocidad de desplazamiento 'fast' en español?",
+      "answer": "Rápido",
+      "lesson": "03 - Beginner: Descriptive Adjectives & Modifiers",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the temporal orientation modifier 'late' in Spanish?",
+      "answer": "Tarde",
+      "lesson": "03 - Beginner: Descriptive Adjectives & Modifiers",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se formula la pregunta de ubicación esencial 'Where is the bathroom?' en español?",
+      "answer": "¿Dónde está el baño?",
+      "lesson": "04 - Intermediate: Situational Interrogatives & Travel Logic",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you formulate the commerce inquiry question '¿Cuánto cuesta esto?' in English?",
+      "answer": "How much does this cost?",
+      "lesson": "04 - Intermediate: Situational Interrogatives & Travel Logic",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice la declaración de necesidad de hospedaje 'I need a hotel room' en español?",
+      "answer": "Necesito una habitación de hotel",
+      "lesson": "04 - Intermediate: Situational Interrogatives & Travel Logic",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the logical train transit query '¿A qué hora sale el tren?' into English?",
+      "answer": "What time does the train leave?",
+      "lesson": "04 - Intermediate: Situational Interrogatives & Travel Logic",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice la solicitud de transporte urbano 'Where can I find a taxi?' en español?",
+      "answer": "¿Dónde puedo encontrar un taxi?",
+      "lesson": "04 - Intermediate: Situational Interrogatives & Travel Logic",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the urgent emergency statement 'ayuda, por favor' in English?",
+      "answer": "Help, please",
+      "lesson": "04 - Intermediate: Situational Interrogatives & Travel Logic",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the destination flight inquiry '¿Dónde está el aeropuerto?' into English?",
+      "answer": "Where is the airport?",
+      "lesson": "04 - Intermediate: Situational Interrogatives & Travel Logic",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice la declaración de arribo logístico 'I have a reservation' en español?",
+      "answer": "Tengo una reservación",
+      "lesson": "04 - Intermediate: Situational Interrogatives & Travel Logic",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the communicative ability verification question '¿Habla inglés?' into English?",
+      "answer": "Do you speak English?",
+      "lesson": "04 - Intermediate: Situational Interrogatives & Travel Logic",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice la pregunta de adquisición comercial 'Where can I buy a ticket?' en español?",
+      "answer": "¿Dónde puedo comprar un boleto?",
+      "lesson": "04 - Intermediate: Situational Interrogatives & Travel Logic",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the clear spatial orientation command 'Gire a la derecha' into English?",
+      "answer": "Turn to the right",
+      "lesson": "04 - Intermediate: Situational Interrogatives & Travel Logic",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice el comando direccional 'Turn to the left' en español?",
+      "answer": "Gire a la izquierda",
+      "lesson": "04 - Intermediate: Situational Interrogatives & Travel Logic",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the proximity evaluation question '¿Está lejos de aquí?' into English?",
+      "answer": "Is it far from here?",
+      "lesson": "04 - Intermediate: Situational Interrogatives & Travel Logic",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice la instrucción de trayectoria lineal continua 'Go straight ahead' en español?",
+      "answer": "Siga derecho",
+      "lesson": "04 - Intermediate: Situational Interrogatives & Travel Logic",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the vital survival location question 'Where is the nearest hospital?' into Spanish?",
+      "answer": "¿Dónde está el hospital más cercano?",
+      "lesson": "04 - Intermediate: Situational Interrogatives & Travel Logic",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice la afirmación de evento completado del pasado 'I spoke with my manager yesterday' en español?",
+      "answer": "Hablé con mi gerente ayer",
+      "lesson": "05 - Intermediate: Narrative Past Tenses & Chronology",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the historical timeline statement 'Yo comí una manzana ayer' into English?",
+      "answer": "I ate an apple yesterday",
+      "lesson": "05 - Intermediate: Narrative Past Tenses & Chronology",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice el anclaje de tiempo cronológico transcurrido 'Last week' en español?",
+      "answer": "La semana pasada",
+      "lesson": "05 - Intermediate: Narrative Past Tenses & Chronology",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the interactive nocturnal past query '¿Qué hiciste anoche?' into English?",
+      "answer": "What did you do last night?",
+      "lesson": "05 - Intermediate: Narrative Past Tenses & Chronology",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the descriptive ongoing imperfect history window 'Cuando era niño' into English?",
+      "answer": "When I was a child",
+      "lesson": "05 - Intermediate: Narrative Past Tenses & Chronology",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice la declaración de estado compuesto concluido 'They have already arrived' en español?",
+      "answer": "Ellos ya han llegado",
+      "lesson": "05 - Intermediate: Narrative Past Tenses & Chronology",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the distance duration metric expression 'Hace dos años' into English?",
+      "answer": "Two years ago",
+      "lesson": "05 - Intermediate: Narrative Past Tenses & Chronology",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice la declaración de residencia pasada fija 'I lived in Madrid for a year' en español?",
+      "answer": "Viví en Madrid por un año",
+      "lesson": "05 - Intermediate: Narrative Past Tenses & Chronology",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the shared historical vacation sentence 'Fuimos a la playa el verano pasado' into English?",
+      "answer": "We went to the beach last summer",
+      "lesson": "05 - Intermediate: Narrative Past Tenses & Chronology",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice la descripción simultánea del pasado 'I was studying when you called' en español?",
+      "answer": "Estaba estudiando cuando llamaste",
+      "lesson": "05 - Intermediate: Narrative Past Tenses & Chronology",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the narrative contextual transition sequence 'Antes de eso' into English?",
+      "answer": "Before that",
+      "lesson": "05 - Intermediate: Narrative Past Tenses & Chronology",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the past transactional property sentence 'Él vendió su carro la semana pasada' into English?",
+      "answer": "He sold his car last week",
+      "lesson": "05 - Intermediate: Narrative Past Tenses & Chronology",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the unexpected milestone marker transition 'De repente' into English?",
+      "answer": "Suddenly",
+      "lesson": "05 - Intermediate: Narrative Past Tenses & Chronology",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice la frase de deber cumplido 'They completed their homework on time' en español?",
+      "answer": "Ellos terminaron su tarea a tiempo",
+      "lesson": "05 - Intermediate: Narrative Past Tenses & Chronology",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the precise historical moment anchor 'En ese momento' into English?",
+      "answer": "At that moment",
+      "lesson": "05 - Intermediate: Narrative Past Tenses & Chronology",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the prospective strategic travel plan 'Viajaré a Suramérica el próximo año' into English?",
+      "answer": "I will travel to South America next year",
+      "lesson": "06 - Intermediate: Future Plans & Hypothetical Concepts",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice la declaración de intención de estudio planificado 'Tomorrow I am going to study at the library' en español?",
+      "answer": "Mañana voy a estudiar en la biblioteca",
+      "lesson": "06 - Intermediate: Future Plans & Hypothetical Concepts",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the conditional resource dependency hypothesis 'Yo compraría una casa si tuviera dinero' into English?",
+      "answer": "I would buy a house if I had money",
+      "lesson": "06 - Intermediate: Future Plans & Hypothetical Concepts",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice la proyección cronológica de calendario 'Next year' en español?",
+      "answer": "El próximo año",
+      "lesson": "06 - Intermediate: Future Plans & Hypothetical Concepts",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice el objetivo laboral a corto plazo 'I will finish the project next month' en español?",
+      "answer": "Terminaré el proyecto el próximo mes",
+      "lesson": "06 - Intermediate: Future Plans & Hypothetical Concepts",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the interactive speculative query '¿Qué harías en mi lugar?' into English?",
+      "answer": "What would you do in my place?",
+      "lesson": "06 - Intermediate: Future Plans & Hypothetical Concepts",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice la estimación meteorológica probable 'It will probably rain tonight' en español?",
+      "answer": "Probablemente lloverá esta noche",
+      "lesson": "06 - Intermediate: Future Plans & Hypothetical Concepts",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the team synchronization plan 'Nos reuniremos el próximo lunes' into English?",
+      "answer": "We will meet next Monday",
+      "lesson": "06 - Intermediate: Future Plans & Hypothetical Concepts",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice la aserción de disponibilidad de datos 'I will have the results tomorrow' en español?",
+      "answer": "Tendré los resultados mañana",
+      "lesson": "06 - Intermediate: Future Plans & Hypothetical Concepts",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the professional intent declaration 'Me gustaría postularme para el trabajo' into English?",
+      "answer": "I would like to apply for the job",
+      "lesson": "06 - Intermediate: Future Plans & Hypothetical Concepts",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the extended horizon milestone phrasing 'A largo plazo' into English?",
+      "answer": "In the long term",
+      "lesson": "06 - Intermediate: Future Plans & Hypothetical Concepts",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice la declaración de intención espacial condicional 'We would go if we had time' en español?",
+      "answer": "Iríamos si tuviéramos tiempo",
+      "lesson": "06 - Intermediate: Future Plans & Hypothetical Concepts",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cómo se dice la aproximación cronológica inminente 'Soon' en español?",
+      "answer": "Pronto",
+      "lesson": "06 - Intermediate: Future Plans & Hypothetical Concepts",
+      "category": "Spanish to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you translate the adaptive flexibility choice statement 'Tal vez cambie mi decisión' into English?",
+      "answer": "Maybe I will change my decision",
+      "lesson": "06 - Intermediate: Future Plans & Hypothetical Concepts",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "How do you say the encouraging tracking baseline 'You will learn this vocabulary quickly' in Spanish?",
+      "answer": "Aprenderás este vocabulario rápidamente",
+      "lesson": "06 - Intermediate: Future Plans & Hypothetical Concepts",
+      "category": "English to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Cuál es una palabra en español que significa dar inicio a una actividad (sinónimo de 'empezar')?",
+      "answer": "Comenzar",
+      "lesson": "07 - Advanced Intermediate: Monolingual Fluency & Nuance",
+      "category": "Spanish to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "In a professional setting, what is a formal synonym for 'to change' when you adjust a document?",
+      "answer": "To modify",
+      "lesson": "07 - Advanced Intermediate: Monolingual Fluency & Nuance",
+      "category": "English to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Qué expresión en español significa hacer una broma o engañar amigablemente a alguien (sinónimo de engañar)?",
+      "answer": "Tomar el pelo",
+      "lesson": "07 - Advanced Intermediate: Monolingual Fluency & Nuance",
+      "category": "Spanish to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "What English idiom means to face a difficult situation with courage and get it over with?",
+      "answer": "Bite the bullet",
+      "lesson": "07 - Advanced Intermediate: Monolingual Fluency & Nuance",
+      "category": "English to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Qué frase verbal en español significa realizar o ejecutar una acción planificada?",
+      "answer": "Llevar a cabo",
+      "lesson": "07 - Advanced Intermediate: Monolingual Fluency & Nuance",
+      "category": "Spanish to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "What is the English term for a task or accomplishment that is vital to complete before everything else?",
+      "answer": "Priority",
+      "lesson": "07 - Advanced Intermediate: Monolingual Fluency & Nuance",
+      "category": "English to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Qué adjetivo en español describe a una persona que trabaja duro y muestra dedicación constante?",
+      "answer": "Trabajador",
+      "lesson": "07 - Advanced Intermediate: Monolingual Fluency & Nuance",
+      "category": "Spanish to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "In conversational business English, what expression means to briefly make contact or renew communication with someone?",
+      "answer": "Touch base",
+      "lesson": "07 - Advanced Intermediate: Monolingual Fluency & Nuance",
+      "category": "English to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Qué adjetivo en español describe una situación muy seria que implica peligro o consecuencias difíciles?",
+      "answer": "Grave",
+      "lesson": "07 - Advanced Intermediate: Monolingual Fluency & Nuance",
+      "category": "Spanish to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "What English word describes a layout or description that is completely clear and leaves no room for confusion?",
+      "answer": "Clear",
+      "lesson": "07 - Advanced Intermediate: Monolingual Fluency & Nuance",
+      "category": "English to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Qué sustantivo en español se refiere al resultado positivo o logro de una meta planificada?",
+      "answer": "Éxito",
+      "lesson": "07 - Advanced Intermediate: Monolingual Fluency & Nuance",
+      "category": "Spanish to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "What professional English term describes the final fixed calendar date by which an assignment must be submitted?",
+      "answer": "Deadline",
+      "lesson": "07 - Advanced Intermediate: Monolingual Fluency & Nuance",
+      "category": "English to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Qué adjetivo en español describe a una persona que tiene la capacidad de hablar dos idiomas con fluidez natural?",
+      "answer": "Bilingüe",
+      "lesson": "07 - Advanced Intermediate: Monolingual Fluency & Nuance",
+      "category": "Spanish to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "In an English workspace tracking check, what expression means that a project is proceeding exactly as scheduled?",
+      "answer": "On track",
+      "lesson": "07 - Advanced Intermediate: Monolingual Fluency & Nuance",
+      "category": "English to English",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    },
+    {
+      "question": "¿Qué frase en español se utiliza comúnmente en una conversación para pedirle a un amigo que espere un momento?",
+      "answer": "Dame un segundo",
+      "lesson": "07 - Advanced Intermediate: Monolingual Fluency & Nuance",
+      "category": "Spanish to Spanish",
+      "class": "Bidirectional Language Acquisition - tmann",
+      "is_private": true
+    }
+  ]
+}
