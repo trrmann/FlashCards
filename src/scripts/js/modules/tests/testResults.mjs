@@ -1,68 +1,8 @@
 /**
- * Test Configuration & Utilities
- * Defines all endpoints, pages, and test configurations
+ * Test Results Tracking
+ * Collects test outcomes and renders a summary report.
  */
 
-export const TEST_CONFIG = {
-  baseURL: 'http://localhost:5000',
-  timeout: 30000,
-  retries: 2,
-
-  // All application endpoints to test
-  endpoints: [
-    { path: '/', name: 'Home', type: 'page' },
-    { path: '/practice', name: 'Practice', type: 'page' },
-    { path: '/quiz', name: 'Quiz', type: 'page' },
-    { path: '/entries', name: 'Entries', type: 'page' },
-    { path: '/login', name: 'Login', type: 'page' },
-    { path: '/profile', name: 'Profile', type: 'page' },
-    { path: '/logout', name: 'Logout', type: 'page' },
-  ],
-
-  // Lighthouse thresholds
-  lighthouseThresholds: {
-    performance: 50,
-    accessibility: 80,
-    'best-practices': 80,
-    seo: 80,
-    pwa: 50,
-  },
-
-  // CSS validation options
-  cssOptions: {
-    profile: 'css3svg',
-    level: 'error',
-  },
-
-  // HTML validation options
-  htmlOptions: {
-    extends: ['html/recommended'],
-    rules: {
-      'no-unknown-elements': 'error',
-      'void-content': 'error',
-      'valid-attribute-expression': 'error',
-    },
-  },
-
-  // Memory thresholds (in MB)
-  memoryThresholds: {
-    heapUsedMax: 500,
-    externalMax: 100,
-  },
-
-  // Chrome DevTools metrics to check
-  metrics: [
-    'Cumulative Layout Shift',
-    'Largest Contentful Paint',
-    'First Input Delay',
-    'Time to Interactive',
-    'Speed Index',
-  ],
-};
-
-/**
- * Test results tracking
- */
 export class TestResults {
   constructor() {
     this.tests = [];
@@ -142,4 +82,4 @@ export class TestResults {
   }
 }
 
-export default TEST_CONFIG;
+export default TestResults;
