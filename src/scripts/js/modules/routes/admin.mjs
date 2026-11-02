@@ -4,431 +4,426 @@
  */
 
 import express from 'express';
+import { BaseRouter } from './baseRouter.mjs';
 import { userAuthService } from '../auth/user.mjs';
 import { validationService } from '../auth/validator.mjs';
 import { backupService } from '../auth/backup.mjs';
 import { practiceService } from '../auth/practice.mjs';
 
-const router = express.Router();
+class AdminRouter extends BaseRouter {
+  registerRoutes() {
+    const router = this.router;
+    const requireAuth = this.requireAuth;
+    const requireAdmin = this.requireAdmin;
 
-/**
- * Middleware to check if user is authenticated
- */
-function requireAuth(req, res, next) {
-  if (!req.session.userId) {
-    return res.status(401).json({
-      status: 'error',
-      message: 'Not authenticated',
+    /**
+     * GET /api/admin/users
+     * List all users (admin only)
+     */
+    router.get('/users', requireAuth, requireAdmin, async (req, res) => {
+      try {
+        const users = await userAuthService.getAllUsers();
+
+        return res.status(200).json({
+          status: 'success',
+          users,
+          count: users.length,
+        });
+      } catch (error) {
+        console.error('Get users error:', error.message);
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to retrieve users',
+        });
+      }
+    });
+
+    /**
+     * POST /api/admin/users
+     * Create a new user (admin only)
+     */
+    router.post('/users', requireAuth, requireAdmin, express.json(), async (req, res) => {
+      try {
+        const { username, email, password, fullName } = req.body;
+
+        // Validate required fields
+        if (!username || !email || !password) {
+          return res.status(400).json({
+            status: 'error',
+            message: 'Missing required fields: username, email, password',
+          });
+        }
+
+        const errors = [];
+
+        // Validate username
+        const usernameValidation = validationService.validateUsername(username);
+        if (!usernameValidation.valid) {
+          errors.push(...usernameValidation.errors);
+        }
+
+        // Validate email
+        if (!validationService.validateEmail(email)) {
+          errors.push('Invalid email address');
+        }
+
+        // Validate password
+        const passwordValidation = validationService.validatePassword(password);
+        if (!passwordValidation.valid) {
+          errors.push(...passwordValidation.errors);
+        }
+
+        if (errors.length > 0) {
+          return res.status(400).json({
+            status: 'error',
+            message: 'Validation failed',
+            errors,
+          });
+        }
+
+        // Check if username is available
+        const usernameAvailable = await userAuthService.isUsernameAvailable(username);
+        if (!usernameAvailable) {
+          return res.status(400).json({
+            status: 'error',
+            message: 'Username is already taken',
+          });
+        }
+
+        // Check if email is available
+        const emailAvailable = await userAuthService.isEmailAvailable(email);
+        if (!emailAvailable) {
+          return res.status(400).json({
+            status: 'error',
+            message: 'Email is already registered',
+          });
+        }
+
+        // Create user
+        const user = await userAuthService.createUser(username, email, password, fullName || null);
+
+        return res.status(201).json({
+          status: 'success',
+          message: 'User created successfully',
+          user: {
+            user_id: user.user_id,
+            username: user.username,
+            email: user.email,
+            full_name: user.full_name,
+            created_at: user.created_at,
+          },
+        });
+      } catch (error) {
+        console.error('Create user error:', error.message);
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to create user',
+          error: error.message,
+        });
+      }
+    });
+
+    /**
+     * GET /api/admin/users/:userId
+     * Get specific user details (admin only)
+     */
+    router.get('/users/:userId', requireAuth, requireAdmin, async (req, res) => {
+      try {
+        const { userId } = req.params;
+        const user = await userAuthService.findUserById(userId);
+
+        if (!user) {
+          return res.status(404).json({
+            status: 'error',
+            message: 'User not found',
+          });
+        }
+
+        return res.status(200).json({
+          status: 'success',
+          user,
+        });
+      } catch (error) {
+        console.error('Get user error:', error.message);
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to retrieve user',
+        });
+      }
+    });
+
+    /**
+     * POST /api/admin/users/:userId/disable
+     * Disable a user (admin only)
+     */
+    router.post('/users/:userId/disable', requireAuth, requireAdmin, async (req, res) => {
+      try {
+        const { userId } = req.params;
+
+        // Prevent disabling oneself
+        if (userId === req.session.userId) {
+          return res.status(400).json({
+            status: 'error',
+            message: 'Cannot disable your own account',
+          });
+        }
+
+        const user = await userAuthService.disableUser(userId);
+
+        if (!user) {
+          return res.status(404).json({
+            status: 'error',
+            message: 'User not found',
+          });
+        }
+
+        return res.status(200).json({
+          status: 'success',
+          message: 'User disabled successfully',
+          user,
+        });
+      } catch (error) {
+        console.error('Disable user error:', error.message);
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to disable user',
+        });
+      }
+    });
+
+    /**
+     * POST /api/admin/users/:userId/enable
+     * Enable a user (admin only)
+     */
+    router.post('/users/:userId/enable', requireAuth, requireAdmin, async (req, res) => {
+      try {
+        const { userId } = req.params;
+        const user = await userAuthService.enableUser(userId);
+
+        if (!user) {
+          return res.status(404).json({
+            status: 'error',
+            message: 'User not found',
+          });
+        }
+
+        return res.status(200).json({
+          status: 'success',
+          message: 'User enabled successfully',
+          user,
+        });
+      } catch (error) {
+        console.error('Enable user error:', error.message);
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to enable user',
+        });
+      }
+    });
+
+    /**
+     * DELETE /api/admin/users/:userId
+     * Delete a user and all related data (admin only)
+     */
+    router.delete('/users/:userId', requireAuth, requireAdmin, async (req, res) => {
+      try {
+        const { userId } = req.params;
+
+        // Prevent deleting oneself
+        if (userId === req.session.userId) {
+          return res.status(400).json({
+            status: 'error',
+            message: 'Cannot delete your own account',
+          });
+        }
+
+        await userAuthService.deleteUser(userId);
+
+        return res.status(200).json({
+          status: 'success',
+          message: 'User deleted successfully',
+        });
+      } catch (error) {
+        console.error('Delete user error:', error.message);
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to delete user',
+        });
+      }
+    });
+
+    /**
+     * Admin Backup and Export Routes
+     * Admin-only endpoints for full application data export/import
+     */
+
+    /**
+     * GET /api/admin/backup/export
+     * Export complete application data
+     * Includes schema and all user data, entries, quizzes, results
+     */
+    router.get('/backup/export', requireAdmin, async (req, res) => {
+      try {
+        const backup = await backupService.exportApplicationData();
+
+        await backupService.logImportExport(
+          req.session.userId,
+          'export',
+          backup.metadata.totalFlashcards +
+            backup.metadata.totalQuizzes +
+            backup.metadata.totalQuizResults,
+          'success'
+        );
+
+        return res.status(200).json({
+          status: 'success',
+          message: 'Application data exported successfully',
+          backup,
+        });
+      } catch (error) {
+        console.error('Export error:', error.message);
+
+        await backupService.logImportExport(
+          req.session.userId,
+          'export',
+          0,
+          'failed',
+          error.message
+        );
+
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to export application data',
+          error: error.message,
+        });
+      }
+    });
+
+    /**
+     * POST /api/admin/backup/import
+     * Import application data from backup.
+     * The database schema is initialized via the repository's SQL-file bootstrap process.
+     * WARNING: This will clear all existing data and replace it.
+     */
+    router.post('/backup/import', requireAdmin, express.json(), async (req, res) => {
+      try {
+        const { backup } = req.body;
+
+        if (!backup || !backup.data) {
+          return res.status(400).json({
+            status: 'error',
+            message: 'Invalid backup format. Must include backup.data',
+          });
+        }
+
+        const results = await backupService.importApplicationData(backup);
+
+        const totalImported = Object.values(results.imported).reduce((a, b) => a + b, 0);
+
+        await backupService.logImportExport(req.session.userId, 'import', totalImported, 'success');
+
+        return res.status(200).json({
+          status: 'success',
+          message: 'Application data imported successfully',
+          results,
+        });
+      } catch (error) {
+        console.error('Import error:', error.message);
+
+        await backupService.logImportExport(
+          req.session.userId,
+          'import',
+          0,
+          'failed',
+          error.message
+        );
+
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to import application data',
+          error: error.message,
+        });
+      }
+    });
+
+    /**
+     * GET /api/admin/backup/history
+     * Get import/export history
+     * Query params: limit (default 100)
+     */
+    router.get('/backup/history', requireAdmin, async (req, res) => {
+      try {
+        const limit = Math.min(parseInt(req.query.limit || '100'), 1000);
+
+        const history = await backupService.getImportExportHistory(null, limit);
+
+        return res.status(200).json({
+          status: 'success',
+          count: history.length,
+          history,
+        });
+      } catch (error) {
+        console.error('Get history error:', error.message);
+
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to fetch import/export history',
+        });
+      }
+    });
+
+    /**
+     * POST /api/admin/users/:userId/reset-stats
+     * Reset all Leitner practice statistics for a user (admin only)
+     * Resets all cards back to Box 1 with zero stats, allowing user to start fresh
+     */
+    router.post('/users/:userId/reset-stats', requireAuth, requireAdmin, async (req, res) => {
+      try {
+        const { userId } = req.params;
+
+        // Prevent resetting oneself as admin might accidentally do this
+        if (userId === req.session.userId) {
+          return res.status(400).json({
+            status: 'error',
+            message: 'Cannot reset your own stats. Ask another admin.',
+          });
+        }
+
+        // Verify the target user exists
+        const user = await userAuthService.findUserById(userId);
+        if (!user) {
+          return res.status(404).json({
+            status: 'error',
+            message: 'User not found',
+          });
+        }
+
+        // Reset the user's Leitner progress
+        const result = await practiceService.resetUserLeitnerStats(userId);
+
+        console.log(
+          `Admin ${req.session.userId} reset stats for user ${userId}: ${result.cardsReset} cards reset`
+        );
+
+        return res.status(200).json({
+          status: 'success',
+          message: result.message,
+          cardsReset: result.cardsReset,
+          userName: user.username,
+        });
+      } catch (error) {
+        console.error('Reset user stats error:', error.message);
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to reset user statistics',
+          error: error.message,
+        });
+      }
     });
   }
-  next();
 }
 
-/**
- * Middleware to check if user is admin
- */
-async function requireAdmin(req, res, next) {
-  const adminStatus = await userAuthService.isAdmin(req.session.userId);
-  if (!adminStatus) {
-    return res.status(403).json({
-      status: 'error',
-      message: 'Access denied. Admin privileges required.',
-    });
-  }
-  next();
-}
+export const adminRouter = new AdminRouter();
 
-/**
- * GET /api/admin/users
- * List all users (admin only)
- */
-router.get('/users', requireAuth, requireAdmin, async (req, res) => {
-  try {
-    const users = await userAuthService.getAllUsers();
-
-    return res.status(200).json({
-      status: 'success',
-      users,
-      count: users.length,
-    });
-  } catch (error) {
-    console.error('Get users error:', error.message);
-    return res.status(500).json({
-      status: 'error',
-      message: 'Failed to retrieve users',
-    });
-  }
-});
-
-/**
- * POST /api/admin/users
- * Create a new user (admin only)
- */
-router.post('/users', requireAuth, requireAdmin, express.json(), async (req, res) => {
-  try {
-    const { username, email, password, fullName } = req.body;
-
-    // Validate required fields
-    if (!username || !email || !password) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Missing required fields: username, email, password',
-      });
-    }
-
-    const errors = [];
-
-    // Validate username
-    const usernameValidation = validationService.validateUsername(username);
-    if (!usernameValidation.valid) {
-      errors.push(...usernameValidation.errors);
-    }
-
-    // Validate email
-    if (!validationService.validateEmail(email)) {
-      errors.push('Invalid email address');
-    }
-
-    // Validate password
-    const passwordValidation = validationService.validatePassword(password);
-    if (!passwordValidation.valid) {
-      errors.push(...passwordValidation.errors);
-    }
-
-    if (errors.length > 0) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Validation failed',
-        errors,
-      });
-    }
-
-    // Check if username is available
-    const usernameAvailable = await userAuthService.isUsernameAvailable(username);
-    if (!usernameAvailable) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Username is already taken',
-      });
-    }
-
-    // Check if email is available
-    const emailAvailable = await userAuthService.isEmailAvailable(email);
-    if (!emailAvailable) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Email is already registered',
-      });
-    }
-
-    // Create user
-    const user = await userAuthService.createUser(username, email, password, fullName || null);
-
-    return res.status(201).json({
-      status: 'success',
-      message: 'User created successfully',
-      user: {
-        user_id: user.user_id,
-        username: user.username,
-        email: user.email,
-        full_name: user.full_name,
-        created_at: user.created_at,
-      },
-    });
-  } catch (error) {
-    console.error('Create user error:', error.message);
-    return res.status(500).json({
-      status: 'error',
-      message: 'Failed to create user',
-      error: error.message,
-    });
-  }
-});
-
-/**
- * GET /api/admin/users/:userId
- * Get specific user details (admin only)
- */
-router.get('/users/:userId', requireAuth, requireAdmin, async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const user = await userAuthService.findUserById(userId);
-
-    if (!user) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'User not found',
-      });
-    }
-
-    return res.status(200).json({
-      status: 'success',
-      user,
-    });
-  } catch (error) {
-    console.error('Get user error:', error.message);
-    return res.status(500).json({
-      status: 'error',
-      message: 'Failed to retrieve user',
-    });
-  }
-});
-
-/**
- * POST /api/admin/users/:userId/disable
- * Disable a user (admin only)
- */
-router.post('/users/:userId/disable', requireAuth, requireAdmin, async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    // Prevent disabling oneself
-    if (userId === req.session.userId) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Cannot disable your own account',
-      });
-    }
-
-    const user = await userAuthService.disableUser(userId);
-
-    if (!user) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'User not found',
-      });
-    }
-
-    return res.status(200).json({
-      status: 'success',
-      message: 'User disabled successfully',
-      user,
-    });
-  } catch (error) {
-    console.error('Disable user error:', error.message);
-    return res.status(500).json({
-      status: 'error',
-      message: 'Failed to disable user',
-    });
-  }
-});
-
-/**
- * POST /api/admin/users/:userId/enable
- * Enable a user (admin only)
- */
-router.post('/users/:userId/enable', requireAuth, requireAdmin, async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const user = await userAuthService.enableUser(userId);
-
-    if (!user) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'User not found',
-      });
-    }
-
-    return res.status(200).json({
-      status: 'success',
-      message: 'User enabled successfully',
-      user,
-    });
-  } catch (error) {
-    console.error('Enable user error:', error.message);
-    return res.status(500).json({
-      status: 'error',
-      message: 'Failed to enable user',
-    });
-  }
-});
-
-/**
- * DELETE /api/admin/users/:userId
- * Delete a user and all related data (admin only)
- */
-router.delete('/users/:userId', requireAuth, requireAdmin, async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    // Prevent deleting oneself
-    if (userId === req.session.userId) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Cannot delete your own account',
-      });
-    }
-
-    await userAuthService.deleteUser(userId);
-
-    return res.status(200).json({
-      status: 'success',
-      message: 'User deleted successfully',
-    });
-  } catch (error) {
-    console.error('Delete user error:', error.message);
-    return res.status(500).json({
-      status: 'error',
-      message: 'Failed to delete user',
-    });
-  }
-});
-
-/**
- * Admin Backup and Export Routes
- * Admin-only endpoints for full application data export/import
- */
-
-/**
- * GET /api/admin/backup/export
- * Export complete application data
- * Includes schema and all user data, entries, quizzes, results
- */
-router.get('/backup/export', requireAdmin, async (req, res) => {
-  try {
-    const backup = await backupService.exportApplicationData();
-
-    await backupService.logImportExport(
-      req.session.userId,
-      'export',
-      backup.metadata.totalFlashcards +
-        backup.metadata.totalQuizzes +
-        backup.metadata.totalQuizResults,
-      'success'
-    );
-
-    return res.status(200).json({
-      status: 'success',
-      message: 'Application data exported successfully',
-      backup,
-    });
-  } catch (error) {
-    console.error('Export error:', error.message);
-
-    await backupService.logImportExport(req.session.userId, 'export', 0, 'failed', error.message);
-
-    return res.status(500).json({
-      status: 'error',
-      message: 'Failed to export application data',
-      error: error.message,
-    });
-  }
-});
-
-/**
- * POST /api/admin/backup/import
- * Import application data from backup.
- * The database schema is initialized via the repository's SQL-file bootstrap process.
- * WARNING: This will clear all existing data and replace it.
- */
-router.post('/backup/import', requireAdmin, express.json(), async (req, res) => {
-  try {
-    const { backup } = req.body;
-
-    if (!backup || !backup.data) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Invalid backup format. Must include backup.data',
-      });
-    }
-
-    const results = await backupService.importApplicationData(backup);
-
-    const totalImported = Object.values(results.imported).reduce((a, b) => a + b, 0);
-
-    await backupService.logImportExport(req.session.userId, 'import', totalImported, 'success');
-
-    return res.status(200).json({
-      status: 'success',
-      message: 'Application data imported successfully',
-      results,
-    });
-  } catch (error) {
-    console.error('Import error:', error.message);
-
-    await backupService.logImportExport(req.session.userId, 'import', 0, 'failed', error.message);
-
-    return res.status(500).json({
-      status: 'error',
-      message: 'Failed to import application data',
-      error: error.message,
-    });
-  }
-});
-
-/**
- * GET /api/admin/backup/history
- * Get import/export history
- * Query params: limit (default 100)
- */
-router.get('/backup/history', requireAdmin, async (req, res) => {
-  try {
-    const limit = Math.min(parseInt(req.query.limit || '100'), 1000);
-
-    const history = await backupService.getImportExportHistory(null, limit);
-
-    return res.status(200).json({
-      status: 'success',
-      count: history.length,
-      history,
-    });
-  } catch (error) {
-    console.error('Get history error:', error.message);
-
-    return res.status(500).json({
-      status: 'error',
-      message: 'Failed to fetch import/export history',
-    });
-  }
-});
-
-/**
- * POST /api/admin/users/:userId/reset-stats
- * Reset all Leitner practice statistics for a user (admin only)
- * Resets all cards back to Box 1 with zero stats, allowing user to start fresh
- */
-router.post('/users/:userId/reset-stats', requireAuth, requireAdmin, async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    // Prevent resetting oneself as admin might accidentally do this
-    if (userId === req.session.userId) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Cannot reset your own stats. Ask another admin.',
-      });
-    }
-
-    // Verify the target user exists
-    const user = await userAuthService.findUserById(userId);
-    if (!user) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'User not found',
-      });
-    }
-
-    // Reset the user's Leitner progress
-    const result = await practiceService.resetUserLeitnerStats(userId);
-
-    console.log(
-      `Admin ${req.session.userId} reset stats for user ${userId}: ${result.cardsReset} cards reset`
-    );
-
-    return res.status(200).json({
-      status: 'success',
-      message: result.message,
-      cardsReset: result.cardsReset,
-      userName: user.username,
-    });
-  } catch (error) {
-    console.error('Reset user stats error:', error.message);
-    return res.status(500).json({
-      status: 'error',
-      message: 'Failed to reset user statistics',
-      error: error.message,
-    });
-  }
-});
-
-export default router;
+export { AdminRouter };
+export default adminRouter.router;

@@ -7,14 +7,14 @@ import pgSession from 'connect-pg-simple';
 import { appSiteData } from './src/scripts/js/modules/appSiteData.mjs';
 import { flashCardsDb } from './src/scripts/js/modules/db/flashCardsDb.mjs';
 import { userAuthService } from './src/scripts/js/modules/auth/user.mjs';
-import authRoutes from './src/scripts/js/modules/routes/auth.mjs';
-import userRoutes from './src/scripts/js/modules/routes/users.mjs';
-import adminRoutes from './src/scripts/js/modules/routes/admin.mjs';
-import systemRoutes from './src/scripts/js/modules/routes/system.mjs';
-import navigationRoutes from './src/scripts/js/modules/routes/navigation.mjs';
-import entriesRoutes from './src/scripts/js/modules/routes/entries.mjs';
-import practiceRoutes from './src/scripts/js/modules/routes/practice.mjs';
-import quizRoutes from './src/scripts/js/modules/routes/quiz.mjs';
+import authRouter from './src/scripts/js/modules/routes/auth.mjs';
+import usersRouter from './src/scripts/js/modules/routes/users.mjs';
+import adminRouter from './src/scripts/js/modules/routes/admin.mjs';
+import systemRouter from './src/scripts/js/modules/routes/system.mjs';
+import navigationRouter from './src/scripts/js/modules/routes/navigation.mjs';
+import entriesRouter from './src/scripts/js/modules/routes/entries.mjs';
+import practiceRouter from './src/scripts/js/modules/routes/practice.mjs';
+import quizRouter from './src/scripts/js/modules/routes/quiz.mjs';
 
 // Define the application environment.
 const NODE_ENV = process.env.NODE_ENV?.toLocaleLowerCase() || 'production';
@@ -185,29 +185,29 @@ app.get('/logout', async (req, res) => {
  */
 
 // System routes (setup status, database status)
-app.use('/api/system', systemRoutes);
+app.use('/api/system', systemRouter);
 
 // Authentication routes
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authRouter);
 
 // User routes
-app.use('/api/users', userRoutes);
+app.use('/api/users', usersRouter);
 
 // Navigation routes (page tracking, history)
-app.use('/api/navigation', navigationRoutes);
+app.use('/api/navigation', navigationRouter);
 
 // Entries/Flashcards routes (CRUD and sharing)
-app.use('/api/entries', entriesRoutes);
+app.use('/api/entries', entriesRouter);
 
 // Practice Study routes (Leitner system)
-app.use('/practice', practiceRoutes);
-app.use('/api/practice', practiceRoutes);
+app.use('/practice', practiceRouter);
+app.use('/api/practice', practiceRouter);
 
 // Quiz routes
-app.use('/api/quiz', quizRoutes);
+app.use('/api/quiz', quizRouter);
 
 // Admin routes
-app.use('/api/admin', adminRoutes);
+app.use('/api/admin', adminRouter);
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
