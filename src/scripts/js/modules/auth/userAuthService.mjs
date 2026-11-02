@@ -25,13 +25,14 @@ class UserAuthService {
     this.appDatabase = appDatabase;
   }
 
-  async createUser(username, email, password, fullName = null) {
+  async createUser(username, email, password, fullName = null, isPublic = false) {
     const passwordHash = await validationService.hashPassword(password);
     const result = await this.database.query(this.constructor.queries.create_user, [
       username,
       email,
       passwordHash,
       fullName,
+      isPublic,
     ]);
 
     const user = result.rows[0];

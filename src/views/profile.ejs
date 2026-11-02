@@ -125,6 +125,13 @@
                 <input id="confirmNewUserPassword" name="confirmPassword" type="password" required />
               </div>
 
+              <div class="form-group">
+                <label>
+                  <input id="newUserIsPublic" name="isPublic" type="checkbox" />
+                  List in the share directory (public user)
+                </label>
+              </div>
+
               <button type="submit" id="createUserBtn">Create User</button>
             </form>
             <div id="createUserStatus"></div>
@@ -282,11 +289,12 @@
         if (data.status === 'success') {
           const usersList = document.getElementById('usersList');
           let html = '<table class="admin-users-table"><thead><tr>';
-          html += '<th>Username</th><th>Email</th><th>Full Name</th><th>Status</th><th>Admin</th><th>Actions</th></tr></thead><tbody>';
+          html += '<th>Username</th><th>Email</th><th>Full Name</th><th>Status</th><th>Admin</th><th>Public</th><th>Actions</th></tr></thead><tbody>';
 
           data.users.forEach((user) => {
             const isCurrentUser = window.currentUserId === user.user_id;
             const isAdmin = user.is_admin ? '✓' : '–';
+            const isPublic = user.is_public ? '✓' : '–';
             const status = user.status || 'active';
             const actionDisabled = isCurrentUser ? 'disabled' : '';
 
@@ -296,6 +304,7 @@
             html += `<td>${user.full_name || '–'}</td>`;
             html += `<td><span class="status-badge ${status}">${status}</span></td>`;
             html += `<td>${isAdmin}</td>`;
+            html += `<td>${isPublic}</td>`;
             html += `<td>`;
 
             if (!isCurrentUser) {
@@ -308,6 +317,11 @@
                 html += `<button onclick="demoteUser('${user.user_id}', '${user.username}')">Remove Admin</button>`;
               } else {
                 html += `<button onclick="promoteUser('${user.user_id}', '${user.username}')">Make Admin</button>`;
+              }
+              if (user.is_public) {
+                html += `<button onclick="setUserVisibility('${user.user_id}', '${user.username}', false)">Make Private</button>`;
+              } else {
+                html += `<button onclick="setUserVisibility('${user.user_id}', '${user.username}', true)">Make Public</button>`;
               }
               html += `<button onclick="deleteUser('${user.user_id}', '${user.username}')" class="btn-danger">Delete</button>`;
             } else {
@@ -339,6 +353,7 @@
         const fullName = document.getElementById('newFullName').value || null;
         const password = document.getElementById('newUserPassword').value;
         const confirmPassword = document.getElementById('confirmNewUserPassword').value;
+        const isPublic = document.getElementById('newUserIsPublic').checked;
         const statusDiv = document.getElementById('createUserStatus');
 
         // Validate passwords match
@@ -354,7 +369,7 @@
               'Content-Type': 'application/json',
             },
             credentials: 'include',
-            body: JSON.stringify({ username, email, fullName, password }),
+            body: JSON.stringify({ username, email, fullName, password, isPublic }),
           });
 
           const data = await response.json();
@@ -473,6 +488,31 @@
       try {
         const response = await fetch(`/api/admin/users/${userId}/demote`, {
           method: 'POST',
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          alert(data.message);
+          loadAdminUsersList();
+        } else {
+          alert(`Failed: ${data.message}`);
+        }
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
+
+    async function setUserVisibility(userId, username, isPublic) {
+      const action = isPublic ? 'public (listed in the share directory)' : 'private';
+      if (!confirm(`Make "${username}" ${action}?`)) return;
+
+      try {
+        const response = await fetch(`/api/admin/users/${userId}/visibility`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ isPublic }),
         });
 
         const data = await response.json();

@@ -44,7 +44,7 @@ class AdminRouter extends BaseRouter {
      */
     router.post('/users', requireAuth, requireAdmin, express.json(), async (req, res) => {
       try {
-        const { username, email, password, fullName } = req.body;
+        const { username, email, password, fullName, isPublic } = req.body;
 
         // Validate required fields
         if (!username || !email || !password) {
@@ -99,8 +99,14 @@ class AdminRouter extends BaseRouter {
           });
         }
 
-        // Create user
-        const user = await userAuthService.createUser(username, email, password, fullName || null);
+        // Create user (admin may set directory visibility at creation)
+        const user = await userAuthService.createUser(
+          username,
+          email,
+          password,
+          fullName || null,
+          Boolean(isPublic)
+        );
 
         return res.status(201).json({
           status: 'success',
@@ -251,6 +257,51 @@ class AdminRouter extends BaseRouter {
         });
       }
     });
+
+    /**
+     * PUT /api/admin/users/:userId/visibility
+     * Set a user's share-directory visibility (admin only)
+     */
+    router.put(
+      '/users/:userId/visibility',
+      requireAuth,
+      requireAdmin,
+      express.json(),
+      async (req, res) => {
+        try {
+          const { userId } = req.params;
+          const { isPublic } = req.body;
+
+          if (typeof isPublic !== 'boolean') {
+            return res.status(400).json({
+              status: 'error',
+              message: 'isPublic must be a boolean',
+            });
+          }
+
+          const result = await userAuthService.setUserVisibility(userId, isPublic);
+
+          if (!result) {
+            return res.status(404).json({
+              status: 'error',
+              message: 'User not found',
+            });
+          }
+
+          return res.status(200).json({
+            status: 'success',
+            message: isPublic ? 'User is now public' : 'User is now private',
+            isPublic: result.is_public,
+          });
+        } catch (error) {
+          console.error('Set user visibility error:', error.message);
+          return res.status(500).json({
+            status: 'error',
+            message: 'Failed to update user visibility',
+          });
+        }
+      }
+    );
 
     /**
      * POST /api/admin/users/:userId/promote

@@ -1,7 +1,7 @@
 -- Query: create_user
-INSERT INTO users (username, email, password_hash, full_name)
-VALUES ($1, $2, $3, $4)
-RETURNING user_id, username, email, full_name, created_at;
+INSERT INTO users (username, email, password_hash, full_name, is_public)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING user_id, username, email, full_name, is_public, created_at;
 
 -- Query: find_user_by_username
 SELECT * FROM users WHERE username = $1;
@@ -24,7 +24,7 @@ UPDATE users SET {{columns}} WHERE user_id = {{user_id}}
 RETURNING user_id, username, email, full_name, status, created_at, updated_at;
 
 -- Query: get_all_users
-SELECT u.user_id, u.username, u.email, u.full_name, u.status, u.created_at,
+SELECT u.user_id, u.username, u.email, u.full_name, u.status, u.is_public, u.created_at,
        EXISTS (
          SELECT 1 FROM user_roles ur
          JOIN roles r ON ur.role_id = r.role_id
