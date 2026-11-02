@@ -463,7 +463,9 @@ ORDER BY lb.box_number ASC, lb.next_review ASC;
 
 ## Initial Setup Script
 
-Save as `scripts/init-db.sql` and run to initialize database:
+The canonical schema lives at `src/scripts/sql/pg/flashcards-postgres-schema.sql`
+and is applied automatically (idempotently) when the server starts. To apply it
+manually instead:
 
 ```sql
 -- Create extensions

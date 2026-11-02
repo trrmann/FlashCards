@@ -35,7 +35,6 @@ FlashCards/
 │   └── images/                # Image assets
 ├── src/                        # Source code
 │   ├── js/
-│   │   ├── appSiteData.js     # Export wrapper
 │   │   └── modules/
 │   │       └── appSiteData.mjs # Site data class (page titles, names)
 │   └── views/                  # EJS templates

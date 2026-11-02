@@ -127,9 +127,8 @@ npm run test:coverage
 # Option A: Using psql CLI
 psql $DATABASE_URL < database/schema.sql
 
-# Option B: Using Node.js (add to server startup)
-npm install pg
-node scripts/init-db.js
+# Option B: Automatic (default) - the server bootstraps the schema on startup
+npm start
 
 # Option C: Using pgAdmin GUI
 # Connect to Render DB, paste SQL from DATABASE_SCHEMA.md, execute

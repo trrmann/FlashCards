@@ -4,7 +4,7 @@ import path from 'path';
 import session from 'express-session';
 import pgSession from 'connect-pg-simple';
 
-import { appSiteData } from './src/scripts/js/appSiteData.js';
+import { appSiteData } from './src/scripts/js/modules/appSiteData.mjs';
 import { flashCardsDb } from './src/scripts/js/modules/db/flashCardsDb.mjs';
 import { userAuthService } from './src/scripts/js/modules/auth/user.mjs';
 import authRoutes from './src/scripts/js/modules/routes/auth.mjs';
@@ -218,9 +218,16 @@ app.get('/api/health', async (req, res) => {
 app.listen(port, async () => {
   console.log(`Server running in ${NODE_ENV} mode on port ${port}`);
 
-  // Initialize database connection and schema
+  // Initialize database connection and bootstrap the idempotent schema
   const dbReady = await flashCardsDb.initializeDatabaseConnection();
   if (!dbReady) {
     console.warn('⚠️ Warning: Database connection failed. Some features may be unavailable.');
+    return;
+  }
+
+  try {
+    await flashCardsDb.initializeSchema();
+  } catch (error) {
+    console.error('❌ Schema initialization failed:', error.message);
   }
 });

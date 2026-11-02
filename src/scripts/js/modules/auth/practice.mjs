@@ -91,53 +91,6 @@ export async function trackSessionAttempt(
 }
 
 /**
- * Check if card needs more attempts in current session
- * @param {string} userId - User ID
- * @param {string} flashcardId - Flashcard ID
- * @param {number} boxNumber - Current box number
- * @param {Date} sessionStartTime - Session start time
- * @returns {Promise<object>} {needsMoreAttempts, attemptNumber, totalNeeded}
- */
-export async function checkNeedsMoreAttempts(userId, flashcardId, boxNumber, sessionStartTime) {
-  const attemptCount = await getSessionAttemptCount(userId, flashcardId, sessionStartTime);
-  const totalNeeded = getCardRepetitionsNeeded(boxNumber);
-  const needsMoreAttempts = attemptCount < totalNeeded;
-
-  return {
-    needsMoreAttempts,
-    attemptNumber: attemptCount + 1,
-    totalNeeded,
-    currentAttempt: attemptCount,
-  };
-}
-
-/**
- * Initialize Leitner progress for a flashcard
- * @param {string} userId - User ID
- * @param {number} flashcardId - Flashcard ID
- * @returns {Promise<object>} Leitner progress record
- */
-export async function initializeLeitnerForFlashcard(userId, flashcardId) {
-  // Check if already initialized
-  const existingResult = await flashCardsDb.query(practiceQueries.select_leitner_progress, [
-    flashcardId,
-    userId,
-  ]);
-
-  if (existingResult.rows.length > 0) {
-    return existingResult.rows[0];
-  }
-
-  // Initialize new progress record (starts in Box 1)
-  const result = await flashCardsDb.query(practiceQueries.insert_leitner_progress, [
-    flashcardId,
-    userId,
-  ]);
-
-  return result.rows[0];
-}
-
-/**
  * Initialize Leitner progress for all user's flashcards
  * @param {string} userId - User ID
  * @returns {Promise<number>} Number of cards initialized
@@ -225,35 +178,6 @@ export async function getDueCardsForToday(userId, filters = {}) {
   console.log(`[DEBUG] getDueCardsForToday - Result count: ${result.rows.length}`);
 
   return result.rows;
-}
-
-/**
- * Get all cards in a specific Leitner box for a user
- * @param {string} userId - User ID
- * @param {number} boxNumber - Box number (1, 2, or 3)
- * @returns {Promise<array>} Array of flashcards in the box
- */
-export async function getCardsInBox(userId, boxNumber) {
-  const result = await flashCardsDb.query(practiceQueries.select_cards_in_box, [userId, boxNumber]);
-
-  return result.rows;
-}
-
-/**
- * Get a random card due for practice from today's available cards
- * @param {string} userId - User ID
- * @returns {Promise<object|null>} Flashcard or null if none available
- */
-export async function getNextPracticeCard(userId) {
-  const dueCards = await getDueCardsForToday(userId);
-
-  if (dueCards.length === 0) {
-    return null;
-  }
-
-  // Return random card from due cards
-  const randomIndex = Math.floor(Math.random() * dueCards.length);
-  return dueCards[randomIndex];
 }
 
 /**

@@ -15,12 +15,6 @@ RETURNING *;
 SELECT * FROM flashcard_leitner_progress
 WHERE flashcard_id = $1 AND user_id = $2;
 
--- Query: insert_leitner_progress
-INSERT INTO flashcard_leitner_progress
-  (flashcard_id, user_id, current_box, last_reviewed, next_review, times_correct, times_incorrect)
-VALUES ($1, $2, 1, NULL, NOW(), 0, 0)
-RETURNING *;
-
 -- Query: insert_leitner_progress_for_all_cards
 INSERT INTO flashcard_leitner_progress
   (flashcard_id, user_id, current_box, last_reviewed, next_review, times_correct, times_incorrect)
@@ -41,13 +35,6 @@ WHERE f.created_by = $1
   AND (p.next_review IS NULL OR p.next_review <= NOW())
   {{filter_clause}}
 ORDER BY p.current_box ASC, p.last_reviewed ASC NULLS FIRST;
-
--- Query: select_cards_in_box
-SELECT f.*, p.current_box, p.times_correct, p.times_incorrect, p.last_reviewed, p.next_review
-FROM flashcards f
-JOIN flashcard_leitner_progress p ON f.flashcard_id = p.flashcard_id
-WHERE f.created_by = $1 AND p.current_box = $2
-ORDER BY p.last_reviewed ASC NULLS FIRST;
 
 -- Query: select_catch_up_card
 SELECT f.*, p.current_box, p.times_correct, p.times_incorrect, p.last_reviewed, p.next_review

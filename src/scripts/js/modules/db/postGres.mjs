@@ -232,40 +232,16 @@ export class PostgresDatabase {
   static #introspectionQueries = null;
 
   static get introspectionQueries() {
-    if (!this.#introspectionQueries) {
-      this.#introspectionQueries = PostgresDatabase.loadNamedSqlStatements(
+    // Reference PostgresDatabase explicitly: private static fields are only
+    // declared on this class, so `this.#...` would throw when the getter is
+    // reached through a subclass such as FlashCardsDatabase.
+    if (!PostgresDatabase.#introspectionQueries) {
+      PostgresDatabase.#introspectionQueries = PostgresDatabase.loadNamedSqlStatements(
         'pg/postgres-introspection.sql',
         PostgresDatabase.sqlRoot
       );
     }
-    return this.#introspectionQueries;
-  }
-
-  async tableExists(tableName) {
-    const result = await this.query(this.constructor.introspectionQueries.table_exists, [
-      tableName,
-    ]);
-
-    return Boolean(result.rows[0]?.exists);
-  }
-
-  async columnExists(tableName, columnName) {
-    const result = await this.query(this.constructor.introspectionQueries.column_exists, [
-      tableName,
-      columnName,
-    ]);
-
-    return Boolean(result.rows[0]?.exists);
-  }
-
-  async executeSqlFile(relativePath, sqlRoot = this.constructor.sqlRoot) {
-    const statements = this.constructor.loadSqlStatements(relativePath, sqlRoot);
-
-    for (const statement of statements) {
-      await this.query(statement);
-    }
-
-    return statements.length;
+    return PostgresDatabase.#introspectionQueries;
   }
 
   async initializeDatabaseConnection() {

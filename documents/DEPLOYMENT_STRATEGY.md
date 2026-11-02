@@ -221,7 +221,8 @@ After deployment, run migrations:
 
 1. In Render Dashboard, go to Web Service
 2. Shell tab
-3. Run: `node scripts/init-db.js`
+3. No manual step needed: the server bootstraps the idempotent schema from
+   `src/scripts/sql/pg/flashcards-postgres-schema.sql` on startup
 
 #### Option C: Via GitHub Action (Recommended)
 
