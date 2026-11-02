@@ -105,8 +105,9 @@ class SystemRouter extends BaseRouter {
           });
         }
 
-        // Create the first user
+        // Create the first user and make them the system administrator
         const user = await userAuthService.createUser(username, email, password, fullName || null);
+        await userAuthService.setUserAdmin(user.user_id);
 
         // Set session
         req.session.userId = user.user_id;

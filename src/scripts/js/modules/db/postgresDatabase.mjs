@@ -245,8 +245,19 @@ export class PostgresDatabase {
   }
 
   /**
+   * Check whether a public table exists in the connected database.
+   */
+  async tableExists(tableName) {
+    const result = await this.query(this.constructor.introspectionQueries.table_exists, [
+      tableName,
+    ]);
+    return Boolean(result.rows[0]?.exists);
+  }
+
+  /**
    * Run every statement in a schema SQL file (idempotent bootstrap),
    * logging progress per statement, then list the public tables.
+   * Throws if any statement fails so bootstrap problems are never silent.
    */
   async initializeSchemaFromFile(relativePath, bannerTitle) {
     const allSQL = this.constructor.loadSqlStatements(relativePath, this.constructor.sqlRoot);
@@ -270,20 +281,32 @@ export class PostgresDatabase {
       console.log(`Host: ${this.config.host}`);
       console.log(`Database: ${this.config.database}\n`);
 
+      const failures = [];
+
       for (let i = 0; i < allSQL.length; i += 1) {
+        const label = describeStatement(allSQL[i]);
         try {
-          process.stdout.write(`[${i + 1}/${allSQL.length}] ${describeStatement(allSQL[i])}... `);
+          process.stdout.write(`[${i + 1}/${allSQL.length}] ${label}... `);
           await client.query(allSQL[i]);
           console.log('✅');
         } catch (error) {
           console.log('⚠️');
           console.error(`  Error: ${error.message}`);
+          failures.push(`${label}: ${error.message}`);
         }
       }
 
       const result = await client.query(this.constructor.introspectionQueries.list_public_tables);
 
       console.log(`Public tables now present: ${result.rows.length}`);
+
+      if (failures.length > 0) {
+        console.error(`❌ Schema bootstrap failed: ${failures.length} statement(s) errored.`);
+        throw new Error(
+          `Schema bootstrap of ${relativePath} failed: ${failures.length} statement(s) errored. First failure - ${failures[0]}`
+        );
+      }
+
       console.log('\n✅ Schema bootstrap complete!');
       return result.rows;
     } finally {
