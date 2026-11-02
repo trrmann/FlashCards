@@ -81,6 +81,18 @@
         <div id="changePasswordStatus"></div>
       </section>
 
+      <!-- Pending Shares Section -->
+      <section class="profile-section">
+        <h3>Pending Shares</h3>
+        <p style="margin-bottom: 1.5rem; color: #64748b;">
+          Flashcards other users have shared with you. Accept to add them to your
+          "Shared with Me" list, or reject to decline (the owner is not notified).
+        </p>
+        <div id="pendingSharesList">
+          <p style="color: #64748b;">Loading pending shares...</p>
+        </div>
+      </section>
+
       <!-- Admin Section (only visible to admins) -->
       <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
         <section class="admin-section">
@@ -173,6 +185,95 @@
   <script>
     // Initialize with server-side values
     window.currentUserId = '<%= typeof currentUserId !== "undefined" ? currentUserId : "" %>';
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text ?? '';
+      return div.innerHTML;
+    }
+
+    // Load pending shares awaiting accept/reject
+    async function loadPendingShares() {
+      const list = document.getElementById('pendingSharesList');
+      if (!list) return;
+
+      try {
+        const response = await fetch('/api/entries/shares/pending', {
+          credentials: 'include',
+        });
+        const data = await response.json();
+
+        if (data.status === 'success' && data.shares && data.shares.length > 0) {
+          list.innerHTML = data.shares
+            .map(
+              (share) => `
+            <div class="pending-share-card">
+              <div class="pending-share-content">
+                <div class="pending-share-question">${escapeHtml(share.question)}</div>
+                <div class="pending-share-meta">
+                  Shared by <strong>${escapeHtml(share.full_name || share.username)}</strong>
+                  ${share.lesson ? ' • Lesson: ' + escapeHtml(share.lesson) : ''}
+                </div>
+              </div>
+              <div class="pending-share-actions">
+                <button class="btn btn-primary" onclick="acceptPendingShare('${share.share_id}')">
+                  Accept
+                </button>
+                <button class="btn btn-danger" onclick="rejectPendingShare('${share.share_id}')">
+                  Reject
+                </button>
+              </div>
+            </div>
+          `
+            )
+            .join('');
+        } else if (data.status === 'success') {
+          list.innerHTML = '<p style="color: #64748b;">No pending shares.</p>';
+        } else {
+          list.innerHTML = `<p class="error">Failed to load pending shares: ${escapeHtml(data.message)}</p>`;
+        }
+      } catch (error) {
+        list.innerHTML = `<p class="error">Error loading pending shares: ${escapeHtml(error.message)}</p>`;
+      }
+    }
+
+    async function acceptPendingShare(shareId) {
+      try {
+        const response = await fetch(`/api/entries/shares/${shareId}/accept`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+          loadPendingShares();
+        } else {
+          alert(`Failed: ${data.message}`);
+        }
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
+
+    async function rejectPendingShare(shareId) {
+      if (!confirm('Reject this shared flashcard? The owner is not notified.')) return;
+
+      try {
+        const response = await fetch(`/api/entries/shares/${shareId}/reject`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+          loadPendingShares();
+        } else {
+          alert(`Failed: ${data.message}`);
+        }
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
 
     // Fetch and populate user profile
     async function loadProfile() {
@@ -583,6 +684,7 @@
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', () => {
       loadProfile();
+      loadPendingShares();
       loadAdminUsersList();
 
       const visibilityToggle = document.getElementById('isPublicToggle');

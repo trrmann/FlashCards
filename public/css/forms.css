@@ -329,3 +329,31 @@ select:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
+
+/* Pending shares (profile) */
+.pending-share-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.pending-share-question {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.pending-share-meta {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.pending-share-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
