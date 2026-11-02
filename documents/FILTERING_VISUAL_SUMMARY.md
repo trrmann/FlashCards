@@ -151,7 +151,7 @@ if (filters.category) url += `&category=${encodeURIComponent(filters.category)}`
 
 ### 2. Filter Pattern Conversion (Backend)
 
-**File:** `src/scripts/js/modules/auth/practice.mjs`
+**File:** `src/scripts/js/modules/auth/practiceService.mjs`
 
 ```javascript
 // Converts wildcards to SQL patterns (lines 8-16)
@@ -167,7 +167,7 @@ function getFilterPattern(filterValue) {
 
 ### 3. Main Card Filtering
 
-**File:** `src/scripts/js/modules/auth/practice.mjs` - `getDueCardsForToday()` (lines 183-243)
+**File:** `src/scripts/js/modules/auth/practiceService.mjs` - `getDueCardsForToday()` (lines 183-243)
 
 ```javascript
 // Accepts filters parameter
@@ -187,7 +187,7 @@ export async function getDueCardsForToday(userId, filters = {}) {
 
 ### 4. Wrong Answer Filtering
 
-**File:** `src/scripts/js/modules/auth/practice.mjs` - `generateMultipleChoiceOptions()` (lines 295-348)
+**File:** `src/scripts/js/modules/auth/practiceService.mjs` - `generateMultipleChoiceOptions()` (lines 295-348)
 
 ```javascript
 // Get wrong answers matching class AND category
@@ -207,7 +207,7 @@ const wrongAnswersResult = await query(
 
 ### 5. API Endpoint Integration
 
-**File:** `src/scripts/js/modules/routes/practice.mjs` - GET `/api/practice/next` (lines 126-169)
+**File:** `src/scripts/js/modules/routes/practiceRouter.mjs` - GET `/api/practice/next` (lines 126-169)
 
 ```javascript
 // Extract filters from query params (lines 139-142)

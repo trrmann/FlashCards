@@ -8,14 +8,14 @@ Dashboard statistics (Box 1, Box 2, Box 3 card counts) now dynamically update to
 
 ### Backend Changes
 
-1. **getProgressStats() Function** ([src/scripts/js/modules/auth/practice.mjs](file:///home/tmann/Documents/Projects/FlashCards/src/scripts/js/modules/auth/practice.mjs:612))
+1. **getProgressStats() Function** ([src/scripts/js/modules/auth/practiceService.mjs](file:///home/tmann/Documents/Projects/FlashCards/src/scripts/js/modules/auth/practiceService.mjs:612))
    - Now accepts optional `filters` parameter: `{class, lesson, category}`
    - Applies the same filtering logic as `getDueCardsForToday()`
    - Joins `flashcard_leitner_progress` with `flashcards` table
    - Uses `COALESCE()` to handle NULL values in class/category fields
    - Returns box counts for only matching cards
 
-2. **API Endpoint** ([src/scripts/js/modules/routes/practice.mjs](file:///home/tmann/Documents/Projects/FlashCards/src/scripts/js/modules/routes/practice.mjs:332))
+2. **API Endpoint** ([src/scripts/js/modules/routes/practiceRouter.mjs](file:///home/tmann/Documents/Projects/FlashCards/src/scripts/js/modules/routes/practiceRouter.mjs:332))
    - GET `/api/practice/stats` now accepts filter query parameters:
      - `?class=Biology`
      - `?lesson=Chapter1`
@@ -102,8 +102,8 @@ Enable with: Check `/tmp/server.log` or browser DevTools Console
 
 ## Files Modified
 
-- **src/scripts/js/modules/auth/practice.mjs** - Added filter support to getProgressStats()
-- **src/scripts/js/modules/routes/practice.mjs** - Updated /api/practice/stats endpoint
+- **src/scripts/js/modules/auth/practiceService.mjs** - Added filter support to getProgressStats()
+- **src/scripts/js/modules/routes/practiceRouter.mjs** - Updated /api/practice/stats endpoint
 - **src/views/practice.ejs** - Added refreshStatsForActiveFilters() and listener
 
 ## Commit

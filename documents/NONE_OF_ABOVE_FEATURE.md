@@ -93,7 +93,7 @@ ADD COLUMN none_of_above_count INTEGER DEFAULT 0;
 
 ### Backend Logic
 
-**File**: `src/scripts/js/modules/auth/practice.mjs`
+**File**: `src/scripts/js/modules/auth/practiceService.mjs`
 
 The `generateMultipleChoiceOptions()` function now:
 
@@ -136,7 +136,7 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
 
 ### API Updates
 
-**File**: `src/scripts/js/modules/routes/practice.mjs`
+**File**: `src/scripts/js/modules/routes/practiceRouter.mjs`
 
 #### GET /api/practice/next
 
@@ -222,7 +222,7 @@ Current hardcoded settings:
 
 ### To Adjust
 
-Edit `src/scripts/js/modules/auth/practice.mjs` line in `generateMultipleChoiceOptions()`:
+Edit `src/scripts/js/modules/auth/practiceService.mjs` line in `generateMultipleChoiceOptions()`:
 
 ```javascript
 // Current: target 15% challenge questions

@@ -5,8 +5,8 @@
 
 import express from 'express';
 import { BaseRouter } from './baseRouter.mjs';
-import { userAuthService } from '../auth/user.mjs';
-import { validationService } from '../auth/validator.mjs';
+import { userAuthService } from '../auth/userAuthService.mjs';
+import { validationService } from '../auth/validationService.mjs';
 
 class AuthRouter extends BaseRouter {
   registerRoutes() {

@@ -39,7 +39,7 @@ Now:
 
 ## Changes Made
 
-### src/scripts/js/modules/auth/practice.mjs
+### src/scripts/js/modules/auth/practiceService.mjs
 
 1. Updated both wrong-answer queries in `generateMultipleChoiceOptions()`:
    - Standard mode (showing correct answer)
@@ -55,7 +55,7 @@ Now:
    - Logs filters and SQL patterns applied
    - Logs number of cards returned
 
-### src/scripts/js/modules/routes/practice.mjs
+### src/scripts/js/modules/routes/practiceRouter.mjs
 
 - Added debug logging to see how filters are received and passed to backend
 - Logs number of due cards found for the session
@@ -85,8 +85,8 @@ Watch server logs for debug output:
 
 ## Files Modified
 
-- src/scripts/js/modules/auth/practice.mjs - Core filtering logic fix + debug logging
-- src/scripts/js/modules/routes/practice.mjs - API endpoint debug logging
+- src/scripts/js/modules/auth/practiceService.mjs - Core filtering logic fix + debug logging
+- src/scripts/js/modules/routes/practiceRouter.mjs - API endpoint debug logging
 
 ## Commits
 

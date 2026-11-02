@@ -56,7 +56,7 @@ ADD COLUMN session_streak INTEGER DEFAULT 0;
 
 ## Backend Implementation
 
-### New Functions in `src/scripts/js/modules/auth/practice.mjs`
+### New Functions in `src/scripts/js/modules/auth/practiceService.mjs`
 
 #### `getCardRepetitionsNeeded(boxNumber)`
 
@@ -111,7 +111,7 @@ Enhanced version of `recordPracticeAttempt` that:
 }
 ```
 
-### API Changes in `src/scripts/js/modules/routes/practice.mjs`
+### API Changes in `src/scripts/js/modules/routes/practiceRouter.mjs`
 
 #### POST `/api/practice/answer`
 
@@ -293,8 +293,8 @@ if (data.session && data.session.needsMoreAttempts) {
 ## Files Modified
 
 - ✅ `src/scripts/js/modules/db/migrations.mjs` - Added 2 new migrations _(module since removed; schema now lives in `src/scripts/sql/pg/flashcards-postgres-schema.sql`)_
-- ✅ `src/scripts/js/modules/auth/practice.mjs` - Added 5 new session-aware functions
-- ✅ `src/scripts/js/modules/routes/practice.mjs` - Updated /api/practice/answer endpoint and imports
+- ✅ `src/scripts/js/modules/auth/practiceService.mjs` - Added 5 new session-aware functions
+- ✅ `src/scripts/js/modules/routes/practiceRouter.mjs` - Updated /api/practice/answer endpoint and imports
 - ✅ `src/views/practice.ejs` - Added session tracking and attempt counter display
 
 ## Future Enhancements

@@ -5,16 +5,16 @@ import session from 'express-session';
 import pgSession from 'connect-pg-simple';
 
 import { appSiteData } from './src/scripts/js/modules/appSiteData.mjs';
-import { flashCardsDb } from './src/scripts/js/modules/db/flashCardsDb.mjs';
-import { userAuthService } from './src/scripts/js/modules/auth/user.mjs';
-import authRouter from './src/scripts/js/modules/routes/auth.mjs';
-import usersRouter from './src/scripts/js/modules/routes/users.mjs';
-import adminRouter from './src/scripts/js/modules/routes/admin.mjs';
-import systemRouter from './src/scripts/js/modules/routes/system.mjs';
-import navigationRouter from './src/scripts/js/modules/routes/navigation.mjs';
-import entriesRouter from './src/scripts/js/modules/routes/entries.mjs';
-import practiceRouter from './src/scripts/js/modules/routes/practice.mjs';
-import quizRouter from './src/scripts/js/modules/routes/quiz.mjs';
+import { flashCardsDb } from './src/scripts/js/modules/db/flashCardsDatabase.mjs';
+import { userAuthService } from './src/scripts/js/modules/auth/userAuthService.mjs';
+import authRouter from './src/scripts/js/modules/routes/authRouter.mjs';
+import usersRouter from './src/scripts/js/modules/routes/usersRouter.mjs';
+import adminRouter from './src/scripts/js/modules/routes/adminRouter.mjs';
+import systemRouter from './src/scripts/js/modules/routes/systemRouter.mjs';
+import navigationRouter from './src/scripts/js/modules/routes/navigationRouter.mjs';
+import entriesRouter from './src/scripts/js/modules/routes/entriesRouter.mjs';
+import practiceRouter from './src/scripts/js/modules/routes/practiceRouter.mjs';
+import quizRouter from './src/scripts/js/modules/routes/quizRouter.mjs';
 
 // Define the application environment.
 const NODE_ENV = process.env.NODE_ENV?.toLocaleLowerCase() || 'production';

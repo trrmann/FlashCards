@@ -7,8 +7,8 @@
  */
 
 import express from 'express';
-import { flashCardsDb } from '../db/flashCardsDb.mjs';
-import { userAuthService } from '../auth/user.mjs';
+import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
+import { userAuthService } from '../auth/userAuthService.mjs';
 
 export class BaseRouter {
   static queries = null;

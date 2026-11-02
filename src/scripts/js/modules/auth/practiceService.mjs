@@ -5,7 +5,7 @@
  * Supports filtering by class/category/lesson with wildcard support
  */
 
-import { flashCardsDb } from '../db/flashCardsDb.mjs';
+import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
 
 class PracticeService {
   static queries = flashCardsDb.constructor.loadNamedSqlStatements(

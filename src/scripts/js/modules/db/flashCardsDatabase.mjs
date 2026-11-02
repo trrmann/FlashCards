@@ -2,7 +2,7 @@
  * App-specific PostgreSQL adapter for the FlashCards application.
  */
 
-import { PostgresDatabase } from './postGres.mjs';
+import { PostgresDatabase } from './postgresDatabase.mjs';
 
 export class FlashCardsDatabase extends PostgresDatabase {
   static sqlRoot = PostgresDatabase.sqlRoot;

@@ -3,7 +3,7 @@
  * Handles flashcard CRUD operations and sharing
  */
 
-import { flashCardsDb } from '../db/flashCardsDb.mjs';
+import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
 
 class EntriesService {
   static queries = flashCardsDb.constructor.loadNamedSqlStatements(

@@ -10,7 +10,7 @@ The FlashCards application now has a complete PostgreSQL database setup with con
 
 ### 1. Database Initialization Script
 
-- **File:** `src/scripts/js/modules/db/postGres.mjs`
+- **File:** `src/scripts/js/modules/db/postgresDatabase.mjs`
 - **Status:** ✅ Successfully created all 7 tables in Render PostgreSQL
 - **Features:**
   - Automatic SSL configuration for external connections
@@ -32,7 +32,7 @@ The FlashCards application now has a complete PostgreSQL database setup with con
 
 ### 3. Database Connection Module
 
-- **File:** `src/scripts/js/modules/db/postGres.mjs`
+- **File:** `src/scripts/js/modules/db/postgresDatabase.mjs`
 - **Features:**
   - PostgreSQL connection pool (pg library)
   - Automatic environment detection (local vs. Render)
@@ -70,7 +70,7 @@ The FlashCards application now has a complete PostgreSQL database setup with con
 
 ```bash
 # Create all tables in Render PostgreSQL
-node src/scripts/js/modules/db/postGres.mjs
+node src/scripts/js/modules/db/postgresDatabase.mjs
 ```
 
 ### Test Database Connection
@@ -90,7 +90,7 @@ curl http://localhost:5000/api/health
 ### Database Connection in Code
 
 ```javascript
-import { query, getClient } from './src/scripts/js/modules/db/postGres.mjs';
+import { query, getClient } from './src/scripts/js/modules/db/postgresDatabase.mjs';
 
 // Simple query
 const result = await query('SELECT * FROM users WHERE user_id = $1', [userId]);
@@ -244,8 +244,8 @@ PGPASSWORD=<password> psql -h dpg-dbhnuks9v7es73beg8mg-a.virginia-postgres.rende
 ## Resources
 
 - **Database Schema:** `documents/DATABASE_SCHEMA.md`
-- **Connection Module:** `src/scripts/js/modules/db/postGres.mjs`
-- **Initialization Script:** `src/scripts/js/modules/db/postGres.mjs`
+- **Connection Module:** `src/scripts/js/modules/db/postgresDatabase.mjs`
+- **Initialization Script:** `src/scripts/js/modules/db/postgresDatabase.mjs`
 - **Render Dashboard:** https://dashboard.render.com
 - **PostgreSQL Docs:** https://www.postgresql.org/docs/
 

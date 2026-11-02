@@ -1,5 +1,5 @@
 import { BaseRouter } from './baseRouter.mjs';
-import { flashCardsDb } from '../db/flashCardsDb.mjs';
+import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
 
 class QuizRouter extends BaseRouter {
   static queries = flashCardsDb.constructor.loadNamedSqlStatements(

@@ -8,7 +8,7 @@ When there aren't enough flashcards to create multiple choice options, users now
 
 ### Backend Changes
 
-1. **Updated `generateMultipleChoiceOptions()`** ([src/scripts/js/modules/auth/practice.mjs](file:///home/tmann/Documents/Projects/FlashCards/src/scripts/js/modules/auth/practice.mjs:428))
+1. **Updated `generateMultipleChoiceOptions()`** ([src/scripts/js/modules/auth/practiceService.mjs](file:///home/tmann/Documents/Projects/FlashCards/src/scripts/js/modules/auth/practiceService.mjs:428))
    - Now returns an object instead of null when insufficient options
    - Object contains `insufficientOptions: true` flag
    - Includes `diagnostic` object with detailed information
@@ -33,7 +33,7 @@ When there aren't enough flashcards to create multiple choice options, users now
    }
    ```
 
-3. **API Endpoint** ([src/scripts/js/modules/routes/practice.mjs](file:///home/tmann/Documents/Projects/FlashCards/src/scripts/js/modules/routes/practice.mjs:178))
+3. **API Endpoint** ([src/scripts/js/modules/routes/practiceRouter.mjs](file:///home/tmann/Documents/Projects/FlashCards/src/scripts/js/modules/routes/practiceRouter.mjs:178))
    - Checks if `options.insufficientOptions` is true
    - Passes `diagnostic` object to frontend in response
 
@@ -126,8 +126,8 @@ Not enough entries in this category to practice. Add more flashcards to create m
 
 ## Files Modified
 
-- **src/scripts/js/modules/auth/practice.mjs** - Return diagnostic object instead of null
-- **src/scripts/js/modules/routes/practice.mjs** - Pass diagnostic to frontend
+- **src/scripts/js/modules/auth/practiceService.mjs** - Return diagnostic object instead of null
+- **src/scripts/js/modules/routes/practiceRouter.mjs** - Pass diagnostic to frontend
 - **src/views/practice.ejs** - Display collapsible diagnostic section
 
 ## Commit

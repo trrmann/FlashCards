@@ -4,7 +4,7 @@
  * Includes schema, users, entries, quizzes, and practice history
  */
 
-import { flashCardsDb } from '../db/flashCardsDb.mjs';
+import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
 
 class BackupService {
   static queries = flashCardsDb.constructor.loadNamedSqlStatements(

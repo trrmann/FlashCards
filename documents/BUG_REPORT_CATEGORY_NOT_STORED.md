@@ -212,8 +212,8 @@ WHERE ph.flashcard_id = f.flashcard_id
 
 ## Files to Review
 
-- [src/scripts/js/modules/auth/practice.mjs](src/scripts/js/modules/auth/practice.mjs) - recordPracticeAttempt() function (line 462-510)
-- [src/scripts/js/modules/routes/practice.mjs](src/scripts/js/modules/routes/practice.mjs) - POST /api/practice/answer endpoint (line 232-310)
+- [src/scripts/js/modules/auth/practiceService.mjs](src/scripts/js/modules/auth/practiceService.mjs) - recordPracticeAttempt() function (line 462-510)
+- [src/scripts/js/modules/routes/practiceRouter.mjs](src/scripts/js/modules/routes/practiceRouter.mjs) - POST /api/practice/answer endpoint (line 232-310)
 - [src/views/practice.ejs](src/views/practice.ejs) - Frontend answer submission (line 820-840)
 - [src/views/partials/filter-panel.ejs](src/views/partials/filter-panel.ejs) - Filter storage (line 240-275)
 

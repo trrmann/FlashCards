@@ -5,10 +5,10 @@
 
 import express from 'express';
 import { BaseRouter } from './baseRouter.mjs';
-import { userAuthService } from '../auth/user.mjs';
-import { validationService } from '../auth/validator.mjs';
-import { backupService } from '../auth/backup.mjs';
-import { practiceService } from '../auth/practice.mjs';
+import { userAuthService } from '../auth/userAuthService.mjs';
+import { validationService } from '../auth/validationService.mjs';
+import { backupService } from '../auth/backupService.mjs';
+import { practiceService } from '../auth/practiceService.mjs';
 
 class AdminRouter extends BaseRouter {
   registerRoutes() {

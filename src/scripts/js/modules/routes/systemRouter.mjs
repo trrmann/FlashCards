@@ -5,9 +5,9 @@
 
 import express from 'express';
 import { BaseRouter } from './baseRouter.mjs';
-import { validationService } from '../auth/validator.mjs';
-import { flashCardsDb } from '../db/flashCardsDb.mjs';
-import { userAuthService } from '../auth/user.mjs';
+import { validationService } from '../auth/validationService.mjs';
+import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
+import { userAuthService } from '../auth/userAuthService.mjs';
 
 class SystemRouter extends BaseRouter {
   static queries = flashCardsDb.constructor.loadNamedSqlStatements(

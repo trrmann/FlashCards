@@ -5,7 +5,7 @@
 
 import express from 'express';
 import { BaseRouter } from './baseRouter.mjs';
-import { userAuthService } from '../auth/user.mjs';
+import { userAuthService } from '../auth/userAuthService.mjs';
 
 class NavigationRouter extends BaseRouter {
   registerRoutes() {

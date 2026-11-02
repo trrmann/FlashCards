@@ -3,8 +3,8 @@
  * Handles user-related database operations
  */
 
-import { flashCardsDb } from '../db/flashCardsDb.mjs';
-import { validationService } from './validator.mjs';
+import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
+import { validationService } from './validationService.mjs';
 
 class UserAuthService {
   static queries = flashCardsDb.constructor.loadNamedSqlStatements(

@@ -4,7 +4,7 @@
  */
 
 import { BaseRouter } from './baseRouter.mjs';
-import { practiceService } from '../auth/practice.mjs';
+import { practiceService } from '../auth/practiceService.mjs';
 
 class PracticeRouter extends BaseRouter {
   registerRoutes() {
