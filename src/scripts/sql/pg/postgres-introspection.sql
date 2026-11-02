@@ -5,6 +5,14 @@ SELECT EXISTS (
   WHERE table_schema = 'public' AND table_name = $1
 ) AS exists;
 
+-- Query: get_primary_key_columns
+SELECT a.attname AS column_name
+FROM pg_index i
+JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY (i.indkey)
+WHERE i.indrelid = $1::regclass
+AND i.indisprimary
+ORDER BY a.attnum;
+
 -- Query: list_public_tables
 SELECT table_name
 FROM information_schema.tables

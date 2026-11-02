@@ -125,6 +125,27 @@
               <p style="color: #64748b;">Loading users...</p>
             </div>
           </div>
+
+          <!-- Backup / Restore -->
+          <div class="form-section">
+            <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem;">Backup &amp; Restore</h4>
+            <p style="margin-bottom: 1rem; color: #64748b;">
+              Download the entire dataset (users and app data) as JSON, or import a backup.
+              Importing updates existing records to the imported values and adds new ones;
+              nothing is deleted.
+            </p>
+            <p style="margin-bottom: 1rem;">
+              <a href="/api/admin/backup/download" download>
+                <button type="button">⬇️ Download Full Backup (JSON)</button>
+              </a>
+            </p>
+            <div class="form-group">
+              <label for="backupFile">Import Backup (JSON)</label>
+              <input id="backupFile" name="backupFile" type="file" accept="application/json,.json" />
+            </div>
+            <button type="button" id="importBackupBtn">⬆️ Import Backup</button>
+            <div id="backupStatus"></div>
+          </div>
         </section>
       <% } %>
     </div>
@@ -270,6 +291,11 @@
               } else {
                 html += `<button onclick="enableUser('${user.user_id}')">Enable</button>`;
               }
+              if (user.is_admin) {
+                html += `<button onclick="demoteUser('${user.user_id}', '${user.username}')">Remove Admin</button>`;
+              } else {
+                html += `<button onclick="promoteUser('${user.user_id}', '${user.username}')">Make Admin</button>`;
+              }
               html += `<button onclick="deleteUser('${user.user_id}', '${user.username}')" class="btn-danger">Delete</button>`;
             } else {
               html += '<span class="text-muted">Current User</span>';
@@ -405,6 +431,100 @@
       } catch (error) {
         alert(`Error: ${error.message}`);
       }
+    }
+
+    async function promoteUser(userId, username) {
+      if (!confirm(`Make "${username}" a system admin?`)) return;
+
+      try {
+        const response = await fetch(`/api/admin/users/${userId}/promote`, {
+          method: 'POST',
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          alert(data.message);
+          loadAdminUsersList();
+        } else {
+          alert(`Failed: ${data.message}`);
+        }
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
+
+    async function demoteUser(userId, username) {
+      if (!confirm(`Remove system admin from "${username}"?`)) return;
+
+      try {
+        const response = await fetch(`/api/admin/users/${userId}/demote`, {
+          method: 'POST',
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          alert(data.message);
+          loadAdminUsersList();
+        } else {
+          alert(`Failed: ${data.message}`);
+        }
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
+
+    // Import a JSON backup with upsert semantics
+    if (document.getElementById('importBackupBtn')) {
+      document.getElementById('importBackupBtn').addEventListener('click', async () => {
+        const fileInput = document.getElementById('backupFile');
+        const statusDiv = document.getElementById('backupStatus');
+
+        if (!fileInput.files || fileInput.files.length === 0) {
+          statusDiv.innerHTML = '<p class="error">Select a backup JSON file first</p>';
+          return;
+        }
+
+        if (!confirm('Import this backup? Existing records will be updated to the imported values.')) {
+          return;
+        }
+
+        try {
+          const text = await fileInput.files[0].text();
+          const parsed = JSON.parse(text);
+          // Accept either a raw backup object or an export endpoint response
+          const backup = parsed.backup || parsed;
+
+          statusDiv.innerHTML = '<p>Importing…</p>';
+
+          const response = await fetch('/api/admin/backup/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ backup }),
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            const counts = Object.entries(data.results.imported)
+              .filter(([, n]) => n > 0)
+              .map(([t, n]) => `${t}: ${n}`)
+              .join(', ');
+            let html = `<p class="success">Import complete. ${counts || 'No rows imported.'}</p>`;
+            if (data.results.warnings && data.results.warnings.length > 0) {
+              html += `<p class="error">${data.results.warnings.length} warning(s); first: ${data.results.warnings[0]}</p>`;
+            }
+            statusDiv.innerHTML = html;
+            loadAdminUsersList();
+          } else {
+            statusDiv.innerHTML = `<p class="error">Import failed: ${data.message}</p>`;
+          }
+        } catch (error) {
+          statusDiv.innerHTML = `<p class="error">Import error: ${error.message}</p>`;
+        }
+      });
     }
 
     // Initialize on page load

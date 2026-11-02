@@ -253,6 +253,77 @@ class AdminRouter extends BaseRouter {
     });
 
     /**
+     * POST /api/admin/users/:userId/promote
+     * Grant the system admin role to a user (admin only)
+     */
+    router.post('/users/:userId/promote', requireAuth, requireAdmin, async (req, res) => {
+      try {
+        const { userId } = req.params;
+        const user = await userAuthService.findUserById(userId);
+
+        if (!user) {
+          return res.status(404).json({
+            status: 'error',
+            message: 'User not found',
+          });
+        }
+
+        await userAuthService.setUserAdmin(userId);
+
+        return res.status(200).json({
+          status: 'success',
+          message: `${user.username} is now a system admin`,
+        });
+      } catch (error) {
+        console.error('Promote user error:', error.message);
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to promote user',
+        });
+      }
+    });
+
+    /**
+     * POST /api/admin/users/:userId/demote
+     * Remove the system admin role from a user (admin only)
+     */
+    router.post('/users/:userId/demote', requireAuth, requireAdmin, async (req, res) => {
+      try {
+        const { userId } = req.params;
+
+        // Prevent removing your own admin role
+        if (userId === req.session.userId) {
+          return res.status(400).json({
+            status: 'error',
+            message: 'Cannot remove your own admin role',
+          });
+        }
+
+        const user = await userAuthService.findUserById(userId);
+
+        if (!user) {
+          return res.status(404).json({
+            status: 'error',
+            message: 'User not found',
+          });
+        }
+
+        await userAuthService.revokeRole(userId, 'admin');
+
+        return res.status(200).json({
+          status: 'success',
+          message: `${user.username} is no longer a system admin`,
+        });
+      } catch (error) {
+        console.error('Demote user error:', error.message);
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to demote user',
+        });
+      }
+    });
+
+    /**
      * Admin Backup and Export Routes
      * Admin-only endpoints for full application data export/import
      */
@@ -300,39 +371,35 @@ class AdminRouter extends BaseRouter {
     });
 
     /**
-     * POST /api/admin/backup/import
-     * Import application data from backup.
-     * The database schema is initialized via the repository's SQL-file bootstrap process.
-     * WARNING: This will clear all existing data and replace it.
+     * GET /api/admin/backup/download
+     * Download the complete dataset (identity + app data) as a JSON file
      */
-    router.post('/backup/import', requireAdmin, express.json(), async (req, res) => {
+    router.get('/backup/download', requireAuth, requireAdmin, async (req, res) => {
       try {
-        const { backup } = req.body;
-
-        if (!backup || !backup.data) {
-          return res.status(400).json({
-            status: 'error',
-            message: 'Invalid backup format. Must include backup.data',
-          });
-        }
-
-        const results = await backupService.importApplicationData(backup);
-
-        const totalImported = Object.values(results.imported).reduce((a, b) => a + b, 0);
-
-        await backupService.logImportExport(req.session.userId, 'import', totalImported, 'success');
-
-        return res.status(200).json({
-          status: 'success',
-          message: 'Application data imported successfully',
-          results,
-        });
-      } catch (error) {
-        console.error('Import error:', error.message);
+        const backup = await backupService.exportApplicationData();
 
         await backupService.logImportExport(
           req.session.userId,
-          'import',
+          'export',
+          backup.metadata.totalFlashcards +
+            backup.metadata.totalQuizzes +
+            backup.metadata.totalQuizResults,
+          'success'
+        );
+
+        const stamp = new Date().toISOString().slice(0, 10);
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="flashcards-backup-${stamp}.json"`
+        );
+        return res.status(200).send(JSON.stringify(backup, null, 2));
+      } catch (error) {
+        console.error('Backup download error:', error.message);
+
+        await backupService.logImportExport(
+          req.session.userId,
+          'export',
           0,
           'failed',
           error.message
@@ -340,11 +407,68 @@ class AdminRouter extends BaseRouter {
 
         return res.status(500).json({
           status: 'error',
-          message: 'Failed to import application data',
+          message: 'Failed to download backup',
           error: error.message,
         });
       }
     });
+
+    /**
+     * POST /api/admin/backup/import
+     * Import a backup with upsert semantics: existing records are updated
+     * to the imported values, new records are inserted, nothing is deleted.
+     */
+    router.post(
+      '/backup/import',
+      requireAuth,
+      requireAdmin,
+      express.json({ limit: '50mb' }),
+      async (req, res) => {
+        try {
+          const { backup } = req.body;
+
+          if (!backup || !backup.data) {
+            return res.status(400).json({
+              status: 'error',
+              message: 'Invalid backup format. Must include backup.data',
+            });
+          }
+
+          const results = await backupService.importApplicationData(backup);
+
+          const totalImported = Object.values(results.imported).reduce((a, b) => a + b, 0);
+
+          await backupService.logImportExport(
+            req.session.userId,
+            'import',
+            totalImported,
+            'success'
+          );
+
+          return res.status(200).json({
+            status: 'success',
+            message: 'Application data imported successfully',
+            results,
+          });
+        } catch (error) {
+          console.error('Import error:', error.message);
+
+          await backupService.logImportExport(
+            req.session.userId,
+            'import',
+            0,
+            'failed',
+            error.message
+          );
+
+          return res.status(500).json({
+            status: 'error',
+            message: 'Failed to import application data',
+            error: error.message,
+          });
+        }
+      }
+    );
 
     /**
      * GET /api/admin/backup/history
