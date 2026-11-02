@@ -248,6 +248,27 @@ class UserAuthService {
     return result.rows[0] || null;
   }
 
+  async findUserByUsernameInsensitive(username) {
+    const result = await this.database.query(
+      this.constructor.queries.find_user_by_username_insensitive,
+      [username]
+    );
+    return result.rows[0] || null;
+  }
+
+  async getPublicUsers() {
+    const result = await this.database.query(this.constructor.queries.get_public_users);
+    return result.rows;
+  }
+
+  async setUserVisibility(userId, isPublic) {
+    const result = await this.database.query(this.constructor.queries.update_user_visibility, [
+      isPublic,
+      userId,
+    ]);
+    return result.rows[0] || null;
+  }
+
   async getUserDisplayInfo(userId) {
     const result = await this.database.query(this.constructor.queries.get_user_display, [userId]);
     return result.rows[0] || null;

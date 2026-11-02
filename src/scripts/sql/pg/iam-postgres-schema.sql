@@ -8,11 +8,14 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash VARCHAR(255) NOT NULL,
   full_name VARCHAR(255),
   status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'disabled')),
+  is_public BOOLEAN NOT NULL DEFAULT false,
   last_page_visited VARCHAR(255) DEFAULT '/' NOT NULL,
   last_visited_at TIMESTAMP DEFAULT NOW(),
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT false;
 
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);

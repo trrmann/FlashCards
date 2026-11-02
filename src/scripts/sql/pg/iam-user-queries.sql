@@ -10,7 +10,7 @@ SELECT * FROM users WHERE username = $1;
 SELECT * FROM users WHERE email = $1;
 
 -- Query: find_user_by_id
-SELECT u.user_id, u.username, u.email, u.full_name, u.status, u.created_at, u.updated_at,
+SELECT u.user_id, u.username, u.email, u.full_name, u.status, u.is_public, u.created_at, u.updated_at,
        EXISTS (
          SELECT 1 FROM user_roles ur
          JOIN roles r ON ur.role_id = r.role_id
@@ -101,3 +101,16 @@ SELECT u.full_name,
        ) AS is_admin
 FROM users u
 WHERE u.user_id = $1;
+
+-- Query: find_user_by_username_insensitive
+SELECT * FROM users WHERE LOWER(username) = LOWER($1);
+
+-- Query: get_public_users
+SELECT username, full_name
+FROM users
+WHERE is_public = true AND status = 'active'
+ORDER BY username;
+
+-- Query: update_user_visibility
+UPDATE users SET is_public = $1, updated_at = NOW() WHERE user_id = $2
+RETURNING is_public;

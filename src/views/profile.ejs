@@ -38,6 +38,18 @@
           <button type="submit" id="updateProfileBtn">Update Profile</button>
         </form>
         <div id="profileStatus"></div>
+
+        <div class="form-group" style="margin-top: 1rem;">
+          <label>
+            <input id="isPublicToggle" name="isPublic" type="checkbox" />
+            List me in the share directory (public user)
+          </label>
+          <small>
+            Public users appear in the share combo box. Users not listed can still
+            receive shares when their exact username is typed.
+          </small>
+        </div>
+        <div id="visibilityStatus"></div>
       </section>
 
       <!-- Change Password Section -->
@@ -169,6 +181,7 @@
           document.getElementById('email').value = user.email || '';
           document.getElementById('fullName').value = user.full_name || '';
           document.getElementById('accountStatus').value = user.status || 'active';
+          document.getElementById('isPublicToggle').checked = Boolean(user.is_public);
 
           // Store original data for comparison
           window.originalUser = user;
@@ -531,6 +544,31 @@
     document.addEventListener('DOMContentLoaded', () => {
       loadProfile();
       loadAdminUsersList();
+
+      const visibilityToggle = document.getElementById('isPublicToggle');
+      if (visibilityToggle) {
+        visibilityToggle.addEventListener('change', async () => {
+          const statusDiv = document.getElementById('visibilityStatus');
+          try {
+            const response = await fetch('/api/users/visibility', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ isPublic: visibilityToggle.checked }),
+            });
+            const data = await response.json();
+            if (response.ok) {
+              statusDiv.innerHTML = `<p class="success">${data.message}</p>`;
+            } else {
+              visibilityToggle.checked = !visibilityToggle.checked;
+              statusDiv.innerHTML = `<p class="error">${data.message}</p>`;
+            }
+          } catch (error) {
+            visibilityToggle.checked = !visibilityToggle.checked;
+            statusDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+          }
+        });
+      }
     });
   </script>
 </main>

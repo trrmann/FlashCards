@@ -43,6 +43,68 @@ class UsersRouter extends BaseRouter {
     });
 
     /**
+     * GET /api/users/directory
+     * List public users for the share combo box (authenticated users only).
+     * Non-public users can still be shared with by typing their exact username.
+     */
+    router.get('/directory', requireAuth, async (req, res) => {
+      try {
+        const users = await userAuthService.getPublicUsers();
+
+        return res.status(200).json({
+          status: 'success',
+          users,
+        });
+      } catch (error) {
+        console.error('Get user directory error:', error.message);
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to retrieve user directory',
+        });
+      }
+    });
+
+    /**
+     * PUT /api/users/visibility
+     * Set whether the current user is listed in the public share directory
+     */
+    router.put('/visibility', requireAuth, express.json(), async (req, res) => {
+      try {
+        const { isPublic } = req.body;
+
+        if (typeof isPublic !== 'boolean') {
+          return res.status(400).json({
+            status: 'error',
+            message: 'isPublic must be a boolean',
+          });
+        }
+
+        const result = await userAuthService.setUserVisibility(req.session.userId, isPublic);
+
+        if (!result) {
+          return res.status(404).json({
+            status: 'error',
+            message: 'User not found',
+          });
+        }
+
+        return res.status(200).json({
+          status: 'success',
+          message: isPublic
+            ? 'You are now listed in the share directory'
+            : 'You are no longer listed in the share directory',
+          isPublic: result.is_public,
+        });
+      } catch (error) {
+        console.error('Set visibility error:', error.message);
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to update visibility',
+        });
+      }
+    });
+
+    /**
      * PUT /api/users/profile
      * Update current user's profile
      */

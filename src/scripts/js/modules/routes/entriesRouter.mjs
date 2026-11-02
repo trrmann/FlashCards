@@ -354,7 +354,7 @@ class EntriesRouter extends BaseRouter {
           return res.status(401).json({ status: 'error', message: 'Not authenticated' });
         }
 
-        const { recipientUsername } = req.body;
+        const recipientUsername = (req.body.recipientUsername || req.body.username || '').trim();
 
         if (!recipientUsername) {
           return res.status(400).json({
@@ -363,8 +363,8 @@ class EntriesRouter extends BaseRouter {
           });
         }
 
-        // Get recipient ID from username
-        const recipient = await userAuthService.findUserByUsername(recipientUsername);
+        // Get recipient ID from username (case-insensitive, whitespace-tolerant)
+        const recipient = await userAuthService.findUserByUsernameInsensitive(recipientUsername);
 
         if (!recipient) {
           return res.status(404).json({

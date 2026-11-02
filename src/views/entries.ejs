@@ -113,6 +113,33 @@
         </div>
       </div>
 
+      <!-- Share Dialog -->
+      <div id="share-dialog" class="share-dialog-overlay" style="display: none;">
+        <div class="share-dialog">
+          <h3>Share Flashcard</h3>
+          <p>
+            Pick a user from the directory of public users, or type the exact
+            username of a user who is not listed.
+          </p>
+          <div class="form-group">
+            <label for="share-username">Username</label>
+            <input
+              id="share-username"
+              type="text"
+              list="share-username-options"
+              placeholder="Select or type a username"
+              autocomplete="off"
+            />
+            <datalist id="share-username-options"></datalist>
+          </div>
+          <div class="share-dialog-actions">
+            <button type="button" class="btn btn-primary" id="share-confirm-btn">Share</button>
+            <button type="button" class="btn" id="share-cancel-btn">Cancel</button>
+          </div>
+          <div id="share-dialog-status"></div>
+        </div>
+      </div>
+
     <% } else { %>
       <p>Please <a href="/login">log in</a> to manage your flashcards.</p>
     <% } %>
@@ -540,6 +567,37 @@
 
   .modal-close:hover {
     color: #000;
+  }
+  .share-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .share-dialog {
+    background: #fff;
+    border-radius: 8px;
+    padding: 1.5rem;
+    width: min(420px, 90vw);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  }
+
+  .share-dialog h3 {
+    margin-top: 0;
+  }
+
+  .share-dialog .share-dialog-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .share-dialog input {
+    width: 100%;
   }
 </style>
 
@@ -1021,26 +1079,77 @@
     });
   }
 
-  function shareEntry(entryId) {
-    const username = prompt('Enter username to share with:');
-    if (!username) return;
+  let shareDialogEntryId = null;
 
-    fetch(`/api/entries/${entryId}/share`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === 'success') {
-          alert('Shared with ' + username);
-          loadUserEntries();
-        } else {
-          alert('Error: ' + data.message);
-        }
-      })
-      .catch((err) => alert('Error: ' + err.message));
+  async function loadShareDirectory() {
+    try {
+      const response = await fetch('/api/users/directory', { credentials: 'include' });
+      const data = await response.json();
+      const options = document.getElementById('share-username-options');
+      options.innerHTML = '';
+      if (data.status === 'success') {
+        data.users.forEach((user) => {
+          const option = document.createElement('option');
+          option.value = user.username;
+          if (user.full_name) option.label = user.full_name;
+          options.appendChild(option);
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load share directory:', error);
+    }
   }
+
+  function shareEntry(entryId) {
+    shareDialogEntryId = entryId;
+    document.getElementById('share-dialog-status').innerHTML = '';
+    document.getElementById('share-username').value = '';
+    document.getElementById('share-dialog').style.display = 'flex';
+    loadShareDirectory();
+    document.getElementById('share-username').focus();
+  }
+
+  function closeShareDialog() {
+    shareDialogEntryId = null;
+    document.getElementById('share-dialog').style.display = 'none';
+  }
+
+  async function confirmShare() {
+    const username = document.getElementById('share-username').value.trim();
+    const statusDiv = document.getElementById('share-dialog-status');
+
+    if (!username) {
+      statusDiv.innerHTML = '<p class="error">Enter or select a username</p>';
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/entries/${shareDialogEntryId}/share`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ recipientUsername: username }),
+      });
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        closeShareDialog();
+        alert('Shared with ' + username);
+        loadUserEntries();
+      } else {
+        statusDiv.innerHTML = `<p class="error">${data.message}</p>`;
+      }
+    } catch (error) {
+      statusDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const confirmBtn = document.getElementById('share-confirm-btn');
+    const cancelBtn = document.getElementById('share-cancel-btn');
+    if (confirmBtn) confirmBtn.addEventListener('click', confirmShare);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeShareDialog);
+  });
 
   async function deleteEntry(entryId) {
     if (!confirm('Are you sure you want to delete this flashcard?')) return;
