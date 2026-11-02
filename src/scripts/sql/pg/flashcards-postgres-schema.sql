@@ -1,22 +1,17 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-CREATE TABLE IF NOT EXISTS users (
-  user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  username VARCHAR(255) UNIQUE NOT NULL,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  full_name VARCHAR(255),
-  is_admin BOOLEAN DEFAULT false,
-  status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'disabled')),
-  last_page_visited VARCHAR(255) DEFAULT '/' NOT NULL,
-  last_visited_at TIMESTAMP DEFAULT NOW(),
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
+-- Identity tables (users, roles, rights, session) are owned by the IAM
+-- schema (iam-postgres-schema.sql), which must be bootstrapped first.
 
-CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE TABLE IF NOT EXISTS user_rights (
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  right_key VARCHAR(100) NOT NULL,
+  granted BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  PRIMARY KEY (user_id, right_key)
+);
 
 CREATE TABLE IF NOT EXISTS lessons (
   lesson_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -190,11 +185,3 @@ CREATE TABLE IF NOT EXISTS import_export_logs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_import_export_logs_user_id ON import_export_logs(user_id, created_at DESC);
-
-CREATE TABLE IF NOT EXISTS session (
-  sid VARCHAR NOT NULL PRIMARY KEY,
-  sess JSON NOT NULL,
-  expire TIMESTAMP NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON session (expire);

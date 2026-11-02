@@ -1,19 +1,28 @@
 /**
  * User Service Module
- * Handles user-related database operations
+ * Handles identity operations through the IAM database and user-scoped
+ * application data (cascade deletes, special right assignments) through
+ * the application database.
  */
 
+import { identityManagementDb } from '../db/identityManagementDatabase.mjs';
 import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
 import { validationService } from './validationService.mjs';
 
 class UserAuthService {
-  static queries = flashCardsDb.constructor.loadNamedSqlStatements(
-    'pg/auth-user-queries.sql',
+  static queries = identityManagementDb.constructor.loadNamedSqlStatements(
+    'pg/iam-user-queries.sql',
+    identityManagementDb.constructor.sqlRoot
+  );
+
+  static appQueries = flashCardsDb.constructor.loadNamedSqlStatements(
+    'pg/app-user-data-queries.sql',
     flashCardsDb.constructor.sqlRoot
   );
 
-  constructor(database = flashCardsDb) {
+  constructor(database = identityManagementDb, appDatabase = flashCardsDb) {
     this.database = database;
+    this.appDatabase = appDatabase;
   }
 
   async createUser(username, email, password, fullName = null) {
@@ -25,7 +34,9 @@ class UserAuthService {
       fullName,
     ]);
 
-    return result.rows[0];
+    const user = result.rows[0];
+    await this.assignRole(user.user_id, 'user');
+    return user;
   }
 
   async findUserByUsername(username) {
@@ -114,25 +125,29 @@ class UserAuthService {
   }
 
   async deleteUser(userId) {
-    const client = await this.database.getClient();
+    // Remove user-scoped application data first (app database ownership),
+    // then remove the identity itself (IAM database ownership).
+    const client = await this.appDatabase.getClient();
 
     try {
       await client.query('BEGIN');
-      await client.query(this.constructor.queries.delete_import_export_logs, [userId]);
-      await client.query(this.constructor.queries.delete_quiz_results, [userId]);
-      await client.query(this.constructor.queries.delete_quiz_questions, [userId]);
-      await client.query(this.constructor.queries.delete_quizzes, [userId]);
-      await client.query(this.constructor.queries.delete_leitner_boxes, [userId]);
-      await client.query(this.constructor.queries.delete_flashcards, [userId]);
-      await client.query(this.constructor.queries.delete_user, [userId]);
+      await client.query(this.constructor.appQueries.delete_import_export_logs, [userId]);
+      await client.query(this.constructor.appQueries.delete_quiz_results, [userId]);
+      await client.query(this.constructor.appQueries.delete_quiz_questions, [userId]);
+      await client.query(this.constructor.appQueries.delete_quizzes, [userId]);
+      await client.query(this.constructor.appQueries.delete_leitner_boxes, [userId]);
+      await client.query(this.constructor.appQueries.delete_flashcards, [userId]);
+      await client.query(this.constructor.appQueries.delete_user_rights, [userId]);
       await client.query('COMMIT');
-      return true;
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
     } finally {
       client.release();
     }
+
+    await this.database.query(this.constructor.queries.delete_user, [userId]);
+    return true;
   }
 
   async isAdmin(userId) {
@@ -171,7 +186,57 @@ class UserAuthService {
   }
 
   async setUserAdmin(userId) {
-    await this.database.query(this.constructor.queries.set_user_admin, [userId]);
+    await this.assignRole(userId, 'admin');
+  }
+
+  async assignRole(userId, roleName) {
+    await this.database.query(this.constructor.queries.assign_role, [userId, roleName]);
+  }
+
+  async revokeRole(userId, roleName) {
+    await this.database.query(this.constructor.queries.revoke_role, [userId, roleName]);
+  }
+
+  async getUserRoles(userId) {
+    const result = await this.database.query(this.constructor.queries.get_user_roles, [userId]);
+    return result.rows.map((row) => row.role_name);
+  }
+
+  /**
+   * Effective rights: rights granted through IAM roles, overridden by any
+   * user-specific special assignments stored in the application database.
+   */
+  async getUserRights(userId) {
+    const roleResult = await this.database.query(this.constructor.queries.get_role_rights, [
+      userId,
+    ]);
+    const rights = new Set(roleResult.rows.map((row) => row.right_key));
+
+    const overrideResult = await this.appDatabase.query(
+      this.constructor.appQueries.get_user_rights,
+      [userId]
+    );
+    for (const row of overrideResult.rows) {
+      if (row.granted) {
+        rights.add(row.right_key);
+      } else {
+        rights.delete(row.right_key);
+      }
+    }
+
+    return [...rights].sort();
+  }
+
+  async grantUserRight(userId, rightKey, granted = true) {
+    await this.appDatabase.query(this.constructor.appQueries.grant_user_right, [
+      userId,
+      rightKey,
+      granted,
+    ]);
+  }
+
+  async revokeUserRight(userId, rightKey) {
+    await this.appDatabase.query(this.constructor.appQueries.revoke_user_right, [userId, rightKey]);
   }
 
   async updateUserPassword(userId, newPassword) {

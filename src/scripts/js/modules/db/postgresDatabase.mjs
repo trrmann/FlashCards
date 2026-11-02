@@ -244,6 +244,53 @@ export class PostgresDatabase {
     return PostgresDatabase.#introspectionQueries;
   }
 
+  /**
+   * Run every statement in a schema SQL file (idempotent bootstrap),
+   * logging progress per statement, then list the public tables.
+   */
+  async initializeSchemaFromFile(relativePath, bannerTitle) {
+    const allSQL = this.constructor.loadSqlStatements(relativePath, this.constructor.sqlRoot);
+
+    const describeStatement = (sql) => {
+      const match = sql.match(
+        /(CREATE|INSERT)\s+(?:INTO\s+)?(TABLE|INDEX|EXTENSION)?(?:\s+IF\s+NOT\s+EXISTS)?\s*("?[\w-]+"?)/i
+      );
+      if (match) {
+        return `${match[1].toUpperCase()} ${match[2] ? match[2].toUpperCase() + ' ' : ''}${match[3]}`;
+      }
+      return sql.replace(/\s+/g, ' ').slice(0, 40);
+    };
+
+    const client = await this.pool.connect();
+
+    try {
+      console.log('╔════════════════════════════════════════════════╗');
+      console.log(`║ ${bannerTitle.padEnd(46)} ║`);
+      console.log('╚════════════════════════════════════════════════╝\n');
+      console.log(`Host: ${this.config.host}`);
+      console.log(`Database: ${this.config.database}\n`);
+
+      for (let i = 0; i < allSQL.length; i += 1) {
+        try {
+          process.stdout.write(`[${i + 1}/${allSQL.length}] ${describeStatement(allSQL[i])}... `);
+          await client.query(allSQL[i]);
+          console.log('✅');
+        } catch (error) {
+          console.log('⚠️');
+          console.error(`  Error: ${error.message}`);
+        }
+      }
+
+      const result = await client.query(this.constructor.introspectionQueries.list_public_tables);
+
+      console.log(`Public tables now present: ${result.rows.length}`);
+      console.log('\n✅ Schema bootstrap complete!');
+      return result.rows;
+    } finally {
+      client.release();
+    }
+  }
+
   async initializeDatabaseConnection() {
     try {
       const client = await this.pool.connect();

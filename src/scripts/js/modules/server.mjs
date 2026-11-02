@@ -13,6 +13,7 @@ import pgSession from 'connect-pg-simple';
 
 import { appSiteData } from './appSiteData.mjs';
 import { flashCardsDb } from './db/flashCardsDatabase.mjs';
+import { identityManagementDb } from './db/identityManagementDatabase.mjs';
 import { userAuthService } from './auth/userAuthService.mjs';
 import authRouter from './routes/authRouter.mjs';
 import usersRouter from './routes/usersRouter.mjs';
@@ -43,10 +44,16 @@ export class Server {
     return portMap[env] || this.DEFAULT_PORT;
   }
 
-  constructor({ env, port, database = flashCardsDb } = {}) {
+  constructor({
+    env,
+    port,
+    database = flashCardsDb,
+    identityDatabase = identityManagementDb,
+  } = {}) {
     this.env = env ?? (process.env.NODE_ENV?.toLocaleLowerCase() || 'production');
     this.port = port ?? this.constructor.resolvePort(this.env);
     this.database = database;
+    this.identityDatabase = identityDatabase;
     this.siteData = new appSiteData();
     this.app = express();
 
@@ -81,7 +88,7 @@ export class Server {
 
     return {
       store: new PgSession({
-        pool: this.database.pool,
+        pool: this.identityDatabase.pool,
         tableName: 'session',
         errorLog: (error) => {
           console.error('❌ Session store error:', error.message);
@@ -253,16 +260,18 @@ export class Server {
   }
 
   /**
-   * Connect to the database and bootstrap the idempotent schema.
+   * Connect to the database and bootstrap the idempotent schemas:
+   * IAM first (identity tables the app schema references), then the app.
    */
   async initializeDatabase() {
-    const dbReady = await this.database.initializeDatabaseConnection();
+    const dbReady = await this.identityDatabase.initializeDatabaseConnection();
     if (!dbReady) {
       console.warn('⚠️ Warning: Database connection failed. Some features may be unavailable.');
       return false;
     }
 
     try {
+      await this.identityDatabase.initializeSchema();
       await this.database.initializeSchema();
     } catch (error) {
       console.error('❌ Schema initialization failed:', error.message);
@@ -285,7 +294,7 @@ export class Server {
   }
 
   /**
-   * Stop the HTTP server and close the database pool.
+   * Stop the HTTP server and close the database pools.
    */
   async stop() {
     if (this.httpServer) {
@@ -295,6 +304,7 @@ export class Server {
       this.httpServer = null;
     }
     await this.database.close();
+    await this.identityDatabase.close();
   }
 }
 
