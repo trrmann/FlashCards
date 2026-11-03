@@ -102,21 +102,45 @@ Resolved on 2026-11-03 (round 4):
 
 ## open
 
-- true/false questions
-- multiple choice where the card provides its own wrong options
-- list-of-correct-answers questions with an "All of the above" option
-- list-of-all-wrong-options questions with "None of the above" functionality
-- audio-recording questions: listen to a recording, answer via multiple choice
-  (same option types as the other question kinds)
-- investigate audio reading (text-to-speech) of any question for listening
-- investigate requiring a question to be answered with audio and testing
-  pronunciation
-- image upload as the question or the answer in all card forms
 - export and import should use two linked file types: a JSON for the data and a
   zip of the media for the media, bidirectional, at all import and export points
   in the app (entries export/import and admin backup download/import)
-- the sys admin should be able to limit a user's storage max; users should be
-  told the limit exists and how much they have used / have remaining; the limit
-  must be adjustable, and if it is reduced below a user's current usage the user
-  needs to be notified that they are over and must remove elements (further
-  enforcement follow-up to be figured out later)
+
+Resolved on 2026-11-03 (round 5):
+
+- ~~true/false questions~~
+  **Resolved:** question_type 'true_false' renders a fixed True/False pair scored
+  from the answer text, in both practice and quiz.
+- ~~multiple choice where the card provides its own wrong options~~
+  **Resolved:** question_type 'multiple_choice' with an authored options editor
+  (create and edit forms); a mixed correct/wrong set plays exactly as authored.
+- ~~list-of-correct-answers questions with an "All of the above" option~~
+  **Resolved:** when every authored option is marked correct, the generator
+  appends "All of the above" as the correct answer.
+- ~~list-of-all-wrong-options questions with "None of the above" functionality~~
+  **Resolved:** when every authored option is marked wrong, the generator appends
+  "None of the above" as the correct answer.
+- ~~audio-recording questions~~
+  **Resolved:** question_type 'audio' records in-browser (MediaRecorder), stores
+  the clip with the card, plays it in practice and quiz, and is answered through
+  the same option machinery as the other types.
+- ~~investigate audio reading (text-to-speech) of any question~~
+  **Resolved (implemented):** speaker buttons on practice and quiz questions use
+  the browser speechSynthesis API - free, no keys, all modern browsers.
+- ~~investigate requiring a question to be answered with audio and testing pronunciation~~
+  **Resolved (browser tier implemented):** a "Say answer" button on practice uses
+  SpeechRecognition (Chrome/Edge/Safari) and matches the transcript against the
+  correct option as a practical pronunciation check, auto-selecting on a match.
+  Phoneme-level scoring would require a paid cloud service (e.g. Azure Speech
+  pronunciation assessment) and remains a possible future upgrade.
+- ~~image upload as the question or the answer in all card forms~~
+  **Resolved:** question and answer image uploads (2MB each) on the card forms,
+  stored in Postgres and rendered on practice, quiz, and entries lists.
+- ~~the sys admin should be able to limit a user's storage max...~~
+  **Resolved:** users.storage_max_bytes (default 25MB) adjustable via
+  PUT /api/admin/users/:userId/storage-limit; the profile shows a used/max/
+  remaining usage bar; card creation is blocked with a clear message when over;
+  if an admin reduces the limit below current usage the profile shows a red
+  over-limit notice telling the user to remove elements (deeper enforcement
+  deferred as agreed). All question types are also verified available in the
+  quiz via the shared option generator.
