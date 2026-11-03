@@ -1,3 +1,9 @@
 {
-    "python.terminal.useEnvFile": true
+    "python.terminal.useEnvFile": true,
+    "terminal.integrated.env.linux": {
+        "PATH": "${workspaceFolder}/src/scripts/sh:${env:PATH}"
+    },
+    "terminal.integrated.env.osx": {
+        "PATH": "${workspaceFolder}/src/scripts/sh:${env:PATH}"
+    }
 }

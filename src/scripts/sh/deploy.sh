@@ -3,7 +3,7 @@
 ################################################################################
 # FlashCards Deployment Script
 # 
-# Usage: ./deploy.sh -dev | -preview | -prod | -all
+# Usage: deploy.sh -dev | -preview | -prod | -all   (on PATH; runnable from any directory)
 #
 # Deploys to specified environment(s) with logging and browser testing
 # All environments use local server except prod which auto-deploys to Render
@@ -11,9 +11,11 @@
 
 set -o pipefail
 
-# Script configuration - find project root
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="${SCRIPT_DIR}"
+# Script configuration - find project root.
+# This script lives in <project>/src/scripts/sh/ and is on PATH, so resolve
+# its real location (following symlinks) and walk up three levels.
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 
 # Change to project root directory (allows script to run from anywhere)
 cd "${PROJECT_ROOT}" || { echo "Failed to change to project directory"; exit 1; }
@@ -94,7 +96,7 @@ show_usage() {
 ╚════════════════════════════════════════════════════════════════╝
 
 USAGE:
-  ./deploy.sh [OPTION]
+  deploy.sh [OPTION]        (or the 'deploy' alias; works from any directory)
 
 OPTIONS:
   -dev      Deploy to local development environment
@@ -130,11 +132,11 @@ PRE-REQUISITES (automatically checked):
   ✓ server.js exists in project root
 
 EXAMPLES:
-  ./deploy.sh -dev              # Start development server
-  ./deploy.sh -preview          # Run preview deployment
-  ./deploy.sh -prod             # Deploy to production
-  ./deploy.sh -all              # Deploy all environments
-  ./deploy.sh -h                # Show this help
+  deploy.sh -dev              # Start development server
+  deploy.sh -preview          # Run preview deployment
+  deploy.sh -prod             # Deploy to production
+  deploy.sh -all              # Deploy all environments
+  deploy.sh -h                # Show this help
 
 LOGGING:
   All deployments are logged to: .deployment/last-run.log
@@ -283,6 +285,7 @@ run_comprehensive_tests() {
     # Run preview tests against the preview server
     if TEST_BASE_URL="http://localhost:${PORT_PREVIEW}" npm run test:preview >> "${LOG_FILE}" 2>&1; then
         log SUCCESS "All preview tests passed"
+        run_backup_roundtrip
         return 0
     else
         local test_output=$(TEST_BASE_URL="http://localhost:${PORT_PREVIEW}" npm run test:preview 2>&1)
@@ -295,6 +298,20 @@ run_comprehensive_tests() {
         echo "═════════════════════════════════════════════" >> "${LOG_FILE}"
         echo "" >> "${LOG_FILE}"
         error_exit "Preview tests failed. Check .deployment/last-run.log for detailed results."
+    fi
+}
+
+run_backup_roundtrip() {
+    # CODING_STANDARDS 0.7: prove that a full backup rebuilds every table after a reset.
+    # Runs on the local scratch database only (it drops and rebuilds the schema).
+    log INFO "Running backup round-trip test (local scratch database)..."
+    if ! "${SCRIPT_DIR}/local-db.sh" start >> "${LOG_FILE}" 2>&1; then
+        error_exit "Local scratch database unavailable. Set it up once with: local-db.sh init"
+    fi
+    if npm run test:roundtrip >> "${LOG_FILE}" 2>&1; then
+        log SUCCESS "Backup round-trip test passed"
+    else
+        error_exit "Backup round-trip test failed. Check .deployment/last-run.log for details."
     fi
 }
 
