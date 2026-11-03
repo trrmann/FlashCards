@@ -105,6 +105,35 @@
     margin: 10px 0 20px 0;
   }
 
+  .quiz-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .quiz-option {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--border-color, #ddd);
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.15s ease;
+  }
+
+  .quiz-option:hover {
+    border-color: #007bff;
+    background: #f0f7ff;
+  }
+
+  .quiz-option.selected {
+    border-color: #007bff;
+    background: #e3f0ff;
+    font-weight: 600;
+  }
+
   .answer-input {
     width: 100%;
     padding: 12px;
@@ -497,8 +526,8 @@
         console.log('Populated quiz categories with', categoryData.categories.length, 'items');
       }
 
-      // Load all lessons
-      const lessonRes = await fetch('/api/entries/metadata/lessons');
+      // Load all lessons (quiz metadata: owned + shared + public cards)
+      const lessonRes = await fetch('/api/quiz/metadata/lessons');
       const lessonData = await lessonRes.json();
       if (lessonData.status === 'success' && lessonData.lessons) {
         const lessonDatalist = document.getElementById('quiz-lesson-options');
@@ -544,20 +573,23 @@
   function setupEventListeners() {
     // Class change listener - filter lessons
     document.getElementById('quiz-class').addEventListener('change', async (e) => {
-      const className = e.target.value;
-      if (className) {
-        try {
-          const res = await fetch(`/api/quiz/metadata/lessons/${encodeURIComponent(className)}`);
-          const data = await res.json();
-          if (data.status === 'success' && data.lessons) {
-            const lessonDatalist = document.getElementById('quiz-lesson-options');
-            lessonDatalist.innerHTML = data.lessons
-              .map(lesson => `<option value="${escapeHtml(lesson)}" />`)
-              .join('');
-          }
-        } catch (error) {
-          console.error('Failed to load lessons for class:', error);
+      const className = e.target.value.trim();
+      try {
+        // Cascade like the header filter: class set -> lessons for that class;
+        // class cleared -> all lessons
+        const url = className
+          ? `/api/quiz/metadata/lessons/${encodeURIComponent(className)}`
+          : '/api/quiz/metadata/lessons';
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.status === 'success' && data.lessons) {
+          const lessonDatalist = document.getElementById('quiz-lesson-options');
+          lessonDatalist.innerHTML = data.lessons
+            .map(lesson => `<option value="${escapeHtml(lesson)}" />`)
+            .join('');
         }
+      } catch (error) {
+        console.error('Failed to load lessons for class:', error);
       }
     });
 
@@ -627,30 +659,36 @@
     quiz.questions.forEach((question, index) => {
       const card = document.createElement('div');
       card.className = 'question-card';
+      const optionsHTML = (question.options || [])
+        .map(
+          (option, optIndex) => `
+        <button
+          type="button"
+          class="quiz-option"
+          data-card-id="${question.card_id}"
+          data-option-index="${optIndex}"
+          data-correct="${option.isCorrect}"
+        >${escapeHtml(option.text)}</button>`
+        )
+        .join('');
       card.innerHTML = `
         <div class="question-number">Question ${index + 1}</div>
         <div class="question-text">${escapeHtml(question.question)}</div>
-        <textarea 
-          class="answer-input" 
-          data-card-id="${question.card_id}"
-          placeholder="Type your answer here..."
-        ></textarea>
-        <button class="show-answer-btn" data-card-id="${question.card_id}">Show Expected Answer</button>
-        <div class="answer-display" data-card-id="${question.card_id}">
-          <strong>Expected Answer:</strong>
-          ${escapeHtml(question.answer)}
+        <div class="quiz-options" data-card-id="${question.card_id}">
+          ${optionsHTML}
         </div>
       `;
       container.appendChild(card);
     });
 
-    // Add event listeners to show answer buttons
-    document.querySelectorAll('.show-answer-btn').forEach(btn => {
+    // Option selection: one choice per question
+    document.querySelectorAll('.quiz-option').forEach((btn) => {
       btn.addEventListener('click', (e) => {
-        const cardId = e.target.dataset.cardId;
-        const display = document.querySelector(`.answer-display[data-card-id="${cardId}"]`);
-        display.classList.toggle('show');
-        btn.textContent = display.classList.contains('show') ? 'Hide Answer' : 'Show Expected Answer';
+        const cardId = e.currentTarget.dataset.cardId;
+        document
+          .querySelectorAll(`.quiz-option[data-card-id="${cardId}"]`)
+          .forEach((other) => other.classList.remove('selected'));
+        e.currentTarget.classList.add('selected');
       });
     });
 
@@ -675,20 +713,15 @@
     try {
       const quiz = window.currentQuiz;
       
-      // Collect answers
+      // Collect answers from selected options
       const answers = [];
-      document.querySelectorAll('.answer-input').forEach((input) => {
-        const cardId = input.dataset.cardId;
-        const userAnswer = input.value.trim().toLowerCase();
-        const correctAnswer = quiz.questions
-          .find(q => q.card_id === cardId)?.answer.trim().toLowerCase();
-        
-        // Simple exact match comparison (could be enhanced with fuzzy matching)
-        const isCorrect = userAnswer === correctAnswer;
-        
+      quiz.questions.forEach((question) => {
+        const selected = document.querySelector(
+          `.quiz-option.selected[data-card-id="${question.card_id}"]`
+        );
         answers.push({
-          card_id: cardId,
-          is_correct: isCorrect,
+          card_id: question.card_id,
+          is_correct: selected ? selected.dataset.correct === 'true' : false,
         });
       });
 

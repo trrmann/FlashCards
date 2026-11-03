@@ -80,26 +80,42 @@ class EntriesService {
    * @param {object} filters - { class: string, lesson: string, category: string }
    * @returns {Promise<array>} Array of filtered flashcards
    */
+  /**
+   * Convert a filter value to an ILIKE pattern with trailing-* wildcard
+   * support, matching the header filter / practice semantics.
+   */
+  getFilterPattern(filterValue) {
+    if (!filterValue || String(filterValue).trim() === '') return null;
+    const trimmed = String(filterValue).trim();
+    if (trimmed.endsWith('*')) {
+      return trimmed.substring(0, trimmed.length - 1) + '%';
+    }
+    return trimmed;
+  }
+
   async getUserFlashcardsFiltered(userId, filters = {}) {
     const filterConditions = [];
     const params = [userId];
     let paramIndex = 2;
 
-    if (filters.class) {
-      filterConditions.push(`AND class = $${paramIndex}`);
-      params.push(filters.class);
+    const classPattern = this.getFilterPattern(filters.class);
+    if (classPattern) {
+      filterConditions.push(`AND class ILIKE $${paramIndex}`);
+      params.push(classPattern);
       paramIndex += 1;
     }
 
-    if (filters.lesson) {
-      filterConditions.push(`AND lesson = $${paramIndex}`);
-      params.push(filters.lesson);
+    const lessonPattern = this.getFilterPattern(filters.lesson);
+    if (lessonPattern) {
+      filterConditions.push(`AND lesson ILIKE $${paramIndex}`);
+      params.push(lessonPattern);
       paramIndex += 1;
     }
 
-    if (filters.category) {
-      filterConditions.push(`AND category = $${paramIndex}`);
-      params.push(filters.category);
+    const categoryPattern = this.getFilterPattern(filters.category);
+    if (categoryPattern) {
+      filterConditions.push(`AND category ILIKE $${paramIndex}`);
+      params.push(categoryPattern);
     }
 
     const result = await this.database.query(
@@ -195,6 +211,62 @@ class EntriesService {
    * @param {string} recipientId - User ID to share with
    * @returns {Promise<object>} Share object
    */
+  /**
+   * List public cards from other users that this user has not removed.
+   */
+  async getPublicCards(userId) {
+    const result = await this.database.query(
+      this.constructor.queries.select_public_cards_for_user,
+      [userId]
+    );
+    return result.rows;
+  }
+
+  /**
+   * Remove a public card from this user's study set (auto-approval opt-out).
+   */
+  async removePublicCard(userId, flashcardId) {
+    await this.database.query(this.constructor.queries.insert_public_card_removal, [
+      userId,
+      flashcardId,
+    ]);
+    return true;
+  }
+
+  /**
+   * Restore a previously removed public card to this user's study set.
+   */
+  async restorePublicCard(userId, flashcardId) {
+    await this.database.query(this.constructor.queries.delete_public_card_removal, [
+      userId,
+      flashcardId,
+    ]);
+    return true;
+  }
+
+  /**
+   * List public cards this user removed (for undo).
+   */
+  async getRemovedPublicCards(userId) {
+    const result = await this.database.query(this.constructor.queries.select_removed_public_cards, [
+      userId,
+    ]);
+    return result.rows;
+  }
+
+  /**
+   * Set visibility (public/private) for multiple owned flashcards at once.
+   * Only cards owned by ownerId are affected.
+   * @returns {Promise<number>} Count of cards updated
+   */
+  async setFlashcardsVisibilityBatch(ownerId, flashcardIds, isPrivate) {
+    const result = await this.database.query(
+      this.constructor.queries.update_flashcards_visibility_batch,
+      [isPrivate, ownerId, flashcardIds]
+    );
+    return result.rows.length;
+  }
+
   /**
    * Share multiple flashcards with multiple recipients in one operation.
    * Attempts every flashcard/recipient pair; failures are collected per

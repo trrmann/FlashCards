@@ -250,6 +250,88 @@ class EntriesRouter extends BaseRouter {
     });
 
     /**
+     * GET /api/entries/public
+     * Public cards from other users (auto-approved; excludes removed)
+     */
+    router.get('/public', async (req, res) => {
+      try {
+        if (!req.session.userId) {
+          return res.status(401).json({ status: 'error', message: 'Not authenticated' });
+        }
+
+        const cards = await entriesService.getPublicCards(req.session.userId);
+
+        return res.status(200).json({ status: 'success', count: cards.length, cards });
+      } catch (error) {
+        console.error('Get public cards error:', error.message);
+        return res.status(500).json({ status: 'error', message: 'Failed to fetch public cards' });
+      }
+    });
+
+    /**
+     * GET /api/entries/public/removed
+     * Public cards this user removed (for restore)
+     */
+    router.get('/public/removed', async (req, res) => {
+      try {
+        if (!req.session.userId) {
+          return res.status(401).json({ status: 'error', message: 'Not authenticated' });
+        }
+
+        const cards = await entriesService.getRemovedPublicCards(req.session.userId);
+
+        return res.status(200).json({ status: 'success', count: cards.length, cards });
+      } catch (error) {
+        console.error('Get removed public cards error:', error.message);
+        return res
+          .status(500)
+          .json({ status: 'error', message: 'Failed to fetch removed public cards' });
+      }
+    });
+
+    /**
+     * POST /api/entries/public/:flashcardId/remove
+     * Remove a public card from this user's study set
+     */
+    router.post('/public/:flashcardId/remove', async (req, res) => {
+      try {
+        if (!req.session.userId) {
+          return res.status(401).json({ status: 'error', message: 'Not authenticated' });
+        }
+
+        await entriesService.removePublicCard(req.session.userId, req.params.flashcardId);
+
+        return res
+          .status(200)
+          .json({ status: 'success', message: 'Public card removed from your study set' });
+      } catch (error) {
+        console.error('Remove public card error:', error.message);
+        return res.status(500).json({ status: 'error', message: 'Failed to remove public card' });
+      }
+    });
+
+    /**
+     * POST /api/entries/public/:flashcardId/restore
+     * Restore a removed public card to this user's study set
+     */
+    router.post('/public/:flashcardId/restore', async (req, res) => {
+      try {
+        if (!req.session.userId) {
+          return res.status(401).json({ status: 'error', message: 'Not authenticated' });
+        }
+
+        await entriesService.restorePublicCard(req.session.userId, req.params.flashcardId);
+
+        return res
+          .status(200)
+          .json({ status: 'success', message: 'Public card restored to your study set' });
+      } catch (error) {
+        console.error('Restore public card error:', error.message);
+        return res.status(500).json({ status: 'error', message: 'Failed to restore public card' });
+      }
+    });
+
+    /**
      * GET /api/entries/:flashcardId
      * Get a specific flashcard
      */
@@ -341,6 +423,45 @@ class EntriesRouter extends BaseRouter {
       } catch (error) {
         console.error('Delete entry error:', error.message);
         return res.status(500).json({ status: 'error', message: 'Failed to delete entry' });
+      }
+    });
+
+    /**
+     * POST /api/entries/visibility-batch
+     * Set public/private on multiple owned flashcards.
+     * Body: { flashcardIds: string[], isPrivate: boolean }
+     */
+    router.post('/visibility-batch', express.json(), async (req, res) => {
+      try {
+        if (!req.session.userId) {
+          return res.status(401).json({ status: 'error', message: 'Not authenticated' });
+        }
+
+        const flashcardIds = Array.isArray(req.body.flashcardIds) ? req.body.flashcardIds : [];
+        const { isPrivate } = req.body;
+
+        if (flashcardIds.length === 0 || typeof isPrivate !== 'boolean') {
+          return res.status(400).json({
+            status: 'error',
+            message: 'flashcardIds must be a non-empty array and isPrivate a boolean',
+          });
+        }
+
+        const updated = await entriesService.setFlashcardsVisibilityBatch(
+          req.session.userId,
+          flashcardIds,
+          isPrivate
+        );
+
+        return res.status(200).json({
+          status: 'success',
+          message: `${updated} flashcard(s) made ${isPrivate ? 'private' : 'public'}`,
+          updated,
+          skipped: flashcardIds.length - updated,
+        });
+      } catch (error) {
+        console.error('Visibility batch error:', error.message);
+        return res.status(500).json({ status: 'error', message: 'Failed to update visibility' });
       }
     });
 

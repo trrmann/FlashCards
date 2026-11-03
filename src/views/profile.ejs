@@ -88,9 +88,18 @@
           Flashcards other users have shared with you. Accept to add them to your
           "Shared with Me" list, or reject to decline (the owner is not notified).
         </p>
+        <div id="pendingSharesControls" style="display: none; margin-bottom: 1rem;">
+          <label style="display: inline-flex; align-items: center; gap: 0.35rem; margin-right: 0.75rem;">
+            <input type="checkbox" id="select-all-pending" />
+            Select All
+          </label>
+          <button type="button" id="accept-selected-btn">Accept Selected</button>
+          <button type="button" id="reject-selected-btn" class="btn-danger">Reject Selected</button>
+        </div>
         <div id="pendingSharesList">
           <p style="color: #64748b;">Loading pending shares...</p>
         </div>
+        <div id="pendingSharesStatus"></div>
       </section>
 
       <!-- Admin Section (only visible to admins) -->
@@ -203,11 +212,16 @@
         });
         const data = await response.json();
 
+        const controls = document.getElementById('pendingSharesControls');
         if (data.status === 'success' && data.shares && data.shares.length > 0) {
+          if (controls) controls.style.display = 'block';
           list.innerHTML = data.shares
             .map(
               (share) => `
             <div class="pending-share-card">
+              <label class="pending-share-select" title="Select for batch accept/reject">
+                <input type="checkbox" class="pending-select" data-share-id="${share.share_id}" />
+              </label>
               <div class="pending-share-content">
                 <div class="pending-share-question">${escapeHtml(share.question)}</div>
                 <div class="pending-share-meta">
@@ -228,6 +242,7 @@
             )
             .join('');
         } else if (data.status === 'success') {
+          if (controls) controls.style.display = 'none';
           list.innerHTML = '<p style="color: #64748b;">No pending shares.</p>';
         } else {
           list.innerHTML = `<p class="error">Failed to load pending shares: ${escapeHtml(data.message)}</p>`;
@@ -629,6 +644,51 @@
       }
     }
 
+    async function resolveSelectedPendingShares(action) {
+      const ids = [...document.querySelectorAll('.pending-select:checked')].map(
+        (box) => box.dataset.shareId
+      );
+      const statusDiv = document.getElementById('pendingSharesStatus');
+
+      if (ids.length === 0) {
+        statusDiv.innerHTML = '<p class="error">Check at least one pending share first</p>';
+        return;
+      }
+
+      if (
+        action === 'reject' &&
+        !confirm(`Reject ${ids.length} selected share(s)? The owners are not notified.`)
+      ) {
+        return;
+      }
+
+      let done = 0;
+      const failures = [];
+      for (const shareId of ids) {
+        try {
+          const response = await fetch(`/api/entries/shares/${shareId}/${action}`, {
+            method: 'POST',
+            credentials: 'include',
+          });
+          if (response.ok) {
+            done += 1;
+          } else {
+            const data = await response.json();
+            failures.push(data.message);
+          }
+        } catch (error) {
+          failures.push(error.message);
+        }
+      }
+
+      let html = `<p class="success">${done} share(s) ${action}ed.</p>`;
+      if (failures.length > 0) {
+        html += `<p class="error">${failures.length} failed; first: ${failures[0]}</p>`;
+      }
+      statusDiv.innerHTML = html;
+      loadPendingShares();
+    }
+
     // Import a JSON backup with upsert semantics
     if (document.getElementById('importBackupBtn')) {
       document.getElementById('importBackupBtn').addEventListener('click', async () => {
@@ -686,6 +746,23 @@
       loadProfile();
       loadPendingShares();
       loadAdminUsersList();
+
+      const selectAllPending = document.getElementById('select-all-pending');
+      if (selectAllPending) {
+        selectAllPending.addEventListener('change', (e) => {
+          document.querySelectorAll('.pending-select').forEach((box) => {
+            box.checked = e.target.checked;
+          });
+        });
+      }
+      const acceptSelectedBtn = document.getElementById('accept-selected-btn');
+      if (acceptSelectedBtn) {
+        acceptSelectedBtn.addEventListener('click', () => resolveSelectedPendingShares('accept'));
+      }
+      const rejectSelectedBtn = document.getElementById('reject-selected-btn');
+      if (rejectSelectedBtn) {
+        rejectSelectedBtn.addEventListener('click', () => resolveSelectedPendingShares('reject'));
+      }
 
       const visibilityToggle = document.getElementById('isPublicToggle');
       if (visibilityToggle) {

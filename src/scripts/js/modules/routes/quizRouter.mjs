@@ -1,5 +1,6 @@
 import { BaseRouter } from './baseRouter.mjs';
 import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
+import { practiceService } from '../auth/practiceService.mjs';
 
 class QuizRouter extends BaseRouter {
   static queries = flashCardsDb.constructor.loadNamedSqlStatements(
@@ -59,6 +60,53 @@ class QuizRouter extends BaseRouter {
 
     // Final shuffle to randomize order
     return shuffle(selected);
+  }
+
+  /**
+   * Build multiple-choice options for each quiz question, mirroring the
+   * practice session generator (same class/category distractors with
+   * none-of-the-above logic). Falls back to distractors drawn from the
+   * other quiz answers when the practice pool is insufficient.
+   */
+  async buildQuestionOptions(userId, selectedQuestions) {
+    const shuffle = (arr) => {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    };
+
+    const questions = [];
+    for (const q of selectedQuestions) {
+      let options = await practiceService.generateMultipleChoiceOptions(userId, q, 4);
+
+      if (!Array.isArray(options)) {
+        // Insufficient same-class/category distractors: use other quiz answers
+        const distractors = shuffle([
+          ...new Set(
+            selectedQuestions
+              .filter((other) => other.flashcard_id !== q.flashcard_id)
+              .map((other) => other.answer)
+              .filter((answer) => answer && answer !== q.answer)
+          ),
+        ]).slice(0, 3);
+        options = shuffle([
+          { text: q.answer, isCorrect: true },
+          ...distractors.map((text) => ({ text, isCorrect: false })),
+        ]);
+      }
+
+      questions.push({
+        card_id: q.flashcard_id,
+        question: q.question,
+        answer: q.answer,
+        difficulty_score: q.difficulty_score,
+        options,
+      });
+    }
+    return questions;
   }
 
   registerRoutes() {
@@ -143,12 +191,7 @@ class QuizRouter extends BaseRouter {
           status: 'success',
           quiz_id: quizId,
           total_questions: selectedQuestions.length,
-          questions: selectedQuestions.map((q) => ({
-            card_id: q.flashcard_id,
-            question: q.question,
-            answer: q.answer,
-            difficulty_score: q.difficulty_score,
-          })),
+          questions: await this.buildQuestionOptions(req.session.userId, selectedQuestions),
         });
       } catch (error) {
         console.error('Start quiz error:', error.message);
@@ -312,6 +355,30 @@ class QuizRouter extends BaseRouter {
       } catch (error) {
         console.error('Get classes error:', error.message);
         return res.status(500).json({ status: 'error', message: 'Failed to fetch classes' });
+      }
+    });
+
+    /**
+     * GET /api/quiz/metadata/lessons
+     * All lessons across accessible cards (no class filter)
+     */
+    router.get('/metadata/lessons', async (req, res) => {
+      try {
+        if (!req.session.userId) {
+          return res.status(401).json({ status: 'error', message: 'Not authenticated' });
+        }
+
+        const result = await flashCardsDb.query(this.constructor.queries.select_distinct_lessons, [
+          req.session.userId,
+        ]);
+
+        return res.status(200).json({
+          status: 'success',
+          lessons: result.rows.map((row) => row.lesson),
+        });
+      } catch (error) {
+        console.error('Get lessons error:', error.message);
+        return res.status(500).json({ status: 'error', message: 'Failed to fetch lessons' });
       }
     });
 

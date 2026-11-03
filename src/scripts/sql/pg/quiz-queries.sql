@@ -1,5 +1,5 @@
 -- Query: select_quiz_cards_template
-SELECT f.flashcard_id, f.question, f.answer, f.difficulty_score
+SELECT f.flashcard_id, f.question, f.answer, f.difficulty_score, f.class, f.category, f.lesson
 FROM flashcards f
 WHERE (f.created_by = $1 OR EXISTS (
     SELECT 1 FROM flashcard_shares fs
@@ -7,7 +7,10 @@ WHERE (f.created_by = $1 OR EXISTS (
       AND fs.recipient_id = $1
       AND fs.status != 'revoked'
       AND fs.recipient_status = 'accepted'
-  ))
+  ) OR (f.is_private = false AND NOT EXISTS (
+    SELECT 1 FROM public_card_removals pr
+    WHERE pr.flashcard_id = f.flashcard_id AND pr.user_id = $1
+  )))
   {{filter_clause}}
 ORDER BY RANDOM();
 
@@ -57,8 +60,25 @@ WHERE f.class IS NOT NULL AND (f.created_by = $1 OR EXISTS (
       AND fs.recipient_id = $1
       AND fs.status != 'revoked'
       AND fs.recipient_status = 'accepted'
-  ))
+  ) OR (f.is_private = false AND NOT EXISTS (
+    SELECT 1 FROM public_card_removals pr
+    WHERE pr.flashcard_id = f.flashcard_id AND pr.user_id = $1
+  )))
 ORDER BY f.class ASC;
+
+-- Query: select_distinct_lessons
+SELECT DISTINCT f.lesson FROM flashcards f
+WHERE f.lesson IS NOT NULL AND (f.created_by = $1 OR EXISTS (
+    SELECT 1 FROM flashcard_shares fs
+    WHERE fs.flashcard_id = f.flashcard_id
+      AND fs.recipient_id = $1
+      AND fs.status != 'revoked'
+      AND fs.recipient_status = 'accepted'
+  ) OR (f.is_private = false AND NOT EXISTS (
+    SELECT 1 FROM public_card_removals pr
+    WHERE pr.flashcard_id = f.flashcard_id AND pr.user_id = $1
+  )))
+ORDER BY f.lesson ASC;
 
 -- Query: select_distinct_lessons_for_class
 SELECT DISTINCT f.lesson FROM flashcards f
@@ -68,7 +88,10 @@ WHERE f.lesson IS NOT NULL AND f.class = $1 AND (f.created_by = $2 OR EXISTS (
       AND fs.recipient_id = $2
       AND fs.status != 'revoked'
       AND fs.recipient_status = 'accepted'
-  ))
+  ) OR (f.is_private = false AND NOT EXISTS (
+    SELECT 1 FROM public_card_removals pr
+    WHERE pr.flashcard_id = f.flashcard_id AND pr.user_id = $2
+  )))
 ORDER BY f.lesson ASC;
 
 -- Query: select_distinct_categories
@@ -79,5 +102,8 @@ WHERE f.category IS NOT NULL AND (f.created_by = $1 OR EXISTS (
       AND fs.recipient_id = $1
       AND fs.status != 'revoked'
       AND fs.recipient_status = 'accepted'
-  ))
+  ) OR (f.is_private = false AND NOT EXISTS (
+    SELECT 1 FROM public_card_removals pr
+    WHERE pr.flashcard_id = f.flashcard_id AND pr.user_id = $1
+  )))
 ORDER BY f.category ASC;

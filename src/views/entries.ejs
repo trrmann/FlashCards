@@ -91,8 +91,18 @@
         <div class="entries-header">
           <h2>Your Flashcards</h2>
           <div class="entries-actions">
+            <label style="display: inline-flex; align-items: center; gap: 0.35rem; margin-right: 0.5rem;">
+              <input type="checkbox" id="select-all-entries" title="Select or clear all flashcards" />
+              Select All
+            </label>
             <button class="btn btn-primary" id="share-selected-btn" title="Share all checked flashcards">
               📤 Share Selected
+            </button>
+            <button class="btn btn-secondary" id="make-public-selected-btn" title="Make all checked flashcards public">
+              🌐 Make Public
+            </button>
+            <button class="btn btn-secondary" id="make-private-selected-btn" title="Make all checked flashcards private">
+              🔒 Make Private
             </button>
             <button class="btn btn-secondary" id="export-btn" title="Export all entries or filtered selection">
               📥 Export
@@ -114,6 +124,22 @@
         <div id="shared-entries-list" class="entries-list">
           <p class="loading">Loading shared flashcards...</p>
         </div>
+      </div>
+
+      <!-- Public Cards Section -->
+      <div class="public-entries-section" style="display: none;">
+        <h2>Public Cards</h2>
+        <p style="color: #64748b; margin-bottom: 1rem;">
+          Public cards from other users are automatically included in your practice
+          and quizzes. Remove any you don't want to study.
+        </p>
+        <div id="public-entries-list" class="entries-list">
+          <p class="loading">Loading public cards...</p>
+        </div>
+        <details id="removed-public-details" style="margin-top: 1rem; display: none;">
+          <summary style="cursor: pointer;">Removed public cards</summary>
+          <div id="removed-public-list" class="entries-list" style="margin-top: 0.75rem;"></div>
+        </details>
       </div>
 
       <!-- Share Dialog -->
@@ -632,6 +658,7 @@
     setupCreateForm();
     loadUserEntries();
     loadSharedEntries();
+    loadPublicEntries();
     
     // Listen for filter changes from the filter panel
     window.addEventListener('filtersChanged', () => {
@@ -1098,6 +1125,119 @@
     });
   }
 
+  async function loadPublicEntries() {
+    const section = document.querySelector('.public-entries-section');
+    const list = document.getElementById('public-entries-list');
+
+    try {
+      const response = await fetch('/api/entries/public', { credentials: 'include' });
+      const data = await response.json();
+
+      const removedResponse = await fetch('/api/entries/public/removed', { credentials: 'include' });
+      const removedData = await removedResponse.json();
+
+      const hasAny =
+        (data.status === 'success' && data.cards.length > 0) ||
+        (removedData.status === 'success' && removedData.cards.length > 0);
+      section.style.display = hasAny ? 'block' : 'none';
+
+      if (data.status === 'success' && data.cards.length > 0) {
+        list.innerHTML = data.cards
+          .map(
+            (card) => `
+          <div class="entry-card">
+            <div class="entry-content">
+              <div class="entry-question">${escapeHtml(card.question)}</div>
+              <div class="entry-answer"><strong>Answer:</strong> ${escapeHtml(card.answer)}</div>
+              <div class="entry-metadata">
+                <div class="entry-metadata-item">
+                  <span class="entry-metadata-label">By:</span>
+                  <span>${escapeHtml(card.full_name || card.username || 'Unknown')}</span>
+                </div>
+                ${card.class ? `<div class="entry-metadata-item"><span class="entry-metadata-label">Class:</span><span>${escapeHtml(card.class)}</span></div>` : ''}
+                ${card.lesson ? `<div class="entry-metadata-item"><span class="entry-metadata-label">Lesson:</span><span>${escapeHtml(card.lesson)}</span></div>` : ''}
+              </div>
+            </div>
+            <div class="entry-actions">
+              <button class="btn btn-danger" onclick="removePublicCard('${card.flashcard_id}')">Remove</button>
+            </div>
+          </div>
+        `
+          )
+          .join('');
+      } else {
+        list.innerHTML = '<p style="color: #64748b;">No public cards from other users.</p>';
+      }
+
+      const removedDetails = document.getElementById('removed-public-details');
+      const removedList = document.getElementById('removed-public-list');
+      if (removedData.status === 'success' && removedData.cards.length > 0) {
+        removedDetails.style.display = 'block';
+        removedList.innerHTML = removedData.cards
+          .map(
+            (card) => `
+          <div class="entry-card">
+            <div class="entry-content">
+              <div class="entry-question">${escapeHtml(card.question)}</div>
+              <div class="entry-metadata">
+                <div class="entry-metadata-item">
+                  <span class="entry-metadata-label">By:</span>
+                  <span>${escapeHtml(card.full_name || card.username || 'Unknown')}</span>
+                </div>
+              </div>
+            </div>
+            <div class="entry-actions">
+              <button class="btn btn-primary" onclick="restorePublicCard('${card.flashcard_id}')">Restore</button>
+            </div>
+          </div>
+        `
+          )
+          .join('');
+      } else {
+        removedDetails.style.display = 'none';
+      }
+    } catch (error) {
+      console.error('Failed to load public cards:', error);
+    }
+  }
+
+  async function removePublicCard(flashcardId) {
+    if (!confirm('Remove this public card from your practice and quizzes? You can restore it later.'))
+      return;
+
+    try {
+      const response = await fetch(`/api/entries/public/${flashcardId}/remove`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        loadPublicEntries();
+      } else {
+        alert('Error: ' + data.message);
+      }
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
+  }
+
+  async function restorePublicCard(flashcardId) {
+    try {
+      const response = await fetch(`/api/entries/public/${flashcardId}/restore`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        loadPublicEntries();
+      } else {
+        alert('Error: ' + data.message);
+      }
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
+  }
+
   let shareDialogEntryIds = [];
 
   async function loadShareDirectory() {
@@ -1135,10 +1275,50 @@
     openShareDialog([entryId]);
   }
 
-  function shareSelectedEntries() {
-    const ids = [...document.querySelectorAll('.entry-select:checked')].map(
+  function getSelectedEntryIds() {
+    return [...document.querySelectorAll('.entry-select:checked')].map(
       (checkbox) => checkbox.dataset.flashcardId
     );
+  }
+
+  function toggleSelectAllEntries(checked) {
+    document.querySelectorAll('.entry-select').forEach((box) => {
+      box.checked = checked;
+    });
+  }
+
+  async function setVisibilityForSelected(isPrivate) {
+    const ids = getSelectedEntryIds();
+    if (ids.length === 0) {
+      alert('Check at least one flashcard first');
+      return;
+    }
+    const label = isPrivate ? 'private' : 'public';
+    if (!confirm(`Make ${ids.length} selected flashcard(s) ${label}?`)) return;
+
+    try {
+      const response = await fetch('/api/entries/visibility-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ flashcardIds: ids, isPrivate }),
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        let message = data.message;
+        if (data.skipped > 0) message += ` (${data.skipped} skipped - not owned)`;
+        alert(message);
+        loadUserEntries();
+      } else {
+        alert('Error: ' + data.message);
+      }
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
+  }
+
+  function shareSelectedEntries() {
+    const ids = getSelectedEntryIds();
     if (ids.length === 0) {
       alert('Check at least one flashcard to share');
       return;
@@ -1202,6 +1382,15 @@
     if (confirmBtn) confirmBtn.addEventListener('click', confirmShare);
     if (cancelBtn) cancelBtn.addEventListener('click', closeShareDialog);
     if (shareSelectedBtn) shareSelectedBtn.addEventListener('click', shareSelectedEntries);
+    const selectAllBox = document.getElementById('select-all-entries');
+    if (selectAllBox)
+      selectAllBox.addEventListener('change', (e) => toggleSelectAllEntries(e.target.checked));
+    const makePublicBtn = document.getElementById('make-public-selected-btn');
+    if (makePublicBtn)
+      makePublicBtn.addEventListener('click', () => setVisibilityForSelected(false));
+    const makePrivateBtn = document.getElementById('make-private-selected-btn');
+    if (makePrivateBtn)
+      makePrivateBtn.addEventListener('click', () => setVisibilityForSelected(true));
   });
 
   async function deleteEntry(entryId) {

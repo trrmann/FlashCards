@@ -48,6 +48,13 @@ CREATE TABLE IF NOT EXISTS flashcards (
 CREATE INDEX IF NOT EXISTS idx_flashcards_user_id ON flashcards(user_id);
 CREATE INDEX IF NOT EXISTS idx_flashcards_category ON flashcards(category, user_id);
 
+CREATE TABLE IF NOT EXISTS public_card_removals (
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  flashcard_id UUID NOT NULL REFERENCES flashcards(flashcard_id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  PRIMARY KEY (user_id, flashcard_id)
+);
+
 CREATE TABLE IF NOT EXISTS flashcard_shares (
   share_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   owner_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,

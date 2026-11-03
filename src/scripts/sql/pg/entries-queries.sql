@@ -112,7 +112,10 @@ WHERE class IS NOT NULL AND (created_by = $1 OR user_id = $1 OR EXISTS (
       AND fs.recipient_id = $1
       AND fs.status != 'revoked'
       AND fs.recipient_status = 'accepted'
-  ))
+  ) OR (is_private = false AND NOT EXISTS (
+    SELECT 1 FROM public_card_removals pr
+    WHERE pr.flashcard_id = flashcards.flashcard_id AND pr.user_id = $1
+  )))
 ORDER BY class ASC;
 
 -- Query: select_distinct_lessons
@@ -123,7 +126,10 @@ WHERE lesson IS NOT NULL AND (created_by = $1 OR user_id = $1 OR EXISTS (
       AND fs.recipient_id = $1
       AND fs.status != 'revoked'
       AND fs.recipient_status = 'accepted'
-  ))
+  ) OR (is_private = false AND NOT EXISTS (
+    SELECT 1 FROM public_card_removals pr
+    WHERE pr.flashcard_id = flashcards.flashcard_id AND pr.user_id = $1
+  )))
 ORDER BY lesson ASC;
 
 -- Query: select_distinct_categories
@@ -134,7 +140,10 @@ WHERE category IS NOT NULL AND (created_by = $1 OR user_id = $1 OR EXISTS (
       AND fs.recipient_id = $1
       AND fs.status != 'revoked'
       AND fs.recipient_status = 'accepted'
-  ))
+  ) OR (is_private = false AND NOT EXISTS (
+    SELECT 1 FROM public_card_removals pr
+    WHERE pr.flashcard_id = flashcards.flashcard_id AND pr.user_id = $1
+  )))
 ORDER BY category ASC;
 
 -- Query: select_distinct_lessons_for_class
@@ -147,5 +156,44 @@ WHERE lesson IS NOT NULL
       AND fs.recipient_id = $2
       AND fs.status != 'revoked'
       AND fs.recipient_status = 'accepted'
-  ))
+  ) OR (is_private = false AND NOT EXISTS (
+    SELECT 1 FROM public_card_removals pr
+    WHERE pr.flashcard_id = flashcards.flashcard_id AND pr.user_id = $2
+  )))
 ORDER BY lesson ASC;
+
+-- Query: select_public_cards_for_user
+SELECT f.flashcard_id, f.question, f.answer, f.lesson, f.category, f.class, f.created_at,
+       u.username, u.full_name
+FROM flashcards f
+LEFT JOIN users u ON f.created_by = u.user_id
+WHERE f.is_private = false
+  AND f.created_by != $1
+  AND NOT EXISTS (
+    SELECT 1 FROM public_card_removals pr
+    WHERE pr.flashcard_id = f.flashcard_id AND pr.user_id = $1
+  )
+ORDER BY f.created_at DESC;
+
+-- Query: insert_public_card_removal
+INSERT INTO public_card_removals (user_id, flashcard_id)
+VALUES ($1, $2)
+ON CONFLICT (user_id, flashcard_id) DO NOTHING;
+
+-- Query: delete_public_card_removal
+DELETE FROM public_card_removals WHERE user_id = $1 AND flashcard_id = $2;
+
+-- Query: select_removed_public_cards
+SELECT f.flashcard_id, f.question, f.answer, f.lesson, f.category, f.class,
+       u.username, u.full_name
+FROM public_card_removals pr
+JOIN flashcards f ON pr.flashcard_id = f.flashcard_id
+LEFT JOIN users u ON f.created_by = u.user_id
+WHERE pr.user_id = $1 AND f.is_private = false
+ORDER BY pr.created_at DESC;
+
+-- Query: update_flashcards_visibility_batch
+UPDATE flashcards
+SET is_private = $1, updated_at = NOW()
+WHERE created_by = $2 AND flashcard_id = ANY($3::uuid[])
+RETURNING flashcard_id;

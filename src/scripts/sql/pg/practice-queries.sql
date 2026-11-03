@@ -26,7 +26,10 @@ WHERE (f.created_by = $1 OR EXISTS (
       AND fs.recipient_id = $1
       AND fs.status != 'revoked'
       AND fs.recipient_status = 'accepted'
-  ))
+  ) OR (f.is_private = false AND NOT EXISTS (
+    SELECT 1 FROM public_card_removals pr
+    WHERE pr.flashcard_id = f.flashcard_id AND pr.user_id = $1
+  )))
   AND f.flashcard_id NOT IN (
     SELECT flashcard_id FROM flashcard_leitner_progress WHERE user_id = $1
   )
@@ -42,7 +45,10 @@ WHERE (f.created_by = $1 OR EXISTS (
       AND fs.recipient_id = $1
       AND fs.status != 'revoked'
       AND fs.recipient_status = 'accepted'
-  ))
+  ) OR (f.is_private = false AND NOT EXISTS (
+    SELECT 1 FROM public_card_removals pr
+    WHERE pr.flashcard_id = f.flashcard_id AND pr.user_id = $1
+  )))
   AND p.user_id = $1
   AND ({{box_condition}})
   AND (p.next_review IS NULL OR p.next_review <= NOW())
@@ -59,7 +65,10 @@ WHERE (f.created_by = $1 OR EXISTS (
       AND fs.recipient_id = $1
       AND fs.status != 'revoked'
       AND fs.recipient_status = 'accepted'
-  ))
+  ) OR (f.is_private = false AND NOT EXISTS (
+    SELECT 1 FROM public_card_removals pr
+    WHERE pr.flashcard_id = f.flashcard_id AND pr.user_id = $1
+  )))
   AND p.user_id = $1
   AND (p.current_box = 1 OR p.current_box = 2)
 ORDER BY RANDOM()
@@ -81,7 +90,10 @@ FROM (
       AND fs.recipient_id = $1
       AND fs.status != 'revoked'
       AND fs.recipient_status = 'accepted'
-  ))
+  ) OR (f.is_private = false AND NOT EXISTS (
+    SELECT 1 FROM public_card_removals pr
+    WHERE pr.flashcard_id = f.flashcard_id AND pr.user_id = $1
+  )))
     AND f.flashcard_id != $2
     AND answer IS NOT NULL
     AND answer != $3
@@ -158,7 +170,10 @@ WHERE p.user_id = $1
       AND fs.recipient_id = $1
       AND fs.status != 'revoked'
       AND fs.recipient_status = 'accepted'
-  ))
+  ) OR (f.is_private = false AND NOT EXISTS (
+    SELECT 1 FROM public_card_removals pr
+    WHERE pr.flashcard_id = f.flashcard_id AND pr.user_id = $1
+  )))
   {{filter_clause}}
 GROUP BY p.current_box
 ORDER BY p.current_box;
@@ -177,7 +192,10 @@ WHERE ph.user_id = $1
       AND fs.recipient_id = $1
       AND fs.status != 'revoked'
       AND fs.recipient_status = 'accepted'
-  ))
+  ) OR (f.is_private = false AND NOT EXISTS (
+    SELECT 1 FROM public_card_removals pr
+    WHERE pr.flashcard_id = f.flashcard_id AND pr.user_id = $1
+  )))
   {{filter_clause}};
 
 -- Query: select_recent_practice_results
@@ -201,7 +219,10 @@ WHERE ph.user_id = $1
       AND fs.recipient_id = $1
       AND fs.status != 'revoked'
       AND fs.recipient_status = 'accepted'
-  ))
+  ) OR (f.is_private = false AND NOT EXISTS (
+    SELECT 1 FROM public_card_removals pr
+    WHERE pr.flashcard_id = f.flashcard_id AND pr.user_id = $1
+  )))
   {{filter_clause}};
 
 -- Query: reset_user_leitner_progress
