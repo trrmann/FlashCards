@@ -304,6 +304,40 @@ class AdminRouter extends BaseRouter {
     );
 
     /**
+     * PUT /api/admin/users/:userId/storage-limit
+     * Set a user's storage quota in bytes (admin only, adjustable)
+     */
+    router.put(
+      '/users/:userId/storage-limit',
+      requireAuth,
+      requireAdmin,
+      express.json(),
+      async (req, res) => {
+        try {
+          const maxBytes = parseInt(req.body.maxBytes, 10);
+          if (!Number.isFinite(maxBytes) || maxBytes < 0) {
+            return res.status(400).json({
+              status: 'error',
+              message: 'maxBytes must be a non-negative integer',
+            });
+          }
+          const result = await userAuthService.setStorageLimit(req.params.userId, maxBytes);
+          if (!result) {
+            return res.status(404).json({ status: 'error', message: 'User not found' });
+          }
+          return res.status(200).json({
+            status: 'success',
+            message: `Storage limit set to ${maxBytes} bytes`,
+            maxBytes: parseInt(result.storage_max_bytes),
+          });
+        } catch (error) {
+          console.error('Set storage limit error:', error.message);
+          return res.status(500).json({ status: 'error', message: 'Failed to set storage limit' });
+        }
+      }
+    );
+
+    /**
      * POST /api/admin/users/:userId/promote
      * Grant the system admin role to a user (admin only)
      */

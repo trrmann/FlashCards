@@ -27,6 +27,16 @@ class EntriesService {
    */
   static QUESTION_TYPES = ['standard', 'true_false', 'multiple_choice', 'audio'];
 
+  /**
+   * Current storage usage for a user's cards (text + media bytes).
+   */
+  async getStorageUsage(userId) {
+    const result = await this.database.query(this.constructor.queries.select_storage_usage, [
+      userId,
+    ]);
+    return parseInt(result.rows[0].used_bytes) || 0;
+  }
+
   async createFlashcard(
     userId,
     question,

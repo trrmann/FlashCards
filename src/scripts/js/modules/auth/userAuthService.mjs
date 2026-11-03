@@ -270,6 +270,19 @@ class UserAuthService {
     return result.rows[0] || null;
   }
 
+  async getStorageLimit(userId) {
+    const result = await this.database.query(this.constructor.queries.get_storage_limit, [userId]);
+    return result.rows[0] ? parseInt(result.rows[0].storage_max_bytes) : null;
+  }
+
+  async setStorageLimit(userId, maxBytes) {
+    const result = await this.database.query(this.constructor.queries.update_storage_limit, [
+      maxBytes,
+      userId,
+    ]);
+    return result.rows[0] || null;
+  }
+
   async getUserDisplayInfo(userId) {
     const result = await this.database.query(this.constructor.queries.get_user_display, [userId]);
     return result.rows[0] || null;

@@ -42,6 +42,22 @@ class EntriesRouter extends BaseRouter {
           });
         }
 
+        // Storage quota enforcement
+        const payloadBytes =
+          (question?.length || 0) +
+          (answer?.length || 0) +
+          (questionImage?.length || 0) +
+          (answerImage?.length || 0) +
+          (questionAudio?.length || 0);
+        const used = await entriesService.getStorageUsage(req.session.userId);
+        const limit = await userAuthService.getStorageLimit(req.session.userId);
+        if (limit !== null && used + payloadBytes > limit) {
+          return res.status(413).json({
+            status: 'error',
+            message: `Storage limit exceeded: using ${used} of ${limit} bytes; this card needs ${payloadBytes} more. Remove elements or ask an admin to raise your limit.`,
+          });
+        }
+
         const flashcard = await entriesService.createFlashcard(
           req.session.userId,
           question,
@@ -265,6 +281,26 @@ class EntriesRouter extends BaseRouter {
      * GET /api/entries/public
      * Public cards from other users (auto-approved; excludes removed)
      */
+    router.get('/storage', async (req, res) => {
+      try {
+        if (!req.session.userId) {
+          return res.status(401).json({ status: 'error', message: 'Not authenticated' });
+        }
+        const used = await entriesService.getStorageUsage(req.session.userId);
+        const limit = await userAuthService.getStorageLimit(req.session.userId);
+        return res.status(200).json({
+          status: 'success',
+          usedBytes: used,
+          maxBytes: limit,
+          remainingBytes: limit === null ? null : Math.max(0, limit - used),
+          overLimit: limit !== null && used > limit,
+        });
+      } catch (error) {
+        console.error('Storage usage error:', error.message);
+        return res.status(500).json({ status: 'error', message: 'Failed to get storage usage' });
+      }
+    });
+
     router.get('/public', async (req, res) => {
       try {
         if (!req.session.userId) {
@@ -415,6 +451,19 @@ class EntriesRouter extends BaseRouter {
      * GET /api/entries/:flashcardId
      * Get a specific flashcard
      */
+    router.get('/:flashcardId/options', async (req, res) => {
+      try {
+        if (!req.session.userId) {
+          return res.status(401).json({ status: 'error', message: 'Not authenticated' });
+        }
+        const options = await entriesService.getFlashcardOptions(req.params.flashcardId);
+        return res.status(200).json({ status: 'success', options });
+      } catch (error) {
+        console.error('Get options error:', error.message);
+        return res.status(500).json({ status: 'error', message: 'Failed to fetch options' });
+      }
+    });
+
     router.get('/:flashcardId', async (req, res) => {
       try {
         if (!req.session.userId) {

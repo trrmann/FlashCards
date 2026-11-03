@@ -114,3 +114,10 @@ ORDER BY username;
 -- Query: update_user_visibility
 UPDATE users SET is_public = $1, updated_at = NOW() WHERE user_id = $2
 RETURNING is_public;
+
+-- Query: get_storage_limit
+SELECT storage_max_bytes FROM users WHERE user_id = $1;
+
+-- Query: update_storage_limit
+UPDATE users SET storage_max_bytes = $1, updated_at = NOW() WHERE user_id = $2
+RETURNING storage_max_bytes;

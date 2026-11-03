@@ -228,3 +228,13 @@ SELECT option_id, flashcard_id, option_text, is_correct, sort_order
 FROM flashcard_options
 WHERE flashcard_id = ANY($1::uuid[])
 ORDER BY flashcard_id, sort_order, created_at;
+
+-- Query: select_storage_usage
+SELECT COALESCE(SUM(
+  LENGTH(question) + LENGTH(answer)
+  + COALESCE(LENGTH(question_image), 0)
+  + COALESCE(LENGTH(answer_image), 0)
+  + COALESCE(LENGTH(question_audio), 0)
+), 0) AS used_bytes
+FROM flashcards
+WHERE created_by = $1;

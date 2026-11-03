@@ -50,6 +50,11 @@
           </small>
         </div>
         <div id="visibilityStatus"></div>
+
+        <div class="form-group" style="margin-top: 1rem;">
+          <label>Storage</label>
+          <div id="storageUsage" style="color: #64748b;">Loading storage usage…</div>
+        </div>
       </section>
 
       <!-- Change Password Section -->
@@ -741,9 +746,34 @@
       });
     }
 
+    async function loadStorageUsage() {
+      const el = document.getElementById('storageUsage');
+      try {
+        const response = await fetch('/api/entries/storage', { credentials: 'include' });
+        const data = await response.json();
+        if (data.status !== 'success') return;
+        const mb = (n) => (n / (1024 * 1024)).toFixed(2) + ' MB';
+        if (data.maxBytes === null) {
+          el.textContent = `Used ${mb(data.usedBytes)} (no limit set)`;
+          return;
+        }
+        const pct = Math.min(100, Math.round((data.usedBytes / data.maxBytes) * 100));
+        el.innerHTML = `
+          Used ${mb(data.usedBytes)} of ${mb(data.maxBytes)} (${pct}%) — ${mb(data.remainingBytes)} remaining
+          <div style="background:#e2e8f0;border-radius:999px;height:8px;margin-top:4px;">
+            <div style="background:${data.overLimit ? '#dc2626' : '#2563eb'};width:${pct}%;height:8px;border-radius:999px;"></div>
+          </div>
+          ${data.overLimit ? '<p class="error" style="margin-top:6px;">⚠️ You are over your storage limit. Remove cards or media to get back under it; creating new cards is blocked.</p>' : ''}
+        `;
+      } catch (error) {
+        el.textContent = 'Could not load storage usage';
+      }
+    }
+
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', () => {
       loadProfile();
+      loadStorageUsage();
       loadPendingShares();
       loadAdminUsersList();
 

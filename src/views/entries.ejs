@@ -274,6 +274,22 @@
         </div>
 
         <div class="form-group">
+          <label for="edit-question-type">Question Type:</label>
+          <select id="edit-question-type">
+            <option value="standard">Standard</option>
+            <option value="true_false">True / False</option>
+            <option value="multiple_choice">Multiple choice (own options)</option>
+            <option value="audio">Audio question</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="edit-options-editor" style="display: none;">
+          <label>Answer Options:</label>
+          <div id="edit-options-rows"></div>
+          <button type="button" class="btn btn-secondary" id="edit-add-option-btn">+ Add Option</button>
+        </div>
+
+        <div class="form-group">
           <label for="edit-class">Class:</label>
           <input
             type="text"
@@ -1360,6 +1376,16 @@
         
         // Populate the edit form
         document.getElementById('edit-question').value = entry.question || '';
+        document.getElementById('edit-question-type').value = entry.question_type || 'standard';
+        updateEditTypePanels();
+        document.getElementById('edit-options-rows').innerHTML = '';
+        try {
+          const optRes = await fetch(`/api/entries/${entryId}/options`, { credentials: 'include' });
+          const optData = await optRes.json();
+          if (optData.status === 'success') {
+            optData.options.forEach((o) => addEditOptionRow(o.option_text, o.is_correct));
+          }
+        } catch (e) { console.error('options load failed', e); }
         document.getElementById('edit-answer').value = entry.answer || '';
         document.getElementById('edit-class').value = entry.class || '';
         document.getElementById('edit-lesson').value = entry.lesson || '';
@@ -1481,6 +1507,11 @@
             lesson: document.getElementById('edit-lesson').value,
             category: document.getElementById('edit-category').value,
             is_private: document.getElementById('edit-is-private').checked,
+            question_type: document.getElementById('edit-question-type').value,
+            options: [...document.querySelectorAll('#edit-options-rows .option-row')].map((row) => ({
+              text: row.querySelector('.option-text').value,
+              isCorrect: row.querySelector('.option-correct').checked,
+            })),
           }),
         });
 
@@ -1765,6 +1796,26 @@
     document.getElementById('stop-audio-btn').style.display = 'none';
   }
 
+  function updateEditTypePanels() {
+    const type = document.getElementById('edit-question-type').value;
+    document.getElementById('edit-options-editor').style.display =
+      type === 'multiple_choice' || type === 'audio' ? 'block' : 'none';
+  }
+
+  function addEditOptionRow(text = '', isCorrect = false) {
+    const row = document.createElement('div');
+    row.className = 'option-row';
+    row.innerHTML = `
+      <input type="text" class="option-text" placeholder="Option text" />
+      <label><input type="checkbox" class="option-correct" /> correct</label>
+      <button type="button" class="btn btn-danger option-remove">✕</button>
+    `;
+    row.querySelector('.option-text').value = text;
+    row.querySelector('.option-correct').checked = isCorrect;
+    row.querySelector('.option-remove').addEventListener('click', () => row.remove());
+    document.getElementById('edit-options-rows').appendChild(row);
+  }
+
   function getSelectedEntryIds() {
     return [...document.querySelectorAll('.entry-select:checked')].map(
       (checkbox) => checkbox.dataset.flashcardId
@@ -1909,6 +1960,10 @@
       wireFileToState('question-image', 'question-image-preview', 'questionImage', 2);
       wireFileToState('answer-image', 'answer-image-preview', 'answerImage', 2);
       document.getElementById('add-option-btn').addEventListener('click', () => addOptionRow());
+      const editType = document.getElementById('edit-question-type');
+      if (editType) editType.addEventListener('change', updateEditTypePanels);
+      const editAddOpt = document.getElementById('edit-add-option-btn');
+      if (editAddOpt) editAddOpt.addEventListener('click', () => addEditOptionRow());
       document.getElementById('record-audio-btn').addEventListener('click', startRecording);
       document.getElementById('stop-audio-btn').addEventListener('click', stopRecording);
       document.getElementById('clear-audio-btn').addEventListener('click', () => {
