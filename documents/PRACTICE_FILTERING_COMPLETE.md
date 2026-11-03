@@ -1,5 +1,9 @@
 # Practice Filtering Implementation - COMPLETE ✅
 
+> **Historical record (2026-10-29).** Feature completion report. It reflects the code at that time and is kept for history.
+> Reviewed against the code on 2026-11-03. `migrations.mjs` no longer exists; catch-up mode ignores filters.
+> Current reference: [FILTER_IMPLEMENTATION.md](./FILTER_IMPLEMENTATION.md).
+
 ## Summary
 
 Successfully implemented **dynamic, user-driven header/class/category filtering** for the practice module. All filtering is completely data-driven with NO hard-coded values.

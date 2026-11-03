@@ -1,5 +1,9 @@
 # FLASHCARD PRACTICE SYSTEM - VERIFIED TEST RESULTS
 
+> **Historical record (2026-10-30).** Test log against real data. It reflects the code at that time and is kept for history.
+> Reviewed against the code on 2026-11-03. IDs and counts are from that day's database.
+> Current reference: [LEITNER_SYSTEM.md](./LEITNER_SYSTEM.md).
+
 **Date:** 2026-10-30  
 **Status:** ✅ TESTED WITH REAL DATABASE DATA - ALL WORKING
 
@@ -208,8 +212,8 @@ FROM practice_history WHERE user_id = 'ce8b10de-d16c-49ba-bf2b-cfd3153763bd' AND
 
 All results verified using direct PostgreSQL queries against the production database:
 
-- Host: dpg-dbhnuks9v7es73beg8mg-a.virginia-postgres.render.com
-- Database: shared_apps_wuy4
+- Host: <db-host>.virginia-postgres.render.com
+- Database: <db-name>
 - User: app_admin
 
 Each result shown above comes from a separate SQL query executed against the real database, not from simulation or theory.

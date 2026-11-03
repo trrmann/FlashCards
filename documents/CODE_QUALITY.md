@@ -2,6 +2,9 @@
 
 ## Overview
 
+> The full, binding coding standards (layering, SQL, API, views, security, workflow) are in
+> [CODING_STANDARDS.md](./CODING_STANDARDS.md). This page covers the lint/format tooling.
+
 This project uses **ESLint** for code linting and **Prettier** for code formatting to ensure consistent code quality and style.
 
 ### Tools
@@ -97,7 +100,7 @@ Files Prettier skips:
 
 ### Preview Environment
 
-The preview environment (`./deploy.sh -preview`) automatically runs strict code verification:
+The preview environment (`deploy.sh -preview`) automatically runs strict code verification:
 
 1. **Format code** - Prettier writes formatted code
 2. **Verify with linter** - ESLint checks all rules
@@ -110,14 +113,14 @@ Preview deployment **fails** if:
 
 ### Development Environment
 
-The development environment (`./deploy.sh -dev`) runs checks but **does not abort**:
+The development environment (`deploy.sh -dev`) runs checks but **does not abort**:
 
 - ⚠️ Warnings only - deployment continues
 - Useful for active development
 
 ### Production Environment
 
-The production environment (`./deploy.sh -prod`) uses the same checks as dev:
+The production environment (`deploy.sh -prod`) uses the same checks as dev:
 
 - ⚠️ Warnings only - GitHub push proceeds
 - Code quality is developer's responsibility
@@ -166,7 +169,7 @@ The production environment (`./deploy.sh -prod`) uses the same checks as dev:
 
 7. **Deploy to preview**
    ```bash
-   ./deploy.sh -preview    # Will verify code before starting server
+   deploy.sh -preview    # Will verify code before starting server
    ```
 
 ### Typical Issues & Fixes
@@ -322,14 +325,14 @@ npm install  # Reinstall dependencies
 
 Update `.prettierrc.json` with valid options only.
 
-### Port already in use during `./deploy.sh -preview`
+### Port already in use during `deploy.sh -preview`
 
 The script auto-kills the port, but if it fails:
 
 ```bash
 lsof -i :5000
 kill -9 <PID>
-./deploy.sh -preview
+deploy.sh -preview
 ```
 
 ### Format/Lint commands not found
@@ -346,7 +349,7 @@ Typical run times:
 - `npm run format` - 5-10 seconds
 - `npm run lint` - 3-5 seconds
 - `npm run verify` - 8-15 seconds
-- `./deploy.sh -preview` - adds 15-20 seconds for verification
+- `deploy.sh -preview` - adds 15-20 seconds for verification
 
 ## References
 
@@ -360,6 +363,6 @@ Typical run times:
 ✅ **Lint:** `npm run lint`  
 ✅ **Verify All:** `npm run verify`  
 ✅ **Auto-fix:** `npm run lint:fix`  
-✅ **Preview Deploy:** `./deploy.sh -preview` (auto-verifies)
+✅ **Preview Deploy:** `deploy.sh -preview` (auto-verifies)
 
 All code is verified before preview deployment!

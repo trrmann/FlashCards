@@ -110,7 +110,7 @@ Get status of all required database tables.
 ```json
 {
   "status": "success",
-  "database": "shared_apps_wuy4",
+  "database": "<db-name>",
   "allTablesExist": true,
   "tables": {
     "users": {
@@ -303,23 +303,30 @@ curl -X POST http://localhost:5000/api/system/initial-setup \
 - HttpOnly cookies
 - 24-hour expiration
 
-## Future Enhancements
+## How the UI uses this
 
-Possible additions in future phases:
+The `/login` page renders a **First User Setup** form when there are no users (`GET /login` checks
+`userAuthService.countUsers()` on the server). That form posts to `POST /api/auth/register`, not to
+`/api/system/initial-setup`. Registration also grants the `admin` role when it creates the first user,
+so both paths end in the same state. `initial-setup` is mainly useful for scripted setup (curl/CI).
 
-- [ ] Role-based access control (Admin, User roles)
-- [ ] Multi-admin support
-- [ ] Initial setup configuration (site name, theme, etc.)
-- [ ] Setup wizard UI
-- [ ] Recovery mode for deleted user databases
+## Restoring a backup into a new database
 
-## Files Modified
+Render free-tier databases expire (see `DB_PG_EXPIRE`). To move to a new database:
 
-- `src/scripts/js/modules/routes/systemRouter.mjs` - New system routes
-- `server.js` - Added system routes mounting
+1. Before expiry, download **both** backup files (Profile → Backup & Restore: JSON + media ZIP).
+2. Point the environment at the new database and start the server (the schemas bootstrap automatically).
+3. Create the first account at `/login`, ideally with the same username as your old admin account.
+4. Profile → Backup & Restore → import the JSON and the ZIP together.
 
----
+Backup users are matched to existing accounts by username (then email), so your new admin account
+is merged with its backed-up identity. Its cards, shares, and progress import under the new id.
+The account's row (including the password hash) is then updated from the backup, so log in with the
+**old** password afterwards.
 
-**Status:** ✅ Implemented and tested
-**Endpoints:** 3 new system endpoints
-**Test Coverage:** Verified all scenarios
+## Implementation
+
+- `src/scripts/js/modules/routes/systemRouter.mjs`: `setup-status`, `initial-setup`, `database-status`, `db-expiration-warning`
+- `src/scripts/js/modules/server.mjs`: mounts the router at `/api/system`; `GET /login` passes `needsSetup` to the view
+- Roles: the `admin` and `user` roles are seeded by `iam-postgres-schema.sql`. More admins can be added from the
+  Profile page (Make Admin) or with `POST /api/admin/users/:userId/promote`.

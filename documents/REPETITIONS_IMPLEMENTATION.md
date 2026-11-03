@@ -1,8 +1,6 @@
 # Session-Aware Multiple Repetitions Implementation
 
-**Status:** ✅ Complete and tested  
-**Commit:** 35981a6  
-**Date:** 2026-10-30
+**Introduced:** commit 35981a6 (2026-10-30). Reviewed against the code 2026-11-03.
 
 ## Overview
 
@@ -20,7 +18,7 @@ Implemented research-backed multiple repetitions per session using the Leitner s
 **Optimal Repetitions per Session:**
 
 - **Box 1 (Daily - new/struggling):** 3 repetitions
-- **Box 2 (Every 2 days - medium):** 2 repetitions
+- **Box 2 (every 3+ days, even weekdays - medium):** 2 repetitions
 - **Box 3 (Weekly - mastered):** 1 repetition
 
 ## Database Changes
@@ -47,7 +45,7 @@ CREATE INDEX idx_session_card ON session_card_attempts
 
 ### New Column: `session_streak`
 
-Added to `flashcard_leitner_progress` to track consecutive correct answers within current session. Can be used for adaptive reduction (e.g., reduce repetitions if showing strong performance).
+Exists on `flashcard_leitner_progress` (defined in the schema file) but is **never written or read** by the current code. It is reserved for adaptive repetition reduction.
 
 ```sql
 ALTER TABLE flashcard_leitner_progress
@@ -74,27 +72,20 @@ Queries the number of previous attempts for a card in the current session.
 
 Records a single attempt in `session_card_attempts` table.
 
-#### `checkNeedsMoreAttempts(userId, flashcardId, sessionStartTime)`
-
-Returns:
-
-```json
-{
-  "needsMoreAttempts": true/false,
-  "currentAttempt": number,
-  "totalNeeded": number,
-  "feedback": "string"
-}
-```
-
 #### `recordPracticeAttemptWithSession(userId, flashcardId, isCorrect, responseTimeMs, sessionStartTime)`
 
 Enhanced version of `recordPracticeAttempt` that:
 
-1. Tracks attempt in session_card_attempts table
-2. Returns needsMoreAttempts flag
-3. Only calls recordPracticeAttempt (which moves cards between boxes) after all repetitions complete
-4. Maintains full audit trail
+1. Reads the card's current box and the attempts already made in this session (`session_start_time` match)
+2. Inserts a `session_card_attempts` row and a `practice_history` row (with filter context)
+3. Increments `times_correct` / `times_incorrect` on **every** attempt
+4. When the attempt count reaches the box's requirement: counts the session's correct/incorrect attempts;
+   all correct → promote one box, any incorrect → box 1; sets `last_reviewed` and `next_review`
+5. Does **not** call `recordPracticeAttempt` and does **not** recalculate difficulty
+
+Note: there is no `checkNeedsMoreAttempts` helper. `needsMoreAttempts` is computed inline as
+`attemptNumber < getCardRepetitionsNeeded(box)`. The `progress` field in the route response is
+`undefined` in session mode (only the legacy path returns it).
 
 **Returns:**
 
@@ -122,7 +113,10 @@ Enhanced version of `recordPracticeAttempt` that:
   "flashcardId": "uuid",
   "selectedAnswer": "string",
   "isCorrect": boolean,
-  "sessionStartTime": "2026-10-30T02:20:57.000Z"
+  "sessionStartTime": "2026-10-30T02:20:57.000Z",
+  "filterClass": "optional",
+  "filterLesson": "optional",
+  "filterCategory": "optional"
 }
 ```
 
@@ -164,7 +158,7 @@ let currentTotalAttempts = 1;
 
 #### Initialization
 
-Captures `sessionStartTime` when practice page loads:
+Captures `sessionStartTime` when the practice page loads (a page reload starts a new session):
 
 ```javascript
 document.addEventListener('DOMContentLoaded', async () => {
@@ -229,7 +223,9 @@ if (data.session && data.session.needsMoreAttempts) {
 3. User answers correctly → Server returns `{needsMoreAttempts: true, attemptNumber: 1/3}`
 4. Feedback shows: "✅ Correct! [Attempt 1/3]"
 5. Button shows "↻ Try Again"
-6. **Same card reloads** with new options
+6. Clicking the button calls `loadNextCard()`, which requests a **random** due card. The card that
+   still needs attempts stays due, but it is not guaranteed to be the next one shown (it comes back
+   later in the session)
 7. User answers correctly again → `{needsMoreAttempts: true, attemptNumber: 2/3}`
 8. Feedback shows: "✅ Correct! [Attempt 2/3]"
 9. User answers correctly again → `{needsMoreAttempts: false, attemptNumber: 3/3}`
@@ -242,9 +238,11 @@ if (data.session && data.session.needsMoreAttempts) {
 - If user answers **incorrectly** at any point in the sequence:
   - Feedback shows incorrectness
   - Attempt counter continues (e.g., "2/3" if wrong on 2nd attempt)
-  - Card **still shows up again** for more practice
-  - Demotion to lower box is recorded in background but doesn't interrupt session
-  - User still sees remaining attempts for this card in this session
+  - The card stays due and keeps being served until its required attempts are used up
+  - The box does **not** change mid-session. When the last required attempt is recorded, any
+    incorrect attempt in the session sends the card to Box 1
+  - `sessionStartTime` is set when the practice page loads, so reloading the page starts a new session
+    and resets the attempt count
 
 ## Testing Results
 

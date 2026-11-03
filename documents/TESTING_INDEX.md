@@ -1,5 +1,13 @@
 # Testing Documentation Index
 
+> **Target behavior** is defined by [CODING_STANDARDS.md §§ 0.5–0.7](./CODING_STANDARDS.md) (deploy stages,
+> preview test coverage, data safety). This page describes the **current** behavior; the gaps are listed in that document.
+
+> **Current state (2026-11-03):** the only automated tests are the preview quality suite
+> (`npm run test:preview`) and the backup round-trip test (`npm run test:roundtrip`, local scratch DB), both run by
+> `deploy.sh -preview`. There are no unit or integration tests;
+> `npm test` is a placeholder that exits 1. TESTING_STRATEGY.md describes a planned approach.
+
 Complete guide to testing and quality assurance in the FlashCards project.
 
 ## Quick Start
@@ -15,7 +23,7 @@ New to testing? Start here:
 ### 1. **Local Development (Dev)**
 
 ```bash
-./deploy.sh -dev
+deploy.sh -dev
 ```
 
 - **Purpose:** Active development, quick iteration
@@ -30,7 +38,7 @@ New to testing? Start here:
 ### 2. **Preview Testing (Preview)**
 
 ```bash
-./deploy.sh -preview
+deploy.sh -preview
 ```
 
 - **Purpose:** Quality gate before committing
@@ -45,17 +53,17 @@ New to testing? Start here:
 **Test suite includes:**
 
 - ✅ Endpoint connectivity (all 7 pages)
-- ✅ Lighthouse audits (Performance, Accessibility, Best Practices, SEO, PWA)
+- ✅ Lighthouse audits (Performance, Accessibility, Best Practices, SEO)
 - ✅ HTML validation (all pages)
 - ✅ CSS analysis (all pages)
 - ✅ Memory tests (leak detection)
 - ✅ Core Web Vitals (user experience metrics)
-- ✅ Firefox accessibility testing (optional - WCAG compliance via axe)
+- ⏳ Firefox / axe accessibility testing: **proposed, not implemented** (`axe-core` is installed but unused)
 
 ### 3. **Production Deployment (Prod)**
 
 ```bash
-./deploy.sh -prod
+deploy.sh -prod
 ```
 
 - **Purpose:** Deploy to live Render server
@@ -70,7 +78,7 @@ New to testing? Start here:
 ### 4. **All Environments**
 
 ```bash
-./deploy.sh -all
+deploy.sh -all
 ```
 
 - **Runs:** Dev → Preview → Prod in order
@@ -94,7 +102,6 @@ New to testing? Start here:
   - Accessibility (score > 80)
   - Best Practices (score > 80)
   - SEO (score > 80)
-  - PWA (score > 50)
 - **Details:** FCP, LCP, CLS, TTI, etc.
 - **Duration:** 60-90s
 
@@ -130,7 +137,7 @@ New to testing? Start here:
   - Cumulative Layout Shift (CLS) minimal
 - **Duration:** 10-15s
 
-### Firefox Accessibility Testing (Optional)
+### Firefox Accessibility Testing (Proposed, not implemented)
 
 - **What:** axe accessibility audit with Firefox WebDriver
 - **Why:** Deep WCAG compliance verification
@@ -206,7 +213,7 @@ npm run verify        # Run format then lint check
 ```bash
 tail -100 .deployment/last-run.log  # Check error message
 npm install                          # Ensure dependencies
-./deploy.sh -dev                     # Test dev deployment
+deploy.sh -dev                     # Test dev deployment
 ```
 
 ### Tests Fail: Lighthouse Score Too Low
@@ -256,7 +263,7 @@ WARN: HTML Validation: Quiz
 
 ### GitHub Integration
 
-Tests run as part of `./deploy.sh -preview`:
+Tests run as part of `deploy.sh -preview`:
 
 - ✅ Code formatting validated
 - ✅ Linting enforced
@@ -269,7 +276,7 @@ Before committing:
 
 ```bash
 npm run verify                 # Format + lint check
-./deploy.sh -preview          # Full test suite
+deploy.sh -preview          # Full test suite
 git add .
 git commit -m "Your message"
 ```
@@ -278,7 +285,7 @@ git commit -m "Your message"
 
 ### Adjust Thresholds
 
-Edit `src/scripts/js/modules/tests/test-config.mjs`:
+Edit `src/scripts/js/modules/tests/previewTestSuite.mjs (`PreviewTestSuite.config`)`:
 
 ```javascript
 // Lighthouse thresholds
@@ -287,7 +294,6 @@ lighthouseThresholds: {
   accessibility: 80,
   'best-practices': 80,
   seo: 80,
-  pwa: 50,
 }
 
 // Memory limits
@@ -310,7 +316,7 @@ const webVitalThresholds = {
 
 ### Add/Remove Endpoints
 
-Edit `src/scripts/js/modules/tests/test-config.mjs`:
+Edit `src/scripts/js/modules/tests/previewTestSuite.mjs (`PreviewTestSuite.config`)`:
 
 ```javascript
 endpoints: [
@@ -322,15 +328,15 @@ endpoints: [
 
 ## Test Files
 
-| File                                             | Purpose                                         |
-| ------------------------------------------------ | ----------------------------------------------- |
-| `src/scripts/js/modules/tests/test-config.mjs`   | Configuration, results tracking, test endpoints |
-| `src/scripts/js/modules/tests/preview-tests.mjs` | Complete test suite implementation              |
-| `.deployment/last-run.log`                       | Test results and deployment log                 |
-| `eslint.config.js`                               | Linting rules (Node.js + ES2024)                |
-| `.prettierrc.json`                               | Formatting rules                                |
-| `package.json`                                   | npm scripts and dependencies                    |
-| `deploy.sh`                                      | Deployment automation with testing              |
+| File                                                                            | Purpose                                         |
+| ------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `src/scripts/js/modules/tests/previewTestSuite.mjs (`PreviewTestSuite.config`)` | Configuration, results tracking, test endpoints |
+| `src/scripts/js/modules/tests/preview-tests.mjs`                                | Complete test suite implementation              |
+| `.deployment/last-run.log`                                                      | Test results and deployment log                 |
+| `eslint.config.js`                                                              | Linting rules (Node.js + ES2024)                |
+| `.prettierrc.json`                                                              | Formatting rules                                |
+| `package.json`                                                                  | npm scripts and dependencies                    |
+| `src/scripts/sh/deploy.sh`                                                      | Deployment automation with testing              |
 
 ## Documentation Files
 
@@ -367,13 +373,13 @@ endpoints: [
 
 ```bash
 # 1. Test locally
-./deploy.sh -dev
+deploy.sh -dev
 
 # 2. Verify code quality
 npm run verify
 
 # 3. Run full test suite
-./deploy.sh -preview
+deploy.sh -preview
 
 # 4. Fix any issues found
 # (Edit files as needed)
@@ -391,7 +397,7 @@ git push
 tail -100 .deployment/last-run.log
 
 # 2. Start dev server for debugging
-./deploy.sh -dev
+deploy.sh -dev
 
 # 3. Open browser and inspect
 # http://localhost:5000
@@ -402,7 +408,7 @@ tail -100 .deployment/last-run.log
 # - Lighthouse for performance
 
 # 5. Fix and re-test
-./deploy.sh -preview
+deploy.sh -preview
 ```
 
 ### Performance Optimization
@@ -417,7 +423,7 @@ grep "Lighthouse\|WARN\|Performance" .deployment/last-run.log
 # - Performance tab → Record
 
 # 3. Optimize and test
-./deploy.sh -preview
+deploy.sh -preview
 
 # 4. Verify improvements
 # Check Lighthouse scores in log
@@ -428,7 +434,7 @@ grep "Lighthouse\|WARN\|Performance" .deployment/last-run.log
 1. **Run preview tests:**
 
    ```bash
-   ./deploy.sh -preview
+   deploy.sh -preview
    ```
 
 2. **Review results:**
@@ -444,7 +450,7 @@ grep "Lighthouse\|WARN\|Performance" .deployment/last-run.log
    ```bash
    git add .
    git commit -m "Your message"
-   ./deploy.sh -prod
+   deploy.sh -prod
    ```
 
 ## Reference
@@ -466,10 +472,9 @@ grep "Lighthouse\|WARN\|Performance" .deployment/last-run.log
 ✅ Accessibility (basic)  
 ✅ Best practices  
 ✅ SEO optimization  
-✅ PWA compliance  
 ✅ Core Web Vitals
 
-### Firefox Testing (Optional Add-on)
+### Firefox Testing (Proposed, not implemented)
 
 ✅ Deep accessibility (axe audit)  
 ✅ WCAG 2.0 AA/AAA compliance  
@@ -479,4 +484,4 @@ grep "Lighthouse\|WARN\|Performance" .deployment/last-run.log
 
 **Recommendation:** Use both for comprehensive coverage. Start with Chrome Lighthouse, then add Firefox for accessibility compliance when needed.
 
-See [FIREFOX_TESTING_QUICK_SETUP.md](./FIREFOX_TESTING_QUICK_SETUP.md) to enable Firefox testing.
+[FIREFOX_TESTING_QUICK_SETUP.md](./FIREFOX_TESTING_QUICK_SETUP.md) describes how it could be added. No Firefox code exists in `src/` today.

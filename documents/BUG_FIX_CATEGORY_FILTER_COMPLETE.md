@@ -1,5 +1,9 @@
 # ✅ Bug Fix: Category Filter Accuracy - COMPLETE
 
+> **Historical record (2026-10-30).** Bug-fix report for practice-history category filtering. It reflects the code at that time and is kept for history.
+> Reviewed against the code on 2026-11-03. Stats and summaries now filter by the **card's** class/lesson/category (`f.*` columns), not by `practice_history` columns.
+> Current reference: [FILTER_IMPLEMENTATION.md](./FILTER_IMPLEMENTATION.md), [LEITNER_SYSTEM.md](./LEITNER_SYSTEM.md).
+
 **Status:** FIXED  
 **Date:** 2026-10-30  
 **Severity:** HIGH ❌ → ✅ RESOLVED

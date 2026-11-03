@@ -1,5 +1,8 @@
 # Firefox Testing Implementation Guide
 
+> **Superseded (proposal, not implemented).** Reviewed against the code on 2026-11-03. No Firefox/axe testing code exists; `axe-core` is installed but unused.
+> Use instead: [TESTING_PREVIEW.md](./TESTING_PREVIEW.md).
+
 Quick-start guide for adding Firefox validation to your test suite.
 
 ## What Gets Added

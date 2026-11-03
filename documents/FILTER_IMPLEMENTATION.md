@@ -2,6 +2,8 @@
 
 ## Overview
 
+> Filters apply to normal practice only. Catch-up mode (`?catchUp=true`) ignores them.
+
 The practice module now supports **dynamic filtering by Class, Category, and Lesson** with wildcard support. All filtering is completely data-driven and works with any user-created card values.
 
 ## Features
@@ -22,21 +24,27 @@ The practice module now supports **dynamic filtering by Class, Category, and Les
 - **What**: Wrong answers come from cards with same Class AND Category
 - **Why**: Keeps distractors relevant to the topic, but pulls from different lessons for variety
 - **Mechanism**: `generateMultipleChoiceOptions()` filters distractors using:
+
   ```sql
-  AND class = correctCard.class
-  AND category = correctCard.category
-  AND flashcard_id != correctCard.flashcard_id  -- Different card
-  AND lesson != correctCard.lesson              -- Can be different lesson
+  -- select_wrong_answers (practice-queries.sql), over the user's accessible cards
+  AND f.flashcard_id != $2                        -- not the card itself
+  AND answer != $3                                -- different answer text
+  AND COALESCE(class, '') = COALESCE($4, '')      -- same class (NULL matches NULL)
+  AND COALESCE(category, '') = COALESCE($5, '')   -- same category
+  -- lesson is not constrained: any lesson qualifies
   ```
+
+  Distractor matching is exact (not wildcard) and independent of the active filters.
+
 - **Example**: Practicing "Biology 101" / "Photosynthesis" lesson gets wrong answers from other "Biology 101" / "Photosynthesis" cards OR other lessons in that class/category
 
 ## How It's Used
 
 ### Frontend Flow
 
-1. User selects filters on Entries page (preserved in sessionStorage)
-2. User navigates to Practice page
-3. Practice page reads sessionStorage for active filters
+1. User sets filters in the **Study Filters** panel on the Practice page (`partials/filter-panel.ejs`, which is included only by `practice.ejs`)
+2. The panel stores them in `sessionStorage.studyFilters` (per browser tab, survives reloads)
+3. The practice script reads `sessionStorage` for active filters
 4. Each time `loadNextCard()` is called, it includes filters in query parameters:
    ```
    /api/practice/next?class=Biology101&category=photosynthesis

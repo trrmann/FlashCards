@@ -1,5 +1,8 @@
 # Testing Strategy for FlashCards
 
+> **Superseded (planned testing approach, not implemented).** Reviewed against the code on 2026-11-03. No unit/integration/E2E tests exist; `npm test` is a placeholder. Endpoints shown (`/api/cards`, JWT) do not exist.
+> Use instead: [TESTING_INDEX.md](./TESTING_INDEX.md), [TESTING_PREVIEW.md](./TESTING_PREVIEW.md).
+
 ## Testing Philosophy
 
 - **Comprehensive**: Unit, integration, and E2E tests

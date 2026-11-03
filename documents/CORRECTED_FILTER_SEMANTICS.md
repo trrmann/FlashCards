@@ -1,5 +1,9 @@
 # ✅ CORRECTED: Filter Semantics - Category=NULL for Unfiltered Attempts
 
+> **Historical record (2026-10-30).** Note on filter semantics. It reflects the code at that time and is kept for history.
+> Reviewed against the code on 2026-11-03. **No longer accurate:** unfiltered attempts are now stored with the card's own class/lesson/category, not NULL (`recordPracticeAttemptWithSession`).
+> Current reference: [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md), [FILTER_IMPLEMENTATION.md](./FILTER_IMPLEMENTATION.md).
+
 **Issue Found:** Backfill was incorrectly populating old attempts with card categories
 
 **Correct Behavior:**

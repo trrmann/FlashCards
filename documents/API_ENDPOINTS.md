@@ -1,933 +1,474 @@
 # API Endpoints for FlashCards
 
-## Base URL
+This reference is generated from the route modules in
+`src/scripts/js/modules/routes/` and `src/scripts/js/modules/server.mjs`.
+When a route changes, update this file in the same commit.
 
-- **Development**: `http://localhost:3000`
-- **Production**: `https://flashcards-app.onrender.com`
+## Base URLs
 
-## Authentication
+| Environment | URL                                        | Port source                   |
+| ----------- | ------------------------------------------ | ----------------------------- |
+| Development | `http://localhost:5000`                    | `PORT_DEV` (default 5000)     |
+| Preview     | `http://localhost:4000`                    | `PORT_PREVIEW` (default 4000) |
+| Production  | value of `RENDER_URL` (Render web service) | `PORT_PROD` → `PORT` → 3000   |
 
-Most endpoints require a JWT token in the `Authorization` header:
+## Authentication model
 
-```
-Authorization: Bearer <JWT_TOKEN>
-```
+- Authentication is **cookie-based server sessions** (`express-session`), stored in
+  PostgreSQL by `connect-pg-simple` (table `session`). There are no JWTs or bearer tokens.
+- A successful `POST /api/auth/login`, `POST /api/auth/register`, or
+  `POST /api/system/initial-setup` sets `req.session.userId` and `req.session.username`.
+- Cookie: `httpOnly`, `sameSite=lax`, `secure` only when `NODE_ENV=production`,
+  `maxAge` 24 hours. Browser clients must send `credentials: 'include'` (same-origin
+  fetches do this by default).
+- Unauthenticated API calls return `401`. Admin-only calls return `403` when the
+  session user lacks the `admin` role (role membership via `user_roles`).
 
-Tokens are obtained via login endpoint and should be stored in HttpOnly cookies or localStorage.
+## Conventions
+
+- JSON bodies are parsed globally with a 50 MB limit (media is sent as base64 data URLs).
+  Card create/update routes apply a 15 MB per-route limit.
+- Most responses carry `status: "success" | "error"` and a `message`.
+  The practice routes report failures as `{ status: "error", error: "..." }` instead of `message`.
+- There is no pagination and no rate limiting.
+- IDs are UUIDs except the serial `id` columns of progress/history tables.
+
+### Filter semantics (`class`, `lesson`, `category`)
+
+Several endpoints accept `class`, `lesson`, and `category` query parameters.
+
+- Matching is case-insensitive (`ILIKE`).
+- A trailing `*` is a prefix wildcard: `Bio*` matches `Biology 101`.
+- Empty or missing values mean "no filter".
+- **Exception:** `POST /api/quiz/start` uses exact, case-sensitive equality and no wildcards.
+
+### Card visibility ("accessible cards")
+
+Practice, quiz, distractor, and metadata queries operate on cards the user can access:
+
+1. cards the user created, **or**
+2. cards shared to the user where the share is not revoked and the recipient accepted it, **or**
+3. public cards (`is_private = false`) the user has not removed (`public_card_removals`).
+
+`GET /api/entries` and the entries export return **only cards the user created**.
 
 ---
 
-## Authentication Endpoints
+## Page routes (HTML, EJS)
+
+| Method | Path        | Notes                                                                                  |
+| ------ | ----------- | -------------------------------------------------------------------------------------- |
+| GET    | `/`         | Home. Shows the study dashboard when logged in.                                        |
+| GET    | `/entries`  | Create, edit, share, import, and export flashcards.                                    |
+| GET    | `/practice` | Leitner practice. Redirects to `/login` when not logged in. Initializes progress rows. |
+| GET    | `/quiz`     | Quiz builder and history.                                                              |
+| GET    | `/login`    | Login / registration. Shows "First User Setup" when no users exist.                    |
+| GET    | `/profile`  | Profile, password, directory visibility, pending shares, admin panel.                  |
+| GET    | `/logout`   | Logout confirmation page (the actual logout is `POST /api/auth/logout`).               |
+
+> The practice router is mounted at both `/practice` and `/api/practice`, so every practice
+> path below also answers under the other prefix (e.g. `GET /api/practice/` renders the page,
+> and `GET /practice/next` returns JSON). Clients use `/api/practice/*` for JSON.
+
+---
+
+## Health and system — `/api/health`, `/api/system`
+
+### GET /api/health
+
+No auth. Runs `SELECT 1`-style probe.
+
+- `200` `{ "status": "healthy", "database": "<name>", "timestamp": "..." }`
+- `503` `{ "status": "unhealthy", "error": "...", "timestamp": "..." }`
+
+### GET /api/system/setup-status
+
+No auth. `{ status, needsSetup: boolean, userCount, message }`.
+
+### POST /api/system/initial-setup
+
+No auth; only allowed while there are zero users (otherwise `403`).
+Body: `{ username, email, password, passwordConfirm, fullName? }`.
+Creates the user, grants the `admin` role, starts a session. `201` with `{ user: { user_id, username, email, full_name, created_at } }`.
+Validation is the same as registration.
+
+### GET /api/system/database-status
+
+No auth. Row counts for `users, flashcards, leitner_boxes, quizzes, quiz_questions, quiz_results, import_export_logs`.
+`{ status, database, allTablesExist, tables: { <name>: { exists, rowCount } } }`.
+
+### GET /api/system/db-expiration-warning
+
+No auth. Based on `DB_PG_EXPIRE`.
+`{ status: "success", warning: { message: string|null, level: null|"warning"|"critical"|"critical-1day"|"expired" } }`.
+Levels: `warning` ≤ 10 days, `critical` ≤ 3 days, `critical-1day` = 1 day, `expired` ≤ 0 days.
+
+---
+
+## Authentication — `/api/auth`
 
 ### POST /api/auth/register
 
-Register a new user account.
+Body: `{ username, email, password, passwordConfirm, fullName? }`
 
-**Request:**
+Validation (`validationService`):
 
-```json
-{
-  "username": "newuser",
-  "email": "user@example.com",
-  "password": "SecurePassword123!",
-  "fullName": "John Doe"
-}
-```
+- username: 3–50 characters, `[A-Za-z0-9_-]` only; must be unused
+- email: `x@y.z` shape; must be unused
+- password: ≥ 8 characters, with at least one uppercase letter, one lowercase letter, one digit, and one of `!@#$%^&*`
+- `password === passwordConfirm`
 
-**Success Response (201):**
+If this is the first user, they are also granted `admin`. Starts a session.
 
-```json
-{
-  "success": true,
-  "message": "User registered successfully",
-  "token": "eyJhbGciOiJIUzI1NiIs...",
-  "user": {
-    "user_id": "550e8400-e29b-41d4-a716-446655440000",
-    "username": "newuser",
-    "email": "user@example.com",
-    "fullName": "John Doe",
-    "created_at": "2024-10-29T10:40:08Z"
-  }
-}
-```
-
-**Error Responses:**
-
-- `400`: Invalid input (missing fields, weak password)
-- `409`: Username or email already exists
-
-**Validation Rules:**
-
-- Username: 3-50 characters, alphanumeric + underscore
-- Email: Valid email format
-- Password: Min 8 characters, at least 1 uppercase, 1 number, 1 special char
-
----
+- `201` `{ status, message, user: { user_id, username, email, full_name, is_admin, created_at } }`
+- `400` on validation failure (`errors: string[]` for username/password rules), including "already taken" / "already registered"
 
 ### POST /api/auth/login
 
-Authenticate user and receive JWT token.
+Body: `{ username, password }`. Disabled users (`status = 'disabled'`) cannot log in.
 
-**Request:**
-
-```json
-{
-  "username": "newuser",
-  "password": "SecurePassword123!"
-}
-```
-
-**Success Response (200):**
-
-```json
-{
-  "success": true,
-  "message": "Login successful",
-  "token": "eyJhbGciOiJIUzI1NiIs...",
-  "user": {
-    "user_id": "550e8400-e29b-41d4-a716-446655440000",
-    "username": "newuser",
-    "fullName": "John Doe"
-  }
-}
-```
-
-**Error Responses:**
-
-- `400`: Missing username or password
-- `401`: Invalid username or password
-- `429`: Too many login attempts (rate limited)
-
-**Token Expiration:**
-
-- Default: 7 days
-- Can be configured via JWT_EXPIRE env var
-- Client should handle token refresh or re-login
-
----
+- `200` `{ status, message, user: { user_id, username, email, full_name }, redirectTo: "<last page visited>" }`
+- `401` invalid credentials
 
 ### POST /api/auth/logout
 
-Invalidate current session.
+Destroys the session. `200` `{ status, message }`.
 
-**Request:**
+### GET /api/auth/current
 
-```
-Authorization: Bearer <TOKEN>
-```
-
-**Success Response (200):**
-
-```json
-{
-  "success": true,
-  "message": "Logout successful"
-}
-```
-
-**Implementation Note:**
-
-- If using server-side sessions: blacklist token
-- If using stateless JWT: just remove client-side token
+`200` `{ status, user }` where `user` = `{ user_id, username, email, full_name, status, is_public, created_at, updated_at, is_admin }`.
+`401` if not logged in (session destroyed if the user no longer exists).
 
 ---
 
-### POST /api/auth/refresh
+## Current user — `/api/users` (all require auth)
 
-Refresh an expired JWT token.
-
-**Request:**
-
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIs..."
-}
-```
-
-**Success Response (200):**
-
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIs...",
-  "expiresIn": "7d"
-}
-```
-
-**Error Responses:**
-
-- `401`: Invalid or expired token
+| Method | Path                    | Body                    | Response                                                                      |
+| ------ | ----------------------- | ----------------------- | ----------------------------------------------------------------------------- |
+| GET    | `/api/users/profile`    | —                       | `{ user }` (same shape as `/api/auth/current`)                                |
+| PUT    | `/api/users/profile`    | `{ fullName?, email? }` | `{ user }`. `fullName` must be non-empty; email validated.                    |
+| PUT    | `/api/users/password`   | `{ password }`          | Password rules as registration. **The current password is not required.**     |
+| PUT    | `/api/users/visibility` | `{ isPublic: boolean }` | `{ isPublic }`. Controls listing in the share directory.                      |
+| GET    | `/api/users/directory`  | —                       | `{ users: [{ username, full_name }] }`: active users with `is_public = true`. |
 
 ---
 
-## User Profile Endpoints
+## Navigation — `/api/navigation` (auth)
 
-### GET /api/profile
+| Method | Path                        | Body / Response                                                                                             |
+| ------ | --------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| POST   | `/api/navigation/track`     | `{ page }` (≤ 255 chars). Query string and hash are stripped; `/login`, `/logout`, `/register` are skipped. |
+| GET    | `/api/navigation/last-page` | `{ lastPage }` (`/` by default).                                                                            |
 
-Get current user's profile information.
-
-**Request:**
-
-```
-Authorization: Bearer <TOKEN>
-```
-
-**Success Response (200):**
-
-```json
-{
-  "user": {
-    "user_id": "550e8400-e29b-41d4-a716-446655440000",
-    "username": "newuser",
-    "email": "user@example.com",
-    "fullName": "John Doe",
-    "created_at": "2024-10-29T10:40:08Z",
-    "updated_at": "2024-10-29T10:40:08Z"
-  }
-}
-```
+`public/js/navigation-tracker.js` calls `track` on page load and link clicks; login uses the result as `redirectTo`.
 
 ---
 
-### PUT /api/profile
+## Flashcards — `/api/entries` (all require auth)
 
-Update user profile information.
+### Card model (request fields)
 
-**Request:**
+| Field                          | Values / notes                                                                                                                                               |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `question`                     | Text. May be empty only when `questionBlock` is an audio recording (text becomes an optional caption).                                                       |
+| `answer`                       | Text, required.                                                                                                                                              |
+| `class`, `lesson`, `category`  | Optional free text, used for grouping, filters, and distractor matching.                                                                                     |
+| `questionType`                 | `standard` (default) · `true_false` · `multiple_choice` · `audio`                                                                                            |
+| `lang` / `answerLang`          | BCP-47 tags (default `en-US` / `null`, max 16 chars). Used for TTS, speech input, and True/False labels.                                                     |
+| `answerMode`                   | `choice` (default; pick an option) · `listen` (the user answers aloud and self-grades)                                                                       |
+| `questionBlock`, `answerBlock` | `{ form, media? }`, where `form` ∈ `text` · `text_tts` · `image` · `audio` and `media` is a base64 data URL.                                                 |
+| `options`                      | `[{ text, isCorrect, form?, media? }]`: authored options for `multiple_choice`/`audio`/`true_false`. All text-like or all images; mixing them returns `400`. |
 
-```json
-{
-  "fullName": "Jane Doe",
-  "email": "newemail@example.com",
-  "currentPassword": "SecurePassword123!",
-  "newPassword": "NewPassword456!"
-}
-```
+### POST /api/entries
 
-**Notes:**
+Creates a card owned by the session user. `201` `{ flashcard }`.
 
-- `currentPassword` required if changing password
-- Email must be unique across system
-- Can update any field independently
+- **New cards are always created private** (`is_private = true`, hard-coded in `insert_flashcard`). An `is_private` value in the body is ignored. Use `PUT /api/entries/:id` or `visibility-batch` to publish.
+- Storage quota: rejects with `413` when `used + payload > users.storage_max_bytes` (default 25 MB). Usage = question+answer text length + stored media data length.
+- `400` when the question/answer is missing or the options mix text and image forms.
 
-**Success Response (200):**
+### GET /api/entries
 
-```json
-{
-  "success": true,
-  "message": "Profile updated successfully",
-  "user": {
-    "user_id": "550e8400-e29b-41d4-a716-446655440000",
-    "username": "newuser",
-    "email": "newemail@example.com",
-    "fullName": "Jane Doe",
-    "updated_at": "2024-10-29T11:00:00Z"
-  }
-}
-```
+The user's own cards, newest first. Optional `?class=&lesson=&category=` (wildcard semantics).
+`{ status, count, filters, entries: [ { flashcard_id, question, answer, lesson, category, class, is_private, question_type, lang, answer_lang, answer_mode, question_form, answer_form, question_media_id, answer_media_id, question_media_data, answer_media_data, created_at } ] }`
 
-**Error Responses:**
+### GET /api/entries/:flashcardId
 
-- `400`: Invalid input or current password incorrect
-- `409`: New email already in use
+A single card the user can access (owned, accepted share, or public). `404` if none.
 
----
+### GET /api/entries/:flashcardId/options
 
-## Flashcard Endpoints
+`{ options: [ { option_id, option_text, is_correct, sort_order, option_form, option_media_id, option_media_data } ] }`.
+Note: this route checks only that the caller is logged in, not that they can access the card.
 
-### POST /api/cards
+### PUT /api/entries/:flashcardId
 
-Create a new flashcard.
+Owner only (`403` otherwise). The body uses **snake_case column names**; allowed keys:
+`question, answer, lesson, category, class, is_private, question_type, lang, answer_lang, answer_mode, question_form, answer_form, question_media_id, answer_media_id`.
+If `options` is an array, the card's options are replaced (and option media stored). Media no longer referenced by any card or option is then deleted.
+Question/answer media blocks cannot be replaced through this route (it takes media ids, not data URLs).
 
-**Request:**
+### DELETE /api/entries/:flashcardId
 
-```json
-{
-  "question": "What is the capital of France?",
-  "answer": "Paris",
-  "category": "Geography",
-  "difficulty": 2
-}
-```
+Owner only (`403` otherwise). Deletes the card (options, shares, progress, and history cascade) and garbage-collects unreferenced media.
 
-**Success Response (201):**
+### GET /api/entries/storage
 
-```json
-{
-  "success": true,
-  "card": {
-    "card_id": "660e8400-e29b-41d4-a716-446655440001",
-    "question": "What is the capital of France?",
-    "answer": "Paris",
-    "category": "Geography",
-    "difficulty": 2,
-    "created_at": "2024-10-29T10:40:08Z",
-    "updated_at": "2024-10-29T10:40:08Z"
-  }
-}
-```
+`{ usedBytes, maxBytes, remainingBytes, overLimit }`.
 
-**Validation:**
+### Visibility and public cards
 
-- `question`: Required, max 1000 characters
-- `answer`: Required, max 5000 characters
-- `category`: Optional, max 100 characters
-- `difficulty`: 1-5 (default: 2)
+| Method | Path                                       | Body                              | Notes                                                                                        |
+| ------ | ------------------------------------------ | --------------------------------- | -------------------------------------------------------------------------------------------- |
+| POST   | `/api/entries/visibility-batch`            | `{ flashcardIds: [], isPrivate }` | Only owned cards change. Returns `{ updated, skipped }`.                                     |
+| GET    | `/api/entries/public`                      | —                                 | Other users' public cards not removed by me. `{ cards }` with owner `username`, `full_name`. |
+| GET    | `/api/entries/public/removed`              | —                                 | Public cards I removed.                                                                      |
+| POST   | `/api/entries/public/:flashcardId/remove`  | —                                 | Hide a public card from my study set.                                                        |
+| POST   | `/api/entries/public/:flashcardId/restore` | —                                 | Undo the above.                                                                              |
+| POST   | `/api/entries/public/remove-batch`         | `{ flashcardIds: [] }`            | `{ removed }`                                                                                |
+| POST   | `/api/entries/public/restore-batch`        | `{ flashcardIds: [] }`            | `{ restored }`                                                                               |
 
----
+Public cards are auto-included in every user's practice and quiz pool unless removed.
 
-### GET /api/cards
+### Sharing
 
-List all user's flashcards.
+Shares have `status` (`active`) and `recipient_status` (`pending` → `accepted`).
+Accepted shares are treated as owned for practice, quiz, and metadata. Rejecting or revoking
+**deletes** the share row (the owner is not notified and may re-share).
 
-**Query Parameters:**
+| Method | Path                                  | Body                                           | Notes                                                                                                                     |
+| ------ | ------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/api/entries/:flashcardId/share`     | `{ recipientUsername }` (or `username`)        | Case-insensitive username lookup. `201` `{ share }`; `404` unknown user; `400` not owner / sharing with self.             |
+| POST   | `/api/entries/share-batch`            | `{ flashcardIds: [], recipientUsernames: [] }` | Every card × recipient pair. `{ shared, failures, unknownUsernames }`; `201` if any shared else `400`.                    |
+| POST   | `/api/entries/:flashcardId/revoke`    | `{ recipientId }`                              | Owner deletes the share.                                                                                                  |
+| POST   | `/api/entries/shares/:shareId/accept` | —                                              | Recipient only.                                                                                                           |
+| POST   | `/api/entries/shares/:shareId/reject` | —                                              | Recipient only; deletes the share.                                                                                        |
+| GET    | `/api/entries/shares/pending`         | —                                              | Shares awaiting my decision (with owner and card text).                                                                   |
+| GET    | `/api/entries/shares/accepted`        | —                                              | Shares I accepted.                                                                                                        |
+| GET    | `/api/entries/shared-by-me`           | —                                              | ⚠️ Unreachable: registered after `GET /:flashcardId`, which captures it and fails on the non-UUID id. Not used by the UI. |
 
-- `category`: Filter by category (optional)
-- `difficulty`: Filter by difficulty (optional)
-- `page`: Pagination page (default: 1)
-- `limit`: Items per page (default: 20, max: 100)
+### Metadata (for filter dropdowns)
 
-**Request:**
+All return values from **accessible** cards, sorted ascending, nulls excluded.
 
-```
-GET /api/cards?category=Geography&page=1&limit=20
-Authorization: Bearer <TOKEN>
-```
+| Path                                           | Response             |
+| ---------------------------------------------- | -------------------- |
+| `GET /api/entries/metadata/classes`            | `{ classes: [] }`    |
+| `GET /api/entries/metadata/lessons`            | `{ lessons: [] }`    |
+| `GET /api/entries/metadata/lessons/:className` | `{ lessons: [] }`    |
+| `GET /api/entries/metadata/categories`         | `{ categories: [] }` |
 
-**Success Response (200):**
+### Export / import (two-file model)
+
+Every export point produces **two linked files**: a data JSON and a media ZIP. The JSON references
+media by `media_id`; the ZIP stores each item as `media/<media_id>.<ext>` (real binary, so it
+opens outside the app). Supported MIME types: png, jpg, gif, webp, svg, webm, ogg, mp3, m4a, wav.
+
+#### GET /api/entries/export
+
+Optional `?class=&lesson=&category=`. Downloads `flashcards-export-<ts>.json`:
 
 ```json
 {
-  "cards": [
+  "version": "2.0",
+  "exportedAt": "…",
+  "exportedBy": "<username>",
+  "filters": null,
+  "count": 1,
+  "media": [{ "id": "<media_id>", "kind": "image", "ext": "png" }],
+  "entries": [
     {
-      "card_id": "660e8400-e29b-41d4-a716-446655440001",
-      "question": "What is the capital of France?",
-      "answer": "Paris",
-      "category": "Geography",
-      "difficulty": 2,
-      "created_at": "2024-10-29T10:40:08Z",
-      "updated_at": "2024-10-29T10:40:08Z"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 20,
-    "total": 42,
-    "pages": 3
-  }
-}
-```
-
----
-
-### GET /api/cards/:cardId
-
-Get a specific flashcard.
-
-**Request:**
-
-```
-Authorization: Bearer <TOKEN>
-```
-
-**Success Response (200):**
-
-```json
-{
-  "card": {
-    "card_id": "660e8400-e29b-41d4-a716-446655440001",
-    "question": "What is the capital of France?",
-    "answer": "Paris",
-    "category": "Geography",
-    "difficulty": 2,
-    "created_at": "2024-10-29T10:40:08Z",
-    "updated_at": "2024-10-29T10:40:08Z"
-  }
-}
-```
-
-**Error Response:**
-
-- `404`: Card not found or not owned by user
-
----
-
-### PUT /api/cards/:cardId
-
-Update a flashcard.
-
-**Request:**
-
-```json
-{
-  "question": "What is the capital of Germany?",
-  "difficulty": 3
-}
-```
-
-**Success Response (200):**
-
-```json
-{
-  "success": true,
-  "card": {
-    "card_id": "660e8400-e29b-41d4-a716-446655440001",
-    "question": "What is the capital of Germany?",
-    "answer": "Paris",
-    "category": "Geography",
-    "difficulty": 3,
-    "updated_at": "2024-10-29T11:00:00Z"
-  }
-}
-```
-
----
-
-### DELETE /api/cards/:cardId
-
-Delete a flashcard.
-
-**Request:**
-
-```
-Authorization: Bearer <TOKEN>
-```
-
-**Success Response (204):**
-
-```
-No content
-```
-
-**Error Response:**
-
-- `404`: Card not found
-
----
-
-## Practice Mode Endpoints
-
-### POST /api/practice/start
-
-Start a new practice session.
-
-**Request:**
-
-```json
-{
-  "sessionType": "daily",
-  "cardLimit": 10,
-  "categoryFilter": "Geography"
-}
-```
-
-**Session Types:**
-
-- `daily`: Study cards due today (default)
-- `all`: Study all cards
-- `category`: Study specific category
-- `new`: Study only new cards
-
-**Success Response (200):**
-
-```json
-{
-  "sessionId": "session-550e8400",
-  "cardCount": 8,
-  "sessionType": "daily",
-  "startedAt": "2024-10-29T10:40:08Z"
-}
-```
-
----
-
-### GET /api/practice/:sessionId/card
-
-Get next card for practice in current session.
-
-**Request:**
-
-```
-Authorization: Bearer <TOKEN>
-```
-
-**Success Response (200):**
-
-```json
-{
-  "card": {
-    "card_id": "660e8400-e29b-41d4-a716-446655440001",
-    "question": "What is the capital of France?",
-    "difficulty": 2
-  },
-  "cardNumber": 1,
-  "cardCount": 8,
-  "sessionProgress": "1/8"
-}
-```
-
-**Note:** Answer is NOT returned; user must answer from memory
-
----
-
-### POST /api/practice/:sessionId/answer
-
-Submit answer for current card in Leitner Box system.
-
-**Request:**
-
-```json
-{
-  "cardId": "660e8400-e29b-41d4-a716-446655440001",
-  "correct": true
-}
-```
-
-**Parameters:**
-
-- `cardId`: The card being answered
-- `correct`: Boolean - whether the answer was correct
-
-**Success Response (200):**
-
-```json
-{
-  "success": true,
-  "feedback": {
-    "correct": true,
-    "answer": "Paris"
-  },
-  "boxUpdate": {
-    "boxNumber": 2,
-    "promotion": true,
-    "message": "Great! Card promoted to Box 2 (Every 2 days)"
-  },
-  "schedule": {
-    "nextReview": "2024-10-31T10:40:08Z",
-    "reviewInterval": "2 days"
-  },
-  "progress": {
-    "box1Count": 5,
-    "box2Count": 8,
-    "box3Count": 3,
-    "totalCards": 16
-  }
-}
-```
-
-**If Answer Incorrect (Demotion):**
-
-```json
-{
-  "success": true,
-  "feedback": {
-    "correct": false,
-    "correctAnswer": "Paris",
-    "yourAnswer": "Rome"
-  },
-  "boxUpdate": {
-    "boxNumber": 1,
-    "demotion": true,
-    "message": "Demoted to Box 1 - Review Daily"
-  },
-  "schedule": {
-    "nextReview": "2024-10-30T10:40:08Z",
-    "reviewInterval": "1 day"
-  }
-}
-```
-
-**Leitner Box Rules:**
-
-- **Correct Answer**: Card promoted to next box (max Box 3)
-  - Box 1 → Box 2: Next review in 2 days
-  - Box 2 → Box 3: Next review in 7 days
-  - Box 3 → Box 3: Next review in 7 days (mastered)
-
-- **Incorrect Answer**: Card demoted back to Box 1
-  - All boxes → Box 1: Next review tomorrow
-  - Aggressive drilling of weak concepts
-
----
-
-### POST /api/practice/:sessionId/end
-
-End current practice session and get summary.
-
-**Request:**
-
-```json
-{
-  "sessionFeedback": "optional feedback"
-}
-```
-
-**Success Response (200):**
-
-```json
-{
-  "success": true,
-  "sessionSummary": {
-    "sessionId": "session-550e8400",
-    "duration": 600,
-    "totalCards": 8,
-    "correctCount": 7,
-    "accuracy": 87.5,
-    "cardsReviewedToday": 8,
-    "cardsDueNext": 3,
-    "sessionStarted": "2024-10-29T10:40:08Z",
-    "sessionEnded": "2024-10-29T10:50:08Z"
-  }
-}
-```
-
----
-
-## Quiz Endpoints
-
-### POST /api/quizzes
-
-Create a new quiz from existing cards.
-
-**Request:**
-
-```json
-{
-  "name": "Chapter 3 Vocabulary",
-  "description": "Test vocab from chapter 3",
-  "cardIds": ["660e8400-e29b-41d4-a716-446655440001", "660e8400-e29b-41d4-a716-446655440002"]
-}
-```
-
-**Success Response (201):**
-
-```json
-{
-  "success": true,
-  "quiz": {
-    "quiz_id": "770e8400-e29b-41d4-a716-446655440001",
-    "name": "Chapter 3 Vocabulary",
-    "description": "Test vocab from chapter 3",
-    "questionCount": 2,
-    "created_at": "2024-10-29T10:40:08Z"
-  }
-}
-```
-
----
-
-### GET /api/quizzes
-
-List all user's quizzes.
-
-**Query Parameters:**
-
-- `page`: Pagination page (default: 1)
-- `limit`: Items per page (default: 20)
-
-**Success Response (200):**
-
-```json
-{
-  "quizzes": [
-    {
-      "quiz_id": "770e8400-e29b-41d4-a716-446655440001",
-      "name": "Chapter 3 Vocabulary",
-      "description": "Test vocab from chapter 3",
-      "questionCount": 2,
-      "lastTaken": "2024-10-28T15:30:00Z",
-      "attempts": 3,
-      "bestScore": 95
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 20,
-    "total": 5
-  }
-}
-```
-
----
-
-### GET /api/quizzes/:quizId
-
-Get specific quiz details.
-
-**Success Response (200):**
-
-```json
-{
-  "quiz": {
-    "quiz_id": "770e8400-e29b-41d4-a716-446655440001",
-    "name": "Chapter 3 Vocabulary",
-    "description": "Test vocab from chapter 3",
-    "questions": [
-      {
-        "order": 1,
-        "cardId": "660e8400-e29b-41d4-a716-446655440001",
-        "question": "What is the capital of France?"
-      }
-    ],
-    "created_at": "2024-10-29T10:40:08Z"
-  }
-}
-```
-
----
-
-### POST /api/quizzes/:quizId/take
-
-Start taking a quiz.
-
-**Request:**
-
-```
-Authorization: Bearer <TOKEN>
-```
-
-**Success Response (200):**
-
-```json
-{
-  "attemptId": "attempt-660e8400",
-  "quiz": {
-    "quiz_id": "770e8400-e29b-41d4-a716-446655440001",
-    "name": "Chapter 3 Vocabulary",
-    "questionCount": 10
-  },
-  "firstQuestion": {
-    "questionNumber": 1,
-    "question": "What is the capital of France?"
-  }
-}
-```
-
----
-
-### POST /api/quizzes/:quizId/answer
-
-Submit answer to quiz question.
-
-**Request:**
-
-```json
-{
-  "attemptId": "attempt-660e8400",
-  "questionNumber": 1,
-  "answer": "Paris"
-}
-```
-
-**Success Response (200):**
-
-```json
-{
-  "success": true,
-  "questionNumber": 1,
-  "isCorrect": true,
-  "correctAnswer": "Paris",
-  "nextQuestion": {
-    "questionNumber": 2,
-    "question": "What is the capital of Germany?"
-  }
-}
-```
-
----
-
-### POST /api/quizzes/:quizId/submit
-
-Submit completed quiz and get results.
-
-**Request:**
-
-```json
-{
-  "attemptId": "attempt-660e8400",
-  "timeSpent": 300
-}
-```
-
-**Success Response (200):**
-
-```json
-{
-  "success": true,
-  "results": {
-    "result_id": "result-770e8400",
-    "quiz_id": "770e8400-e29b-41d4-a716-446655440001",
-    "score": 9,
-    "totalQuestions": 10,
-    "percentage": 90,
-    "timeSpent": 300,
-    "taken_at": "2024-10-29T10:40:08Z",
-    "answers": [
-      {
-        "questionNumber": 1,
-        "question": "What is the capital of France?",
-        "userAnswer": "Paris",
-        "correctAnswer": "Paris",
-        "correct": true
-      }
-    ]
-  }
-}
-```
-
----
-
-## Import/Export Endpoints
-
-### POST /api/cards/import
-
-Import flashcards from JSON file.
-
-**Request (Multipart Form Data):**
-
-```
-Content-Type: multipart/form-data
-Authorization: Bearer <TOKEN>
-
-file: <JSON_FILE>
-overwrites: false (optional, default false)
-```
-
-**Expected JSON Format:**
-
-```json
-{
-  "cards": [
-    {
-      "question": "Q1?",
-      "answer": "A1",
-      "category": "Cat1",
-      "difficulty": 2
-    },
-    {
-      "question": "Q2?",
-      "answer": "A2",
-      "category": "Cat2",
-      "difficulty": 3
+      "question": "…",
+      "answer": "…",
+      "lesson": "…",
+      "category": "…",
+      "class": "…",
+      "is_private": true,
+      "question_type": "standard",
+      "lang": "en-US",
+      "answer_lang": null,
+      "answer_mode": "choice",
+      "question_form": "image",
+      "question_media": "<media_id>",
+      "answer_form": "text",
+      "answer_media": null,
+      "options": [{ "text": "…", "isCorrect": true, "form": "text", "media": null }]
     }
   ]
 }
 ```
 
-**Success Response (201):**
+#### GET /api/entries/export/media
 
-```json
-{
-  "success": true,
-  "imported": 2,
-  "skipped": 0,
-  "errors": [],
-  "message": "Successfully imported 2 cards"
-}
-```
+Same filters. Downloads `flashcards-media-<ts>.zip`.
 
-**Error Responses:**
+#### POST /api/entries/import
 
-- `400`: Invalid file format
-- `413`: File too large
-- `422`: Validation errors in cards
+Body: `{ entries: [...], mediaArchive?: "<base64 zip>" }` (50 MB limit).
+
+- An entry needs `answer` plus either `question` text or an audio question whose media is in the archive.
+- **Upsert by question text:** if the user already owns a card with the same `question`, it is updated (including blocks and options); otherwise a new card is created (private).
+- Media references that are missing from the archive are skipped and counted, and that slot falls back to `text`.
+- Storage quota applies to the whole payload (`413`).
+- `201` `{ count, created, updated, errors, skippedMedia, imported, updatedEntries }`.
 
 ---
 
-### GET /api/cards/export
+## Practice (Leitner) — `/api/practice` (all require auth)
 
-Export all user's flashcards as JSON file.
+See [LEITNER_SYSTEM.md](./LEITNER_SYSTEM.md) for the scheduling rules.
 
-**Query Parameters:**
+### GET /api/practice/next
 
-- `category`: Export only specific category (optional)
-- `format`: json or csv (default: json)
+Query: `catchUp=true` (any box-1/2 card, ignoring the schedule) and `class`, `lesson`, `category` filters.
+**In catch-up mode the filters are ignored.**
 
-**Request:**
-
-```
-GET /api/cards/export?format=json
-Authorization: Bearer <TOKEN>
-```
-
-**Success Response (200 with file download):**
-
-```
-Content-Type: application/json
-Content-Disposition: attachment; filename="flashcards_2024-10-29.json"
-
-{
-  "exportedAt": "2024-10-29T10:40:08Z",
-  "cardCount": 42,
-  "cards": [
-    {
-      "question": "Q1?",
-      "answer": "A1",
-      "category": "Cat1",
-      "difficulty": 2
-    }
-  ]
-}
-```
-
----
-
-## Error Response Format
-
-All error responses follow this format:
+The server first creates missing `flashcard_leitner_progress` rows for every accessible card.
+It then picks a random due card and builds its options:
 
 ```json
 {
-  "success": false,
-  "error": "Error message for user",
-  "errorCode": "ERROR_CODE",
-  "details": {
-    "field": "Specific validation error if applicable"
+  "status": "success",
+  "card": {
+    "flashcard_id": "…",
+    "question": "…",
+    "answer": "…",
+    "question_type": "standard",
+    "lang": "en-US",
+    "answer_lang": null,
+    "answer_mode": "choice",
+    "question_form": "text",
+    "question_media_data": null,
+    "answer_form": "text",
+    "answer_media_data": null,
+    "current_box": 1,
+    "times_correct": 0,
+    "times_incorrect": 0
   },
-  "timestamp": "2024-10-29T10:40:08Z"
+  "options": [
+    { "text": "…", "isCorrect": true, "form": "text", "media": null, "isNoneOfAbove": false }
+  ],
+  "showingNoneOfAbove": false
 }
 ```
 
-**Common Error Codes:**
+- No card due: `{ card: null, options: null, message, catchUpMode }`.
+- Too few distractors: `{ card: null, insufficientEntries: true, diagnostic: { currentCard, availableWrongAnswers, neededWrongAnswers, totalOptionsNeeded, message } }`.
+- The response includes `answer` and each option's `isCorrect`; **grading happens in the browser**.
 
-- `INVALID_INPUT`: Validation failed
-- `UNAUTHORIZED`: Missing or invalid token
-- `FORBIDDEN`: User lacks permission
-- `NOT_FOUND`: Resource doesn't exist
-- `CONFLICT`: Resource already exists
-- `RATE_LIMITED`: Too many requests
-- `INTERNAL_ERROR`: Server error
+### POST /api/practice/answer
+
+Body: `{ flashcardId, selectedAnswer, isCorrect, sessionStartTime?, filterClass?, filterLesson?, filterCategory? }`
+
+- With `sessionStartTime` (what the UI always sends): session-aware repetitions. The card must be answered 3× (box 1), 2× (box 2), or 1× (box 3) in the session before the box changes. All correct → promote one box; any incorrect → back to box 1.
+- Without it: legacy single-attempt mode (promote/demote immediately, and recalculate difficulty).
+- `200` `{ isCorrect, message, correctAnswer, progress, session: { needsMoreAttempts, attemptNumber, totalNeeded, feedback } }`
+
+### Stats and schedule
+
+| Path                          | Query filters | Response                                                                                                                                                                                                                |
+| ----------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/practice/daily`     | —             | `{ count, cards }`: all cards due today                                                                                                                                                                                 |
+| `GET /api/practice/stats`     | yes           | `{ stats: { box1, box2, box3, total, totalCorrect, totalIncorrect, totalAttempts, accuracy }, streak }`                                                                                                                 |
+| `GET /api/practice/schedule`  | —             | `{ schedule: { box1: { due, count }, box2: {…}, box3: {…} } }`                                                                                                                                                          |
+| `GET /api/practice/summary`   | yes           | `{ summary: { dueTodayCount, practiceAttempts, correctToday, incorrectToday } }`                                                                                                                                        |
+| `GET /api/practice/dashboard` | —             | `{ dashboard: { overall, classes: [{ class, …, lessons: [] }], categories: [] } }`. Each node has `total, box1, box2, box3, attempts, accuracy` (accuracy is `null` when there are no attempts). Used by the home page. |
+
+`streak` = consecutive correct answers counted back from the most recent `practice_history` row.
+
+### Difficulty
+
+| Method | Path                                     | Body              | Notes                                                                                                        |
+| ------ | ---------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------ |
+| POST   | `/api/practice/difficulty/update-single` | `{ flashcardId }` | Recalculate one card. `{ data: { oldScore, newScore, successRate, sampleSize, calculationBasis, changed } }` |
+| POST   | `/api/practice/difficulty/update-batch`  | `{ lesson? }`     | Recalculate public + own cards. `{ summary: { total, updated, errors, lesson }, details }` (first 10)        |
+| GET    | `/api/practice/difficulty/stats`         | —                 | Distribution over public + own cards.                                                                        |
+
+See [DIFFICULTY_SCORING.md](./DIFFICULTY_SCORING.md).
 
 ---
 
-## Rate Limiting
+## Quiz — `/api/quiz` (all require auth)
 
-- **Login**: 5 attempts per 15 minutes
-- **API Calls**: 100 requests per minute (per user)
-- **File Upload**: 50 MB max file size
+### POST /api/quiz/start
+
+Filters go in the **query string** (`?class=&lesson=&category=`, exact match).
+
+Pool: accessible cards the user has **already practiced** (a progress row with attempts or `last_reviewed`).
+
+Selection:
+
+- ≤ 20 cards in the pool: all of them.
+- Otherwise the target is `min(20, ceil(0.75 × pool))`, split into thirds across easy (≤ 2.0), medium (≤ 3.5), and hard (> 3.5) `difficulty_score` buckets.
+- There is no backfill, so the quiz is shorter when the buckets are uneven.
+
+It creates a `quizzes` row (the filters are stored as JSON in `description`) and `quiz_questions` rows.
+
+`200` `{ quiz_id, total_questions, questions: [ { card_id, question, answer, difficulty_score, question_type, lang, answer_lang, question_form, question_media_data, options } ] }`.
+Options are built the same way as in practice. If there are too few distractors, the other quiz answers are used instead.
+`400` if the pool is empty.
+
+### POST /api/quiz/:quizId/submit
+
+Body: `{ answers: [{ card_id, is_correct }] }`. Owner only. The score is `round(correct / answers.length × 100)`.
+`{ result_id, score, correct_answers, total_questions, percentage }`.
+
+### GET /api/quiz/history
+
+`{ quizzes: [ { quiz_id, name, description, created_at, best_score, attempt_count, last_taken } ] }`.
+
+### GET /api/quiz/:quizId/results
+
+`{ best_score, best_result_id, all_results, attempt_count }`. `best_*` is the **most recent** result (rows are ordered by `taken_at DESC`), not the highest score.
+
+### Metadata
+
+`GET /api/quiz/metadata/classes`, `/lessons`, `/lessons/:className`, `/categories`. These have the same shapes as the entries metadata routes.
 
 ---
 
-## Pagination
+## Admin — `/api/admin` (auth + `admin` role)
 
-All list endpoints support pagination:
+### Users
 
-**Query Parameters:**
+| Method | Path                                     | Body                                                  | Notes                                                                                                         |
+| ------ | ---------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/admin/users`                       | —                                                     | `{ users, count }`. Each user: `user_id, username, email, full_name, status, is_public, created_at, is_admin` |
+| POST   | `/api/admin/users`                       | `{ username, email, password, fullName?, isPublic? }` | Same validation as registration.                                                                              |
+| GET    | `/api/admin/users/:userId`               | —                                                     |                                                                                                               |
+| POST   | `/api/admin/users/:userId/disable`       | —                                                     | Not yourself.                                                                                                 |
+| POST   | `/api/admin/users/:userId/enable`        | —                                                     |                                                                                                               |
+| DELETE | `/api/admin/users/:userId`               | —                                                     | Not yourself. Deletes app data, then the identity.                                                            |
+| PUT    | `/api/admin/users/:userId/visibility`    | `{ isPublic: boolean }`                               |                                                                                                               |
+| PUT    | `/api/admin/users/:userId/storage-limit` | `{ maxBytes }` (non-negative integer)                 |                                                                                                               |
+| POST   | `/api/admin/users/:userId/promote`       | —                                                     | Grant `admin`.                                                                                                |
+| POST   | `/api/admin/users/:userId/demote`        | —                                                     | Revoke `admin`; not yourself.                                                                                 |
+| POST   | `/api/admin/users/:userId/reset-stats`   | —                                                     | Reset all of the user's Leitner progress to box 1; not yourself. `{ cardsReset, userName }`                   |
 
-- `page`: Page number (default: 1, min: 1)
-- `limit`: Items per page (default: 20, max: 100)
+### Full-dataset backup (two-file model)
 
-**Response Structure:**
+| Method | Path                               | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------ | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/admin/backup/download`       | Downloads `flashcards-backup-YYYY-MM-DD.json`: IAM tables + app tables. Media rows are included **without** `data`; a `mediaManifest` lists them.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| GET    | `/api/admin/backup/download-media` | Downloads `flashcards-backup-media-YYYY-MM-DD.zip` with every media item.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| GET    | `/api/admin/backup/export`         | Same backup returned inline as `{ backup }` JSON.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| POST   | `/api/admin/backup/import`         | Body `{ backup, mediaArchive? }` (50 MB). **Upsert**: update existing rows, insert new ones, delete nothing. Roles/rights are matched by name and their ids remapped. Users are matched to existing accounts by username (case-insensitive), falling back to email. A matched user's id is rewritten throughout the backup (`user_id`, `created_by`, `owner_id`, `recipient_id`), so a backup restores into a fresh database whose admin was re-created. The existing account's row is then updated from the backup, including `password_hash`. Unresolvable media references are cleared, with warnings. `{ results: { imported, failed, warnings } }` |
+| GET    | `/api/admin/backup/history`        | `?limit=` (default 100, max 1000). Rows from `import_export_logs`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+
+Tables in the backup:
+`users, roles, rights, role_rights, user_roles` (IAM), then
+`user_rights, lessons, media, flashcards, flashcard_options, flashcard_shares, public_card_removals, leitner_boxes, flashcard_leitner_progress, practice_history, session_card_attempts, difficulty_history, quizzes, quiz_questions, quiz_results, import_export_logs`.
+Only the transient `session` table is left out. `npm run test:roundtrip` proves that every other table survives a wipe and restore (see LOCAL_DATABASE.md).
+
+> The backup JSON contains password hashes and every user's data. Treat it as a secret.
+
+---
+
+## Error format
 
 ```json
-{
-  "items": [...],
-  "pagination": {
-    "page": 1,
-    "limit": 20,
-    "total": 42,
-    "pages": 3,
-    "hasNext": true,
-    "hasPrev": false
-  }
-}
+{ "status": "error", "message": "Human readable message", "errors": ["optional detail"] }
 ```
+
+Common codes: `400` validation, `401` not logged in, `403` not owner / not admin / already set up,
+`404` not found, `413` storage quota exceeded, `500` server error (some routes add `error: <exception message>`), `503` unhealthy DB.

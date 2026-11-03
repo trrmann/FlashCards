@@ -4,6 +4,10 @@
 
 The production deployment script now automatically handles code formatting issues, eliminating the need for manual git commits when files are auto-formatted by Prettier.
 
+> ⚠️ Current behavior: after `npm run format`, if **any** tracked file differs from HEAD the script runs
+> `git add .` and commits everything (formatting changes, your own uncommitted edits, and any
+> non-ignored untracked files) under the auto-format message. Commit your own work first.
+
 ## Problem Solved
 
 **Before:** If any file was auto-formatted during development, the production deployment would fail:
@@ -18,18 +22,18 @@ This required manual intervention:
 git add .
 git commit -m "Your message"
 git push origin main
-bash deploy.sh -prod  # retry
+deploy.sh -prod  # retry
 ```
 
 **After:** One simple command handles everything:
 
 ```bash
-bash deploy.sh -prod
+deploy.sh -prod
 ```
 
 ## Solution: Automatic Formatting & Committing
 
-When you run `bash deploy.sh -prod`, the script now:
+When you run `deploy.sh -prod`, the script now:
 
 1. **Runs Prettier** to format all code
 2. **Checks for changes** from formatting
@@ -42,20 +46,20 @@ When you run `bash deploy.sh -prod`, the script now:
 ### Old Workflow (4-5 steps)
 
 ```
-1. bash deploy.sh -prod
+1. deploy.sh -prod
    ❌ FAILS: "Please commit and push changes"
 
 2. git add .
 3. git commit -m "Auto-format code"
 4. git push origin main
-5. bash deploy.sh -prod
+5. deploy.sh -prod
    ✅ SUCCESS: Deployed
 ```
 
 ### New Workflow (1 step)
 
 ```
-1. bash deploy.sh -prod
+1. deploy.sh -prod
    ✅ SUCCESS: Deployed
    (Formatting auto-handled if needed)
 ```
@@ -120,7 +124,7 @@ All of these are handled automatically by the deploy script.
 ### Scenario 1: No Formatting Needed
 
 ```bash
-$ bash deploy.sh -prod
+$ deploy.sh -prod
 [INFO] Running code format check...
 [SUCCESS] Code formatted successfully
 [INFO] Pushing to GitHub (triggers Render auto-deploy)...
@@ -133,7 +137,7 @@ $ bash deploy.sh -prod
 ### Scenario 2: IDE Auto-Formatted Files
 
 ```bash
-$ bash deploy.sh -prod
+$ deploy.sh -prod
 [INFO] Running code format check...
 [INFO] Auto-formatting found changes. Committing...
 [SUCCESS] Formatting changes committed
@@ -149,7 +153,7 @@ $ bash deploy.sh -prod
 You edited `PORT_CONFIGURATION.md` in your IDE, which auto-formats it:
 
 ```bash
-$ bash deploy.sh -prod
+$ deploy.sh -prod
 [INFO] Running code format check...
 [INFO] Auto-formatting found changes. Committing...
 [SUCCESS] Formatting changes committed
@@ -217,10 +221,10 @@ git log --oneline --grep="^build:" --invert-grep
 
 ### Change Commit Message
 
-If you want to customize the auto-formatting commit message, edit `deploy.sh`:
+If you want to customize the auto-formatting commit message, edit `src/scripts/sh/deploy.sh`:
 
 ```bash
-# Line ~420 in deploy.sh
+# In deploy_prod() in src/scripts/sh/deploy.sh
 git commit -m "Your custom message"
 ```
 
@@ -264,7 +268,7 @@ However, this is not recommended - the commits provide documentation of formatti
 npm run format
 git add .
 git commit -m "Your message"
-bash deploy.sh -prod
+deploy.sh -prod
 ```
 
 Better to let the deploy script handle it automatically.
@@ -309,7 +313,7 @@ All errors are logged to `.deployment/last-run.log`.
 
 ## Related Files
 
-- [deploy.sh](/home/tmann/Documents/Projects/FlashCards/deploy.sh) - Main deployment script
+- [src/scripts/sh/deploy.sh](../src/scripts/sh/deploy.sh) - Main deployment script
 - [.prettierrc.json](/home/tmann/Documents/Projects/FlashCards/.prettierrc.json) - Prettier configuration
 - [PORT_CONFIGURATION.md](/home/tmann/Documents/Projects/FlashCards/PORT_CONFIGURATION.md) - Port setup guide
 

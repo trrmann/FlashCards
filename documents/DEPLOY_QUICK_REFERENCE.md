@@ -4,24 +4,24 @@
 
 ```bash
 # Start local development
-./deploy.sh -dev
+deploy.sh -dev
 
 # Test preview environment
-./deploy.sh -preview
+deploy.sh -preview
 
 # Deploy to production (GitHub → Render auto-deploy)
-./deploy.sh -prod
+deploy.sh -prod
 
 # Deploy to all environments (dev → preview → prod)
-./deploy.sh -all
+deploy.sh -all
 
 # Show help and usage
-./deploy.sh -h
+deploy.sh -h
 ```
 
 ## What Each Command Does
 
-### `./deploy.sh -dev`
+### `deploy.sh -dev`
 
 - ✅ Starts server on `http://localhost:5000`
 - ✅ Auto-kills any existing process on port 5000
@@ -30,26 +30,27 @@
 - ✅ Uses remote Render PostgreSQL database
 - ℹ️ **For:** Local development work
 
-### `./deploy.sh -preview`
+### `deploy.sh -preview`
 
 - ✅ **Runs code verification** (format + lint) - ABORTS if fails!
-- ✅ Starts server on `http://localhost:5000`
+- ✅ Starts server on `http://localhost:4000`
+- ✅ Runs `npm run test:preview` (Lighthouse, HTML/CSS, memory, Web Vitals) - ABORTS if fails!
 - ✅ Opens browser automatically when ready
 - ✅ Uses remote Render PostgreSQL database
 - ℹ️ **For:** Final local testing before production commit
 - 📋 **See:** [CODE_QUALITY.md](./CODE_QUALITY.md) for formatting/linting details
 
-### `./deploy.sh -prod`
+### `deploy.sh -prod`
 
-- ✅ Commits current code to GitHub (if changes exist)
+- ✅ Runs Prettier, then commits **all** pending changes with `git add .` (if any tracked file changed)
 - ✅ Pushes to origin/main branch
 - ✅ Triggers Render's auto-deploy webhook
-- ✅ Waits 30 seconds for Render to deploy
+- ✅ Waits 45 seconds, then polls `RENDER_URL` (up to 60 × 2 s) and opens it
 - ✅ Logs all output to `.deployment/last-run.log`
 - ⚠️ **Important:** Code MUST be on main branch and committed
 - ℹ️ **For:** Production deployment to Render servers
 
-### `./deploy.sh -all`
+### `deploy.sh -all`
 
 - ✅ Runs all three environments sequentially
 - ✅ Order: dev → pause → preview → pause → prod
@@ -64,29 +65,29 @@
 ```bash
 # 1. Make code changes
 # 2. Test locally
-./deploy.sh -dev
+deploy.sh -dev
 
 # 3. When changes are good, commit them
 git add .
 git commit -m "Your message"
 
 # 4. Final test before going live
-./deploy.sh -preview
+deploy.sh -preview
 
 # 5. Deploy to production
-./deploy.sh -prod
+deploy.sh -prod
 ```
 
 ### Quick Test After Code Change
 
 ```bash
-./deploy.sh -dev
+deploy.sh -dev
 ```
 
 ### Full Production Pipeline
 
 ```bash
-./deploy.sh -all
+deploy.sh -all
 ```
 
 ## Code Quality & Verification
@@ -111,7 +112,7 @@ npm run verify
 
 ### Preview Environment Verification
 
-When you run `./deploy.sh -preview`:
+When you run `deploy.sh -preview`:
 
 1. ✅ Formats code with Prettier
 2. ✅ Verifies with ESLint
@@ -188,14 +189,14 @@ cat .deployment/last-run.log
 
 ```bash
 # Same command as before - scripts are rerunnable
-./deploy.sh -dev   # or -preview, -prod, -all
+deploy.sh -dev   # or -preview, -prod, -all
 ```
 
 ## Environment Difference
 
 | Aspect       | Dev            | Preview        | Prod          |
 | ------------ | -------------- | -------------- | ------------- |
-| **Server**   | localhost:5000 | localhost:5000 | Render.com    |
+| **Server**   | localhost:5000 | localhost:4000 | Render.com    |
 | **Database** | Render Remote  | Render Remote  | Render Remote |
 | **Purpose**  | Development    | Final Testing  | Live          |
 | **Code**     | Local          | Local          | Deployed      |
@@ -203,7 +204,7 @@ cat .deployment/last-run.log
 
 ## Git Status Before Production
 
-Before running `./deploy.sh -prod`:
+Before running `deploy.sh -prod`:
 
 ```bash
 # Check for uncommitted changes
@@ -220,7 +221,7 @@ git branch
 ## How Render Auto-Deploy Works
 
 ```
-1. ./deploy.sh -prod
+1. deploy.sh -prod
    ↓
 2. Commits code to GitHub
    ↓
@@ -230,14 +231,14 @@ git branch
    ↓
 5. Render starts building and deploying
    ↓
-6. Script waits 30 seconds then returns
+6. Script waits 45 seconds, then health-checks RENDER_URL
    ↓
 7. Deployment continues on Render servers (async)
    ↓
 8. Check Render dashboard for status
 ```
 
-The 30-second wait is an estimate. Actual deployment time may vary.
+The 45-second wait plus polling is an estimate. Actual deployment time may vary (free tier cold starts add ~50 s).
 
 ## Questions?
 

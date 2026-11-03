@@ -1,5 +1,8 @@
 # Deployment Strategy for FlashCards
 
+> **Superseded (original deployment plan).** Reviewed against the code on 2026-11-03. It assumes `DATABASE_URL`, JWT and planned features. Actual deployment: Render web service auto-deploying `main`, env vars per RENDER_ENVIRONMENT_VARIABLES.md, `deploy.sh`.
+> Use instead: [DEPLOY.md](./DEPLOY.md), [RENDER_ENVIRONMENT_VARIABLES.md](./RENDER_ENVIRONMENT_VARIABLES.md), [SETUP_QUICK_START.md](./SETUP_QUICK_START.md).
+
 ## Deployment Target: Render
 
 **Why Render?**

@@ -1,5 +1,9 @@
 # 🔴 BUG REPORT: Category Filter Not Stored in Practice History
 
+> **Historical record (2026-10-30).** Bug report. It reflects the code at that time and is kept for history.
+> Reviewed against the code on 2026-11-03. Resolved: `practice_history` stores the active filter values, or the card's own class/lesson/category when no filter is set.
+> Current reference: [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md).
+
 **Severity:** HIGH  
 **Status:** CONFIRMED  
 **Found:** 2026-10-30 00:34 EDT

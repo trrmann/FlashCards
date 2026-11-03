@@ -21,7 +21,6 @@ Comprehensive Google Lighthouse testing with thresholds:
 - **Accessibility:** > 80/100
 - **Best Practices:** > 80/100
 - **SEO:** > 80/100
-- **PWA:** > 50/100
 
 Tests metrics like:
 
@@ -83,19 +82,19 @@ npm run test:preview
 ### Start Server + Run Tests
 
 ```bash
-./deploy.sh -preview
+deploy.sh -preview
 ```
 
 ## Test Flow
 
-When you run `./deploy.sh -preview`:
+When you run `deploy.sh -preview`:
 
 ```
 1. Format code with Prettier
    ↓
 2. Lint code with ESLint
    ↓
-3. Start server on localhost:5000
+3. Start the preview server on localhost:4000 (`deploy.sh -preview` sets `TEST_BASE_URL=http://localhost:4000`; standalone runs default to `http://localhost:5000`)
    ↓
 4. Wait for server to be ready
    ↓
@@ -173,7 +172,7 @@ Tests run on all these pages:
 
 ### Lighthouse Thresholds
 
-Edit in `src/scripts/js/modules/tests/test-config.mjs`:
+Edit in `src/scripts/js/modules/tests/previewTestSuite.mjs (`PreviewTestSuite.config`)`:
 
 ```javascript
 lighthouseThresholds: {
@@ -181,13 +180,12 @@ lighthouseThresholds: {
   accessibility: 80,
   'best-practices': 80,
   seo: 80,
-  pwa: 50,
 }
 ```
 
 ### Memory Thresholds
 
-Edit in `src/scripts/js/modules/tests/test-config.mjs`:
+Edit in `src/scripts/js/modules/tests/previewTestSuite.mjs (`PreviewTestSuite.config`)`:
 
 ```javascript
 memoryThresholds: {
@@ -198,7 +196,7 @@ memoryThresholds: {
 
 ### Core Web Vitals Thresholds
 
-Edit in `src/scripts/js/modules/tests/preview-tests.mjs`:
+Edit `testCoreWebVitals()` in `src/scripts/js/modules/tests/previewTestSuite.mjs`:
 
 ```javascript
 if (vitals['First Contentful Paint'] > 2500) {
@@ -355,11 +353,12 @@ As features are added, update tests:
 
 ## Files
 
-- `src/scripts/js/modules/tests/test-config.mjs` - Configuration and TestResults class
-- `src/scripts/js/modules/tests/preview-tests.mjs` - Complete test suite implementation
+- `src/scripts/js/modules/tests/preview-tests.mjs` - Entry point (`npm run test:preview`)
+- `src/scripts/js/modules/tests/previewTestSuite.mjs` - `PreviewTestSuite` class: config (endpoints, thresholds) and all tests
+- `src/scripts/js/modules/tests/testResults.mjs` - `TestResults` collector/reporter
 - `.deployment/last-run.log` - Test results logged here
 - `package.json` - `npm run test:preview` script
-- `deploy.sh` - Integration with preview deployment
+- `src/scripts/sh/deploy.sh` - Integration with preview deployment
 
 ## Summary
 
@@ -373,5 +372,5 @@ As features are added, update tests:
 Next: Deploy to preview to see comprehensive testing in action!
 
 ```bash
-./deploy.sh -preview
+deploy.sh -preview
 ```

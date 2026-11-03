@@ -4,10 +4,10 @@
 
 ```bash
 # Start server (dev mode - non-blocking tests)
-./deploy.sh -dev
+deploy.sh -dev
 
 # Test preview (with format, lint, AND comprehensive tests)
-./deploy.sh -preview
+deploy.sh -preview
 
 # Run tests only (server must be running first)
 npm run test:preview
@@ -19,9 +19,9 @@ npm run test:preview
 
 - Home, Practice, Quiz, Entries, Login, Profile, Logout
 
-✅ **Lighthouse** (Performance, Accessibility, Best Practices, SEO, PWA)
+✅ **Lighthouse** (Performance, Accessibility, Best Practices, SEO; the PWA category was removed in Lighthouse 12)
 
-- Min thresholds: Performance 50, Accessibility 80, Best Practices 80, SEO 80, PWA 50
+- Min thresholds: Performance 50, Accessibility 80, Best Practices 80, SEO 80
 
 ✅ **HTML Validation** (HTML5 standards)
 
@@ -46,7 +46,7 @@ npm run test:preview
 ### All Pass ✅
 
 ```
-./deploy.sh -preview
+deploy.sh -preview
 → Format ✓
 → Lint ✓
 → Start server ✓
@@ -57,7 +57,7 @@ npm run test:preview
 ### Tests Fail ❌
 
 ```
-./deploy.sh -preview
+deploy.sh -preview
 → Format ✓
 → Lint ✓
 → Start server ✓
@@ -99,7 +99,7 @@ grep "WARN" .deployment/last-run.log
 3. **Test on preview**
 
    ```bash
-   ./deploy.sh -preview
+   deploy.sh -preview
    ```
    - Format code ✓
    - Lint code ✓
@@ -116,7 +116,7 @@ grep "WARN" .deployment/last-run.log
    ```bash
    git add .
    git commit -m "Your message"
-   ./deploy.sh -prod
+   deploy.sh -prod
    ```
 
 ## Common Test Failures
@@ -131,7 +131,7 @@ grep "WARN" .deployment/last-run.log
 
 ## Configuration
 
-To adjust test thresholds, edit `src/scripts/js/modules/tests/test-config.mjs`:
+To adjust test thresholds, edit `src/scripts/js/modules/tests/previewTestSuite.mjs (`PreviewTestSuite.config`)`:
 
 ```javascript
 lighthouseThresholds: {
@@ -139,7 +139,6 @@ lighthouseThresholds: {
   accessibility: 80,      // Adjust here
   'best-practices': 80,   // Adjust here
   seo: 80,                // Adjust here
-  pwa: 50,                // Adjust here
 }
 
 memoryThresholds: {

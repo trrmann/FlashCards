@@ -1,5 +1,8 @@
 # 🎯 FlashCards - START HERE
 
+> **Superseded (original onboarding page).** Reviewed against the code on 2026-11-03. It describes the multi-app schema / `DATABASE_URL` / JWT plan.
+> Use instead: [README.md](./README.md), [SETUP_QUICK_START.md](./SETUP_QUICK_START.md).
+
 **Welcome!** This file guides you through everything you need to get started.
 
 ---

@@ -1,198 +1,88 @@
 # FlashCards - Quick Start Setup
 
-**🚀 Get your development environment running in 30 minutes**
+How to get a working local environment against a Render PostgreSQL database.
+This is the authoritative setup guide. The older long-form guides (DEV_ENVIRONMENT_SETUP,
+SETUP_CHECKLIST, MULTI_APP_ARCHITECTURE) describe an earlier plan.
 
----
+## What you need
 
-## What You Need
+- Node.js 20.6+ (`nodemon.json` runs `node --env-file=.env`) and npm
+- Git, plus `curl` and `lsof` if you use `deploy.sh`
+- A Render account (a free-tier PostgreSQL instance works; it expires after a fixed period)
+- Optional: pgAdmin or `psql` for inspecting data
 
-- Node.js 18+ installed
-- npm package manager
-- pgAdmin 4 already installed on your machine
-- Render account (free tier)
-- Git repository (trrmann/FlashCards)
+## 1. Create the database (Render)
 
----
+1. Render dashboard → **New +** → **PostgreSQL**. Choose a name, region, and plan.
+2. When it's ready, open **Connections** and note the internal hostname, external hostname,
+   port, database, user, and password. On the free tier, also note the **expiry date**.
 
-## Step 1: Create Render Database (5 minutes)
-
-1. Go to **https://render.com** and sign in
-2. Click **"New +"** → **"PostgreSQL"**
-3. Fill in:
-   ```
-   Name: dev-postgres-db
-   Database: dev_apps
-   User: app_admin
-   Region: (your closest)
-   Version: 15
-   Type: Free
-   ```
-4. Click **Create** and wait 2-5 minutes for initialization
-5. Copy the **External Database URL** when ready (format: `postgresql://app_admin:PASSWORD@HOST:5432/dev_apps`)
-
----
-
-## Step 2: Create .env File (5 minutes)
-
-In your project root, create `.env`:
+## 2. Create `.env` in the project root
 
 ```env
-# Database (from Render step above)
-DATABASE_URL=postgresql://app_admin:PASSWORD@HOST:5432/dev_apps
-DB_HOST=HOST
-DB_PORT=5432
-DB_NAME=dev_apps
-DB_USER=app_admin
-DB_PASSWORD=PASSWORD
-DB_SCHEMA=flashcards_schema
-
-# Generate JWT secret: openssl rand -hex 32
-JWT_SECRET=YOUR_32_CHARACTER_SECRET_HERE
-
-# App config
 NODE_ENV=development
-PORT=5000
-CORS_ORIGIN=http://localhost:5000
+PORT_DEV=5000
+PORT_PREVIEW=4000
+PORT_PROD=3000
+
+DB_PG_INTERNAL_HOSTNAME=<internal hostname>
+DB_PG_EXTERNAL_HOSTNAME=<external hostname>   # used locally
+DB_PG_PORT=5432
+DB_PG_DATABASE=<database>
+DB_PG_USER=<user>
+DB_PG_PASSWORD=<password>
+DB_PG_EXPIRE=<YYYY-MM-DD>                     # optional: header expiry warning
+
+SESSION_SECRET=<random hex>                   # optional locally, required on Render
+RENDER_URL=https://<your-app>.onrender.com    # optional: used by deploy.sh -prod
 ```
 
-**⚠️ Add `.env` to `.gitignore`!**
+`.env` is git-ignored. Never commit it, a copy of it, or its values in a document.
+All variables are described in [RENDER_ENVIRONMENT_VARIABLES.md](./RENDER_ENVIRONMENT_VARIABLES.md).
+`.env.example` still lists keys from the original plan that the code doesn't read.
 
----
-
-## Step 3: Install Dependencies (5 minutes)
+## 3. Install and run
 
 ```bash
-npm install pg bcryptjs jsonwebtoken joi cors dotenv express-async-errors uuid
+npm install
+npm run dev            # nodemon → http://localhost:5000
+# or
+deploy.sh -dev       # same, plus health-check wait, log file, and browser open
 ```
 
----
+No manual SQL is needed. On startup the server connects and runs the idempotent IAM and app
+schema files (`src/scripts/sql/pg/*-postgres-schema.sql`). Watch the console for the
+`[n/N] CREATE TABLE …` progress lines and `✅ Schema bootstrap complete!`.
 
-## Step 4: Initialize Database (10 minutes)
+## 4. Create the first user
 
-1. Open **pgAdmin 4** (`http://localhost:5050`)
-2. Right-click **Servers** → **Create** → **Server**
-   - Name: `Shared Dev Database`
-   - Host: Your Render host (from .env)
-   - Port: `5432`
-   - User: `app_admin`
-   - Password: Your password
-   - Check "Save password"
+Open <http://localhost:5000/login>. With no users in the database, the page shows **First User Setup**.
+The account you create there gets the `admin` role.
 
-3. Click Tools → Query Tool
+Restoring from an old database? See _Restoring a backup into a new database_ in
+[SYSTEM_INITIAL_SETUP.md](./SYSTEM_INITIAL_SETUP.md).
 
-4. Execute this SQL:
-
-```sql
-CREATE SCHEMA IF NOT EXISTS flashcards_schema;
-SET search_path TO flashcards_schema;
-
--- Then copy all CREATE TABLE statements from
--- documents/DATABASE_SCHEMA.md and paste here
-```
-
----
-
-## Step 5: Verify Connection (5 minutes)
-
-Create `test-db.js`:
-
-```javascript
-const { Pool } = require('pg');
-require('dotenv').config();
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
-
-pool.on('connect', async (client) => {
-  await client.query(`SET search_path TO ${process.env.DB_SCHEMA}`);
-});
-
-pool.query('SELECT NOW()', (err, res) => {
-  if (err) {
-    console.error('❌ Connection failed:', err.message);
-  } else {
-    console.log('✅ Connected!', res.rows[0]);
-    pool.end();
-  }
-});
-```
-
-Run: `node test-db.js`
-
-Expected: `✅ Connected! { now: 2024-10-29T...}`
-
----
-
-## Step 6: Start Development Server (2 minutes)
+## 5. Verify
 
 ```bash
-npm run dev
+curl http://localhost:5000/api/health                  # {"status":"healthy",...}
+curl http://localhost:5000/api/system/setup-status     # needsSetup true/false
+curl http://localhost:5000/api/system/database-status  # tables + row counts
 ```
 
-Expected output:
-
-```
-✅ Server running on http://localhost:5000
-🗄️  Database: dev_apps
-📋 Schema: flashcards_schema
-📝 Environment: development
-```
-
-Test endpoints:
+## 6. Quality checks
 
 ```bash
-curl http://localhost:5000/api/health
-curl http://localhost:5000/api/db-health
+npm run verify         # prettier --write + eslint
+deploy.sh -preview   # strict format/lint, server on :4000, Lighthouse/HTML/CSS/memory suite
 ```
 
----
+## 7. Deploy to Render
 
-## Done! ✅
+1. Create a **Web Service** from the GitHub repo. Build command `npm install`, start command `npm start`.
+2. Set its environment ([RENDER_ENVIRONMENT_VARIABLES.md](./RENDER_ENVIRONMENT_VARIABLES.md)): `NODE_ENV=production`,
+   `SESSION_SECRET`, and the `DB_PG_*` values using the **internal** hostname.
+3. Every push to `main` deploys. `deploy.sh -prod` formats, commits, pushes, and polls `RENDER_URL`
+   (read the warning in [DEPLOY.md](./DEPLOY.md) about what it commits).
 
-Your development environment is ready. Next steps:
-
-1. Read [DEV_ENVIRONMENT_SETUP.md](./documents/DEV_ENVIRONMENT_SETUP.md) for detailed explanations
-2. Read [MULTI_APP_ARCHITECTURE.md](./documents/MULTI_APP_ARCHITECTURE.md) to understand the database design
-3. Read [LEITNER_SYSTEM.md](./documents/LEITNER_SYSTEM.md) to understand the study methodology
-4. Check [ROADMAP.md](./documents/ROADMAP.md) for Phase 2 (Authentication) implementation
-5. Begin Phase 2 development with the todos
-
----
-
-## Troubleshooting
-
-| Problem                          | Solution                                                                |
-| -------------------------------- | ----------------------------------------------------------------------- |
-| "ENOTFOUND" error                | Check DATABASE_URL host is correct in .env                              |
-| "password authentication failed" | Copy password from Render dashboard (check special chars)               |
-| "port 5000 already in use"       | Change PORT in .env or kill process: `lsof -i :5000`                    |
-| ".env not being read"            | Ensure `require('dotenv').config()` at top of server.js, restart server |
-| Can't see tables in pgAdmin      | Right-click schema → Refresh, verify DB_SCHEMA in .env                  |
-
----
-
-## Documentation Map
-
-**For Setup Issues:**
-
-- [DEV_ENVIRONMENT_SETUP.md](./documents/DEV_ENVIRONMENT_SETUP.md) - Detailed setup guide
-- [MULTI_APP_ARCHITECTURE.md](./documents/MULTI_APP_ARCHITECTURE.md) - Database design
-
-**For Development:**
-
-- [LEITNER_SYSTEM.md](./documents/LEITNER_SYSTEM.md) - Study methodology
-- [DATABASE_SCHEMA.md](./documents/DATABASE_SCHEMA.md) - Database structure
-- [API_ENDPOINTS.md](./documents/API_ENDPOINTS.md) - API specification
-- [ROADMAP.md](./documents/ROADMAP.md) - Development phases
-
-**For Testing & Deployment:**
-
-- [TESTING_STRATEGY.md](./documents/TESTING_STRATEGY.md) - Test framework & examples
-- [DEPLOYMENT_STRATEGY.md](./documents/DEPLOYMENT_STRATEGY.md) - Production deployment
-- [QUICK_REFERENCE.md](./documents/QUICK_REFERENCE.md) - Common commands
-
----
-
-**Questions?** Check the documentation files for detailed explanations of each step.
+Local dev, preview, and production all use the **same** database, so test data is shared.

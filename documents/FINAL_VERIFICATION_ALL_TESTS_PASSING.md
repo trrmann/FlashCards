@@ -1,5 +1,9 @@
 # ✅ FINAL VERIFICATION: All Filter Tests PASSING
 
+> **Historical record (2026-10-30).** Test log. It reflects the code at that time and is kept for history.
+> Reviewed against the code on 2026-11-03. Some semantics changed since (see CORRECTED_FILTER_SEMANTICS banner).
+> Current reference: [FILTER_IMPLEMENTATION.md](./FILTER_IMPLEMENTATION.md).
+
 **Date:** 2026-10-30  
 **Status:** ALL TESTS PASSING ✅  
 **Test Method:** Database queries + Live Browser UI verification

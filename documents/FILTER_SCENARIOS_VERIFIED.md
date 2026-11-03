@@ -1,5 +1,9 @@
 # Filter Scenarios - Verified Test Results
 
+> **Historical record (2026-10-30).** Test log. It reflects the code at that time and is kept for history.
+> Reviewed against the code on 2026-11-03. Card visibility has since expanded to accepted shares and public cards, so counts would differ today.
+> Current reference: [FILTER_IMPLEMENTATION.md](./FILTER_IMPLEMENTATION.md).
+
 **Test Date:** Current Session  
 **Tester:** Copilot Code Review  
 **Status:** ✅ ALL TESTS PASSING

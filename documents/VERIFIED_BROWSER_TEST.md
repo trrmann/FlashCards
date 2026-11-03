@@ -1,5 +1,9 @@
 # FLASHCARD PRACTICE SYSTEM - VERIFIED BROWSER TEST RESULTS
 
+> **Historical record (2026-10-30).** Browser test log. It reflects the code at that time and is kept for history.
+> Reviewed against the code on 2026-11-03. IDs and counts are from that day's database.
+> Current reference: [LEITNER_SYSTEM.md](./LEITNER_SYSTEM.md).
+
 **Date:** 2026-10-30  
 **Status:** ✅ TESTED IN LIVE BROWSER WITH USER LOGGED IN
 
@@ -10,7 +14,7 @@
 - User: tmann (tracy.mann1@adusa.com)
 - Page: http://localhost:5000/practice
 - Test Method: Live browser interaction + page reading
-- Database: Render PostgreSQL (dpg-dbhnuks9v7es73beg8mg-a.virginia-postgres.render.com)
+- Database: Render PostgreSQL (<db-host>.virginia-postgres.render.com)
 
 ---
 

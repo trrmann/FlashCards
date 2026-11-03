@@ -2,7 +2,102 @@
 
 ## high pri
 
-_(none open)_
+### 1. Verify current production functionality (gate: do this before other changes)
+
+No new features or refactors until production has been checked end to end. Smoke check on
+2026-11-03 (read-only): `/api/health` healthy, 7 users, no DB expiry warning, all pages respond
+(`/practice` redirects to login when signed out, as expected).
+
+Decide first: deploy the pending review fixes (backup-import user merge + schema order) before
+verifying, since the failed backup import on Render needs the merge fix to complete.
+
+Checklist (signed in on the Render URL, as a normal user and as an admin):
+
+- [ ] Login / logout; redirect to last page visited after login
+- [ ] Home: Study Status dashboard (overall, class → lesson, category)
+- [ ] Entries: create each question type (standard, true/false, multiple choice incl. select-all, audio),
+      with image / recorded audio / TTS blocks; edit; delete; storage bar
+- [ ] Entries: make public / private (bulk), share to users (bulk), Public Cards remove/restore
+- [ ] Entries: export (JSON + ZIP) and re-import
+- [ ] Profile: accept / reject pending shares; profile + password change; directory visibility
+- [ ] Practice: filters, due cards, repetitions (3/2/1), none/all of the above, listen mode, catch-up
+- [ ] Quiz: start with filters, answer, submit, history
+- [ ] Admin: create / disable / enable / promote / demote / reset stats / storage limit
+- [ ] Admin: backup download (JSON + ZIP) and import (re-run of the failed import after the fix)
+
+### 2. Data safety for the monthly database reset (after the gate; most urgent)
+
+The Render free database's data is deleted every month ([CODING_STANDARDS.md § 0.7](./CODING_STANDARDS.md)).
+
+- [x] Add `public_card_removals` to backup/restore (2026-11-03)
+- [x] Automated round-trip test: `npm run test:roundtrip` (local DB; also run by `deploy.sh -preview`) (2026-11-03)
+- [ ] Make recovery onto an empty database a documented, single procedure (first admin + import), ideally scripted
+- [ ] Backup routine: a fresh full backup (JSON + ZIP) before every prod release and before each `DB_PG_EXPIRE`;
+      keep `DB_PG_EXPIRE` current for each new database
+- [ ] Consider making the import transactional (all-or-nothing) and reporting a per-table summary
+
+### 3. Separate the IAM and make it multi-app, with organizations and groups, and bring in WurmTools' IAM
+
+Requirement: [CODING_STANDARDS.md § 0.8](./CODING_STANDARDS.md). Design, owner decisions, and phases:
+[IAM_MULTI_APP_DESIGN.md](./IAM_MULTI_APP_DESIGN.md). Built and tested first on the local scratch DB
+([LOCAL_DATABASE.md](./LOCAL_DATABASE.md)). Nothing reaches the shared DB before items 1–2.
+
+- [x] Owner decisions: separate schemas in one DB; groups as proposed; management only first (group isolation later); admin levels approved; local scratch DB approved
+- [x] Local scratch PostgreSQL set up (`local-db.sh`), fresh-bootstrap verified
+- [x] WurmTools IAM reviewed and mapped into the design
+- [x] Decided: separate IAM service (2026-11-03)
+- [ ] Phase 1: `iam`/`flashcards` schemas, no cross-domain SQL, cascade deletes via FK (local DB)
+- [ ] Phase 2: applications, app access, app-scoped roles, orgs/groups management, backup v3
+- [ ] Phase 3: IAM service, tokens, MFA, invitations, role requests, impersonation + audit, throttling, resource grants
+- [ ] Phase 4: WurmTools on the shared IAM (in the WurmTools refactor) + import of its local identity files
+- [ ] Phase 5: group-level data isolation
+
+### 4. Bring the code into line with the core coding standards (after the gate)
+
+[CODING_STANDARDS.md § 0](./CODING_STANDARDS.md) was adopted on 2026-11-03. The audit at the end of that
+document lists every current violation by file and line. Suggested order:
+
+- [ ] Deploy pipeline (0.5): dev runs no checks; prod commits with a real message (no blanket `git add .`
+      or hard-coded co-author); post-deploy verification on Render (health, every page, read-only API checks)
+- [ ] Test isolation first (0.6): dedicated test accounts and cleanup, because the database is shared with production
+- [ ] Preview suite (0.6): signed-in page coverage (user and admin), OOP API test suite for every endpoint,
+      Firefox equivalents (axe, memory, CSS), W3C Nu HTML Checker and W3C CSS Validator on every page and stylesheet
+- [ ] Inline SQL → nullable-parameter queries in the `.sql` files (practice, entries, quiz, users, backup)
+- [ ] Responsive: convert `max-width` rules to mobile-first, split out `large-screen.css`, review pages at 5 tiers
+- [ ] OOP: move inline page scripts into classes in `public/js/`; turn helper closures into methods
+
+### 5. Generated audio voices with Kokoro (after the gate)
+
+From notes.md: "ai generated audio voices library: kakoro ai - open source". This is assumed to be
+**Kokoro**, the open-weight text-to-speech model (Kokoro-82M, Apache-2.0). Confirm before starting.
+
+Goal: natural-sounding generated voices for `text_tts` question/answer/option blocks, which today use
+the browser's Web Speech voices (quality varies by device). To evaluate first:
+
+- Where inference runs: in the browser (JS/ONNX port) vs. on the server. Render free-tier memory/CPU
+  limits may rule out server-side inference.
+- Language coverage vs. card `lang` / `answer_lang` (TTS currently follows these per side).
+- Generate on demand vs. pre-generate and store as `audio` media (counts against the storage quota).
+- Licensing of the chosen voices; fallback to Web Speech when unavailable.
+
+### 6. Migrate Copilot skills and tasks from the BYU-Pathway OneDrive to Claude on this machine (parked)
+
+The owner's Copilot skills, tasks, and manifest are on the **BYU-Pathway (school) OneDrive**. The sync client
+needs school admin approval, which isn't available, so access is **web only**.
+
+- Known older copy (2026-08-05, personal OneDrive, `~/OneDrive-Personal/Desktop/.copilot/.copilot/`): 132 skills
+  (math/sciences, a large `project-management-*` family, `tools-apps-*`, skill builders, `ai-task-tracker`) and a
+  `tasks/` store (active/archive/templates). Skills already use the Agent Skills format (`SKILL.md` with
+  `name`/`description` front matter), so they map onto Claude skills (`~/.claude/skills/<name>/SKILL.md`). Paths
+  (`~/.copilot/tasks`) and Windows-only parts (PowerShell, `.bat`/`.vbs`) need adapting.
+- **Do not migrate** session databases, tokens (`run/ws.token`), logs, plugins, or the password/KeePass scripts.
+- To resume, use either:
+  1. The owner downloads the folder from their BYU-Pathway OneDrive web app into `~/Downloads`, or
+  2. A sign-in window: Chrome with a throwaway profile and remote debugging on 127.0.0.1. The owner signs in
+     with their BYU-Pathway email and **leaves the window open**, then a read-only helper finds and downloads
+     the files via the SharePoint web API.
+- Then: verify against the manifest, decide global (`~/.claude/skills`) vs. project skills and a Linux home for
+  tasks, migrate, and report what was adapted or left out.
 
 ## resolved
 
@@ -102,7 +197,74 @@ Resolved on 2026-11-03 (round 4):
 
 ## open
 
-_(none open)_
+Found in the code/documentation review of 2026-11-03 (not yet fixed):
+
+- **Security: live DB password in public git history.** `.env.backup` (tracked despite being
+  git-ignored) and `documents/RENDER_ENVIRONMENT_VARIABLES.md` contained the real `DB_PG_PASSWORD`.
+  The repo is public. Both are now cleaned/untracked, but the history still has it: **rotate the
+  Render DB password**, then optionally purge history (`git filter-repo`). The committed
+  `documents/flashcards-backup-2026-11-02.json` (users' emails + password hashes) is likewise untracked now but in history.
+- **New cards are always private.** `insert_flashcard` hard-codes `is_private = true`, so the
+  create form's "Private" checkbox (sent as `is_private`) is ignored; entries import also creates private cards.
+- **`GET /api/entries/shared-by-me` is unreachable.** It is registered after `GET /:flashcardId`,
+  which captures it (non-UUID id → 500). Unused by the UI; move it above `/:flashcardId` or remove it.
+- **Short quizzes.** `selectRandomQuestions` takes `floor(target/3)` cards per difficulty bucket with
+  no backfill; since difficulty rarely changes (next item) most cards sit at 3.00 ("medium"), so a
+  pool of 40 cards yields only 6 questions.
+- **Difficulty never updates in normal practice.** Only the legacy (no `sessionStartTime`) answer path
+  calls `updateDifficultyScore`; the UI always uses session mode, and nothing calls the difficulty endpoints.
+- **Review schedule vs. due cards disagree on Fridays.** `getReviewSchedule` shows Box 2 as due on
+  Friday but `getDueCardsForToday` excludes it (Box 2 = even `getDay()`: Sun/Tue/Thu/Sat). The code
+  comment claiming "Mon, Wed, Fri, Sun" is wrong.
+- **Catch-up mode ignores filters.** `getNextCatchUpCard(userId)` is not passed the active filters.
+- **`GET /api/entries/:id/options` has no access check** (any logged-in user can read any card's options).
+- **Grading is client-side.** Practice and quiz trust `isCorrect` / `is_correct` from the browser.
+- **Password change does not require the current password** (`PUT /api/users/password`).
+- **`/api/quiz/:id/results` `best_score` is the most recent result**, not the highest.
+- **`appSiteData` is a shared singleton**: concurrent requests can see each other's page title / user name.
+- **`deploy.sh -prod` runs `git add .`**, committing all pending (incl. untracked) work as "Auto-format".
+- **`.env.example` lists many unused keys** (`DATABASE_URL`, `JWT_*`, `DB_SCHEMA`, `CORS_*`, …).
+- **Unused leftovers:** `src/data/test.db`, `leitner_boxes` and `lessons` tables, `flashcards.is_public`/
+  `difficulty`/`lesson_id`, `flashcard_leitner_progress.session_streak`, `user_rights`/`rights` (no routes).
+
+Resolved on 2026-11-03 (data safety, part 1):
+
+- ~~backups omit `public_card_removals`~~ and ~~no automated proof that a backup restores~~
+  **Resolved:** `public_card_removals` added to `BackupService.appTables`. New OOP test
+  `tests/backupRoundTripTest.mjs` (`npm run test:roundtrip`, which runs via `local-db.sh run` and refuses any non-local
+  target) seeds synthetic data into every written table, exports JSON + ZIP, wipes the schema, bootstraps, re-creates
+  the admin under a new id, imports, and compares every database table (read directly, not via the backup's own
+  table list) plus the media bytes; then re-imports to prove idempotency. Result: 84/84 checks. Negative checks:
+  removing the table from the backup fails 2 checks; disabling the user merge reproduces the Render error
+  (`users_username_key` + FK failures). `deploy.sh -preview` now runs it after the preview suite.
+
+Resolved on 2026-11-03 (scripts folder):
+
+- ~~move deploy.sh into a new src/scripts/sh folder and make every script in it runnable from anywhere in the VS Code terminal, keeping the existing `deploy` command~~
+  **Resolved:** `git mv deploy.sh src/scripts/sh/deploy.sh`; the script now resolves the project root
+  from its own (symlink-resolved) location instead of assuming it lives at the root.
+  `.vscode/settings.json` and `FlashCards.code-workspace` prepend `${workspaceFolder}/src/scripts/sh`
+  to the terminal `PATH`. The `deploy` alias and `PATH` line in `~/.bashrc` were repointed to the new
+  folder (backup: `~/.bashrc.bak-flashcards-2026-11-03`). Verified from `/tmp`: `deploy`, `deploy.sh`,
+  and a throwaway new script all ran, both via `.bashrc` and via the VS Code `PATH` alone
+  (no `.bashrc`), and the deploy log still resolved to `<project>/.deployment/`.
+
+Resolved on 2026-11-03 (review pass):
+
+- ~~admin backup import into a new Render database fails: "Failed to import row in flashcards: … violates
+  foreign key constraint flashcards_user_id_fkey" (141 warnings)~~
+  **Resolved:** users were upserted by `user_id` only; an admin re-created in the new database has the
+  same username but a new id, so the backup's user row hit the `users` unique constraint and every
+  dependent row lost its foreign key. `BackupService.importApplicationData` now matches backup users to
+  existing accounts by username (case-insensitive, then email) and rewrites `user_id`, `created_by`,
+  `owner_id`, `recipient_id` throughout the backup before importing. Verified with the 2026-11-02
+  backup against a simulated DB holding a re-created `tmann`: 500 failed rows before → 0 after
+  (134 flashcards, 119 shares, 222 progress rows imported).
+- ~~fresh database: first start reports schema bootstrap failure~~
+  **Resolved:** `ALTER TABLE flashcard_options …` ran before `CREATE TABLE flashcard_options`; moved after it.
+- Documentation rewritten/corrected against the code (API, schema, architecture, structure, Leitner,
+  difficulty, options, repetitions, setup, env vars, deploy, testing); point-in-time reports and
+  superseded plans are bannered.
 
 Resolved on 2026-11-03 (round 8):
 
