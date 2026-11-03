@@ -244,7 +244,7 @@ VALUES ($1, $2, $3, $4, $5, $6);
 DELETE FROM flashcard_options WHERE flashcard_id = $1;
 
 -- Query: select_options_for_cards
-SELECT option_id, flashcard_id, option_text, is_correct, sort_order
+SELECT option_id, flashcard_id, option_text, is_correct, sort_order, option_form, option_media_id
 FROM flashcard_options
 WHERE flashcard_id = ANY($1::uuid[])
 ORDER BY flashcard_id, sort_order, created_at;
@@ -262,6 +262,9 @@ RETURNING media_id;
 
 -- Query: select_media
 SELECT media_id, user_id, kind, data FROM media WHERE media_id = $1;
+
+-- Query: select_media_by_ids
+SELECT media_id, user_id, kind, data FROM media WHERE user_id = $1 AND media_id = ANY($2);
 
 -- Query: delete_unreferenced_media
 DELETE FROM media m

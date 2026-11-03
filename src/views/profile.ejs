@@ -175,18 +175,26 @@
           <div class="form-section">
             <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem;">Backup &amp; Restore</h4>
             <p style="margin-bottom: 1rem; color: #64748b;">
-              Download the entire dataset (users and app data) as JSON, or import a backup.
-              Importing updates existing records to the imported values and adds new ones;
-              nothing is deleted.
+              The backup is two linked files: a data JSON and a media ZIP
+              (media referenced by id). Download both; import them together to
+              restore media. Importing updates existing records to the
+              imported values and adds new ones; nothing is deleted.
             </p>
             <p style="margin-bottom: 1rem;">
               <a href="/api/admin/backup/download" download>
-                <button type="button">⬇️ Download Full Backup (JSON)</button>
+                <button type="button">⬇️ Download Backup Data (JSON)</button>
+              </a>
+              <a href="/api/admin/backup/download-media" download>
+                <button type="button">⬇️ Download Backup Media (ZIP)</button>
               </a>
             </p>
             <div class="form-group">
-              <label for="backupFile">Import Backup (JSON)</label>
+              <label for="backupFile">Import Backup Data (JSON)</label>
               <input id="backupFile" name="backupFile" type="file" accept="application/json,.json" />
+            </div>
+            <div class="form-group">
+              <label for="backupMediaFile">Import Backup Media (ZIP, optional)</label>
+              <input id="backupMediaFile" name="backupMediaFile" type="file" accept="application/zip,.zip" />
             </div>
             <button type="button" id="importBackupBtn">⬆️ Import Backup</button>
             <div id="backupStatus"></div>
@@ -715,13 +723,25 @@
           // Accept either a raw backup object or an export endpoint response
           const backup = parsed.backup || parsed;
 
+          // Two-file model: attach the linked media ZIP when provided
+          let mediaArchive = null;
+          const mediaInput = document.getElementById('backupMediaFile');
+          if (mediaInput && mediaInput.files && mediaInput.files.length > 0) {
+            mediaArchive = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(String(reader.result).split(',')[1]);
+              reader.onerror = reject;
+              reader.readAsDataURL(mediaInput.files[0]);
+            });
+          }
+
           statusDiv.innerHTML = '<p>Importing…</p>';
 
           const response = await fetch('/api/admin/backup/import', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ backup }),
+            body: JSON.stringify({ backup, mediaArchive }),
           });
 
           const data = await response.json();

@@ -9,6 +9,7 @@
 
 import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
 import { identityManagementDb } from '../db/identityManagementDatabase.mjs';
+import { mediaArchiveService } from './mediaArchiveService.mjs';
 
 class BackupService {
   static queries = flashCardsDb.constructor.loadNamedSqlStatements(
@@ -28,6 +29,7 @@ class BackupService {
   static appTables = [
     'user_rights',
     'lessons',
+    'media',
     'flashcards',
     'flashcard_options',
     'flashcard_shares',
@@ -115,15 +117,34 @@ class BackupService {
       }
     }
 
+    // Two-file model: the JSON holds media rows without their binary data;
+    // the data lives in the linked media ZIP (exportMediaArchive), matched
+    // back on import by media id.
+    const mediaRows = backup.data.media || [];
+    backup.mediaManifest = mediaArchiveService.buildManifest(mediaRows);
+    backup.data.media = mediaRows.map(({ data: _data, ...rest }) => rest);
+
     backup.metadata = {
       totalTables: tables.length,
       totalUsers: backup.data.users ? backup.data.users.length : 0,
       totalFlashcards: backup.data.flashcards ? backup.data.flashcards.length : 0,
       totalQuizzes: backup.data.quizzes ? backup.data.quizzes.length : 0,
       totalQuizResults: backup.data.quiz_results ? backup.data.quiz_results.length : 0,
+      totalMedia: mediaRows.length,
     };
 
     return backup;
+  }
+
+  /**
+   * Export the media half of the two-file backup: a ZIP of every media row,
+   * each stored as media/<media_id>.<ext>, linked to the JSON by media id.
+   */
+  async exportMediaArchive() {
+    const dataResult = await this.database.query(
+      this.constructor.queries.select_all_rows_template.replace('{{table}}', 'media')
+    );
+    return mediaArchiveService.buildArchive(dataResult.rows);
   }
 
   /**
@@ -179,12 +200,64 @@ class BackupService {
    * @param {object} backup - Backup object from exportApplicationData
    * @returns {Promise<object>} Import results
    */
-  async importApplicationData(backup) {
+  async importApplicationData(backup, mediaArchive = null) {
     const results = {
       imported: {},
       failed: {},
       warnings: [],
     };
+
+    // Two-file model: media binary data arrives in the linked ZIP and is
+    // matched back onto the JSON's media rows by media id. Legacy single-file
+    // backups that still carry inline data import unchanged.
+    let archiveMedia = new Map();
+    if (mediaArchive) {
+      archiveMedia = mediaArchiveService.parseArchive(mediaArchive);
+    }
+    if (Array.isArray(backup.data.media)) {
+      const resolved = [];
+      for (const row of backup.data.media) {
+        if (row.data) {
+          resolved.push(row);
+          continue;
+        }
+        const item = archiveMedia.get(row.media_id);
+        if (item) {
+          resolved.push({ ...row, data: item.dataUrl });
+        } else {
+          results.warnings.push(
+            `Skipped media ${row.media_id}: no data in backup and no matching archive item`
+          );
+        }
+      }
+      backup.data.media = resolved;
+    }
+
+    // Scrub media references that will not resolve after import (media absent
+    // from both the backup and this install) so card/option upserts do not
+    // fail on foreign keys; the reference columns are nullable by design.
+    const availableMedia = new Set((backup.data.media || []).map((row) => row.media_id));
+    try {
+      const existing = await this.database.query(
+        this.constructor.queries.select_all_rows_template.replace('{{table}}', 'media')
+      );
+      for (const row of existing.rows) availableMedia.add(row.media_id);
+    } catch {
+      // media table absent on this install; scrub all references
+    }
+    const scrubReference = (row, column) => {
+      if (row[column] && !availableMedia.has(row[column])) {
+        results.warnings.push(`Cleared ${column} ${row[column]}: media not available`);
+        row[column] = null;
+      }
+    };
+    for (const row of backup.data.flashcards || []) {
+      scrubReference(row, 'question_media_id');
+      scrubReference(row, 'answer_media_id');
+    }
+    for (const row of backup.data.flashcard_options || []) {
+      scrubReference(row, 'option_media_id');
+    }
 
     const idMaps = {}; // table -> Map(exported id -> current id)
 

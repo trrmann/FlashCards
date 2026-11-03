@@ -499,6 +499,31 @@ class AdminRouter extends BaseRouter {
     });
 
     /**
+     * GET /api/admin/backup/download-media
+     * Download the media half of the two-file backup: a ZIP of all media,
+     * linked to the backup JSON by media id (media/<media_id>.<ext>).
+     */
+    router.get('/backup/download-media', requireAuth, requireAdmin, async (req, res) => {
+      try {
+        const archive = await backupService.exportMediaArchive();
+        const stamp = new Date().toISOString().slice(0, 10);
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="flashcards-backup-media-${stamp}.zip"`
+        );
+        return res.status(200).send(archive);
+      } catch (error) {
+        console.error('Backup media download error:', error.message);
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to download media archive',
+          error: error.message,
+        });
+      }
+    });
+
+    /**
      * POST /api/admin/backup/import
      * Import a backup with upsert semantics: existing records are updated
      * to the imported values, new records are inserted, nothing is deleted.
@@ -510,7 +535,7 @@ class AdminRouter extends BaseRouter {
       express.json({ limit: '50mb' }),
       async (req, res) => {
         try {
-          const { backup } = req.body;
+          const { backup, mediaArchive } = req.body;
 
           if (!backup || !backup.data) {
             return res.status(400).json({
@@ -519,7 +544,7 @@ class AdminRouter extends BaseRouter {
             });
           }
 
-          const results = await backupService.importApplicationData(backup);
+          const results = await backupService.importApplicationData(backup, mediaArchive || null);
 
           const totalImported = Object.values(results.imported).reduce((a, b) => a + b, 0);
 

@@ -102,9 +102,36 @@ Resolved on 2026-11-03 (round 4):
 
 ## open
 
-- export and import should use two linked file types: a JSON for the data and a
-  zip of the media for the media, bidirectional, at all import and export points
-  in the app (entries export/import and admin backup download/import)
+_(none open)_
+
+Resolved on 2026-11-03 (round 7):
+
+- ~~export and import should use two linked file types: a JSON for the data and a zip of the media for the media, bidirectional, at all import and export points in the app (entries export/import and admin backup download/import)~~
+  **Resolved:** Both import/export points now use the two-file model, linked by
+  media id (the JSON references media ids; the ZIP stores each item as
+  media/&lt;media_id&gt;.&lt;ext&gt; with real binary content), bidirectionally:
+  - **Entries:** GET /api/entries/export produces a v2 JSON (blocks, languages,
+    answer modes, authored options, media manifest) and
+    GET /api/entries/export/media the linked ZIP, both honoring the same
+    filters; the Export button downloads both files when media exists. Import
+    accepts the JSON plus the ZIP selected together (file picker takes
+    .json/.zip, multiple); media references resolve against the archive,
+    imports are quota-checked including media bytes, and a JSON-only import
+    still brings in all text content with a per-media skip count.
+  - **Admin backup:** the backup JSON now includes the media table (previously
+    missing from backups entirely) with binary data stripped into the linked
+    ZIP (GET /api/admin/backup/download-media, download button next to the
+    JSON one); import accepts the optional ZIP, restores media data by id, and
+    when the ZIP is absent it scrubs dangling media references so card/option
+    upserts never fail on foreign keys (warned per item, nothing else lost).
+    Shared machinery is the new MediaArchiveService (dataURL&lt;-&gt;binary, ZIP
+    build/parse, manifest). Verified by full roundtrips: entries exported
+    (3 cards, 4 media), wiped, reimported from the two files with all forms and
+    media intact; JSON-only import skipped exactly the 4 media; admin backup
+    exported both files (data stripped from JSON, 4 ZIP items), wiped, restored
+    140 flashcards + 4 media with FK references intact and 0 warnings; scrub
+    path produced warnings instead of failures; browser test confirmed the
+    Export button downloads both files and the import picker accepts both.
 
 ### multimedia question/answer unified model
 

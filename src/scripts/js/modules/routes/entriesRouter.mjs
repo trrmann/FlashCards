@@ -7,6 +7,7 @@ import express from 'express';
 import { BaseRouter } from './baseRouter.mjs';
 import { entriesService } from '../auth/entriesService.mjs';
 import { userAuthService } from '../auth/userAuthService.mjs';
+import { mediaArchiveService } from '../auth/mediaArchiveService.mjs';
 
 class EntriesRouter extends BaseRouter {
   registerRoutes() {
@@ -126,9 +127,43 @@ class EntriesRouter extends BaseRouter {
     });
 
     /**
+     * Collect the user's cards (optionally filtered) together with their
+     * options and the ids of every media item the set references. Shared by
+     * the data (JSON) and media (ZIP) halves of the two-file export.
+     */
+    this.collectExportSet = async (userId, query) => {
+      const filters = {};
+      if (query.class) filters.class = query.class;
+      if (query.lesson) filters.lesson = query.lesson;
+      if (query.category) filters.category = query.category;
+
+      const flashcards =
+        Object.keys(filters).length > 0
+          ? await entriesService.getUserFlashcardsFiltered(userId, filters)
+          : await entriesService.getUserFlashcards(userId);
+
+      const optionsByCard = await entriesService.getOptionsForCards(
+        flashcards.map((card) => card.flashcard_id)
+      );
+
+      const mediaIds = new Set();
+      for (const card of flashcards) {
+        if (card.question_media_id) mediaIds.add(card.question_media_id);
+        if (card.answer_media_id) mediaIds.add(card.answer_media_id);
+        for (const option of optionsByCard.get(card.flashcard_id) || []) {
+          if (option.option_media_id) mediaIds.add(option.option_media_id);
+        }
+      }
+
+      return { filters, flashcards, optionsByCard, mediaIds: [...mediaIds] };
+    };
+
+    /**
      * GET /api/entries/export
-     * Export user's entries as JSON
-     * Query params: ?class=Biology101&lesson=Lesson5&category=Taxonomy (optional for filtered export)
+     * Export the data half of the two-file export: a JSON of the user's
+     * entries (blocks, languages, options) referencing media by id, with a
+     * manifest of the linked media ZIP (GET /api/entries/export/media).
+     * Query params: ?class=&lesson=&category= (optional filtered export)
      */
     router.get('/export', async (req, res) => {
       try {
@@ -136,27 +171,19 @@ class EntriesRouter extends BaseRouter {
           return res.status(401).json({ status: 'error', message: 'Not authenticated' });
         }
 
-        // Extract filter parameters
-        const filters = {};
-        if (req.query.class) filters.class = req.query.class;
-        if (req.query.lesson) filters.lesson = req.query.lesson;
-        if (req.query.category) filters.category = req.query.category;
+        const { filters, flashcards, optionsByCard, mediaIds } = await this.collectExportSet(
+          req.session.userId,
+          req.query
+        );
+        const mediaRows = await entriesService.getMediaByIds(req.session.userId, mediaIds);
 
-        // Get entries
-        let flashcards;
-        if (Object.keys(filters).length > 0) {
-          flashcards = await entriesService.getUserFlashcardsFiltered(req.session.userId, filters);
-        } else {
-          flashcards = await entriesService.getUserFlashcards(req.session.userId);
-        }
-
-        // Create export object
         const exportData = {
-          version: '1.0',
+          version: '2.0',
           exportedAt: new Date().toISOString(),
           exportedBy: req.session.username || req.session.userId,
           filters: Object.keys(filters).length > 0 ? filters : null,
           count: flashcards.length,
+          media: mediaArchiveService.buildManifest(mediaRows),
           entries: flashcards.map((card) => ({
             question: card.question,
             answer: card.answer,
@@ -164,10 +191,23 @@ class EntriesRouter extends BaseRouter {
             category: card.category,
             class: card.class,
             is_private: card.is_private,
+            question_type: card.question_type,
+            lang: card.lang,
+            answer_lang: card.answer_lang,
+            answer_mode: card.answer_mode,
+            question_form: card.question_form,
+            question_media: card.question_media_id || null,
+            answer_form: card.answer_form,
+            answer_media: card.answer_media_id || null,
+            options: (optionsByCard.get(card.flashcard_id) || []).map((option) => ({
+              text: option.option_text,
+              isCorrect: option.is_correct,
+              form: option.option_form,
+              media: option.option_media_id || null,
+            })),
           })),
         };
 
-        // Send as downloadable JSON file
         res.setHeader('Content-Type', 'application/json');
         res.setHeader(
           'Content-Disposition',
@@ -181,9 +221,40 @@ class EntriesRouter extends BaseRouter {
     });
 
     /**
+     * GET /api/entries/export/media
+     * Export the media half of the two-file export: a ZIP of every media
+     * item referenced by the (optionally filtered) entry set, each stored as
+     * media/<media_id>.<ext> so the JSON's media references resolve to it.
+     */
+    router.get('/export/media', async (req, res) => {
+      try {
+        if (!req.session.userId) {
+          return res.status(401).json({ status: 'error', message: 'Not authenticated' });
+        }
+
+        const { mediaIds } = await this.collectExportSet(req.session.userId, req.query);
+        const mediaRows = await entriesService.getMediaByIds(req.session.userId, mediaIds);
+        const archive = mediaArchiveService.buildArchive(mediaRows);
+
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="flashcards-media-${Date.now()}.zip"`
+        );
+        return res.status(200).send(archive);
+      } catch (error) {
+        console.error('Export media error:', error.message);
+        return res.status(500).json({ status: 'error', message: 'Failed to export media' });
+      }
+    });
+
+    /**
      * POST /api/entries/import
-     * Import entries from JSON file
-     * Body: { entries: [...] }
+     * Import the two linked files: the entries JSON (body.entries) and the
+     * optional media ZIP (body.mediaArchive, base64). Media references in the
+     * JSON resolve to archive items by media id; without the archive the text
+     * content still imports and the media references are skipped.
+     * Body: { entries: [...], mediaArchive: '<base64 zip>' }
      */
     router.post('/import', express.json({ limit: '50mb' }), async (req, res) => {
       try {
@@ -191,7 +262,32 @@ class EntriesRouter extends BaseRouter {
           return res.status(401).json({ status: 'error', message: 'Not authenticated' });
         }
 
-        const { entries } = req.body;
+        const { entries, mediaArchive } = req.body;
+
+        let archiveMedia = new Map();
+        if (mediaArchive) {
+          try {
+            archiveMedia = mediaArchiveService.parseArchive(mediaArchive);
+          } catch (archiveError) {
+            return res.status(400).json({
+              status: 'error',
+              message: `Invalid media archive: ${archiveError.message}`,
+            });
+          }
+        }
+
+        // Turn an exported block reference into a create/update block
+        // descriptor, resolving media ids against the uploaded archive.
+        let skippedMedia = 0;
+        const blockFrom = (form, mediaRef) => {
+          if (!form || form === 'text' || form === 'text_tts') return { form: form || 'text' };
+          const item = mediaRef ? archiveMedia.get(mediaRef) : null;
+          if (!item) {
+            if (mediaRef) skippedMedia += 1;
+            return { form: 'text' };
+          }
+          return { form, media: item.dataUrl };
+        };
 
         if (!Array.isArray(entries)) {
           return res.status(400).json({
@@ -207,12 +303,17 @@ class EntriesRouter extends BaseRouter {
           });
         }
 
-        // Validate entries
+        // Validate entries: answer text is required; question text may be
+        // empty for audio questions whose recording is in the archive
         const validEntries = entries.filter((entry) => {
+          const hasQuestionText = entry.question && typeof entry.question === 'string';
+          const hasAudioQuestion =
+            entry.question_form === 'audio' &&
+            entry.question_media &&
+            archiveMedia.has(entry.question_media);
           return (
-            entry.question &&
+            (hasQuestionText || hasAudioQuestion) &&
             entry.answer &&
-            typeof entry.question === 'string' &&
             typeof entry.answer === 'string'
           );
         });
@@ -224,6 +325,21 @@ class EntriesRouter extends BaseRouter {
           });
         }
 
+        // Storage quota enforcement across the whole import payload
+        const payloadBytes =
+          validEntries.reduce(
+            (sum, entry) => sum + (entry.question?.length || 0) + (entry.answer?.length || 0),
+            0
+          ) + [...archiveMedia.values()].reduce((sum, item) => sum + item.dataUrl.length, 0);
+        const used = await entriesService.getStorageUsage(req.session.userId);
+        const limit = await userAuthService.getStorageLimit(req.session.userId);
+        if (limit !== null && used + payloadBytes > limit) {
+          return res.status(413).json({
+            status: 'error',
+            message: `Storage limit exceeded: using ${used} of ${limit} bytes; this import needs ${payloadBytes} more. Remove elements or ask an admin to raise your limit.`,
+          });
+        }
+
         // Import entries (create new or update existing based on question)
         const importedCards = [];
         const updatedCards = [];
@@ -231,14 +347,31 @@ class EntriesRouter extends BaseRouter {
 
         for (const entry of validEntries) {
           try {
-            // Check if flashcard with same question already exists
-            const existingCard = await entriesService.getFlashcardByQuestion(
-              req.session.userId,
-              entry.question
-            );
+            const questionBlock = blockFrom(entry.question_form, entry.question_media);
+            const answerBlock = blockFrom(entry.answer_form, entry.answer_media);
+            const options = Array.isArray(entry.options)
+              ? entry.options.map((option) => ({
+                  text: option.text,
+                  isCorrect: option.isCorrect,
+                  ...blockFrom(option.form, option.media),
+                }))
+              : undefined;
+
+            // Check if a flashcard with the same question already exists
+            const existingCard = entry.question
+              ? await entriesService.getFlashcardByQuestion(req.session.userId, entry.question)
+              : null;
 
             if (existingCard) {
-              // Update existing flashcard
+              // Update the existing flashcard, including its blocks
+              const [questionForm, questionMediaId] = await entriesService.resolveBlock(
+                req.session.userId,
+                questionBlock
+              );
+              const [answerForm, answerMediaId] = await entriesService.resolveBlock(
+                req.session.userId,
+                answerBlock
+              );
               const updated = await entriesService.updateFlashcard(
                 existingCard.flashcard_id,
                 req.session.userId,
@@ -247,24 +380,48 @@ class EntriesRouter extends BaseRouter {
                   lesson: entry.lesson || null,
                   category: entry.category || null,
                   class: entry.class || null,
+                  question_type: entry.question_type || 'standard',
+                  lang: entry.lang || 'en-US',
+                  answer_lang: entry.answer_lang || null,
+                  answer_mode: entry.answer_mode || 'choice',
+                  question_form: questionForm,
+                  question_media_id: questionMediaId,
+                  answer_form: answerForm,
+                  answer_media_id: answerMediaId,
                 }
               );
+              if (options) {
+                await entriesService.replaceFlashcardOptions(
+                  existingCard.flashcard_id,
+                  options,
+                  req.session.userId
+                );
+              }
               updatedCards.push(updated);
             } else {
-              // Create new flashcard
+              // Create a new flashcard with its blocks
               const card = await entriesService.createFlashcard(
                 req.session.userId,
-                entry.question,
+                entry.question || '',
                 entry.answer,
                 entry.lesson || null,
                 entry.category || null,
-                entry.class || null
+                entry.class || null,
+                {
+                  questionType: entry.question_type,
+                  lang: entry.lang,
+                  answerLang: entry.answer_lang,
+                  answerMode: entry.answer_mode,
+                  questionBlock,
+                  answerBlock,
+                  options,
+                }
               );
               importedCards.push(card);
             }
           } catch (error) {
             errors.push({
-              question: entry.question.substring(0, 50),
+              question: String(entry.question || '(audio question)').substring(0, 50),
               error: error.message,
             });
           }
@@ -277,6 +434,7 @@ class EntriesRouter extends BaseRouter {
           created: importedCards.length,
           updated: updatedCards.length,
           errors: errors.length > 0 ? errors : null,
+          skippedMedia: skippedMedia > 0 ? skippedMedia : 0,
           imported: importedCards,
           updatedEntries: updatedCards,
         });

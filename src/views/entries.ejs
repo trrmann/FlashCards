@@ -194,13 +194,13 @@
             <button class="btn btn-secondary" id="make-private-selected-btn" title="Make all checked flashcards private">
               🔒 Make Private
             </button>
-            <button class="btn btn-secondary" id="export-btn" title="Export all entries or filtered selection">
+            <button class="btn btn-secondary" id="export-btn" title="Export all entries or filtered selection as a data JSON plus a linked media ZIP">
               📥 Export
             </button>
-            <button class="btn btn-secondary" id="import-btn" title="Import entries from JSON file">
+            <button class="btn btn-secondary" id="import-btn" title="Import entries from a data JSON (plus its linked media ZIP, selected together)">
               📤 Import
             </button>
-            <input type="file" id="import-file-input" style="display: none;" accept=".json" />
+            <input type="file" id="import-file-input" style="display: none;" accept=".json,.zip" multiple />
           </div>
         </div>
         <div id="entries-list" class="entries-list">
@@ -2275,7 +2275,26 @@
         document.body.removeChild(link);
         URL.revokeObjectURL(downloadUrl);
 
-        alert(`✓ Exported ${data.count} flashcards`);
+        // Two-file export: when the manifest lists media, download the
+        // linked media ZIP alongside the data JSON
+        if (Array.isArray(data.media) && data.media.length > 0) {
+          const mediaUrl = `/api/entries/export/media${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+          const mediaResponse = await fetch(mediaUrl, { credentials: 'include' });
+          if (mediaResponse.ok) {
+            const zipBlob = await mediaResponse.blob();
+            const zipUrl = URL.createObjectURL(zipBlob);
+            const zipLink = document.createElement('a');
+            zipLink.href = zipUrl;
+            zipLink.download = `flashcards-media-${Date.now()}.zip`;
+            document.body.appendChild(zipLink);
+            zipLink.click();
+            document.body.removeChild(zipLink);
+            URL.revokeObjectURL(zipUrl);
+          }
+          alert(`✓ Exported ${data.count} flashcards + ${data.media.length} media items (JSON + ZIP)`);
+        } else {
+          alert(`✓ Exported ${data.count} flashcards`);
+        }
       } catch (error) {
         console.error('Export error:', error);
         alert('Export failed: ' + error.message);
@@ -2293,13 +2312,31 @@
     });
   }
 
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
   if (importFileInput) {
     importFileInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+      const files = [...e.target.files];
+      if (files.length === 0) return;
 
       try {
-        const fileContent = await file.text();
+        // Two-file import: a data JSON plus its linked media ZIP
+        const jsonFile = files.find((f) => f.name.toLowerCase().endsWith('.json'));
+        const zipFile = files.find((f) => f.name.toLowerCase().endsWith('.zip'));
+
+        if (!jsonFile) {
+          alert('Select the data JSON file (optionally together with its media ZIP).');
+          return;
+        }
+
+        const fileContent = await jsonFile.text();
         const importData = JSON.parse(fileContent);
 
         if (!importData || (!Array.isArray(importData.entries) && !Array.isArray(importData))) {
@@ -2314,25 +2351,43 @@
           return;
         }
 
-        if (!confirm(`Import ${entries.length} flashcards? This will add them to your entries.`)) {
+        const mediaCount = Array.isArray(importData.media) ? importData.media.length : 0;
+        if (mediaCount > 0 && !zipFile) {
+          if (
+            !confirm(
+              `This export references ${mediaCount} media item(s) but no media ZIP was selected. ` +
+                'Import text content only (media will be skipped)?'
+            )
+          ) {
+            return;
+          }
+        } else if (
+          !confirm(`Import ${entries.length} flashcards? This will add them to your entries.`)
+        ) {
           return;
         }
+
+        const payload = { entries };
+        if (zipFile) payload.mediaArchive = await fileToBase64(zipFile);
 
         // Send import request
         const response = await fetch('/api/entries/import', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ entries }),
+          body: JSON.stringify(payload),
         });
 
         const data = await response.json();
 
         if (data.status === 'success') {
-          const message =
+          let message =
             data.updated > 0
               ? `✓ Imported ${data.count} flashcards (${data.created} new, ${data.updated} updated)`
               : `✓ Imported ${data.count} flashcards`;
+          if (data.skippedMedia > 0) {
+            message += ` — ${data.skippedMedia} media reference(s) skipped (no matching ZIP item)`;
+          }
           alert(message);
           loadUserEntries();
         } else {

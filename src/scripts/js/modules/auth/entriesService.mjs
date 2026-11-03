@@ -168,6 +168,18 @@ class EntriesService {
   }
 
   /**
+   * Media rows (with data) for a set of ids owned by the user.
+   */
+  async getMediaByIds(userId, mediaIds) {
+    if (!mediaIds || mediaIds.length === 0) return [];
+    const result = await this.database.query(this.constructor.queries.select_media_by_ids, [
+      userId,
+      mediaIds,
+    ]);
+    return result.rows;
+  }
+
+  /**
    * Remove media rows no longer referenced by any card or option
    * (option/media replacement and card deletion leave orphans otherwise,
    * which would count against the user's storage quota).
