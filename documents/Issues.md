@@ -61,3 +61,27 @@ Resolved on 2026-11-03 (round 2):
   for that user. Also fixed in this pass: the quiz lesson dropdown failed for class
   names containing spaces (server double-encoded the class name), and the Shared
   with Me section now clears when the last shared card is removed.
+
+Resolved on 2026-11-03 (round 3):
+
+- ~~the home page should show a status dashbaord for study for this user with breakdowns for overall, per class (collapsable) + per lesson (collapsable) - integrating a catagoray status (collapsable) as well indepedenant of the class areas whereas teh lesson is dependant on the class.~~
+  **Resolved:** The home page shows a Study Status dashboard for logged-in users:
+  overall stat cards (cards, box 1/2/3, accuracy), a collapsible per-class
+  breakdown with nested per-lesson groups (lesson dependent on class), and an
+  independent collapsible per-category breakdown. Served by
+  GET /api/practice/dashboard over the user's accessible cards (owned + accepted
+  shares + public).
+- ~~there should be guidelines for teh groups on the entries page to meet a studyable count of cards (min and max)~~
+  **Resolved:** A guideline note and per-group status chips were added to the
+  entries lists. Pools are measured per class + category (lesson-independent,
+  matching the distractor rule): fewer than 2 cards = "not studyable", 2-3 =
+  "add N for full choice" (playable but degraded multiple choice), 4-20 =
+  "studyable", over 20 = "quiz subsets" (a quiz uses at most 20 cards).
+- ~~verify that this is still the actual study model based on the available cards and fix it if it is not~~
+  **Verified (no fix needed):** Empirically confirmed against the live code: a
+  1-card pool returns the insufficient-entries diagnostic; 2-3 card pools play
+  with degraded 2-3 option multiple choice; 4+ distinct-answer cards in the same
+  class + category produce full 4-option questions (lesson does not partition the
+  distractor pool); quizzes use all cards up to 20 and subset larger pools to at
+  most 20 by difficulty distribution. The guideline chips reflect exactly these
+  numbers.

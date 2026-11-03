@@ -869,6 +869,82 @@ class PracticeService {
   }
 
   /**
+   * Study status dashboard: overall totals, per-class with nested per-lesson
+   * breakdowns (lesson depends on class), and an independent per-category
+   * breakdown. Accuracy derives from the per-card Leitner counters.
+   */
+  async getStudyDashboard(userId) {
+    const toStats = (row) => {
+      const correct = parseInt(row.times_correct) || 0;
+      const incorrect = parseInt(row.times_incorrect) || 0;
+      return {
+        total: parseInt(row.total) || 0,
+        box1: parseInt(row.box1) || 0,
+        box2: parseInt(row.box2) || 0,
+        box3: parseInt(row.box3) || 0,
+        attempts: correct + incorrect,
+        accuracy:
+          correct + incorrect > 0 ? Math.round((correct / (correct + incorrect)) * 100) : null,
+      };
+    };
+    const addInto = (target, row) => {
+      target.total += parseInt(row.total) || 0;
+      target.box1 += parseInt(row.box1) || 0;
+      target.box2 += parseInt(row.box2) || 0;
+      target.box3 += parseInt(row.box3) || 0;
+      target.correct += parseInt(row.times_correct) || 0;
+      target.incorrect += parseInt(row.times_incorrect) || 0;
+    };
+    const finish = (acc) => ({
+      total: acc.total,
+      box1: acc.box1,
+      box2: acc.box2,
+      box3: acc.box3,
+      attempts: acc.correct + acc.incorrect,
+      accuracy:
+        acc.correct + acc.incorrect > 0
+          ? Math.round((acc.correct / (acc.correct + acc.incorrect)) * 100)
+          : null,
+    });
+
+    const classLessonResult = await this.database.query(
+      this.constructor.queries.select_dashboard_by_class_lesson,
+      [userId]
+    );
+    const categoryResult = await this.database.query(
+      this.constructor.queries.select_dashboard_by_category,
+      [userId]
+    );
+
+    const overallAcc = { total: 0, box1: 0, box2: 0, box3: 0, correct: 0, incorrect: 0 };
+    const classMap = new Map();
+
+    for (const row of classLessonResult.rows) {
+      addInto(overallAcc, row);
+      if (!classMap.has(row.class)) {
+        classMap.set(row.class, {
+          class: row.class,
+          acc: { total: 0, box1: 0, box2: 0, box3: 0, correct: 0, incorrect: 0 },
+          lessons: [],
+        });
+      }
+      const entry = classMap.get(row.class);
+      addInto(entry.acc, row);
+      entry.lessons.push({ lesson: row.lesson, ...toStats(row) });
+    }
+
+    return {
+      overall: finish(overallAcc),
+      classes: [...classMap.values()].map((entry) => ({
+        class: entry.class,
+        ...finish(entry.acc),
+        lessons: entry.lessons,
+      })),
+      categories: categoryResult.rows.map((row) => ({ category: row.category, ...toStats(row) })),
+    };
+  }
+
+  /**
    * Reset all Leitner progress for a user (admin function)
    * Resets all cards back to Box 1 with zero stats
    * @param {string} userId - User ID whose stats to reset

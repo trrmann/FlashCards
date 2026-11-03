@@ -90,6 +90,12 @@
       <div class="entries-list-section">
         <div class="entries-header">
           <h2>Your Flashcards</h2>
+        </div>
+        <p class="studyable-guideline">
+          Guideline: each class + category group needs at least 4 cards (with distinct
+          answers) for multiple-choice practice, and quizzes use at most 20 cards per run.
+        </p>
+        <div class="entries-header" style="margin-top: 0;">
           <div class="entries-actions">
             <label style="display: inline-flex; align-items: center; gap: 0.35rem; margin-right: 0.5rem;">
               <input type="checkbox" id="select-all-entries" title="Select or clear all flashcards" />
@@ -700,6 +706,50 @@
     align-items: center;
     gap: 0.35rem;
   }
+
+  .entry-group-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .studyable-chip {
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 0.15rem 0.6rem;
+    white-space: nowrap;
+  }
+
+  .studyable-chip.ok {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .studyable-chip.needs-more {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .studyable-chip.not-studyable {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  .studyable-chip.large {
+    background: #e0e7ff;
+    color: #3730a3;
+  }
+
+  .studyable-guideline {
+    color: #64748b;
+    font-size: 0.9rem;
+    margin: 0.25rem 0 1rem 0;
+  }
+
+  .studyable-topline {
+    margin-bottom: 0.75rem;
+  }
 </style>
 
 <script>
@@ -876,8 +926,42 @@
    * A grouping level is only created when more than one distinct value exists
    * among the cards at that level (the "distinction" rule).
    */
+  // Studyable guideline constants, matching the actual study model:
+  // multiple choice needs 1 correct + 3 distinct wrong answers drawn from the
+  // same class+category pool (lesson-independent), and a quiz uses at most 20
+  // cards (larger pools are subset).
+  const STUDYABLE_MIN = 4;
+  const STUDYABLE_MAX = 20;
+
+  function studyableChip(pool) {
+    if (pool < 2) {
+      return `<span class="studyable-chip not-studyable" title="Practice needs at least 2 cards with distinct answers in the same class + category to build any multiple choice question">✖ not studyable</span>`;
+    }
+    if (pool < STUDYABLE_MIN) {
+      const needed = STUDYABLE_MIN - pool;
+      return `<span class="studyable-chip needs-more" title="Playable with ${pool} cards, but full ${STUDYABLE_MIN}-option multiple choice needs ${STUDYABLE_MIN} cards with distinct answers in the same class + category">⚠️ add ${needed} for full choice</span>`;
+    }
+    if (pool > STUDYABLE_MAX) {
+      return `<span class="studyable-chip large" title="A quiz uses at most ${STUDYABLE_MAX} cards; larger groups are subset - consider splitting into more lessons">${STUDYABLE_MAX}+ (quiz subsets)</span>`;
+    }
+    return `<span class="studyable-chip ok" title="Between ${STUDYABLE_MIN} and ${STUDYABLE_MAX} cards: fully studyable for multiple choice and quizzes">✓ studyable</span>`;
+  }
+
   function renderGroupedEntries(cards, renderCard, levels) {
     const groupLevels = levels || ['class', 'lesson', 'category'];
+
+    // Distractor pools are class+category wide (lesson-independent)
+    const poolCounts = new Map();
+    for (const card of cards) {
+      const key = `${card.class || ''}||${card.category || ''}`;
+      poolCounts.set(key, (poolCounts.get(key) || 0) + 1);
+    }
+
+    function chipFor(group) {
+      const keys = [...new Set(group.map((card) => `${card.class || ''}||${card.category || ''}`))];
+      if (keys.length !== 1) return '';
+      return studyableChip(poolCounts.get(keys[0]) || 0);
+    }
 
     function build(cardsAtLevel, levelIndex) {
       if (levelIndex >= groupLevels.length) {
@@ -901,7 +985,10 @@
             <details class="entry-group" open>
               <summary class="entry-group-summary">
                 <span class="entry-group-label">${escapeHtml(label)}</span>
-                <span class="entry-group-count">${group.length} card${group.length === 1 ? '' : 's'}</span>
+                <span class="entry-group-meta">
+                  ${chipFor(group)}
+                  <span class="entry-group-count">${group.length} card${group.length === 1 ? '' : 's'}</span>
+                </span>
               </summary>
               <div class="entry-group-body">
                 ${build(group, levelIndex + 1)}
@@ -912,7 +999,13 @@
         .join('');
     }
 
-    return build(cards, 0);
+    // Single uniform group: surface the chip at the top of the list
+    const topChip = chipFor(cards);
+    const body = build(cards, 0);
+    if (topChip && !body.includes('entry-group-summary')) {
+      return `<div class="studyable-topline">${topChip}</div>` + body;
+    }
+    return body;
   }
 
   async function loadUserEntries() {

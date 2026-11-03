@@ -342,6 +342,26 @@ class PracticeRouter extends BaseRouter {
     });
 
     /**
+     * GET /api/practice/dashboard
+     * Study status dashboard: overall + per-class/lesson + per-category
+     */
+    router.get('/dashboard', async (req, res) => {
+      try {
+        if (!req.session.userId) {
+          return res.status(401).json({ status: 'error', message: 'Not authenticated' });
+        }
+
+        await practiceService.initializeAllCardsForUser(req.session.userId);
+        const dashboard = await practiceService.getStudyDashboard(req.session.userId);
+
+        return res.status(200).json({ status: 'success', dashboard });
+      } catch (error) {
+        console.error('Dashboard error:', error.message);
+        return res.status(500).json({ status: 'error', message: 'Failed to load dashboard' });
+      }
+    });
+
+    /**
      * GET /api/practice/stats
      * Get practice statistics and progress
      * Query params: class, lesson, category (optional filters)

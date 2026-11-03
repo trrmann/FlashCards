@@ -294,3 +294,52 @@ SELECT f.answer, COALESCE(p.current_box, 1) AS current_box
 FROM flashcards f
 LEFT JOIN flashcard_leitner_progress p ON f.flashcard_id = p.flashcard_id AND p.user_id = $2
 WHERE f.flashcard_id = $1;
+
+-- Query: select_dashboard_by_class_lesson
+SELECT COALESCE(f.class, '') AS class,
+       COALESCE(f.lesson, '') AS lesson,
+       COUNT(*) AS total,
+       SUM(CASE WHEN p.current_box = 1 THEN 1 ELSE 0 END) AS box1,
+       SUM(CASE WHEN p.current_box = 2 THEN 1 ELSE 0 END) AS box2,
+       SUM(CASE WHEN p.current_box = 3 THEN 1 ELSE 0 END) AS box3,
+       SUM(p.times_correct) AS times_correct,
+       SUM(p.times_incorrect) AS times_incorrect
+FROM flashcard_leitner_progress p
+JOIN flashcards f ON p.flashcard_id = f.flashcard_id
+WHERE p.user_id = $1
+  AND (f.created_by = $1 OR EXISTS (
+    SELECT 1 FROM flashcard_shares fs
+    WHERE fs.flashcard_id = f.flashcard_id
+      AND fs.recipient_id = $1
+      AND fs.status != 'revoked'
+      AND fs.recipient_status = 'accepted'
+  ) OR (f.is_private = false AND NOT EXISTS (
+    SELECT 1 FROM public_card_removals pr
+    WHERE pr.flashcard_id = f.flashcard_id AND pr.user_id = $1
+  )))
+GROUP BY COALESCE(f.class, ''), COALESCE(f.lesson, '')
+ORDER BY class, lesson;
+
+-- Query: select_dashboard_by_category
+SELECT COALESCE(f.category, '') AS category,
+       COUNT(*) AS total,
+       SUM(CASE WHEN p.current_box = 1 THEN 1 ELSE 0 END) AS box1,
+       SUM(CASE WHEN p.current_box = 2 THEN 1 ELSE 0 END) AS box2,
+       SUM(CASE WHEN p.current_box = 3 THEN 1 ELSE 0 END) AS box3,
+       SUM(p.times_correct) AS times_correct,
+       SUM(p.times_incorrect) AS times_incorrect
+FROM flashcard_leitner_progress p
+JOIN flashcards f ON p.flashcard_id = f.flashcard_id
+WHERE p.user_id = $1
+  AND (f.created_by = $1 OR EXISTS (
+    SELECT 1 FROM flashcard_shares fs
+    WHERE fs.flashcard_id = f.flashcard_id
+      AND fs.recipient_id = $1
+      AND fs.status != 'revoked'
+      AND fs.recipient_status = 'accepted'
+  ) OR (f.is_private = false AND NOT EXISTS (
+    SELECT 1 FROM public_card_removals pr
+    WHERE pr.flashcard_id = f.flashcard_id AND pr.user_id = $1
+  )))
+GROUP BY COALESCE(f.category, '')
+ORDER BY category;

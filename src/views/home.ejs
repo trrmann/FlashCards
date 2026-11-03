@@ -3,10 +3,166 @@
   <h1><%= siteData.getTitle() %></h1>
   <h2>Welcome to <%= siteData.getName() %><%= siteData.getNameHeadingHelp() %>Flash Card Service!</h2>
   <%- include('partials/mission') %>
-  <!--<img
-    class="main-logo"
-    src="/images/cse340-service-network.png"
-    alt="CSE 340 Service Network Logo"
-  />-->
+
+  <% if (isLoggedIn) { %>
+    <style>
+      .dashboard-section {
+        margin-top: 2rem;
+      }
+
+      .dashboard-overall {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 1rem;
+        margin: 1rem 0 1.5rem 0;
+      }
+
+      .dashboard-stat {
+        background: #f5f5f5;
+        border: 1px solid var(--border-color, #ddd);
+        border-radius: 8px;
+        padding: 1rem;
+        text-align: center;
+      }
+
+      .dashboard-stat .value {
+        font-size: 1.8rem;
+        font-weight: bold;
+      }
+
+      .dashboard-stat .label {
+        font-size: 0.8rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .dashboard-group {
+        border: 1px solid var(--border-color, #ddd);
+        border-radius: 8px;
+        margin-bottom: 0.6rem;
+        padding: 0 0.75rem;
+      }
+
+      .dashboard-group summary {
+        cursor: pointer;
+        padding: 0.6rem 0.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+        flex-wrap: wrap;
+      }
+
+      .dashboard-group .group-stats {
+        font-size: 0.85rem;
+        color: #64748b;
+        font-weight: 400;
+      }
+
+      .dashboard-group .dashboard-group {
+        margin-left: 0.75rem;
+      }
+
+      .dashboard-group-body {
+        padding-bottom: 0.6rem;
+      }
+    </style>
+
+    <div class="dashboard-section" id="study-dashboard" style="display: none;">
+      <h2>📊 Study Status</h2>
+      <div class="dashboard-overall" id="dashboard-overall"></div>
+
+      <h3>By Class</h3>
+      <div id="dashboard-classes"></div>
+
+      <h3 style="margin-top: 1.25rem;">By Category</h3>
+      <div id="dashboard-categories"></div>
+    </div>
+
+    <script>
+      function dashEscape(text) {
+        const div = document.createElement('div');
+        div.textContent = text ?? '';
+        return div.innerHTML;
+      }
+
+      function dashStatsLine(stats) {
+        const accuracy = stats.accuracy === null ? '–' : stats.accuracy + '%';
+        return `${stats.total} cards • boxes ${stats.box1}/${stats.box2}/${stats.box3} • accuracy ${accuracy}`;
+      }
+
+      async function loadStudyDashboard() {
+        try {
+          const response = await fetch('/api/practice/dashboard', { credentials: 'include' });
+          const data = await response.json();
+          if (data.status !== 'success') return;
+
+          const dash = data.dashboard;
+          if (dash.overall.total === 0) return;
+
+          document.getElementById('study-dashboard').style.display = 'block';
+
+          const accuracy = dash.overall.accuracy === null ? '–' : dash.overall.accuracy + '%';
+          document.getElementById('dashboard-overall').innerHTML = `
+            <div class="dashboard-stat"><div class="value">${dash.overall.total}</div><div class="label">Cards</div></div>
+            <div class="dashboard-stat"><div class="value">${dash.overall.box1}</div><div class="label">Box 1 Daily</div></div>
+            <div class="dashboard-stat"><div class="value">${dash.overall.box2}</div><div class="label">Box 2</div></div>
+            <div class="dashboard-stat"><div class="value">${dash.overall.box3}</div><div class="label">Box 3 Mastered</div></div>
+            <div class="dashboard-stat"><div class="value">${accuracy}</div><div class="label">Accuracy</div></div>
+          `;
+
+          document.getElementById('dashboard-classes').innerHTML = dash.classes
+            .map(
+              (cls) => `
+            <details class="dashboard-group">
+              <summary>
+                <span>${dashEscape(cls.class || '(No Class)')}</span>
+                <span class="group-stats">${dashStatsLine(cls)}</span>
+              </summary>
+              <div class="dashboard-group-body">
+                ${cls.lessons
+                  .map(
+                    (lesson) => `
+                  <details class="dashboard-group">
+                    <summary>
+                      <span>${dashEscape(lesson.lesson || '(No Lesson)')}</span>
+                      <span class="group-stats">${dashStatsLine(lesson)}</span>
+                    </summary>
+                  </details>
+                `
+                  )
+                  .join('')}
+              </div>
+            </details>
+          `
+            )
+            .join('');
+
+          document.getElementById('dashboard-categories').innerHTML = dash.categories
+            .map(
+              (cat) => `
+            <details class="dashboard-group">
+              <summary>
+                <span>${dashEscape(cat.category || '(No Category)')}</span>
+                <span class="group-stats">${dashStatsLine(cat)}</span>
+              </summary>
+            </details>
+          `
+            )
+            .join('');
+        } catch (error) {
+          console.error('Failed to load study dashboard:', error);
+        }
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadStudyDashboard);
+      } else {
+        loadStudyDashboard();
+      }
+    </script>
+  <% } %>
 </main>
 <%- include('partials/footer') %>
