@@ -39,7 +39,7 @@
         </form>
         <div id="profileStatus"></div>
 
-        <div class="form-group" style="margin-top: 1rem;">
+        <div class="form-group form-group-spaced">
           <label>
             <input id="isPublicToggle" name="isPublic" type="checkbox" />
             List me in the share directory (public user)
@@ -51,9 +51,9 @@
         </div>
         <div id="visibilityStatus"></div>
 
-        <div class="form-group" style="margin-top: 1rem;">
+        <div class="form-group form-group-spaced">
           <label>Storage</label>
-          <div id="storageUsage" style="color: #64748b;">Loading storage usage…</div>
+          <div id="storageUsage" class="text-muted">Loading storage usage…</div>
         </div>
       </section>
 
@@ -89,12 +89,12 @@
       <!-- Pending Shares Section -->
       <section class="profile-section">
         <h3>Pending Shares</h3>
-        <p style="margin-bottom: 1.5rem; color: #64748b;">
+        <p class="section-intro">
           Flashcards other users have shared with you. Accept to add them to your
           "Shared with Me" list, or reject to decline (the owner is not notified).
         </p>
-        <div id="pendingSharesControls" style="display: none; margin-bottom: 1rem;">
-          <label style="display: inline-flex; align-items: center; gap: 0.35rem; margin-right: 0.75rem;">
+        <div id="pendingSharesControls" class="pending-shares-controls hidden">
+          <label class="select-all-label">
             <input type="checkbox" id="select-all-pending" />
             Select All
           </label>
@@ -102,7 +102,7 @@
           <button type="button" id="reject-selected-btn" class="btn-danger">Reject Selected</button>
         </div>
         <div id="pendingSharesList">
-          <p style="color: #64748b;">Loading pending shares...</p>
+          <p class="text-muted">Loading pending shares...</p>
         </div>
         <div id="pendingSharesStatus"></div>
       </section>
@@ -111,11 +111,11 @@
       <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
         <section class="admin-section">
           <h3>Admin: User Management</h3>
-          <p style="margin-bottom: 1.5rem; color: #64748b;">Manage all users in the system</p>
+          <p class="section-intro">Manage all users in the system</p>
 
           <!-- Create New User Form -->
           <div class="form-section">
-            <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem;">Create New User</h4>
+            <h4 class="form-section-title">Create New User</h4>
             <form id="createUserForm">
               <div class="form-group">
                 <label for="newUsername">Username</label>
@@ -165,22 +165,22 @@
 
           <!-- Users List -->
           <div class="form-section">
-            <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem;">Current Users</h4>
+            <h4 class="form-section-title">Current Users</h4>
             <div id="usersList">
-              <p style="color: #64748b;">Loading users...</p>
+              <p class="text-muted">Loading users...</p>
             </div>
           </div>
 
           <!-- Backup / Restore -->
           <div class="form-section">
-            <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem;">Backup &amp; Restore</h4>
-            <p style="margin-bottom: 1rem; color: #64748b;">
+            <h4 class="form-section-title">Backup &amp; Restore</h4>
+            <p class="section-note">
               The backup is two linked files: a data JSON and a media ZIP
               (media referenced by id). Download both; import them together to
               restore media. Importing updates existing records to the
               imported values and adds new ones; nothing is deleted.
             </p>
-            <p style="margin-bottom: 1rem;">
+            <p class="backup-actions">
               <a href="/api/admin/backup/download" download>
                 <button type="button">⬇️ Download Backup Data (JSON)</button>
               </a>
@@ -227,7 +227,7 @@
 
         const controls = document.getElementById('pendingSharesControls');
         if (data.status === 'success' && data.shares && data.shares.length > 0) {
-          if (controls) controls.style.display = 'block';
+          if (controls) controls.classList.remove('hidden');
           list.innerHTML = data.shares
             .map(
               (share) => `
@@ -255,8 +255,8 @@
             )
             .join('');
         } else if (data.status === 'success') {
-          if (controls) controls.style.display = 'none';
-          list.innerHTML = '<p style="color: #64748b;">No pending shares.</p>';
+          if (controls) controls.classList.add('hidden');
+          list.innerHTML = '<p class="text-muted">No pending shares.</p>';
         } else {
           list.innerHTML = `<p class="error">Failed to load pending shares: ${escapeHtml(data.message)}</p>`;
         }
@@ -780,10 +780,10 @@
         const pct = Math.min(100, Math.round((data.usedBytes / data.maxBytes) * 100));
         el.innerHTML = `
           Used ${mb(data.usedBytes)} of ${mb(data.maxBytes)} (${pct}%) — ${mb(data.remainingBytes)} remaining
-          <div style="background:#e2e8f0;border-radius:999px;height:8px;margin-top:4px;">
-            <div style="background:${data.overLimit ? '#dc2626' : '#2563eb'};width:${pct}%;height:8px;border-radius:999px;"></div>
+          <div class="storage-bar">
+            <div class="storage-bar-fill progress-w${Math.round(pct / 5) * 5}${data.overLimit ? ' over-limit' : ''}"></div>
           </div>
-          ${data.overLimit ? '<p class="error" style="margin-top:6px;">⚠️ You are over your storage limit. Remove cards or media to get back under it; creating new cards is blocked.</p>' : ''}
+          ${data.overLimit ? '<p class="error storage-over-note">⚠️ You are over your storage limit. Remove cards or media to get back under it; creating new cards is blocked.</p>' : ''}
         `;
       } catch (error) {
         el.textContent = 'Could not load storage usage';

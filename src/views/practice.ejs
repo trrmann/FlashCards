@@ -1,399 +1,5 @@
 <%- include('partials/header', { activePage: 'practice' }) %>
 
-    <style>
-      .practice-container {
-        max-width: 900px;
-        margin: 2rem auto;
-        padding: 0 1rem;
-      }
-
-      .dashboard {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-      }
-
-      .stats-card {
-        background: #f5f5f5;
-        border: 2px solid #ddd;
-        border-radius: 8px;
-        padding: 1.5rem;
-        text-align: center;
-      }
-
-      .stats-card h3 {
-        margin: 0 0 0.5rem 0;
-        font-size: 0.9rem;
-        color: #666;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-      }
-
-      .stats-card .number {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #333;
-        margin: 0.5rem 0;
-      }
-
-      .stats-card .label {
-        font-size: 0.85rem;
-        color: #999;
-      }
-
-      .practice-section {
-        background: white;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        padding: 2rem;
-        margin-bottom: 2rem;
-      }
-
-      .practice-section h2 {
-        margin-top: 0;
-        border-bottom: 2px solid #f0f0f0;
-        padding-bottom: 1rem;
-      }
-
-      .card-display {
-        background: #f9f9f9;
-        border: 2px solid #e0e0e0;
-        border-radius: 8px;
-        padding: 2rem;
-        margin: 2rem 0;
-        text-align: center;
-        min-height: 200px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-      }
-
-      .card-display:hover {
-        background: #f0f0f0;
-        border-color: #999;
-      }
-
-      .card-display.flipped {
-        background: #e8f4f8;
-        border-color: #0066cc;
-      }
-
-      .card-side {
-        display: none;
-      }
-
-      .card-side.active {
-        display: block;
-      }
-
-      .card-label {
-        font-size: 0.85rem;
-        color: #999;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 1rem;
-      }
-
-      .card-text {
-        font-size: 1.5rem;
-        font-weight: 500;
-        color: #333;
-        line-height: 1.6;
-      }
-
-      .click-hint {
-        font-size: 0.8rem;
-        color: #bbb;
-        margin-top: 1rem;
-        font-style: italic;
-      }
-
-      .button-group {
-        display: flex;
-        gap: 1rem;
-        justify-content: center;
-        margin-top: 2rem;
-      }
-
-      .button-group button {
-        padding: 0.75rem 1.5rem;
-        font-size: 1rem;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-      }
-
-      .btn-correct {
-        background: #28a745;
-        color: white;
-      }
-
-      .btn-correct:hover {
-        background: #218838;
-      }
-
-      .btn-incorrect {
-        background: #dc3545;
-        color: white;
-      }
-
-      .btn-incorrect:hover {
-        background: #c82333;
-      }
-
-      .btn-skip {
-        background: #6c757d;
-        color: white;
-      }
-
-      .btn-skip:hover {
-        background: #5a6268;
-      }
-
-      .schedule-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-        margin-top: 1rem;
-      }
-
-      .schedule-item {
-        background: #f9f9f9;
-        padding: 1rem;
-        border-radius: 4px;
-        border-left: 4px solid #0066cc;
-      }
-
-      .schedule-item h4 {
-        margin: 0 0 0.5rem 0;
-        font-size: 0.9rem;
-        color: #666;
-        text-transform: uppercase;
-      }
-
-      .schedule-item .due {
-        font-size: 0.9rem;
-        color: #333;
-        margin-bottom: 0.5rem;
-      }
-
-      .schedule-item .count {
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: #0066cc;
-      }
-
-      .no-cards {
-        text-align: center;
-        padding: 2rem;
-        color: #999;
-      }
-
-      .progress-bar {
-        width: 100%;
-        height: 8px;
-        background: #e0e0e0;
-        border-radius: 4px;
-        margin-top: 0.5rem;
-        overflow: hidden;
-      }
-
-      .progress-fill {
-        height: 100%;
-        background: #28a745;
-        transition: width 0.3s ease;
-      }
-
-      .streak {
-        display: inline-block;
-        background: #ffc107;
-        color: #333;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-weight: bold;
-        font-size: 0.9rem;
-        margin-top: 1rem;
-      }
-
-      /* Multiple Choice Styles */
-      .question-box {
-        background: #f9f9f9;
-        border: 2px solid #e0e0e0;
-        border-radius: 8px;
-        padding: 2rem;
-        margin: 2rem 0;
-        text-align: center;
-        min-height: 100px;
-      }
-
-      .question-tools {
-        display: flex;
-        gap: 0.5rem;
-        justify-content: flex-end;
-        margin-bottom: 0.5rem;
-      }
-
-      .btn-tool {
-        border: 1px solid #ddd;
-        background: #fff;
-        border-radius: 6px;
-        padding: 0.35rem 0.7rem;
-        cursor: pointer;
-        font-size: 0.85rem;
-      }
-
-      .btn-tool:hover {
-        background: #f0f7ff;
-        border-color: #007bff;
-      }
-
-      .option-media-image {
-        max-width: 150px;
-        max-height: 100px;
-        border-radius: 4px;
-        display: block;
-        margin: 0 auto;
-      }
-
-      .listen-mode-note {
-        text-align: center;
-        color: #475569;
-        font-style: italic;
-      }
-
-      .question-media-image {
-        max-width: 100%;
-        max-height: 260px;
-        margin: 0 auto 0.75rem auto;
-        border-radius: 6px;
-      }
-
-      #voice-feedback {
-        margin-top: 0.75rem;
-        font-size: 0.9rem;
-        color: #475569;
-      }
-
-      .question-text {
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: #333;
-        line-height: 1.6;
-      }
-
-      .options-container {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
-        margin: 2rem 0;
-      }
-
-      .option-button {
-        padding: 1rem;
-        border: 2px solid #ddd;
-        background: white;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 1rem;
-        text-align: left;
-        transition: all 0.3s ease;
-        font-weight: 500;
-        color: #333;
-      }
-
-      .option-button:hover:not(:disabled) {
-        border-color: #0066cc;
-        background: #f0f7ff;
-        transform: translateY(-2px);
-        box-shadow: 0 2px 8px rgba(0, 102, 204, 0.2);
-      }
-
-      .option-button:disabled {
-        cursor: not-allowed;
-      }
-
-      .option-button.selected {
-        border-color: #0066cc;
-        background: #0066cc;
-        color: white;
-      }
-
-      .option-button.correct {
-        border-color: #28a745;
-        background: #28a745;
-        color: white;
-      }
-
-      .option-button.incorrect {
-        border-color: #dc3545;
-        background: #dc3545;
-        color: white;
-      }
-
-      .feedback-message {
-        padding: 1rem;
-        border-radius: 8px;
-        margin: 1rem 0;
-        font-weight: bold;
-        text-align: center;
-        font-size: 1.1rem;
-      }
-
-      .feedback-correct {
-        background: #d4edda;
-        border: 2px solid #28a745;
-        color: #155724;
-      }
-
-      .feedback-incorrect {
-        background: #f8d7da;
-        border: 2px solid #dc3545;
-        color: #721c24;
-      }
-
-      .feedback-hidden {
-        display: none;
-      }
-
-      .btn-next {
-        display: block;
-        margin: 1.5rem auto 0;
-        padding: 0.75rem 2rem;
-        font-size: 1rem;
-        background: #0066cc;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-      }
-
-      .btn-next:hover {
-        background: #0052a3;
-      }
-
-      @media (max-width: 768px) {
-        .dashboard {
-          grid-template-columns: 1fr 1fr;
-        }
-
-        .options-container {
-          grid-template-columns: 1fr;
-        }
-
-        .button-group {
-          flex-direction: column;
-        }
-
-        .button-group button {
-          width: 100%;
-        }
-      }
-    </style>
 
     <div class="practice-container">
       <h1>🎓 Practice Study - Leitner System</h1>
@@ -431,8 +37,7 @@
           <div class="label"><%= summary.practiceAttempts %> Reviewed</div>
           <div class="progress-bar">
             <div
-              class="progress-fill"
-              style="width: <%= (summary.practiceAttempts / summary.dueTodayCount) * 100 %>%"
+              class="progress-fill progress-w<%= Math.min(100, Math.max(0, Math.round(((summary.practiceAttempts / summary.dueTodayCount) * 100) / 5) * 5)) %>"
             ></div>
           </div>
           <% if (streak > 0) { %>
@@ -450,12 +55,12 @@
             <div class="due"><%= schedule.box1.due %></div>
             <div class="count"><%= schedule.box1.count %> cards</div>
           </div>
-          <div class="schedule-item" style="border-left-color: #ffc107">
+          <div class="schedule-item schedule-warn">
             <h4>Box 2 - Every 3 Days</h4>
             <div class="due"><%= schedule.box2.due %></div>
             <div class="count"><%= schedule.box2.count %> cards</div>
           </div>
-          <div class="schedule-item" style="border-left-color: #28a745">
+          <div class="schedule-item schedule-ok">
             <h4>Box 3 - Weekly</h4>
             <div class="due"><%= schedule.box3.due %></div>
             <div class="count"><%= schedule.box3.count %> cards</div>
@@ -470,13 +75,13 @@
           <!-- Question Display -->
           <div class="question-box">
             <div class="question-tools">
-              <button type="button" class="btn-tool" id="tts-button" title="Read the question aloud" style="display: none;">🔊 Listen</button>
-              <button type="button" class="btn-tool" id="voice-answer-button" title="Say the answer aloud to check your pronunciation" style="display: none;">🎤 Say answer</button>
+              <button type="button" class="btn-tool hidden" id="tts-button" title="Read the question aloud">🔊 Listen</button>
+              <button type="button" class="btn-tool hidden" id="voice-answer-button" title="Say the answer aloud to check your pronunciation">🎤 Say answer</button>
             </div>
-            <img id="question-image" class="question-media-image" style="display: none;" alt="Question image" />
-            <audio id="question-audio" controls style="display: none; margin: 0.5rem auto;"></audio>
+            <img id="question-image" class="question-media-image hidden" alt="Question image" />
+            <audio id="question-audio" controls class="question-media-audio hidden"></audio>
             <div class="question-text" id="question-text">Loading first card...</div>
-            <div id="voice-feedback" style="display: none;"></div>
+            <div id="voice-feedback" class="hidden"></div>
           </div>
 
           <!-- Multiple Choice Options -->
@@ -488,7 +93,7 @@
           <div id="feedback-message" class="feedback-hidden"></div>
 
           <!-- Next Button (appears after answer) -->
-          <button class="btn-next" id="next-button" onclick="loadNextCard()" style="display: none;">
+          <button class="btn-next hidden" id="next-button" onclick="loadNextCard()">
             ⏭️ Next Card
           </button>
 
@@ -563,33 +168,33 @@
             practiceArea.innerHTML = `
               <h2>📚 No Questions Yet</h2>
               <p>You haven't added any flashcards yet. Get started by adding your first cards!</p>
-              <a href="/entries" class="btn btn-primary" style="display: inline-block; margin-top: 1rem; padding: 0.75rem 1.5rem; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Go to Entries</a>
+              <a href="/entries" class="btn btn-primary cta-link">Go to Entries</a>
             `;
           } else if (dueTodayCount > 0) {
             // Show card area and load first card
-            questionBox.style.display = 'block';
-            optionsContainer.style.display = 'flex';
-            statusMsg.style.display = 'none';
+            questionBox.classList.remove('hidden');
+            optionsContainer.classList.remove('hidden');
+            statusMsg.classList.add('hidden');
             await loadNextCard();
           } else {
             // Cards exist but none due - offer catch-up option
-            questionBox.style.display = 'none';
-            optionsContainer.style.display = 'none';
+            questionBox.classList.add('hidden');
+            optionsContainer.classList.add('hidden');
             statusMsg.innerHTML = `
               <h2>🎉 Great Job!</h2>
               <p>No cards are due for study today. You're all caught up!</p>
-              <button onclick="startCatchUpMode()" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem;">
+              <button onclick="startCatchUpMode()" class="cta-button cta-success">
                 📚 Practice More (Catch-up Mode)
               </button>
             `;
-            statusMsg.style.display = 'block';
+            statusMsg.classList.remove('hidden');
           }
         } catch (error) {
           console.error('Error initializing practice page:', error);
           const statusMsg = document.getElementById('status-message');
           if (statusMsg) {
             statusMsg.innerHTML = '<h2>Error</h2><p>Failed to load practice page. Please refresh.</p>';
-            statusMsg.style.display = 'block';
+            statusMsg.classList.remove('hidden');
           }
         }
       });
@@ -598,9 +203,9 @@
         catchUpMode = true;
         console.log('[startCatchUpMode] Entering catch-up practice mode');
         // Show card area
-        document.querySelector('.question-box').style.display = 'block';
-        document.getElementById('options-container').style.display = 'flex';
-        document.getElementById('status-message').style.display = 'none';
+        document.querySelector('.question-box').classList.remove('hidden');
+        document.getElementById('options-container').classList.remove('hidden');
+        document.getElementById('status-message').classList.add('hidden');
         await loadNextCard();
       }
 
@@ -698,7 +303,7 @@
                     const percentage = summary.dueTodayCount > 0 
                       ? (summary.practiceAttempts / summary.dueTodayCount) * 100 
                       : 0;
-                    progressFill.style.width = percentage + '%';
+                    progressFill.className = `progress-fill progress-w${Math.min(100, Math.max(0, Math.round(percentage / 5) * 5))}`;
                   }
                 }
               });
@@ -722,28 +327,28 @@
         const image = document.getElementById('question-image');
         if (card.question_form === 'image' && card.question_media_data) {
           image.src = card.question_media_data;
-          image.style.display = 'block';
+          image.classList.remove('hidden');
         } else {
-          image.style.display = 'none';
+          image.classList.add('hidden');
         }
 
         const audio = document.getElementById('question-audio');
         if (card.question_form === 'audio' && card.question_media_data) {
           audio.src = card.question_media_data;
-          audio.style.display = 'block';
+          audio.classList.remove('hidden');
         } else {
-          audio.style.display = 'none';
+          audio.classList.add('hidden');
         }
 
         // TTS read-aloud (Web Speech API - no server, no keys)
         const ttsButton = document.getElementById('tts-button');
-        ttsButton.style.display = 'speechSynthesis' in window && card.question ? 'inline-block' : 'none';
+        ttsButton.classList.toggle('hidden', !('speechSynthesis' in window && card.question));
 
         // Voice answer (SpeechRecognition - Chrome/Edge/Safari)
         const voiceButton = document.getElementById('voice-answer-button');
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-        voiceButton.style.display = SpeechRec ? 'inline-block' : 'none';
-        document.getElementById('voice-feedback').style.display = 'none';
+        voiceButton.classList.toggle('hidden', !SpeechRec);
+        document.getElementById('voice-feedback').classList.add('hidden');
       }
 
       function speakQuestion() {
@@ -777,7 +382,7 @@
             }),
           });
           const nextBtn = document.getElementById('next-button');
-          nextBtn.style.display = 'block';
+          nextBtn.classList.remove('hidden');
           await refreshStatsForActiveFilters();
         } catch (error) {
           console.error('listen submit failed', error);
@@ -788,7 +393,7 @@
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRec) return;
         const feedback = document.getElementById('voice-feedback');
-        feedback.style.display = 'block';
+        feedback.classList.remove('hidden');
         feedback.textContent = '🎤 Listening…';
 
         const recognition = new SpeechRec();
@@ -834,7 +439,7 @@
         const feedbackEl = document.getElementById('feedback-message');
         const nextBtn = document.getElementById('next-button');
         if (feedbackEl) feedbackEl.className = 'feedback-hidden';
-        if (nextBtn) nextBtn.style.display = 'none';
+        if (nextBtn) nextBtn.classList.add('hidden');
 
         try {
           // Get active filters from sessionStorage
@@ -892,7 +497,7 @@
             // Display question (audio questions may have no caption text)
             const questionTextEl = document.getElementById('question-text');
             questionTextEl.textContent = currentCard.question || '';
-            questionTextEl.style.display = currentCard.question ? '' : 'none';
+            questionTextEl.classList.toggle('hidden', !currentCard.question);
             renderQuestionMedia(currentCard);
 
             // Display multiple choice options
@@ -902,25 +507,25 @@
             const questionBox = document.querySelector('.question-box');
             const optionsContainer = document.getElementById('options-container');
 
-            questionBox.style.display = 'none';
-            optionsContainer.style.display = 'none';
-            statusMsg.style.display = 'block';
+            questionBox.classList.add('hidden');
+            optionsContainer.classList.add('hidden');
+            statusMsg.classList.remove('hidden');
 
             let diagnosticHTML = '';
             if (data.diagnostic) {
               const d = data.diagnostic;
               diagnosticHTML = `
-                <details style="margin-top: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #ffc107;">
-                  <summary style="cursor: pointer; font-weight: bold; color: #333;">📋 What entries are missing?</summary>
-                  <div style="margin-top: 1rem; font-size: 0.95rem;">
+                <details class="missing-entries">
+                  <summary class="missing-entries-summary">📋 What entries are missing?</summary>
+                  <div class="missing-entries-body">
                     <p><strong>Current Card:</strong> ${d.currentCard.question}</p>
                     <p><strong>Class:</strong> ${d.currentCard.class}</p>
                     <p><strong>Category:</strong> ${d.currentCard.category}</p>
                     <p><strong>Lesson:</strong> ${d.currentCard.lesson}</p>
-                    <hr style="margin: 1rem 0; border: none; border-top: 1px solid #ddd;">
+                    <hr class="missing-entries-divider">
                     <p><strong>Available wrong answers:</strong> ${d.availableWrongAnswers}</p>
                     <p><strong>More needed:</strong> ${d.neededWrongAnswers}</p>
-                    <p style="margin-top: 1rem; padding: 0.75rem; background: #fff3cd; border-left: 3px solid #ffc107; border-radius: 2px;">
+                    <p class="missing-entries-tip">
                       ${d.message}
                     </p>
                   </div>
@@ -932,18 +537,18 @@
               <h2>📝 More Entries Needed</h2>
               <p>${data.message}</p>
               ${diagnosticHTML}
-              <a href="/entries" class="btn btn-primary" style="display: inline-block; margin-top: 1rem; padding: 0.75rem 1.5rem; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Add More Flashcards</a>
+              <a href="/entries" class="btn btn-primary cta-link">Add More Flashcards</a>
             `;
           } else if (!data.card) {
-            document.querySelector('.question-box').style.display = 'none';
-            document.getElementById('options-container').style.display = 'none';
-            statusMsg.style.display = 'block';
+            document.querySelector('.question-box').classList.add('hidden');
+            document.getElementById('options-container').classList.add('hidden');
+            statusMsg.classList.remove('hidden');
 
             if (catchUpMode) {
               statusMsg.innerHTML = `
                 <h2>✅ All Caught Up!</h2>
                 <p>You've practiced all available cards. Great effort!</p>
-                <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem;">
+                <button onclick="location.reload()" class="cta-button cta-primary">
                   ↺ Back to Dashboard
                 </button>
               `;
@@ -951,7 +556,7 @@
               statusMsg.innerHTML = `
                 <h2>🎉 Great Job!</h2>
                 <p>No cards are due for study today. You're all caught up!</p>
-                <button onclick="startCatchUpMode()" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem;">
+                <button onclick="startCatchUpMode()" class="cta-button cta-success">
                   📚 Practice More (Catch-up Mode)
                 </button>
               `;
@@ -963,7 +568,7 @@
           console.error('[loadNextCard] Error:', error.message, error);
           if (statusMsg) {
             statusMsg.innerHTML = '<h2>⚠️ Error Loading Card</h2><p>' + error.message + '</p><p>Check browser console (F12) for details.</p>';
-            statusMsg.style.display = 'block';
+            statusMsg.classList.remove('hidden');
           }
         }
       }
@@ -979,7 +584,7 @@
           note.textContent = '🎤 Listen mode: press "Say answer" and speak the answer aloud.';
           container.appendChild(note);
           const feedback = document.getElementById('voice-feedback');
-          feedback.style.display = 'block';
+          feedback.classList.remove('hidden');
           feedback.textContent = 'Your spoken answer is checked for pronunciation.';
           return;
         }
@@ -1168,7 +773,7 @@
             } else {
               nextBtn.textContent = 'Next Card';
             }
-            nextBtn.style.display = 'block';
+            nextBtn.classList.remove('hidden');
 
             // Refresh stats after each answer
             console.log('[submitAnswer] Refreshing stats after answer submission...');

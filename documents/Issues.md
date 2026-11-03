@@ -104,6 +104,35 @@ Resolved on 2026-11-03 (round 4):
 
 _(none open)_
 
+Resolved on 2026-11-03 (round 8):
+
+- ~~the views have a lot of style information in them; this needs to be refactored to use the CSS files correctly and maintain the responsive design; there should be no inline style info in the views or in the JS (JS may perform class modifications but no inline styling)~~
+  **Resolved:** All styling now lives in the public/css files: every per-page
+  `<style>` block was extracted to css/pages/&lt;page&gt;.css (home, login,
+  logout, entries, practice, profile, quiz), the header and filter-panel
+  partial styles moved to a shared css/app.css (with a .hidden utility,
+  text utilities, and stepped .progress-wN width classes), and the header
+  links styles.css + app.css + the active page's stylesheet. Every inline
+  style="..." attribute (including HTML built in JS template strings) was
+  replaced with semantic classes, and all JS element.style manipulation was
+  converted to classList operations; dynamic progress-bar widths use the
+  stepped width classes. Verified with zero remaining style attributes,
+  style blocks, or .style. references across views and public/js, plus
+  browser tests of the filter toggle, question-type panels, edit modal,
+  full practice answer flow, quiz setup/progress, profile storage bar, and
+  home dashboard. Responsive design preserved (existing core/desktop/
+  tablet/mobile files untouched) — and improved: the practice options grid's
+  mobile single-column layout had been overridden by an inline display:flex,
+  which the class-based approach removes.
+- ~~when I attached an image for the question it did not show up with the text as a caption~~
+  **Resolved:** The /api/practice/next card payload whitelisted only
+  question/answer/box fields and dropped question_form/question_media_data
+  (and the lang/answer_lang/answer_mode/question_type fields the practice UI
+  reads), so attached question media never rendered in practice. The payload
+  now carries all block, type, and language fields; verified in-browser that
+  the question image renders together with its text caption in practice (the
+  entries list and quiz already showed both).
+
 Resolved on 2026-11-03 (round 7):
 
 - ~~export and import should use two linked file types: a JSON for the data and a zip of the media for the media, bidirectional, at all import and export points in the app (entries export/import and admin backup download/import)~~

@@ -5,79 +5,15 @@
   <%- include('partials/mission') %>
 
   <% if (isLoggedIn) { %>
-    <style>
-      .dashboard-section {
-        margin-top: 2rem;
-      }
 
-      .dashboard-overall {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-        gap: 1rem;
-        margin: 1rem 0 1.5rem 0;
-      }
-
-      .dashboard-stat {
-        background: #f5f5f5;
-        border: 1px solid var(--border-color, #ddd);
-        border-radius: 8px;
-        padding: 1rem;
-        text-align: center;
-      }
-
-      .dashboard-stat .value {
-        font-size: 1.8rem;
-        font-weight: bold;
-      }
-
-      .dashboard-stat .label {
-        font-size: 0.8rem;
-        color: #64748b;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-      }
-
-      .dashboard-group {
-        border: 1px solid var(--border-color, #ddd);
-        border-radius: 8px;
-        margin-bottom: 0.6rem;
-        padding: 0 0.75rem;
-      }
-
-      .dashboard-group summary {
-        cursor: pointer;
-        padding: 0.6rem 0.25rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 0.5rem;
-        font-weight: 600;
-        flex-wrap: wrap;
-      }
-
-      .dashboard-group .group-stats {
-        font-size: 0.85rem;
-        color: #64748b;
-        font-weight: 400;
-      }
-
-      .dashboard-group .dashboard-group {
-        margin-left: 0.75rem;
-      }
-
-      .dashboard-group-body {
-        padding-bottom: 0.6rem;
-      }
-    </style>
-
-    <div class="dashboard-section" id="study-dashboard" style="display: none;">
+    <div class="dashboard-section hidden" id="study-dashboard">
       <h2>📊 Study Status</h2>
       <div class="dashboard-overall" id="dashboard-overall"></div>
 
       <h3>By Class</h3>
       <div id="dashboard-classes"></div>
 
-      <h3 style="margin-top: 1.25rem;">By Category</h3>
+      <h3 class="dashboard-subhead">By Category</h3>
       <div id="dashboard-categories"></div>
     </div>
 
@@ -102,7 +38,7 @@
           const dash = data.dashboard;
           if (dash.overall.total === 0) return;
 
-          document.getElementById('study-dashboard').style.display = 'block';
+          document.getElementById('study-dashboard').classList.remove('hidden');
 
           const accuracy = dash.overall.accuracy === null ? '–' : dash.overall.accuracy + '%';
           document.getElementById('dashboard-overall').innerHTML = `

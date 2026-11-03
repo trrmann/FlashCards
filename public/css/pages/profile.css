@@ -1,0 +1,57 @@
+/* Profile page */
+
+.form-group-spaced {
+  margin-top: 1rem;
+}
+
+.section-intro {
+  margin-bottom: 1.5rem;
+  color: #64748b;
+}
+
+.section-note {
+  margin-bottom: 1rem;
+  color: #64748b;
+}
+
+.form-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.pending-shares-controls {
+  margin-bottom: 1rem;
+}
+
+.select-all-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-right: 0.75rem;
+}
+
+.backup-actions {
+  margin-bottom: 1rem;
+}
+
+.storage-bar {
+  background: #e2e8f0;
+  border-radius: 999px;
+  height: 8px;
+  margin-top: 4px;
+}
+
+.storage-bar-fill {
+  background: #2563eb;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.storage-bar-fill.over-limit {
+  background: #dc2626;
+}
+
+.storage-over-note {
+  margin-top: 6px;
+}

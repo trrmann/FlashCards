@@ -1,421 +1,5 @@
 <%- include('partials/header', { activePage: 'quiz' }) %>
 
-<style>
-  .quiz-container {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 20px;
-  }
-
-  .quiz-setup {
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 30px;
-    margin-bottom: 30px;
-  }
-
-  .quiz-setup h2 {
-    margin-bottom: 20px;
-    color: #333;
-  }
-
-  .filter-group {
-    margin-bottom: 20px;
-  }
-
-  .filter-group label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 8px;
-    color: #555;
-  }
-
-  .filter-group input {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
-    max-width: 400px;
-  }
-
-  .filter-row {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-  }
-
-  .filter-item {
-    flex: 1;
-    min-width: 200px;
-  }
-
-  .btn-start-quiz {
-    background: #007bff;
-    color: white;
-    border: none;
-    padding: 12px 30px;
-    font-size: 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: 600;
-  }
-
-  .btn-start-quiz:hover {
-    background: #0056b3;
-  }
-
-  .btn-start-quiz:disabled {
-    background: #ccc;
-    cursor: not-allowed;
-  }
-
-  .quiz-active {
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 20px;
-    display: none;
-  }
-
-  .quiz-active.show {
-    display: block;
-  }
-
-  .question-card {
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-  }
-
-  .question-number {
-    font-size: 12px;
-    color: #666;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .question-text {
-    font-size: 18px;
-    font-weight: 600;
-    color: #333;
-    margin: 10px 0 20px 0;
-  }
-
-  .quiz-question-image {
-    max-width: 100%;
-    max-height: 220px;
-    border-radius: 6px;
-    margin: 0.5rem 0;
-  }
-
-  .quiz-tts {
-    border: none;
-    background: none;
-    cursor: pointer;
-    font-size: 1rem;
-    margin-left: 0.5rem;
-  }
-
-  .option-media-image {
-    max-width: 160px;
-    max-height: 110px;
-    border-radius: 4px;
-    display: block;
-  }
-
-  .quiz-options {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-top: 0.75rem;
-  }
-
-  .multi-select-note {
-    font-size: 0.85rem;
-    color: #555;
-    margin: 0.3rem 0;
-  }
-
-  .quiz-option {
-    text-align: left;
-    padding: 0.75rem 1rem;
-    border: 2px solid var(--border-color, #ddd);
-    border-radius: 6px;
-    background: #fff;
-    cursor: pointer;
-    font-size: 1rem;
-    transition: all 0.15s ease;
-  }
-
-  .quiz-option:hover {
-    border-color: #007bff;
-    background: #f0f7ff;
-  }
-
-  .quiz-option.selected {
-    border-color: #007bff;
-    background: #e3f0ff;
-    font-weight: 600;
-  }
-
-  .answer-input {
-    width: 100%;
-    padding: 12px;
-    border: 2px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
-    font-family: monospace;
-    resize: vertical;
-    min-height: 100px;
-  }
-
-  .answer-input:focus {
-    outline: none;
-    border-color: #007bff;
-    background-color: #f0f7ff;
-  }
-
-  .show-answer-btn {
-    background: #6c757d;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    font-size: 14px;
-    border-radius: 4px;
-    cursor: pointer;
-    margin-top: 10px;
-  }
-
-  .show-answer-btn:hover {
-    background: #5a6268;
-  }
-
-  .answer-display {
-    background: #e7f3ff;
-    border-left: 4px solid #007bff;
-    padding: 12px;
-    margin-top: 10px;
-    border-radius: 4px;
-    display: none;
-  }
-
-  .answer-display.show {
-    display: block;
-  }
-
-  .answer-display strong {
-    display: block;
-    color: #007bff;
-    margin-bottom: 5px;
-  }
-
-  .quiz-progress {
-    background: white;
-    border-bottom: 1px solid #dee2e6;
-    padding: 15px 20px;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .progress-bar-container {
-    flex: 1;
-    margin: 0 20px;
-    max-width: 300px;
-  }
-
-  .progress-bar {
-    width: 100%;
-    height: 8px;
-    background: #e9ecef;
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #007bff, #0056b3);
-    transition: width 0.3s ease;
-  }
-
-  .quiz-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 30px;
-    justify-content: flex-end;
-  }
-
-  .btn-primary,
-  .btn-secondary {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
-    font-size: 14px;
-    cursor: pointer;
-    font-weight: 600;
-  }
-
-  .btn-primary {
-    background: #007bff;
-    color: white;
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    background: #0056b3;
-  }
-
-  .btn-secondary {
-    background: #6c757d;
-    color: white;
-  }
-
-  .btn-secondary:hover:not(:disabled) {
-    background: #5a6268;
-  }
-
-  .btn-primary:disabled,
-  .btn-secondary:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .quiz-results {
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 30px;
-    text-align: center;
-    display: none;
-  }
-
-  .quiz-results.show {
-    display: block;
-  }
-
-  .score-display {
-    font-size: 48px;
-    font-weight: 700;
-    color: #007bff;
-    margin: 20px 0;
-  }
-
-  .score-details {
-    font-size: 18px;
-    color: #555;
-    margin: 15px 0;
-  }
-
-  .score-details strong {
-    color: #333;
-  }
-
-  .result-message {
-    font-size: 20px;
-    font-weight: 600;
-    margin: 20px 0;
-    color: #333;
-  }
-
-  .result-message.excellent {
-    color: #28a745;
-  }
-
-  .result-message.good {
-    color: #17a2b8;
-  }
-
-  .result-message.fair {
-    color: #ffc107;
-  }
-
-  .result-message.poor {
-    color: #dc3545;
-  }
-
-  .quiz-history {
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 20px;
-    margin-top: 30px;
-  }
-
-  .quiz-history h3 {
-    margin-bottom: 20px;
-    color: #333;
-  }
-
-  .history-empty {
-    text-align: center;
-    padding: 20px;
-    color: #666;
-  }
-
-  .history-item {
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    padding: 15px;
-    border-radius: 4px;
-    margin-bottom: 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .history-item-info {
-    flex: 1;
-  }
-
-  .history-item-name {
-    font-weight: 600;
-    color: #333;
-  }
-
-  .history-item-details {
-    font-size: 14px;
-    color: #666;
-    margin-top: 5px;
-  }
-
-  .history-item-score {
-    font-size: 24px;
-    font-weight: 700;
-    color: #007bff;
-    min-width: 80px;
-    text-align: right;
-  }
-
-  .loading {
-    text-align: center;
-    padding: 20px;
-    color: #666;
-  }
-
-  .error-message {
-    background: #f8d7da;
-    border: 1px solid #f5c6cb;
-    color: #721c24;
-    padding: 12px;
-    border-radius: 4px;
-    margin-bottom: 20px;
-  }
-
-  .success-message {
-    background: #d4edda;
-    border: 1px solid #c3e6cb;
-    color: #155724;
-    padding: 12px;
-    border-radius: 4px;
-    margin-bottom: 20px;
-  }
-</style>
 
 <main class="quiz-container">
   <h1>📝 Quiz</h1>
@@ -462,9 +46,9 @@
       </div>
     </div>
 
-    <div style="margin-top: 20px;">
+    <div class="quiz-start-row">
       <button id="start-quiz-btn" class="btn-start-quiz">Start Quiz</button>
-      <div id="quiz-setup-error" class="error-message" style="display: none;"></div>
+      <div id="quiz-setup-error" class="error-message hidden"></div>
     </div>
   </div>
 
@@ -474,13 +58,13 @@
       <span id="question-counter">Question 1 of 10</span>
       <div class="progress-bar-container">
         <div class="progress-bar">
-          <div id="progress-fill" class="progress-bar-fill" style="width: 0%"></div>
+          <div id="progress-fill" class="progress-bar-fill progress-w0"></div>
         </div>
       </div>
-      <span id="difficulty-badge" style="font-size: 12px; color: #666;">Difficulty: Medium</span>
+      <span id="difficulty-badge" class="difficulty-badge">Difficulty: Medium</span>
     </div>
 
-    <div style="padding: 20px;">
+    <div class="quiz-questions-pad">
       <div id="questions-container"></div>
     </div>
 
@@ -502,7 +86,7 @@
       Correct: <strong id="correct-count">0</strong> / <strong id="total-count">0</strong> questions
     </div>
 
-    <div class="quiz-actions" style="margin-top: 20px;">
+    <div class="quiz-actions">
       <button id="new-quiz-btn" class="btn-primary">Create Another Quiz</button>
       <button id="view-history-btn" class="btn-secondary">View History</button>
     </div>
@@ -627,7 +211,7 @@
     document.getElementById('new-quiz-btn').addEventListener('click', resetToSetup);
     document.getElementById('view-history-btn').addEventListener('click', () => {
       document.getElementById('quiz-results').classList.remove('show');
-      document.getElementById('quiz-setup').style.display = 'block';
+      document.getElementById('quiz-setup').classList.remove('hidden');
       loadQuizHistory();
     });
   }
@@ -635,7 +219,7 @@
   async function startQuiz() {
     try {
       const errorDiv = document.getElementById('quiz-setup-error');
-      errorDiv.style.display = 'none';
+      errorDiv.classList.add('hidden');
 
       // Build filter parameters
       const params = new URLSearchParams();
@@ -655,7 +239,7 @@
 
       if (data.status !== 'success') {
         errorDiv.textContent = data.message || 'Failed to start quiz';
-        errorDiv.style.display = 'block';
+        errorDiv.classList.remove('hidden');
         return;
       }
 
@@ -672,12 +256,12 @@
     } catch (error) {
       console.error('Failed to start quiz:', error);
       document.getElementById('quiz-setup-error').textContent = 'Error starting quiz. Please try again.';
-      document.getElementById('quiz-setup-error').style.display = 'block';
+      document.getElementById('quiz-setup-error').classList.remove('hidden');
     }
   }
 
   function displayQuiz() {
-    document.getElementById('quiz-setup').style.display = 'none';
+    document.getElementById('quiz-setup').classList.add('hidden');
     document.getElementById('quiz-active').classList.add('show');
 
     const container = document.getElementById('questions-container');
@@ -710,7 +294,7 @@
         .join('');
       const mediaHTML = `
         ${question.question_form === 'image' && question.question_media_data ? `<img class="quiz-question-image" src="${question.question_media_data}" alt="Question image" />` : ''}
-        ${question.question_form === 'audio' && question.question_media_data ? `<audio controls src="${question.question_media_data}" style="display:block;margin:0.5rem 0;"></audio>` : ''}
+        ${question.question_form === 'audio' && question.question_media_data ? `<audio controls src="${question.question_media_data}" class="quiz-question-audio"></audio>` : ''}
       `;
       card.innerHTML = `
         <div class="question-number">Question ${index + 1}
@@ -770,7 +354,8 @@
 
     document.getElementById('question-counter').textContent = 
       `Question ${quiz.currentIndex + 1} of ${total}`;
-    document.getElementById('progress-fill').style.width = `${progress}%`;
+    const progressFill = document.getElementById('progress-fill');
+    progressFill.className = `progress-bar-fill progress-w${Math.round(progress / 5) * 5}`;
 
     const difficulty = quiz.questions[quiz.currentIndex]?.difficulty_score || 3;
     const difficultyLabel = difficulty <= 2 ? 'Easy' : difficulty <= 3.5 ? 'Medium' : 'Hard';
@@ -862,14 +447,14 @@
   function cancelQuiz() {
     if (confirm('Cancel this quiz? Your answers will not be saved.')) {
       document.getElementById('quiz-active').classList.remove('show');
-      document.getElementById('quiz-setup').style.display = 'block';
+      document.getElementById('quiz-setup').classList.remove('hidden');
       window.currentQuiz = null;
     }
   }
 
   function resetToSetup() {
     document.getElementById('quiz-results').classList.remove('show');
-    document.getElementById('quiz-setup').style.display = 'block';
+    document.getElementById('quiz-setup').classList.remove('hidden');
     document.getElementById('quiz-class').value = '';
     document.getElementById('quiz-lesson').value = '';
     document.getElementById('quiz-category').value = '';

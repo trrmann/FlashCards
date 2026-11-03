@@ -1,0 +1,12 @@
+/* Logout page */
+
+.logout-title {
+  margin-bottom: 1rem;
+}
+
+.logout-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}

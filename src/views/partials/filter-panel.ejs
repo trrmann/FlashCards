@@ -7,7 +7,7 @@
       </button>
     </div>
     
-    <div class="filter-content" id="filter-content" style="display: none;">
+    <div class="filter-content hidden" id="filter-content">
       <div class="filter-row">
         <div class="filter-group">
           <label for="filter-class">Class:</label>
@@ -51,131 +51,12 @@
         </div>
       </div>
 
-      <div class="filter-status" id="filter-status" style="display: none;">
+      <div class="filter-status hidden" id="filter-status">
         <span id="active-filters"></span>
       </div>
     </div>
   </div>
 
-  <style>
-    .filter-panel {
-      background: #f8f9fa;
-      border-bottom: 2px solid #e9ecef;
-      padding: 0;
-      margin: 0;
-    }
-
-    .filter-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 20px;
-      cursor: pointer;
-    }
-
-    .filter-header h3 {
-      margin: 0;
-      font-size: 14px;
-      font-weight: 600;
-      color: #495057;
-    }
-
-    .filter-toggle {
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 0;
-      font-size: 12px;
-      color: #6c757d;
-      transition: transform 0.2s;
-    }
-
-    .filter-toggle.open .toggle-icon {
-      transform: rotate(180deg);
-    }
-
-    .filter-content {
-      padding: 15px 20px;
-      background: #ffffff;
-      border-top: 1px solid #e9ecef;
-    }
-
-    .filter-row {
-      display: flex;
-      gap: 15px;
-      flex-wrap: wrap;
-      align-items: flex-end;
-    }
-
-    .filter-group {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      flex: 1;
-      min-width: 180px;
-    }
-
-    .filter-group label {
-      font-size: 12px;
-      font-weight: 600;
-      color: #495057;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .filter-group input {
-      padding: 8px 12px;
-      border: 1px solid #dee2e6;
-      border-radius: 4px;
-      font-size: 14px;
-      font-family: inherit;
-    }
-
-    .filter-group input:focus {
-      outline: none;
-      border-color: #007bff;
-      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
-    }
-
-    .filter-actions {
-      display: flex;
-      gap: 8px;
-    }
-
-    .btn-sm {
-      padding: 8px 12px;
-      font-size: 12px;
-      min-width: auto;
-    }
-
-    .filter-status {
-      margin-top: 10px;
-      padding: 8px 12px;
-      background: #e7f3ff;
-      border-left: 3px solid #007bff;
-      border-radius: 2px;
-      font-size: 12px;
-      color: #004085;
-    }
-
-    @media (max-width: 768px) {
-      .filter-row {
-        flex-direction: column;
-      }
-
-      .filter-group {
-        width: 100%;
-      }
-
-      .filter-actions {
-        width: 100%;
-      }
-
-      .filter-actions button {
-        flex: 1;
-      }
-    }
-  </style>
 
   <script>
     // Helper function to escape HTML
@@ -202,8 +83,8 @@
     const filterContent = document.getElementById('filter-content');
 
     filterToggle.addEventListener('click', () => {
-      const isHidden = filterContent.style.display === 'none';
-      filterContent.style.display = isHidden ? 'block' : 'none';
+      const isHidden = filterContent.classList.contains('hidden');
+      filterContent.classList.toggle('hidden', !isHidden);
       filterToggle.classList.toggle('open', isHidden);
     });
 
@@ -326,9 +207,9 @@
 
       if (activeFilters.length > 0) {
         activeFilterSpan.textContent = `Active filters: ${activeFilters.join(' • ')}`;
-        statusDiv.style.display = 'block';
+        statusDiv.classList.remove('hidden');
       } else {
-        statusDiv.style.display = 'none';
+        statusDiv.classList.add('hidden');
       }
     }
 

@@ -7,52 +7,8 @@
     <!-- Site Favicon Link -->
     <!-- <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png"> -->
     <link rel="stylesheet" href="/css/styles.css" />
-    <style>
-      .db-expiration-warning {
-        padding: 12px 20px;
-        text-align: center;
-        font-weight: 500;
-        animation-duration: 2s;
-        animation-timing-function: ease-in-out;
-      }
-
-      .db-expiration-warning.warning {
-        background-color: #fff3cd;
-        color: #856404;
-        border-bottom: 2px solid #ffc107;
-      }
-
-      .db-expiration-warning.critical {
-        background-color: #f8d7da;
-        color: #721c24;
-        border-bottom: 2px solid #dc3545;
-      }
-
-      .db-expiration-warning.critical-1day {
-        background-color: #f8d7da;
-        color: #721c24;
-        border-bottom: 2px solid #dc3545;
-        animation: flash-critical 1s infinite;
-      }
-
-      .db-expiration-warning.expired {
-        background-color: #721c24;
-        color: #ffffff;
-        border-bottom: 2px solid #dc3545;
-        animation: flash-critical 0.5s infinite;
-      }
-
-      @keyframes flash-critical {
-        0%, 100% {
-          background-color: #f8d7da;
-          color: #721c24;
-        }
-        50% {
-          background-color: #dc3545;
-          color: #ffffff;
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="/css/app.css" />
+    <link rel="stylesheet" href="/css/pages/<%= locals.activePage || 'home' %>.css" />
   </head>
   <body>
     <!-- Database Expiration Warning -->

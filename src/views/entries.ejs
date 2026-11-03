@@ -39,7 +39,7 @@
             <small id="question-type-hint"></small>
           </div>
 
-          <div class="form-group question-type-panel" id="tf-toggle-panel" style="display: none;">
+          <div class="form-group question-type-panel hidden" id="tf-toggle-panel">
             <label>Correct Answer:</label>
             <div class="tf-toggle" role="group" aria-label="True or False answer">
               <button type="button" id="tf-true-btn" class="tf-btn selected">True</button>
@@ -47,7 +47,7 @@
             </div>
           </div>
 
-          <div class="form-group question-type-panel" id="options-editor" style="display: none;">
+          <div class="form-group question-type-panel hidden" id="options-editor">
             <label>Answer Options:</label>
             <small>
               Mark each option correct or wrong. Options must be all text or all
@@ -59,13 +59,13 @@
             <button type="button" class="btn btn-secondary" id="add-option-btn">+ Add Option</button>
           </div>
 
-          <div class="form-group question-type-panel" id="audio-recorder" style="display: none;">
+          <div class="form-group question-type-panel hidden" id="audio-recorder">
             <label>Question Audio:</label>
-            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <div class="audio-controls-row">
               <button type="button" class="btn btn-secondary" id="record-audio-btn">🎙️ Record</button>
-              <button type="button" class="btn btn-secondary" id="stop-audio-btn" style="display: none;">⏹ Stop</button>
-              <audio id="audio-preview" controls style="display: none;"></audio>
-              <button type="button" class="btn btn-danger" id="clear-audio-btn" style="display: none;">Clear</button>
+              <button type="button" class="btn btn-secondary hidden" id="stop-audio-btn">⏹ Stop</button>
+              <audio id="audio-preview" controls class="hidden"></audio>
+              <button type="button" class="btn btn-danger hidden" id="clear-audio-btn">Clear</button>
             </div>
           </div>
 
@@ -97,19 +97,19 @@
 
           <div class="form-group">
             <label><input type="checkbox" id="question-tts" /> Read the question aloud (text + speech)</label>
-            <label style="display:block; margin-top: 0.3rem;"><input type="checkbox" id="answer-tts" /> Read the answer aloud (text + speech)</label>
+            <label class="tts-answer-label"><input type="checkbox" id="answer-tts" /> Read the answer aloud (text + speech)</label>
           </div>
 
           <div class="form-group">
             <label for="question-image">Question Image (optional):</label>
             <input type="file" id="question-image" accept="image/*" />
-            <img id="question-image-preview" class="media-preview" style="display: none;" alt="Question image preview" />
+            <img id="question-image-preview" class="media-preview hidden" alt="Question image preview" />
           </div>
 
           <div class="form-group">
             <label for="answer-image">Answer Image (optional):</label>
             <input type="file" id="answer-image" accept="image/*" />
-            <img id="answer-image-preview" class="media-preview" style="display: none;" alt="Answer image preview" />
+            <img id="answer-image-preview" class="media-preview hidden" alt="Answer image preview" />
           </div>
 
           <div class="form-group">
@@ -179,9 +179,9 @@
           Guideline: each class + category group needs at least 4 cards (with distinct
           answers) for multiple-choice practice, and quizzes use at most 20 cards per run.
         </p>
-        <div class="entries-header" style="margin-top: 0;">
+        <div class="entries-header entries-header-flush">
           <div class="entries-actions">
-            <label style="display: inline-flex; align-items: center; gap: 0.35rem; margin-right: 0.5rem;">
+            <label class="select-all-label">
               <input type="checkbox" id="select-all-entries" title="Select or clear all flashcards" />
               Select All
             </label>
@@ -200,7 +200,7 @@
             <button class="btn btn-secondary" id="import-btn" title="Import entries from a data JSON (plus its linked media ZIP, selected together)">
               📤 Import
             </button>
-            <input type="file" id="import-file-input" style="display: none;" accept=".json,.zip" multiple />
+            <input type="file" id="import-file-input" class="hidden" accept=".json,.zip" multiple />
           </div>
         </div>
         <div id="entries-list" class="entries-list">
@@ -209,7 +209,7 @@
       </div>
 
       <!-- Shared with Me Section -->
-      <div class="shared-entries-section" style="display: none;">
+      <div class="shared-entries-section hidden">
         <h2>Shared with Me</h2>
         <div class="list-bulk-controls">
           <label>
@@ -224,9 +224,9 @@
       </div>
 
       <!-- Public Cards Section -->
-      <div class="public-entries-section" style="display: none;">
+      <div class="public-entries-section hidden">
         <h2>Public Cards</h2>
-        <p style="color: #64748b; margin-bottom: 1rem;">
+        <p class="section-intro">
           Public cards from other users are automatically included in your practice
           and quizzes. Remove any you don't want to study.
         </p>
@@ -240,21 +240,21 @@
         <div id="public-entries-list" class="entries-list">
           <p class="loading">Loading public cards...</p>
         </div>
-        <details id="removed-public-details" style="margin-top: 1rem; display: none;">
-          <summary style="cursor: pointer;">Removed public cards</summary>
-          <div class="list-bulk-controls" style="margin-top: 0.75rem;">
+        <details id="removed-public-details" class="removed-public-details hidden">
+          <summary class="removed-public-summary">Removed public cards</summary>
+          <div class="list-bulk-controls list-bulk-controls-spaced">
             <label>
               <input type="checkbox" id="select-all-removed" />
               Select All
             </label>
             <button type="button" class="btn btn-primary" id="restore-selected-btn">Restore Selected</button>
           </div>
-          <div id="removed-public-list" class="entries-list" style="margin-top: 0.75rem;"></div>
+          <div id="removed-public-list" class="entries-list entries-list-spaced"></div>
         </details>
       </div>
 
       <!-- Share Dialog -->
-      <div id="share-dialog" class="share-dialog-overlay" style="display: none;">
+      <div id="share-dialog" class="share-dialog-overlay hidden">
         <div class="share-dialog">
           <h3>Share <span id="share-dialog-count">Flashcard</span></h3>
           <p>
@@ -287,7 +287,7 @@
   </div>
 
   <!-- Edit Modal -->
-  <div id="edit-modal" class="modal" style="display: none;">
+  <div id="edit-modal" class="modal hidden">
     <div class="modal-content">
       <div class="modal-header">
         <h2>Edit Flashcard</h2>
@@ -324,7 +324,7 @@
           </select>
         </div>
 
-        <div class="form-group" id="edit-tf-toggle-panel" style="display: none;">
+        <div class="form-group hidden" id="edit-tf-toggle-panel">
           <label>Correct Answer:</label>
           <div class="tf-toggle" role="group" aria-label="True or False answer">
             <button type="button" id="edit-tf-true-btn" class="tf-btn selected">True</button>
@@ -332,7 +332,7 @@
           </div>
         </div>
 
-        <div class="form-group" id="edit-options-editor" style="display: none;">
+        <div class="form-group hidden" id="edit-options-editor">
           <label>Answer Options:</label>
           <small>
             Mark each option correct or wrong. Options must be all text or all
@@ -402,544 +402,6 @@
   </div>
 </main>
 
-<style>
-  .entries-container {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 20px;
-  }
-
-  .entry-form-section,
-  .entries-list-section,
-  .shared-entries-section {
-    background: #f9f9f9;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-  }
-
-  .entries-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-  }
-
-  .entries-header h2 {
-    margin: 0;
-  }
-
-  .entries-actions {
-    display: flex;
-    gap: 10px;
-  }
-
-  .entries-actions .btn {
-    padding: 8px 16px;
-    font-size: 13px;
-  }
-
-  .entry-form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-  }
-
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-
-  .form-group label {
-    font-weight: bold;
-    font-size: 14px;
-  }
-
-  .form-group textarea,
-  .form-group input[type="text"] {
-    padding: 8px 12px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-family: inherit;
-    font-size: 14px;
-    resize: vertical;
-    min-height: 80px;
-  }
-
-  .form-group input[type="text"] {
-    min-height: auto;
-  }
-
-  .form-group label input[type="checkbox"] {
-    margin-right: 8px;
-  }
-
-  .form-actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-  }
-
-  .btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: bold;
-  }
-
-  .btn-primary {
-    background: #007bff;
-    color: white;
-  }
-
-  .btn-primary:hover {
-    background: #0056b3;
-  }
-
-  .btn-secondary {
-    background: #6c757d;
-    color: white;
-  }
-
-  .btn-secondary:hover {
-    background: #545b62;
-  }
-
-  .btn-danger {
-    background: #dc3545;
-    color: white;
-  }
-
-  .btn-danger:hover {
-    background: #c82333;
-  }
-
-  #form-status {
-    font-size: 14px;
-    padding-left: 10px;
-  }
-
-  #form-status.success {
-    color: #28a745;
-  }
-
-  #form-status.error {
-    color: #dc3545;
-  }
-
-  .entries-list {
-    display: grid;
-    gap: 15px;
-  }
-
-  .entry-card {
-    background: white;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-    padding: 15px;
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 15px;
-  }
-
-  .entry-content {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .entry-question {
-    font-weight: bold;
-    font-size: 15px;
-    color: #333;
-  }
-
-  .entry-answer {
-    color: #666;
-    font-size: 14px;
-    margin-left: 20px;
-    padding-top: 5px;
-    border-top: 1px solid #eee;
-  }
-
-  .entry-metadata {
-    font-size: 12px;
-    color: #999;
-    font-style: italic;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    margin-top: 5px;
-  }
-
-  .entry-metadata-item {
-    display: flex;
-    gap: 5px;
-  }
-
-  .entry-metadata-label {
-    font-weight: bold;
-    color: #666;
-  }
-
-  .entry-lesson {
-    font-size: 12px;
-    color: #999;
-    font-style: italic;
-  }
-
-  .entry-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    align-items: flex-end;
-  }
-
-  .entry-actions button {
-    padding: 6px 12px;
-    font-size: 12px;
-    min-width: 80px;
-  }
-
-  .entry-badge {
-    display: inline-block;
-    background: #e9ecef;
-    color: #495057;
-    padding: 4px 8px;
-    border-radius: 3px;
-    font-size: 11px;
-    font-weight: bold;
-  }
-
-  .entry-badge.private {
-    background: #f8d7da;
-    color: #721c24;
-  }
-
-  .entry-badge.shared {
-    background: #d1ecf1;
-    color: #0c5460;
-  }
-
-  .empty-state {
-    text-align: center;
-    padding: 40px 20px;
-    color: #999;
-  }
-
-  .empty-state p {
-    margin: 10px 0;
-  }
-
-  .loading {
-    text-align: center;
-    color: #999;
-    padding: 20px;
-  }
-
-  .error {
-    color: #dc3545;
-    padding: 10px;
-    background: #f8d7da;
-    border: 1px solid #f5c6cb;
-    border-radius: 4px;
-    margin-bottom: 15px;
-  }
-
-  .success {
-    color: #155724;
-    padding: 10px;
-    background: #d4edda;
-    border: 1px solid #c3e6cb;
-    border-radius: 4px;
-    margin-bottom: 15px;
-  }
-
-  /* Modal Styles */
-  .modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    animation: fadeIn 0.3s ease-in;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  .modal-content {
-    background-color: white;
-    margin: 10% auto;
-    padding: 20px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 600px;
-    max-height: 80vh;
-    overflow-y: auto;
-    animation: slideIn 0.3s ease-in;
-  }
-
-  @keyframes slideIn {
-    from {
-      transform: translateY(-50px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 15px;
-    margin-bottom: 20px;
-  }
-
-  .modal-header h2 {
-    margin: 0;
-    font-size: 1.5rem;
-  }
-
-  .modal-close {
-    background: none;
-    border: none;
-    font-size: 28px;
-    font-weight: bold;
-    color: #999;
-    cursor: pointer;
-    padding: 0;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .modal-close:hover {
-    color: #000;
-  }
-  .share-dialog-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.45);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-  }
-
-  .share-dialog {
-    background: #fff;
-    border-radius: 8px;
-    padding: 1.5rem;
-    width: min(420px, 90vw);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  }
-
-  .share-dialog h3 {
-    margin-top: 0;
-  }
-
-  .share-dialog .share-dialog-actions {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 1rem;
-  }
-
-  .share-dialog input {
-    width: 100%;
-  }
-
-  .entry-select-label {
-    display: flex;
-    align-items: flex-start;
-    padding: 0.25rem 0.5rem 0 0;
-  }
-
-  .entry-select,
-  .shared-select,
-  .public-select,
-  .removed-select {
-    width: 1.1rem;
-    height: 1.1rem;
-    cursor: pointer;
-  }
-
-  .entry-group {
-    border: 1px solid var(--border-color, #ddd);
-    border-radius: 8px;
-    margin-bottom: 0.75rem;
-    padding: 0 0.75rem;
-  }
-
-  .entry-group-summary {
-    cursor: pointer;
-    padding: 0.6rem 0.25rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-weight: 600;
-  }
-
-  .entry-group-count {
-    font-size: 0.85rem;
-    color: #64748b;
-    font-weight: 400;
-  }
-
-  .entry-group-body {
-    padding-bottom: 0.75rem;
-  }
-
-  .entry-group .entry-group {
-    margin-left: 0.75rem;
-  }
-
-  .list-bulk-controls {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-  }
-
-  .list-bulk-controls label {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-  }
-
-  .entry-group-meta {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .studyable-chip {
-    font-size: 0.75rem;
-    font-weight: 600;
-    border-radius: 999px;
-    padding: 0.15rem 0.6rem;
-    white-space: nowrap;
-  }
-
-  .studyable-chip.ok {
-    background: #d1fae5;
-    color: #065f46;
-  }
-
-  .studyable-chip.needs-more {
-    background: #fef3c7;
-    color: #92400e;
-  }
-
-  .studyable-chip.not-studyable {
-    background: #fee2e2;
-    color: #991b1b;
-  }
-
-  .studyable-chip.large {
-    background: #e0e7ff;
-    color: #3730a3;
-  }
-
-  .studyable-guideline {
-    color: #64748b;
-    font-size: 0.9rem;
-    margin: 0.25rem 0 1rem 0;
-  }
-
-  .studyable-topline {
-    margin-bottom: 0.75rem;
-  }
-
-  .media-preview {
-    max-width: 240px;
-    max-height: 160px;
-    display: block;
-    margin-top: 0.5rem;
-    border: 1px solid var(--border-color, #ddd);
-    border-radius: 6px;
-  }
-
-  .tf-toggle {
-    display: inline-flex;
-    border: 1px solid var(--border-color, #ddd);
-    border-radius: 8px;
-    overflow: hidden;
-  }
-
-  .tf-btn {
-    border: none;
-    background: #fff;
-    padding: 0.5rem 1.5rem;
-    font-size: 1rem;
-    cursor: pointer;
-  }
-
-  .tf-btn.selected {
-    background: #2563eb;
-    color: #fff;
-    font-weight: 600;
-  }
-
-  .option-row {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    margin: 0.4rem 0;
-  }
-
-  .option-row .option-text {
-    flex: 1;
-  }
-
-  .option-row .option-image-preview {
-    max-height: 48px;
-    max-width: 80px;
-    border-radius: 4px;
-  }
-
-  .type-badge {
-    display: inline-block;
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    background: #ede9fe;
-    color: #5b21b6;
-    border-radius: 999px;
-    padding: 0.1rem 0.55rem;
-    margin-bottom: 0.3rem;
-  }
-
-  .entry-media {
-    max-width: 200px;
-    max-height: 140px;
-    border-radius: 6px;
-    border: 1px solid var(--border-color, #ddd);
-    display: block;
-    margin: 0.4rem 0;
-  }
-</style>
 
 <script>
   // Check if user is logged in
@@ -1247,7 +709,7 @@
               ${entry.answer_mode === 'listen' ? '<span class="type-badge">listen</span>' : ''}
               <div class="entry-question">${entry.question ? escapeHtml(entry.question) : '🔊 Audio question'}</div>
               ${entry.question_form === 'image' && entry.question_media_data ? `<img class="entry-media" src="${entry.question_media_data}" alt="Question image" />` : ''}
-              ${entry.question_form === 'audio' && entry.question_media_data ? `<audio controls src="${entry.question_media_data}" style="display:block;margin:0.4rem 0;"></audio>` : ''}
+              ${entry.question_form === 'audio' && entry.question_media_data ? `<audio controls src="${entry.question_media_data}" class="entry-media-audio"></audio>` : ''}
               <div class="entry-answer">
                 <strong>Answer:</strong> ${escapeHtml(entry.answer)}
               </div>
@@ -1315,7 +777,7 @@
       const data = await response.json();
 
       if (data.status === 'success' && data.shares && data.shares.length > 0) {
-        section.style.display = 'block';
+        section.classList.remove('hidden');
         list.innerHTML = renderGroupedEntries(data.shares, (share) => `
           <div class="entry-card">
             <label class="entry-select-label" title="Select for batch remove">
@@ -1364,7 +826,7 @@
           </div>
         `);
       } else {
-        section.style.display = 'none';
+        section.classList.add('hidden');
         list.innerHTML = '';
       }
     } catch (error) {
@@ -1500,7 +962,7 @@
         await loadEditMetadataOptions();
         
         // Show the modal
-        document.getElementById('edit-modal').style.display = 'block';
+        document.getElementById('edit-modal').classList.remove('hidden');
       } else {
         alert('Error: ' + data.message);
       }
@@ -1559,7 +1021,7 @@
   }
 
   function closeEditModal() {
-    document.getElementById('edit-modal').style.display = 'none';
+    document.getElementById('edit-modal').classList.add('hidden');
     document.getElementById('edit-form').reset();
   }
 
@@ -1669,7 +1131,7 @@
       const hasAny =
         (data.status === 'success' && data.cards.length > 0) ||
         (removedData.status === 'success' && removedData.cards.length > 0);
-      section.style.display = hasAny ? 'block' : 'none';
+      section.classList.toggle('hidden', !hasAny);
 
       if (data.status === 'success' && data.cards.length > 0) {
         list.innerHTML = renderGroupedEntries(data.cards, (card) => `
@@ -1695,13 +1157,13 @@
           </div>
         `);
       } else {
-        list.innerHTML = '<p style="color: #64748b;">No public cards from other users.</p>';
+        list.innerHTML = '<p class="text-muted">No public cards from other users.</p>';
       }
 
       const removedDetails = document.getElementById('removed-public-details');
       const removedList = document.getElementById('removed-public-list');
       if (removedData.status === 'success' && removedData.cards.length > 0) {
-        removedDetails.style.display = 'block';
+        removedDetails.classList.remove('hidden');
         removedList.innerHTML = removedData.cards
           .map(
             (card) => `
@@ -1726,7 +1188,7 @@
           )
           .join('');
       } else {
-        removedDetails.style.display = 'none';
+        removedDetails.classList.add('hidden');
         removedDetails.open = false;
         removedList.innerHTML = '';
       }
@@ -1800,7 +1262,7 @@
       count === 1 ? 'Flashcard' : count + ' Flashcards';
     document.getElementById('share-dialog-status').innerHTML = '';
     document.getElementById('share-username').value = '';
-    document.getElementById('share-dialog').style.display = 'flex';
+    document.getElementById('share-dialog').classList.remove('hidden');
     loadShareDirectory();
     document.getElementById('share-username').focus();
   }
@@ -1822,7 +1284,7 @@
       const preview = document.getElementById(previewId);
       if (!file) {
         mediaState[stateKey] = null;
-        preview.style.display = 'none';
+        preview.classList.add('hidden');
         return;
       }
       if (file.size > maxMB * 1024 * 1024) {
@@ -1834,7 +1296,7 @@
       reader.onload = () => {
         mediaState[stateKey] = reader.result; // data URL
         preview.src = reader.result;
-        preview.style.display = 'block';
+        preview.classList.remove('hidden');
       };
       reader.readAsDataURL(file);
     });
@@ -1871,9 +1333,9 @@
       <input type="text" class="option-text" placeholder="Option text" />
       <label><input type="checkbox" class="option-correct" /> correct</label>
       <button type="button" class="btn btn-secondary option-image-btn" title="Use an image for this option">📷</button>
-      <input type="file" class="option-image-input" accept="image/*" style="display: none;" />
-      <img class="option-image-preview" style="display: none;" alt="Option image" />
-      <button type="button" class="btn btn-danger option-image-clear" style="display: none;" title="Remove the image">🗑</button>
+      <input type="file" class="option-image-input hidden" accept="image/*" />
+      <img class="option-image-preview hidden" alt="Option image" />
+      <button type="button" class="btn btn-danger option-image-clear hidden" title="Remove the image">🗑</button>
       <button type="button" class="btn btn-danger option-remove">✕</button>
     `;
     row.querySelector('.option-text').value = text;
@@ -1884,8 +1346,8 @@
     const setOptionImage = (dataUrl) => {
       row._optionMedia = dataUrl || null;
       preview.src = dataUrl || '';
-      preview.style.display = dataUrl ? 'inline-block' : 'none';
-      clearBtn.style.display = dataUrl ? 'inline-block' : 'none';
+      preview.classList.toggle('hidden', !dataUrl);
+      clearBtn.classList.toggle('hidden', !dataUrl);
     };
     row.querySelector('.option-image-btn').addEventListener('click', () => imageInput.click());
     imageInput.addEventListener('change', () => {
@@ -1917,14 +1379,14 @@
 
   function updateTypePanels() {
     const type = document.getElementById('question-type').value;
-    document.getElementById('options-editor').style.display =
-      type === 'multiple_choice' || type === 'audio' ? 'block' : 'none';
-    document.getElementById('audio-recorder').style.display = type === 'audio' ? 'block' : 'none';
-    document.getElementById('tf-toggle-panel').style.display =
-      type === 'true_false' ? 'block' : 'none';
+    document
+      .getElementById('options-editor')
+      .classList.toggle('hidden', !(type === 'multiple_choice' || type === 'audio'));
+    document.getElementById('audio-recorder').classList.toggle('hidden', type !== 'audio');
+    document.getElementById('tf-toggle-panel').classList.toggle('hidden', type !== 'true_false');
     // True/false answers come from the toggle, not the textarea
     const answerField = document.getElementById('answer');
-    answerField.closest('.form-group').style.display = type === 'true_false' ? 'none' : 'block';
+    answerField.closest('.form-group').classList.toggle('hidden', type === 'true_false');
     answerField.required = type !== 'true_false';
     if (type === 'true_false') syncTrueFalseAnswer();
     // Audio questions live in the recording; the text becomes an optional caption
@@ -1971,15 +1433,15 @@
           mediaState.questionAudio = reader.result;
           const preview = document.getElementById('audio-preview');
           preview.src = reader.result;
-          preview.style.display = 'inline-block';
-          document.getElementById('clear-audio-btn').style.display = 'inline-block';
+          preview.classList.remove('hidden');
+          document.getElementById('clear-audio-btn').classList.remove('hidden');
         };
         reader.readAsDataURL(blob);
         stream.getTracks().forEach((track) => track.stop());
       };
       mediaRecorder.start();
-      document.getElementById('record-audio-btn').style.display = 'none';
-      document.getElementById('stop-audio-btn').style.display = 'inline-block';
+      document.getElementById('record-audio-btn').classList.add('hidden');
+      document.getElementById('stop-audio-btn').classList.remove('hidden');
     } catch (error) {
       alert('Microphone unavailable: ' + error.message);
     }
@@ -1987,18 +1449,20 @@
 
   function stopRecording() {
     if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-    document.getElementById('record-audio-btn').style.display = 'inline-block';
-    document.getElementById('stop-audio-btn').style.display = 'none';
+    document.getElementById('record-audio-btn').classList.remove('hidden');
+    document.getElementById('stop-audio-btn').classList.add('hidden');
   }
 
   function updateEditTypePanels() {
     const type = document.getElementById('edit-question-type').value;
-    document.getElementById('edit-options-editor').style.display =
-      type === 'multiple_choice' || type === 'audio' ? 'block' : 'none';
-    document.getElementById('edit-tf-toggle-panel').style.display =
-      type === 'true_false' ? 'block' : 'none';
+    document
+      .getElementById('edit-options-editor')
+      .classList.toggle('hidden', !(type === 'multiple_choice' || type === 'audio'));
+    document
+      .getElementById('edit-tf-toggle-panel')
+      .classList.toggle('hidden', type !== 'true_false');
     const answerField = document.getElementById('edit-answer');
-    answerField.closest('.form-group').style.display = type === 'true_false' ? 'none' : 'block';
+    answerField.closest('.form-group').classList.toggle('hidden', type === 'true_false');
     if (type === 'true_false') syncEditTrueFalseAnswer();
   }
 
@@ -2072,7 +1536,7 @@
 
   function closeShareDialog() {
     shareDialogEntryIds = [];
-    document.getElementById('share-dialog').style.display = 'none';
+    document.getElementById('share-dialog').classList.add('hidden');
   }
 
   async function confirmShare() {
@@ -2175,8 +1639,8 @@
       document.getElementById('stop-audio-btn').addEventListener('click', stopRecording);
       document.getElementById('clear-audio-btn').addEventListener('click', () => {
         mediaState.questionAudio = null;
-        document.getElementById('audio-preview').style.display = 'none';
-        document.getElementById('clear-audio-btn').style.display = 'none';
+        document.getElementById('audio-preview').classList.add('hidden');
+        document.getElementById('clear-audio-btn').classList.add('hidden');
       });
     }
   });
