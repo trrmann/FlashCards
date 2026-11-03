@@ -71,6 +71,8 @@ export class BackupRoundTripTest {
    * Drop everything and bootstrap both schemas, as on a brand-new Render database.
    */
   async resetDatabase() {
+    await this.database.query(this.constructor.testQueries.drop_iam_schema);
+    await this.database.query(this.constructor.testQueries.drop_flashcards_schema);
     await this.database.query(this.constructor.testQueries.drop_public_schema);
     await this.database.query(this.constructor.testQueries.create_public_schema);
     await this.identityDatabase.initializeSchema();
@@ -204,12 +206,12 @@ export class BackupRoundTripTest {
    * minus transient ones, so a table missing from the backup cannot go unnoticed.
    */
   async databaseTables() {
-    const result = await this.database.query(
-      this.database.constructor.introspectionQueries.list_public_tables
-    );
-    return result.rows
-      .map((row) => row.table_name)
-      .filter((table) => !this.constructor.TRANSIENT_TABLES.includes(table));
+    const tables = [];
+    for (const db of [this.identityDatabase, this.database]) {
+      const result = await db.query(db.constructor.introspectionQueries.list_schema_tables);
+      tables.push(...result.rows.map((row) => row.table_name));
+    }
+    return tables.filter((table) => !this.constructor.TRANSIENT_TABLES.includes(table));
   }
 
   /**

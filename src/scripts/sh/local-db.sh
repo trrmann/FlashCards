@@ -123,7 +123,8 @@ cmd_status() {
 
 cmd_psql() {
     load_credentials
-    PGPASSWORD="${APP_PASSWORD}" exec psql -h 127.0.0.1 -p "${PORT}" -U "${APP_USER}" -d "${DB_NAME}" "$@"
+    # Same schemas the app sees: flashcards first, then iam (IAM phase 1 layout).
+    PGOPTIONS="-c search_path=flashcards,iam,public" PGPASSWORD="${APP_PASSWORD}" exec psql -h 127.0.0.1 -p "${PORT}" -U "${APP_USER}" -d "${DB_NAME}" "$@"
 }
 
 cmd_env() {

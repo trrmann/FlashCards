@@ -21,13 +21,12 @@ class BackupService {
    * Identity tables (IAM database ownership), in FK-safe import order.
    * The transient session store is intentionally excluded.
    */
-  static iamTables = ['users', 'roles', 'rights', 'role_rights', 'user_roles'];
+  static iamTables = ['users', 'roles', 'rights', 'role_rights', 'user_roles', 'user_rights'];
 
   /**
    * Application tables (app database ownership), in FK-safe import order.
    */
   static appTables = [
-    'user_rights',
     'lessons',
     'media',
     'flashcards',
@@ -79,6 +78,15 @@ class BackupService {
   /**
    * Resolve the owning database adapter for a table.
    */
+  /**
+   * Schema-qualified table name. The import runs on one transaction client
+   * (app search_path), so IAM tables must be addressed as iam.<table>.
+   */
+  qualifiedName(table) {
+    const db = this.databaseFor(table);
+    return db.constructor.SCHEMA ? `${db.constructor.SCHEMA}.${table}` : table;
+  }
+
   databaseFor(table) {
     return this.constructor.iamTables.includes(table) ? this.identityDatabase : this.database;
   }
@@ -378,7 +386,7 @@ class BackupService {
       const natural = this.constructor.naturalKeyTables[table];
       const conflictColumns = natural
         ? [natural.naturalKey]
-        : await this.getPrimaryKeyColumns(client, table);
+        : await this.getPrimaryKeyColumns(client, this.qualifiedName(table));
       if (conflictColumns.length === 0) {
         throw new Error(`Import aborted: no primary key found for ${table}`);
       }
@@ -388,7 +396,7 @@ class BackupService {
         const row = this.prepareRow(dataRow, table, natural, idMaps, results);
         if (!row) continue;
         try {
-          await this.upsertRow(client, table, row, conflictColumns);
+          await this.upsertRow(client, this.qualifiedName(table), row, conflictColumns);
         } catch (error) {
           throw new Error(`Import aborted at table ${table}: ${error.message}`, { cause: error });
         }
@@ -405,7 +413,7 @@ class BackupService {
     for (const [table, column] of Object.entries(this.constructor.serialPkTables)) {
       await client.query(
         this.constructor.queries.reset_serial_sequence_template
-          .replace(/\{\{table\}\}/g, table)
+          .replace(/\{\{table\}\}/g, this.qualifiedName(table))
           .replace(/\{\{column\}\}/g, column)
       );
     }
@@ -438,7 +446,10 @@ class BackupService {
    */
   async naturalKeyIdMap(client, table, natural, rows) {
     const current = await client.query(
-      this.constructor.queries.select_all_rows_template.replace('{{table}}', table)
+      this.constructor.queries.select_all_rows_template.replace(
+        '{{table}}',
+        this.qualifiedName(table)
+      )
     );
     const byNatural = new Map(current.rows.map((r) => [r[natural.naturalKey], r[natural.id]]));
     return new Map(

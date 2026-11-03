@@ -9,6 +9,7 @@ import { PostgresDatabase } from './postgresDatabase.mjs';
 
 export class FlashCardsDatabase extends PostgresDatabase {
   static sqlRoot = PostgresDatabase.sqlRoot;
+  static SCHEMA = 'flashcards';
 
   constructor(config = {}) {
     super(config);
@@ -17,10 +18,10 @@ export class FlashCardsDatabase extends PostgresDatabase {
   async initializeSchema() {
     // The app schema's foreign keys reference the IAM-owned users table;
     // fail fast with a clear message instead of erroring statement by statement.
-    const usersExists = await this.tableExists('users');
+    const usersExists = await this.tableExists('iam.users');
     if (!usersExists) {
       throw new Error(
-        'IAM schema must be bootstrapped before the FlashCards schema: required table "users" is missing. Run IdentityManagementDatabase.initializeSchema() first.'
+        'IAM schema must be bootstrapped before the FlashCards schema: required table "iam.users" is missing. Run IdentityManagementDatabase.initializeSchema() first.'
       );
     }
 

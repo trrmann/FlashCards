@@ -1,21 +1,27 @@
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+-- FlashCards application domain: its own PostgreSQL schema.
+-- The app adapter connects with search_path = flashcards, public. Identity tables
+-- live in the iam schema (iam-postgres-schema.sql, bootstrapped first); the only
+-- cross-domain link is the foreign key to iam.users (CODING_STANDARDS 0.8).
+CREATE SCHEMA IF NOT EXISTS flashcards;
 
--- Identity tables (users, roles, rights, session) are owned by the IAM
--- schema (iam-postgres-schema.sql), which must be bootstrapped first.
-
-CREATE TABLE IF NOT EXISTS user_rights (
-  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-  right_key VARCHAR(100) NOT NULL,
-  granted BOOLEAN NOT NULL DEFAULT true,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  PRIMARY KEY (user_id, right_key)
-);
+-- One-time move of this domain's tables out of the shared public schema
+-- (IAM phase 1). Moves only tables still in public and not yet in flashcards;
+-- data, indexes, constraints, and foreign keys move with each table.
+DO $move_flashcards_tables$
+DECLARE
+  t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['lessons', 'media', 'flashcards', 'flashcard_options', 'public_card_removals', 'flashcard_shares', 'leitner_boxes', 'flashcard_leitner_progress', 'practice_history', 'session_card_attempts', 'difficulty_history', 'quizzes', 'quiz_questions', 'quiz_results', 'import_export_logs'] LOOP
+    IF to_regclass('public.' || t) IS NOT NULL AND to_regclass('flashcards.' || t) IS NULL THEN
+      EXECUTE format('ALTER TABLE public.%I SET SCHEMA flashcards', t);
+    END IF;
+  END LOOP;
+END
+$move_flashcards_tables$;
 
 CREATE TABLE IF NOT EXISTS lessons (
   lesson_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   description TEXT,
   created_at TIMESTAMP DEFAULT NOW(),
@@ -27,7 +33,7 @@ CREATE INDEX IF NOT EXISTS idx_lessons_name ON lessons(user_id, name);
 
 CREATE TABLE IF NOT EXISTS flashcards (
   flashcard_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
   question TEXT NOT NULL,
   answer TEXT NOT NULL,
   category VARCHAR(100),
@@ -37,7 +43,7 @@ CREATE TABLE IF NOT EXISTS flashcards (
   lesson_id UUID REFERENCES lessons(lesson_id) ON DELETE SET NULL,
   is_public BOOLEAN DEFAULT false,
   is_private BOOLEAN NOT NULL DEFAULT true,
-  created_by UUID REFERENCES users(user_id) ON DELETE CASCADE,
+  created_by UUID REFERENCES iam.users(user_id) ON DELETE CASCADE,
   difficulty_score DECIMAL(3, 2) DEFAULT 3.00 CHECK (difficulty_score >= 1.0 AND difficulty_score <= 5.0),
   last_difficulty_update TIMESTAMP DEFAULT NOW(),
   difficulty_calc_base VARCHAR(10) DEFAULT 'individual' CHECK (difficulty_calc_base IN ('individual', 'shared')),
@@ -50,7 +56,7 @@ CREATE INDEX IF NOT EXISTS idx_flashcards_category ON flashcards(category, user_
 
 CREATE TABLE IF NOT EXISTS media (
   media_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
   kind VARCHAR(10) NOT NULL CHECK (kind IN ('image', 'audio')),
   data TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT NOW()
@@ -129,7 +135,7 @@ ALTER TABLE flashcard_options ADD COLUMN IF NOT EXISTS option_form VARCHAR(10) N
 ALTER TABLE flashcard_options ADD COLUMN IF NOT EXISTS option_media_id UUID REFERENCES media(media_id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS public_card_removals (
-  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
   flashcard_id UUID NOT NULL REFERENCES flashcards(flashcard_id) ON DELETE CASCADE,
   created_at TIMESTAMP DEFAULT NOW(),
   PRIMARY KEY (user_id, flashcard_id)
@@ -137,8 +143,8 @@ CREATE TABLE IF NOT EXISTS public_card_removals (
 
 CREATE TABLE IF NOT EXISTS flashcard_shares (
   share_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  owner_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-  recipient_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  owner_id UUID NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
+  recipient_id UUID NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
   flashcard_id UUID NOT NULL REFERENCES flashcards(flashcard_id) ON DELETE CASCADE,
   status VARCHAR(20) NOT NULL DEFAULT 'pending',
   recipient_status VARCHAR(20) NOT NULL DEFAULT 'pending',
@@ -151,7 +157,7 @@ CREATE TABLE IF NOT EXISTS flashcard_shares (
 
 CREATE TABLE IF NOT EXISTS leitner_boxes (
   box_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
   card_id UUID NOT NULL REFERENCES flashcards(flashcard_id) ON DELETE CASCADE,
   box_number INT NOT NULL CHECK (box_number >= 1 AND box_number <= 3),
   review_count INT DEFAULT 0,
@@ -170,7 +176,7 @@ CREATE INDEX IF NOT EXISTS idx_leitner_boxes_next_review ON leitner_boxes(user_i
 CREATE TABLE IF NOT EXISTS flashcard_leitner_progress (
   id SERIAL PRIMARY KEY,
   flashcard_id UUID NOT NULL REFERENCES flashcards(flashcard_id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
   current_box INT NOT NULL DEFAULT 1 CHECK (current_box IN (1, 2, 3)),
   last_reviewed TIMESTAMP,
   next_review TIMESTAMP DEFAULT NOW(),
@@ -186,7 +192,7 @@ CREATE TABLE IF NOT EXISTS flashcard_leitner_progress (
 CREATE TABLE IF NOT EXISTS practice_history (
   id SERIAL PRIMARY KEY,
   flashcard_id UUID NOT NULL REFERENCES flashcards(flashcard_id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
   leitner_box INT NOT NULL CHECK (leitner_box IN (1, 2, 3)),
   correct BOOLEAN NOT NULL,
   response_time_ms INT,
@@ -199,7 +205,7 @@ CREATE TABLE IF NOT EXISTS practice_history (
 CREATE TABLE IF NOT EXISTS session_card_attempts (
   id SERIAL PRIMARY KEY,
   flashcard_id UUID NOT NULL REFERENCES flashcards(flashcard_id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
   session_start_time TIMESTAMP NOT NULL,
   attempt_number INT NOT NULL CHECK (attempt_number >= 1),
   was_correct BOOLEAN NOT NULL,
@@ -224,7 +230,7 @@ CREATE INDEX IF NOT EXISTS idx_difficulty_history ON difficulty_history(flashcar
 
 CREATE TABLE IF NOT EXISTS quizzes (
   quiz_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   description TEXT,
   created_at TIMESTAMP DEFAULT NOW(),
@@ -246,7 +252,7 @@ CREATE INDEX IF NOT EXISTS idx_quiz_questions_card_id ON quiz_questions(card_id)
 
 CREATE TABLE IF NOT EXISTS quiz_results (
   result_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
   quiz_id UUID NOT NULL REFERENCES quizzes(quiz_id) ON DELETE CASCADE,
   score INT NOT NULL CHECK (score >= 0 AND score <= 100),
   total_questions INT NOT NULL,
@@ -261,7 +267,7 @@ CREATE INDEX IF NOT EXISTS idx_quiz_results_taken_at ON quiz_results(user_id, ta
 
 CREATE TABLE IF NOT EXISTS import_export_logs (
   log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
   action VARCHAR(50) NOT NULL CHECK (action IN ('IMPORT', 'EXPORT')),
   file_name VARCHAR(255),
   cards_processed INT DEFAULT 0,

@@ -287,10 +287,9 @@ database must never mean losing data. Every change must keep these guarantees:
 | `auth/practiceService.mjs` | 142–147                   | Due-box condition built in JS (`p.current_box = 1 OR …`)            |
 | `auth/practiceService.mjs` | 157–171, 809–823, 970–984 | Class/lesson/category `ILIKE` fragments (due cards, stats, summary) |
 | `auth/practiceService.mjs` | 1229                      | `AND lesson = $2` difficulty batch filter                           |
-| `auth/entriesService.mjs`  | 264–278                   | Filter `ILIKE` fragments                                            |
-| `auth/entriesService.mjs`  | 346                       | Partial update builds `col = $n`                                    |
-| `auth/userAuthService.mjs` | 86                        | Partial profile update builds `col = $n`                            |
-| `auth/userAuthService.mjs` | 134, 143, 145             | `BEGIN` / `COMMIT` / `ROLLBACK` strings                             |
+| `auth/entriesService.mjs`  | 279–293                   | Filter `ILIKE` fragments                                            |
+| `auth/entriesService.mjs`  | 362                       | Partial update builds `col = $n`                                    |
+| `auth/userAuthService.mjs` | 79                        | Partial profile update builds `col = $n`                            |
 | `routes/quizRouter.mjs`    | 143–153                   | Filter fragments, and the router runs queries itself                |
 
 ### 0.2 Inline styles
@@ -346,11 +345,10 @@ None. The audit found 0 `style=` attributes, `<style>` blocks, or `.style` uses 
 
 ### 0.8 IAM separation
 
-- No physical separation: IAM and app tables share the `public` schema.
-- `entries-queries.sql` joins `users` in 6 queries (public cards, removed public cards, pending/accepted/owned shares, card with access).
-- `userAuthService.deleteUser` deletes app tables directly (`appQueries`).
-- `user_rights` (per-user overrides) is in the app schema. The IAM has no applications, organizations, or groups,
-  and roles/rights are global.
+- Phase 1 (separate `iam`/`flashcards` schemas, no cross-domain SQL, cascade deletes) is done on the
+  `review-and-data-safety` branch (not yet in production).
+- The IAM has no applications, organizations, or groups yet, and roles/rights are global (phase 2).
+- The IAM still runs inside FlashCards, not as a separate service (phase 3).
 
 ### Other
 

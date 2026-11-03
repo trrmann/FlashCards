@@ -10,6 +10,7 @@ import { PostgresDatabase } from './postgresDatabase.mjs';
 
 export class IdentityManagementDatabase extends PostgresDatabase {
   static sqlRoot = PostgresDatabase.sqlRoot;
+  static SCHEMA = 'iam';
 
   constructor(config = {}) {
     super(config);

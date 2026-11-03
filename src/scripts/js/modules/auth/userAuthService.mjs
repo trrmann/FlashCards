@@ -6,7 +6,6 @@
  */
 
 import { identityManagementDb } from '../db/identityManagementDatabase.mjs';
-import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
 import { validationService } from './validationService.mjs';
 
 class UserAuthService {
@@ -15,14 +14,8 @@ class UserAuthService {
     identityManagementDb.constructor.sqlRoot
   );
 
-  static appQueries = flashCardsDb.constructor.loadNamedSqlStatements(
-    'pg/app-user-data-queries.sql',
-    flashCardsDb.constructor.sqlRoot
-  );
-
-  constructor(database = identityManagementDb, appDatabase = flashCardsDb) {
+  constructor(database = identityManagementDb) {
     this.database = database;
-    this.appDatabase = appDatabase;
   }
 
   async createUser(username, email, password, fullName = null, isPublic = false) {
@@ -125,31 +118,25 @@ class UserAuthService {
     return result.rows[0];
   }
 
+  /**
+   * Delete an identity. Every application's data that references the user is
+   * removed by its foreign keys to iam.users (ON DELETE CASCADE); the IAM never
+   * touches application tables (CODING_STANDARDS 0.8).
+   */
   async deleteUser(userId) {
-    // Remove user-scoped application data first (app database ownership),
-    // then remove the identity itself (IAM database ownership).
-    const client = await this.appDatabase.getClient();
-
-    try {
-      await client.query('BEGIN');
-      await client.query(this.constructor.appQueries.delete_import_export_logs, [userId]);
-      await client.query(this.constructor.appQueries.delete_quiz_results, [userId]);
-      await client.query(this.constructor.appQueries.delete_quiz_questions, [userId]);
-      await client.query(this.constructor.appQueries.delete_quizzes, [userId]);
-      await client.query(this.constructor.appQueries.delete_leitner_boxes, [userId]);
-      await client.query(this.constructor.appQueries.delete_flashcards, [userId]);
-      await client.query(this.constructor.appQueries.delete_media, [userId]);
-      await client.query(this.constructor.appQueries.delete_user_rights, [userId]);
-      await client.query('COMMIT');
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
-
     await this.database.query(this.constructor.queries.delete_user, [userId]);
     return true;
+  }
+
+  /**
+   * Usernames and display names for a set of user ids (for apps that show
+   * who owns or shared something). Returns Map<user_id, {username, full_name}>.
+   */
+  async getUserSummaries(userIds) {
+    const ids = [...new Set(userIds.filter(Boolean))];
+    if (ids.length === 0) return new Map();
+    const result = await this.database.query(this.constructor.queries.get_user_summaries, [ids]);
+    return new Map(result.rows.map((row) => [row.user_id, row]));
   }
 
   async isAdmin(userId) {
@@ -206,7 +193,7 @@ class UserAuthService {
 
   /**
    * Effective rights: rights granted through IAM roles, overridden by any
-   * user-specific special assignments stored in the application database.
+   * user-specific overrides (user_rights), all within the IAM.
    */
   async getUserRights(userId) {
     const roleResult = await this.database.query(this.constructor.queries.get_role_rights, [
@@ -214,10 +201,9 @@ class UserAuthService {
     ]);
     const rights = new Set(roleResult.rows.map((row) => row.right_key));
 
-    const overrideResult = await this.appDatabase.query(
-      this.constructor.appQueries.get_user_rights,
-      [userId]
-    );
+    const overrideResult = await this.database.query(this.constructor.queries.get_user_rights, [
+      userId,
+    ]);
     for (const row of overrideResult.rows) {
       if (row.granted) {
         rights.add(row.right_key);
@@ -230,7 +216,7 @@ class UserAuthService {
   }
 
   async grantUserRight(userId, rightKey, granted = true) {
-    await this.appDatabase.query(this.constructor.appQueries.grant_user_right, [
+    await this.database.query(this.constructor.queries.grant_user_right, [
       userId,
       rightKey,
       granted,
@@ -238,7 +224,7 @@ class UserAuthService {
   }
 
   async revokeUserRight(userId, rightKey) {
-    await this.appDatabase.query(this.constructor.appQueries.revoke_user_right, [userId, rightKey]);
+    await this.database.query(this.constructor.queries.revoke_user_right, [userId, rightKey]);
   }
 
   async updateUserPassword(userId, newPassword) {

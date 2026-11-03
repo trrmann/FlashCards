@@ -194,7 +194,7 @@ The user's own cards, newest first. Optional `?class=&lesson=&category=` (wildca
 
 ### GET /api/entries/:flashcardId
 
-A single card the user can access (owned, accepted share, or public). `404` if none.
+A single card the user owns or has an accepted share of (public cards are **not** readable here). Includes the owner's `username`/`full_name`. `404` if none.
 
 ### GET /api/entries/:flashcardId/options
 

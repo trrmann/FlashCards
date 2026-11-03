@@ -11,6 +11,20 @@ No new features or refactors until production has been checked end to end. Smoke
 Decide first: deploy the pending review fixes (backup-import user merge + schema order) before
 verifying, since the failed backup import on Render needs the merge fix to complete.
 
+> ⚠️ **Release plan for the `review-and-data-safety` branch.** It contains a schema migration (IAM phase 1:
+> tables move from `public` into `iam`/`flashcards`). Dev, preview, and production share one database, so the
+> **first start of this branch with `deploy.sh -dev` or `-preview` migrates the production database**, and the
+> code currently live on Render (which expects `public`) stops working until the branch is deployed there.
+> Do it in one sitting:
+>
+> 1. `backup.sh` (production backup, both files).
+> 2. Merge the branch into `main`, then `deploy.sh -preview` (migrates the shared DB; the live site is down from here).
+> 3. When preview passes, `deploy.sh -prod` right away (Render runs the new code; the site is back).
+> 4. Run the checklist below on Render.
+>
+> If anything goes wrong: restore with `restore.sh` from step 1's files (the database layout can be rebuilt from
+> any backup). Until then, keep using `main` for `-dev`/`-preview`, or use `local-db.sh serve` for this branch.
+
 Checklist (signed in on the Render URL, as a normal user and as an admin):
 
 - [ ] Login / logout; redirect to last page visited after login
@@ -46,7 +60,7 @@ Requirement: [CODING_STANDARDS.md § 0.8](./CODING_STANDARDS.md). Design, owner 
 - [x] Local scratch PostgreSQL set up (`local-db.sh`), fresh-bootstrap verified
 - [x] WurmTools IAM reviewed and mapped into the design
 - [x] Decided: separate IAM service (2026-11-03)
-- [ ] Phase 1: `iam`/`flashcards` schemas, no cross-domain SQL, cascade deletes via FK (local DB)
+- [x] Phase 1: `iam`/`flashcards` schemas, no cross-domain SQL, cascade deletes via FK (2026-11-03, local DB; reaches production with the branch)
 - [ ] Phase 2: applications, app access, app-scoped roles, orgs/groups management, backup v3
 - [ ] Phase 3: IAM service, tokens, MFA, invitations, role requests, impersonation + audit, throttling, resource grants
 - [ ] Phase 4: WurmTools on the shared IAM (in the WurmTools refactor) + import of its local identity files
@@ -226,6 +240,21 @@ Found in the code/documentation review of 2026-11-03 (not yet fixed):
 - **`.env.example` lists many unused keys** (`DATABASE_URL`, `JWT_*`, `DB_SCHEMA`, `CORS_*`, …).
 - **Unused leftovers:** `src/data/test.db`, `leitner_boxes` and `lessons` tables, `flashcards.is_public`/
   `difficulty`/`lesson_id`, `flashcard_leitner_progress.session_streak`, `user_rights`/`rights` (no routes).
+
+Resolved on 2026-11-03 (IAM phase 1):
+
+- ~~IAM and app data share the `public` schema; app SQL joins IAM tables; the IAM deletes app data~~
+  **Resolved:** each schema file creates its schema (`iam`, `flashcards`) and moves its tables out of `public`
+  in a guarded block, so existing databases migrate in place. Adapters set `search_path` per schema
+  (`PostgresDatabase.SCHEMA`); app foreign keys reference `iam.users`; `user_rights` moved to `iam`;
+  `app-user-data-queries.sql` removed; `deleteUser` deletes only the identity (FK cascade does the rest);
+  the 6 `JOIN users` queries replaced by `userAuthService.getUserSummaries()`; introspection, system status,
+  backup/restore (schema-qualified import), and the round-trip test made schema-aware.
+  Verified on the local DB: (1) **migration** — a database built and populated by the previous commit
+  (22 tables in `public`) moved to 7 `iam` + 15 `flashcards` tables with identical row counts, no errors;
+  logins and sessions, usernames on shares/public cards, shared-card reads, system status, admin user list,
+  every page, and a user delete (their card removed by cascade) all worked; (2) **fresh database** —
+  round-trip test 106/106.
 
 Resolved on 2026-11-03 (data safety, part 2):
 

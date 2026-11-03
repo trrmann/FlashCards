@@ -79,7 +79,10 @@ Each service loads its SQL as a static `queries` map, read from a named-query fi
 Every query is logged with its duration. An error on an idle pool client exits the process.
 
 The two adapters (`IdentityManagementDatabase`, `FlashCardsDatabase`) are separate pools to the same
-database. They differ only in which schema file they bootstrap and which tables they own.
+database, each with its own PostgreSQL schema (`iam`, `flashcards`) on its connection `search_path`.
+App code reaches identity data only through `userAuthService` (no cross-domain SQL); app tables link to
+`iam.users` by foreign key with `ON DELETE CASCADE`. The IAM becomes a separate service in a later phase
+(IAM_MULTI_APP_DESIGN.md).
 See [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md).
 
 ### Frontend

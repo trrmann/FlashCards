@@ -20,6 +20,13 @@ export class PostgresDatabase {
   static DEFAULT_CONNECTION_TIMEOUT_MS = 2000;
   static DEFAULT_SSL = { rejectUnauthorized: false };
 
+  /**
+   * PostgreSQL schema owned by the adapter (null = server default). Subclasses
+   * set it; connections then use search_path = <schema>, public, so the
+   * adapter's SQL stays unqualified within its own domain.
+   */
+  static SCHEMA = null;
+
   static initializeEnvironment() {
     return dotenv.config();
   }
@@ -42,6 +49,7 @@ export class PostgresDatabase {
       max: config.max ?? this.DEFAULT_POOL_MAX,
       idleTimeoutMillis: config.idleTimeoutMillis ?? this.DEFAULT_IDLE_TIMEOUT_MS,
       connectionTimeoutMillis: config.connectionTimeoutMillis ?? this.DEFAULT_CONNECTION_TIMEOUT_MS,
+      options: config.options ?? (this.SCHEMA ? `-c search_path=${this.SCHEMA},public` : undefined),
       ...config,
     };
   }
@@ -279,7 +287,7 @@ export class PostgresDatabase {
   }
 
   /**
-   * Check whether a public table exists in the connected database.
+   * Check whether a table exists (plain name via search_path, or schema.table).
    */
   async tableExists(tableName) {
     const result = await this.query(this.constructor.introspectionQueries.table_exists, [
@@ -330,9 +338,9 @@ export class PostgresDatabase {
         }
       }
 
-      const result = await client.query(this.constructor.introspectionQueries.list_public_tables);
+      const result = await client.query(this.constructor.introspectionQueries.list_schema_tables);
 
-      console.log(`Public tables now present: ${result.rows.length}`);
+      console.log(`Tables now present in schema: ${result.rows.length}`);
 
       if (failures.length > 0) {
         console.error(`❌ Schema bootstrap failed: ${failures.length} statement(s) errored.`);

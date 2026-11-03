@@ -3,14 +3,30 @@
 The schema is defined in two idempotent SQL files. They are the source of truth; this
 document summarizes them.
 
-| File                                                | Owner adapter                | Contents                                                                                           |
-| --------------------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------- |
-| `src/scripts/sql/pg/iam-postgres-schema.sql`        | `IdentityManagementDatabase` | `users`, `roles`, `rights`, `role_rights`, `user_roles`, `session`; seeds roles `admin` and `user` |
-| `src/scripts/sql/pg/flashcards-postgres-schema.sql` | `FlashCardsDatabase`         | All application tables (below)                                                                     |
+| File                                                | Owner adapter                | Contents                                                                                                                        |
+| --------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `src/scripts/sql/pg/iam-postgres-schema.sql`        | `IdentityManagementDatabase` | Schema `iam`: `users`, `roles`, `rights`, `role_rights`, `user_roles`, `user_rights`, `session`; seeds roles `admin` and `user` |
+| `src/scripts/sql/pg/flashcards-postgres-schema.sql` | `FlashCardsDatabase`         | Schema `flashcards`: all application tables (below)                                                                             |
 
-Both adapters connect to the **same PostgreSQL database** with the same credentials, and all
-tables live in the `public` schema. The split is about ownership and bootstrap order, not
-physical separation. (`DB_SCHEMA` in `.env.example` is not read by the code.)
+Both adapters connect to the **same PostgreSQL database**, but each domain has **its own PostgreSQL
+schema** (IAM phase 1, CODING_STANDARDS § 0.8):
+
+| Schema       | Owner adapter                | Connection `search_path` | Contents                                       |
+| ------------ | ---------------------------- | ------------------------ | ---------------------------------------------- |
+| `iam`        | `IdentityManagementDatabase` | `iam, public`            | Identities, roles, rights, sessions            |
+| `flashcards` | `FlashCardsDatabase`         | `flashcards, public`     | All FlashCards data                            |
+| `public`     | —                            | —                        | Only the `uuid-ossp` and `pgcrypto` extensions |
+
+The search path is set as a connection option (`PostgresDatabase.SCHEMA`), so each adapter's SQL stays
+unqualified within its own domain. The only cross-domain link is the foreign key from app tables to
+`iam.users(user_id) ON DELETE CASCADE`. App SQL never queries IAM tables; usernames come from
+`userAuthService.getUserSummaries()`. (`DB_SCHEMA` in `.env.example` is not read by the code.)
+
+**Migration from the old single-schema layout:** each schema file starts with `CREATE SCHEMA IF NOT EXISTS`
+and a guarded `DO` block that moves that domain's tables out of `public` (`ALTER TABLE … SET SCHEMA`, only
+if still in `public`). Data, indexes, and foreign keys move with the tables, so an existing database
+migrates in place on its first start with the new code. Verified on the local scratch database: an
+old-layout database with data in all 22 tables migrated with identical row counts.
 
 ## Bootstrap and migrations
 
@@ -180,10 +196,10 @@ Written only when a recalculation changes the score.
 `action` ∈ `IMPORT`/`EXPORT`; `status` ∈ `pending`/`completed`/`failed`; `cards_processed`, `file_name`, `error_message`.
 Written by the admin backup routes only.
 
-### `user_rights`
+### `user_rights` (schema `iam`)
 
-PK `(user_id, right_key)`, `granted`. Per-user right overrides. The service methods exist,
-but no route uses them yet.
+PK `(user_id, right_key)`, `granted`. Per-user right overrides, owned by the IAM since phase 1. The
+service methods exist, but no route uses them yet.
 
 ### Legacy tables
 
@@ -193,8 +209,8 @@ but no route uses them yet.
 
 ## Cascade behavior
 
-Deleting a user cascades to all user-owned rows. `userAuthService.deleteUser` first deletes
-the app data explicitly in a transaction, then deletes the identity row.
+Deleting a user (`userAuthService.deleteUser`) deletes only the identity row in `iam.users`. Every app
+table that references the user cascades through its foreign key, so the IAM never touches app tables.
 Deleting a flashcard cascades to its options, shares, removals, progress, history, attempts,
 difficulty history, and quiz questions. Media references are set to NULL, and orphaned media is then
 garbage-collected by the service.

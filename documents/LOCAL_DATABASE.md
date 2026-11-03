@@ -25,7 +25,7 @@ local-db.sh init        # once: create the cluster, role, and database
 local-db.sh start       # start (not started automatically at boot)
 local-db.sh status
 local-db.sh serve       # run the app on http://localhost:5001 against the local DB
-local-db.sh psql        # psql on the local DB
+local-db.sh psql        # psql on the local DB (search_path flashcards, iam, public, like the app)
 local-db.sh reset       # drop and recreate the database (empty)
 local-db.sh stop
 local-db.sh destroy     # delete the whole local cluster and its data

@@ -13,18 +13,18 @@ database ([LOCAL_DATABASE.md](./LOCAL_DATABASE.md)), never first on the shared p
 4. The IAM used by **WurmTools** (`../WurmTools/wurm-tools`) is brought into this IAM. WurmTools itself is
    due for a refactor (see "WurmTools" below).
 
-## Current state (as of 2026-11-03)
+## Current state (as of 2026-11-03, after phase 1)
 
-| Aspect             | Today                                                                                                                 |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| Code               | Separate adapters: `IdentityManagementDatabase` (IAM SQL file) and `FlashCardsDatabase` (app SQL file)                |
-| Physical storage   | **Not separated.** Same database, same `public` schema, two pools with identical credentials                          |
-| App → IAM coupling | 15 foreign keys to `users`. 6 app queries `JOIN users` for usernames (entries: public cards, shares)                  |
-| IAM → app coupling | `userAuthService.deleteUser` deletes FlashCards tables directly (`appQueries`)                                        |
-| Rights             | `roles`/`rights`/`role_rights`/`user_roles` in IAM, `user_rights` in the app. Only `admin` role membership is checked |
-| Multi-app          | None. Roles and rights are global, with no notion of an application                                                   |
-| Orgs / groups      | None                                                                                                                  |
-| Sessions           | `session` table created by the IAM schema, used by FlashCards' `express-session`                                      |
+| Aspect             | Today                                                                                                           |
+| ------------------ | --------------------------------------------------------------------------------------------------------------- |
+| Code               | Separate adapters: `IdentityManagementDatabase` (IAM SQL file) and `FlashCardsDatabase` (app SQL file)          |
+| Physical storage   | **Separated (phase 1, 2026-11-03):** `iam` and `flashcards` schemas, one per adapter `search_path`              |
+| App → IAM coupling | Foreign keys to `iam.users` only. Usernames via `userAuthService.getUserSummaries()` (no app SQL on IAM tables) |
+| IAM → app coupling | None: `deleteUser` deletes the identity; app rows cascade via their foreign keys                                |
+| Rights             | `roles`/`rights`/`role_rights`/`user_roles`/`user_rights` all in `iam`. Only `admin` role membership is checked |
+| Multi-app          | None. Roles and rights are global, with no notion of an application                                             |
+| Orgs / groups      | None                                                                                                            |
+| Sessions           | `session` table created by the IAM schema, used by FlashCards' `express-session`                                |
 
 ## Proposed design
 

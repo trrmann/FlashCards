@@ -1,9 +1,6 @@
 -- Query: table_exists
-SELECT EXISTS (
-  SELECT 1
-  FROM information_schema.tables
-  WHERE table_schema = 'public' AND table_name = $1
-) AS exists;
+-- Accepts a plain name (resolved through the adapter's search_path) or schema.table.
+SELECT to_regclass($1) IS NOT NULL AS exists;
 
 -- Query: get_primary_key_columns
 SELECT a.attname AS column_name
@@ -13,16 +10,17 @@ WHERE i.indrelid = $1::regclass
 AND i.indisprimary
 ORDER BY a.attnum;
 
--- Query: list_public_tables
+-- Query: list_schema_tables
+-- Tables in the adapter's own schema (the first schema on its search_path).
 SELECT table_name
 FROM information_schema.tables
-WHERE table_schema = 'public'
+WHERE table_schema = current_schema()
 ORDER BY table_name;
 
 -- Query: select_table_columns
 SELECT column_name, data_type, is_nullable, column_default
 FROM information_schema.columns
-WHERE table_name = $1
+WHERE table_schema = current_schema() AND table_name = $1
 ORDER BY ordinal_position;
 
 -- Query: connection_probe

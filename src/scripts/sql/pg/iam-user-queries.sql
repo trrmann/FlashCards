@@ -121,3 +121,19 @@ SELECT storage_max_bytes FROM users WHERE user_id = $1;
 -- Query: update_storage_limit
 UPDATE users SET storage_max_bytes = $1, updated_at = NOW() WHERE user_id = $2
 RETURNING storage_max_bytes;
+
+-- Query: get_user_summaries
+SELECT user_id, username, full_name
+FROM users
+WHERE user_id = ANY($1::uuid[]);
+
+-- Query: grant_user_right
+INSERT INTO user_rights (user_id, right_key, granted)
+VALUES ($1, $2, $3)
+ON CONFLICT (user_id, right_key) DO UPDATE SET granted = $3, updated_at = NOW();
+
+-- Query: revoke_user_right
+DELETE FROM user_rights WHERE user_id = $1 AND right_key = $2;
+
+-- Query: get_user_rights
+SELECT right_key, granted FROM user_rights WHERE user_id = $1 ORDER BY right_key;
