@@ -120,6 +120,13 @@
     margin-left: 0.5rem;
   }
 
+  .option-media-image {
+    max-width: 160px;
+    max-height: 110px;
+    border-radius: 4px;
+    display: block;
+  }
+
   .quiz-options {
     display: flex;
     flex-direction: column;
@@ -683,16 +690,22 @@
           data-card-id="${question.card_id}"
           data-option-index="${optIndex}"
           data-correct="${option.isCorrect}"
-        >${escapeHtml(option.text)}</button>`
+        >${
+          option.form === 'image' && option.media
+            ? `<img class="option-media-image" src="${option.media}" alt="Option image" />`
+            : option.form === 'audio' && option.media
+              ? `<span class="option-audio" data-audio="${option.media}">🔈 ${escapeHtml(option.text || 'Play option')}</span>`
+              : escapeHtml(option.text)
+        }</button>`
         )
         .join('');
       const mediaHTML = `
-        ${question.question_image ? `<img class="quiz-question-image" src="${question.question_image}" alt="Question image" />` : ''}
-        ${question.question_audio ? `<audio controls src="${question.question_audio}" style="display:block;margin:0.5rem 0;"></audio>` : ''}
+        ${question.question_form === 'image' && question.question_media_data ? `<img class="quiz-question-image" src="${question.question_media_data}" alt="Question image" />` : ''}
+        ${question.question_form === 'audio' && question.question_media_data ? `<audio controls src="${question.question_media_data}" style="display:block;margin:0.5rem 0;"></audio>` : ''}
       `;
       card.innerHTML = `
         <div class="question-number">Question ${index + 1}
-          ${'speechSynthesis' in window ? `<button type="button" class="quiz-tts" data-text="${escapeHtml(question.question)}" title="Read aloud">🔊</button>` : ''}
+          ${'speechSynthesis' in window ? `<button type="button" class="quiz-tts" data-text="${escapeHtml(question.question)}" data-lang="${escapeHtml(question.lang || 'en-US')}" title="Read aloud">🔊</button>` : ''}
         </div>
         ${mediaHTML}
         <div class="question-text">${escapeHtml(question.question)}</div>
@@ -707,7 +720,17 @@
     document.querySelectorAll('.quiz-tts').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(new SpeechSynthesisUtterance(e.currentTarget.dataset.text));
+        const utterance = new SpeechSynthesisUtterance(e.currentTarget.dataset.text);
+        utterance.lang = e.currentTarget.dataset.lang || 'en-US';
+        window.speechSynthesis.speak(utterance);
+      });
+    });
+
+    // Audio options play on click without selecting
+    document.querySelectorAll('.option-audio').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        new Audio(e.currentTarget.dataset.audio).play();
       });
     });
 

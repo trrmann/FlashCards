@@ -251,6 +251,20 @@
         border-color: #007bff;
       }
 
+      .option-media-image {
+        max-width: 150px;
+        max-height: 100px;
+        border-radius: 4px;
+        display: block;
+        margin: 0 auto;
+      }
+
+      .listen-mode-note {
+        text-align: center;
+        color: #475569;
+        font-style: italic;
+      }
+
       .question-media-image {
         max-width: 100%;
         max-height: 260px;
@@ -706,16 +720,16 @@
 
       function renderQuestionMedia(card) {
         const image = document.getElementById('question-image');
-        if (card.question_image) {
-          image.src = card.question_image;
+        if (card.question_form === 'image' && card.question_media_data) {
+          image.src = card.question_media_data;
           image.style.display = 'block';
         } else {
           image.style.display = 'none';
         }
 
         const audio = document.getElementById('question-audio');
-        if (card.question_audio) {
-          audio.src = card.question_audio;
+        if (card.question_form === 'audio' && card.question_media_data) {
+          audio.src = card.question_media_data;
           audio.style.display = 'block';
         } else {
           audio.style.display = 'none';
@@ -735,7 +749,9 @@
       function speakQuestion() {
         if (!currentCard || !('speechSynthesis' in window)) return;
         window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(new SpeechSynthesisUtterance(currentCard.question));
+        const utterance = new SpeechSynthesisUtterance(currentCard.question);
+        if (currentCard.lang) utterance.lang = currentCard.lang;
+        window.speechSynthesis.speak(utterance);
       }
 
       function normalizeSpeech(text) {
@@ -746,21 +762,47 @@
           .trim();
       }
 
+      async function submitListenResult(isCorrect) {
+        answered = true;
+        try {
+          await fetch('/api/practice/answer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              flashcardId: currentCard.flashcard_id,
+              selectedAnswer: currentCard.answer,
+              isCorrect,
+              sessionStartTime,
+            }),
+          });
+          const nextBtn = document.getElementById('next-button');
+          nextBtn.style.display = 'block';
+          await refreshStatsForActiveFilters();
+        } catch (error) {
+          console.error('listen submit failed', error);
+        }
+      }
+
       function listenForAnswer() {
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRec || !currentOptions) return;
+        if (!SpeechRec) return;
         const feedback = document.getElementById('voice-feedback');
         feedback.style.display = 'block';
         feedback.textContent = '🎤 Listening…';
 
         const recognition = new SpeechRec();
-        recognition.lang = 'en-US';
+        recognition.lang =
+          (currentCard && (currentCard.answer_lang || currentCard.lang)) || 'en-US';
         recognition.interimResults = false;
         recognition.maxAlternatives = 3;
 
         recognition.onresult = (event) => {
           const alternatives = [...event.results[0]].map((alt) => normalizeSpeech(alt.transcript));
-          const correct = currentOptions.find((option) => option.isCorrect);
+          const correct =
+            currentCard && currentCard.answer_mode === 'listen'
+              ? { text: currentCard.answer }
+              : (currentOptions || []).find((option) => option.isCorrect);
           const correctText = normalizeSpeech(correct ? correct.text : '');
           const heard = alternatives[0] || '';
           const matched = alternatives.some(
@@ -768,9 +810,14 @@
           );
 
           if (matched) {
-            feedback.innerHTML = `✅ Pronunciation recognized: "<em>${heard}</em>" — selecting the matching answer.`;
-            const index = currentOptions.findIndex((option) => option.isCorrect);
-            if (index >= 0 && !answered) selectOption(index);
+            if (currentCard && currentCard.answer_mode === 'listen') {
+              feedback.innerHTML = `✅ Pronunciation correct: "<em>${heard}</em>"`;
+              if (!answered) submitListenResult(true);
+            } else {
+              feedback.innerHTML = `✅ Pronunciation recognized: "<em>${heard}</em>" — selecting the matching answer.`;
+              const index = currentOptions.findIndex((option) => option.isCorrect);
+              if (index >= 0 && !answered) selectOption(index);
+            }
           } else {
             feedback.innerHTML = `❌ Heard "<em>${heard}</em>" — expected "<em>${correct ? correct.text : ''}</em>". Try again.`;
           }
@@ -923,10 +970,45 @@
         const container = document.getElementById('options-container');
         container.innerHTML = '';
 
+        // Listen answer mode: no options; the user speaks the answer
+        if (currentCard && currentCard.answer_mode === 'listen') {
+          const note = document.createElement('p');
+          note.className = 'listen-mode-note';
+          note.textContent = '🎤 Listen mode: press "Say answer" and speak the answer aloud.';
+          container.appendChild(note);
+          const feedback = document.getElementById('voice-feedback');
+          feedback.style.display = 'block';
+          feedback.textContent = 'Your spoken answer is checked for pronunciation.';
+          return;
+        }
+
         currentOptions.forEach((option, index) => {
           const button = document.createElement('button');
           button.className = 'option-button';
-          button.textContent = option.text;
+          if (option.form === 'image' && option.media) {
+            const img = document.createElement('img');
+            img.src = option.media;
+            img.alt = option.text || 'Option image';
+            img.className = 'option-media-image';
+            button.appendChild(img);
+          } else if (option.form === 'audio' && option.media) {
+            button.textContent = '🔈 ' + (option.text || 'Play and choose');
+            const clip = new Audio(option.media);
+            button.addEventListener('mouseenter', () => clip.play());
+          } else {
+            button.textContent = option.text;
+            if (option.form === 'text_tts' && 'speechSynthesis' in window) {
+              button.title = 'Double-click to hear this option';
+              button.addEventListener('dblclick', (e) => {
+                e.preventDefault();
+                const u = new SpeechSynthesisUtterance(option.text);
+                const optLang =
+                  option.lang || (currentCard && (currentCard.answer_lang || currentCard.lang));
+                if (optLang) u.lang = optLang;
+                window.speechSynthesis.speak(u);
+              });
+            }
+          }
           button.onclick = () => selectOption(index);
           button.disabled = answered;
           container.appendChild(button);

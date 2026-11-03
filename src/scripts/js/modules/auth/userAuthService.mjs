@@ -138,6 +138,7 @@ class UserAuthService {
       await client.query(this.constructor.appQueries.delete_quizzes, [userId]);
       await client.query(this.constructor.appQueries.delete_leitner_boxes, [userId]);
       await client.query(this.constructor.appQueries.delete_flashcards, [userId]);
+      await client.query(this.constructor.appQueries.delete_media, [userId]);
       await client.query(this.constructor.appQueries.delete_user_rights, [userId]);
       await client.query('COMMIT');
     } catch (error) {

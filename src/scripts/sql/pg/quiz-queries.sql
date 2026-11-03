@@ -1,7 +1,9 @@
 -- Query: select_quiz_cards_template
 SELECT f.flashcard_id, f.question, f.answer, f.difficulty_score, f.class, f.category, f.lesson,
-       f.question_type, f.question_image, f.question_audio
+       f.question_type, f.lang, f.answer_lang, f.answer_mode, f.question_form,
+       qm.data AS question_media_data
 FROM flashcards f
+LEFT JOIN media qm ON f.question_media_id = qm.media_id
 WHERE (f.created_by = $1 OR EXISTS (
     SELECT 1 FROM flashcard_shares fs
     WHERE fs.flashcard_id = f.flashcard_id

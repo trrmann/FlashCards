@@ -104,8 +104,10 @@ class QuizRouter extends BaseRouter {
         answer: q.answer,
         difficulty_score: q.difficulty_score,
         question_type: q.question_type,
-        question_image: q.question_image,
-        question_audio: q.question_audio,
+        lang: q.lang,
+        answer_lang: q.answer_lang,
+        question_form: q.question_form,
+        question_media_data: q.question_media_data,
         options,
       });
     }

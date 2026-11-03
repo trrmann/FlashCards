@@ -48,10 +48,74 @@ CREATE TABLE IF NOT EXISTS flashcards (
 CREATE INDEX IF NOT EXISTS idx_flashcards_user_id ON flashcards(user_id);
 CREATE INDEX IF NOT EXISTS idx_flashcards_category ON flashcards(category, user_id);
 
+CREATE TABLE IF NOT EXISTS media (
+  media_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  kind VARCHAR(10) NOT NULL CHECK (kind IN ('image', 'audio')),
+  data TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_media_user ON media(user_id);
+
+-- Unified media-block model: every content slot has a form and optional media.
+ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS lang VARCHAR(16) NOT NULL DEFAULT 'en-US';
+ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS answer_lang VARCHAR(16);
+ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS answer_mode VARCHAR(10) NOT NULL DEFAULT 'choice';
+ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS question_form VARCHAR(10) NOT NULL DEFAULT 'text';
+ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS answer_form VARCHAR(10) NOT NULL DEFAULT 'text';
+ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS question_media_id UUID REFERENCES media(media_id) ON DELETE SET NULL;
+ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS answer_media_id UUID REFERENCES media(media_id) ON DELETE SET NULL;
+
+-- One-time migration of v1 inline media columns into the media table.
+-- Runs only while the legacy columns exist; the DROPs make it a no-op after.
+DO $migrate_v1_media$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'flashcards' AND column_name = 'question_image'
+  ) THEN
+    INSERT INTO media (user_id, kind, data)
+    SELECT created_by, 'image', question_image FROM flashcards
+    WHERE question_image IS NOT NULL AND question_media_id IS NULL;
+
+    UPDATE flashcards f
+    SET question_media_id = m.media_id, question_form = 'image'
+    FROM media m
+    WHERE f.question_image IS NOT NULL AND f.question_media_id IS NULL
+      AND m.user_id = f.created_by AND m.kind = 'image' AND m.data = f.question_image;
+
+    INSERT INTO media (user_id, kind, data)
+    SELECT created_by, 'audio', question_audio FROM flashcards
+    WHERE question_audio IS NOT NULL AND question_media_id IS NULL;
+
+    UPDATE flashcards f
+    SET question_media_id = m.media_id, question_form = 'audio'
+    FROM media m
+    WHERE f.question_audio IS NOT NULL AND f.question_media_id IS NULL
+      AND m.user_id = f.created_by AND m.kind = 'audio' AND m.data = f.question_audio;
+
+    INSERT INTO media (user_id, kind, data)
+    SELECT created_by, 'image', answer_image FROM flashcards
+    WHERE answer_image IS NOT NULL AND answer_media_id IS NULL;
+
+    UPDATE flashcards f
+    SET answer_media_id = m.media_id, answer_form = 'image'
+    FROM media m
+    WHERE f.answer_image IS NOT NULL AND f.answer_media_id IS NULL
+      AND m.user_id = f.created_by AND m.kind = 'image' AND m.data = f.answer_image;
+
+    ALTER TABLE flashcards DROP COLUMN question_image;
+    ALTER TABLE flashcards DROP COLUMN answer_image;
+    ALTER TABLE flashcards DROP COLUMN question_audio;
+  END IF;
+END
+$migrate_v1_media$;
+
+ALTER TABLE flashcard_options ADD COLUMN IF NOT EXISTS option_form VARCHAR(10) NOT NULL DEFAULT 'text';
+ALTER TABLE flashcard_options ADD COLUMN IF NOT EXISTS option_media_id UUID REFERENCES media(media_id) ON DELETE SET NULL;
+
 ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS question_type VARCHAR(20) NOT NULL DEFAULT 'standard';
-ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS question_image TEXT;
-ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS answer_image TEXT;
-ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS question_audio TEXT;
 
 CREATE TABLE IF NOT EXISTS flashcard_options (
   option_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

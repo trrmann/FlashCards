@@ -214,14 +214,28 @@ class PracticeService {
    *   all options wrong   -> options rendered incorrect + "None of the above" correct
    * Returns null for standard cards (pool-generated options apply).
    */
+  static TF_LABELS = {
+    en: ['True', 'False'],
+    es: ['Verdadero', 'Falso'],
+    fr: ['Vrai', 'Faux'],
+    de: ['Wahr', 'Falsch'],
+    pt: ['Verdadeiro', 'Falso'],
+    it: ['Vero', 'Falso'],
+  };
+
   async buildTypedOptions(card) {
     const shuffleOptions = (options) => options.sort(() => Math.random() - 0.5);
 
     if (card.question_type === 'true_false') {
       const truthy = String(card.answer).trim().toLowerCase() === 'true';
+      const langKey = String(card.lang || 'en')
+        .slice(0, 2)
+        .toLowerCase();
+      const [trueLabel, falseLabel] =
+        this.constructor.TF_LABELS[langKey] || this.constructor.TF_LABELS.en;
       return [
-        { text: 'True', isCorrect: truthy },
-        { text: 'False', isCorrect: !truthy },
+        { text: trueLabel, isCorrect: truthy, form: 'text_tts', lang: card.lang },
+        { text: falseLabel, isCorrect: !truthy, form: 'text_tts', lang: card.lang },
       ];
     }
 
@@ -240,19 +254,34 @@ class PracticeService {
       if (correctCount === authored.length) {
         // Every authored option is correct -> "All of the above" is the answer
         return shuffleOptions([
-          ...authored.map((option) => ({ text: option.option_text, isCorrect: false })),
+          ...authored.map((option) => ({
+            text: option.option_text,
+            isCorrect: false,
+            form: option.option_form || 'text',
+            media: option.option_media_data || null,
+          })),
         ]).concat([{ text: 'All of the above', isCorrect: true }]);
       }
 
       if (correctCount === 0) {
         // Every authored option is wrong -> "None of the above" is the answer
         return shuffleOptions([
-          ...authored.map((option) => ({ text: option.option_text, isCorrect: false })),
+          ...authored.map((option) => ({
+            text: option.option_text,
+            isCorrect: false,
+            form: option.option_form || 'text',
+            media: option.option_media_data || null,
+          })),
         ]).concat([{ text: 'None of the above', isCorrect: true, isNoneOfAbove: true }]);
       }
 
       return shuffleOptions(
-        authored.map((option) => ({ text: option.option_text, isCorrect: option.is_correct }))
+        authored.map((option) => ({
+          text: option.option_text,
+          isCorrect: option.is_correct,
+          form: option.option_form || 'text',
+          media: option.option_media_data || null,
+        }))
       );
     }
 
@@ -278,6 +307,55 @@ class PracticeService {
     const typed = await this.buildTypedOptions(correctCard);
     if (typed) {
       return typed;
+    }
+
+    // Non-text answer blocks: distractors must be same-form answer blocks
+    // from the accessible pool (images compete with images, audio with audio).
+    if (correctCard.answer_form && correctCard.answer_form !== 'text') {
+      const result = await this.database.query(
+        this.constructor.queries.select_wrong_answer_blocks,
+        [
+          userId,
+          correctCard.flashcard_id,
+          correctCard.answer_form,
+          correctCard.answer,
+          correctCard.class,
+          correctCard.category,
+          optionCount - 1,
+        ]
+      );
+      const options = [
+        {
+          text: correctCard.answer,
+          isCorrect: true,
+          form: correctCard.answer_form,
+          media: correctCard.answer_media_data || null,
+        },
+        ...result.rows.map((row) => ({
+          text: row.answer,
+          isCorrect: false,
+          form: row.answer_form,
+          media: row.answer_media_data || null,
+        })),
+      ];
+      if (options.length < 2) {
+        return {
+          insufficientOptions: true,
+          diagnostic: {
+            currentCard: {
+              question: correctCard.question.substring(0, 60),
+              class: correctCard.class || '(No Class)',
+              category: correctCard.category || '(No Category)',
+              lesson: correctCard.lesson || '(No Lesson)',
+            },
+            availableWrongAnswers: options.length - 1,
+            neededWrongAnswers: optionCount - options.length,
+            totalOptionsNeeded: optionCount,
+            message: `Add more ${correctCard.answer_form}-answer flashcards with Class: "${correctCard.class || 'empty'}" and Category: "${correctCard.category || 'empty'}" to create proper options.`,
+          },
+        };
+      }
+      return options.sort(() => Math.random() - 0.5);
     }
 
     // Get the none_of_above_count for this card

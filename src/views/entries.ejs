@@ -68,6 +68,37 @@
           </div>
 
           <div class="form-group">
+            <label for="card-lang">Language (for text-to-speech and True/False labels):</label>
+            <input type="text" id="card-lang" placeholder="en-US" list="lang-options" autocomplete="off" />
+            <datalist id="lang-options">
+              <option value="en-US"></option>
+              <option value="es-ES"></option>
+              <option value="fr-FR"></option>
+              <option value="de-DE"></option>
+              <option value="pt-BR"></option>
+              <option value="it-IT"></option>
+            </datalist>
+          </div>
+
+          <div class="form-group">
+            <label for="card-answer-lang">Answer Language (optional, defaults to the question language):</label>
+            <input type="text" id="card-answer-lang" placeholder="same as question" list="lang-options" autocomplete="off" />
+          </div>
+
+          <div class="form-group">
+            <label for="answer-mode">Answer Mode:</label>
+            <select id="answer-mode">
+              <option value="choice">Choose from options</option>
+              <option value="listen">Listen - say the answer aloud (pronunciation)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label><input type="checkbox" id="question-tts" /> Read the question aloud (text + speech)</label>
+            <label style="display:block; margin-top: 0.3rem;"><input type="checkbox" id="answer-tts" /> Read the answer aloud (text + speech)</label>
+          </div>
+
+          <div class="form-group">
             <label for="question-image">Question Image (optional):</label>
             <input type="file" id="question-image" accept="image/*" />
             <img id="question-image-preview" class="media-preview" style="display: none;" alt="Question image preview" />
@@ -1034,9 +1065,19 @@
             class: flashClass,
             is_private,
             questionType: document.getElementById('question-type').value,
-            questionImage: mediaState.questionImage,
-            answerImage: mediaState.answerImage,
-            questionAudio: mediaState.questionAudio,
+            lang: document.getElementById('card-lang').value.trim() || 'en-US',
+            answerLang: document.getElementById('card-answer-lang').value.trim() || null,
+            answerMode: document.getElementById('answer-mode').value,
+            questionBlock: buildBlock(
+              mediaState.questionAudio,
+              mediaState.questionImage,
+              document.getElementById('question-tts').checked
+            ),
+            answerBlock: buildBlock(
+              null,
+              mediaState.answerImage,
+              document.getElementById('answer-tts').checked
+            ),
             options: collectOptionRows(),
           }),
         });
@@ -1184,13 +1225,14 @@
             </label>
             <div class="entry-content">
               ${entry.question_type && entry.question_type !== 'standard' ? `<span class="type-badge">${escapeHtml(entry.question_type.replace('_', ' '))}</span>` : ''}
+              ${entry.answer_mode === 'listen' ? '<span class="type-badge">listen</span>' : ''}
               <div class="entry-question">${escapeHtml(entry.question)}</div>
-              ${entry.question_image ? `<img class="entry-media" src="${entry.question_image}" alt="Question image" />` : ''}
-              ${entry.question_audio ? `<audio controls src="${entry.question_audio}" style="display:block;margin:0.4rem 0;"></audio>` : ''}
+              ${entry.question_form === 'image' && entry.question_media_data ? `<img class="entry-media" src="${entry.question_media_data}" alt="Question image" />` : ''}
+              ${entry.question_form === 'audio' && entry.question_media_data ? `<audio controls src="${entry.question_media_data}" style="display:block;margin:0.4rem 0;"></audio>` : ''}
               <div class="entry-answer">
                 <strong>Answer:</strong> ${escapeHtml(entry.answer)}
               </div>
-              ${entry.answer_image ? `<img class="entry-media" src="${entry.answer_image}" alt="Answer image" />` : ''}
+              ${entry.answer_form === 'image' && entry.answer_media_data ? `<img class="entry-media" src="${entry.answer_media_data}" alt="Answer image" />` : ''}
               <div class="entry-metadata">
                 ${
                   entry.class
@@ -1766,6 +1808,13 @@
       };
       reader.readAsDataURL(file);
     });
+  }
+
+  function buildBlock(audioData, imageData, tts) {
+    if (audioData) return { form: 'audio', media: audioData };
+    if (imageData) return { form: 'image', media: imageData };
+    if (tts) return { form: 'text_tts' };
+    return { form: 'text' };
   }
 
   function collectOptionRows() {

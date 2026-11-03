@@ -106,7 +106,24 @@ Resolved on 2026-11-03 (round 4):
   zip of the media for the media, bidirectional, at all import and export points
   in the app (entries export/import and admin backup download/import)
 
-### multimedia question/answer unified model (design)
+### multimedia question/answer unified model
+
+**Implemented 2026-11-03 (round 6).** Every content slot (question, answer, each
+authored option) is a media block with a form of text / image / text+TTS /
+audio (recorded). Media lives in a `media` table referenced by id
+(question_media_id / answer_media_id / option_media_id); the v1 inline columns
+(question_image / answer_image / question_audio) were migrated into media rows
+and dropped (no legacy). Each card has a question language (`lang`, drives TTS,
+speech recognition, and localized True/False buttons) and an optional answer
+language (`answer_lang`, used for answer-side TTS and listen-mode recognition;
+defaults to the question language — the card builder decides whether the two
+sides share a language). `answer_mode` 'listen' replaces the choices with a
+Say-the-Answer flow: the browser's SpeechRecognition (configured to the answer
+language) transcribes the user's speech and matches it against the answer text
+as a pronunciation test. Non-text answer blocks draw same-form distractors
+(images compete with images, audio with audio) from the same class+category.
+
+Original design notes follow.
 
 Concept: every content slot is a "media block" that can take one of four forms:
 
@@ -127,7 +144,9 @@ Applied to the question kinds:
   every authored option is itself a media block - options can be text, images,
   text+TTS, or recorded audio clips.
 
-Open design points carried from the v1 review:
+Design points carried from the v1 review (all addressed by the implementation
+except the media library/reuse UI and the say-the-question pronunciation
+variant, which remain future follow-ups):
 
 - options table must gain media columns (option image/audio + form marker)
 - an answer_audio slot / answer-side TTS falls out of the model naturally

@@ -16,6 +16,9 @@ DELETE FROM leitner_boxes WHERE user_id = $1;
 -- Query: delete_flashcards
 DELETE FROM flashcards WHERE user_id = $1;
 
+-- Query: delete_media
+DELETE FROM media WHERE user_id = $1;
+
 -- Query: delete_user_rights
 DELETE FROM user_rights WHERE user_id = $1;
 

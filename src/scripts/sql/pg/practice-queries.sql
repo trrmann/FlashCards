@@ -36,8 +36,11 @@ WHERE (f.created_by = $1 OR EXISTS (
 RETURNING id;
 
 -- Query: select_due_cards_template
-SELECT f.*, p.current_box, p.times_correct, p.times_incorrect, p.last_reviewed, p.next_review
+SELECT f.*, qm.data AS question_media_data, am.data AS answer_media_data,
+       p.current_box, p.times_correct, p.times_incorrect, p.last_reviewed, p.next_review
 FROM flashcards f
+LEFT JOIN media qm ON f.question_media_id = qm.media_id
+LEFT JOIN media am ON f.answer_media_id = am.media_id
 JOIN flashcard_leitner_progress p ON f.flashcard_id = p.flashcard_id
 WHERE (f.created_by = $1 OR EXISTS (
     SELECT 1 FROM flashcard_shares fs
@@ -56,8 +59,11 @@ WHERE (f.created_by = $1 OR EXISTS (
 ORDER BY p.current_box ASC, p.last_reviewed ASC NULLS FIRST;
 
 -- Query: select_catch_up_card
-SELECT f.*, p.current_box, p.times_correct, p.times_incorrect, p.last_reviewed, p.next_review
+SELECT f.*, qm.data AS question_media_data, am.data AS answer_media_data,
+       p.current_box, p.times_correct, p.times_incorrect, p.last_reviewed, p.next_review
 FROM flashcards f
+LEFT JOIN media qm ON f.question_media_id = qm.media_id
+LEFT JOIN media am ON f.answer_media_id = am.media_id
 JOIN flashcard_leitner_progress p ON f.flashcard_id = p.flashcard_id
 WHERE (f.created_by = $1 OR EXISTS (
     SELECT 1 FROM flashcard_shares fs
@@ -345,7 +351,35 @@ GROUP BY COALESCE(f.category, '')
 ORDER BY category;
 
 -- Query: select_flashcard_options
-SELECT option_id, flashcard_id, option_text, is_correct, sort_order
-FROM flashcard_options
-WHERE flashcard_id = $1
-ORDER BY sort_order, created_at;
+SELECT o.option_id, o.flashcard_id, o.option_text, o.is_correct, o.sort_order,
+       o.option_form, o.option_media_id, om.data AS option_media_data
+FROM flashcard_options o
+LEFT JOIN media om ON o.option_media_id = om.media_id
+WHERE o.flashcard_id = $1
+ORDER BY o.sort_order, o.created_at;
+
+-- Query: select_wrong_answer_blocks
+SELECT answer, answer_form, answer_media_data
+FROM (
+  SELECT DISTINCT ON (f.answer) f.answer, f.answer_form, am.data AS answer_media_data
+  FROM flashcards f
+  LEFT JOIN media am ON f.answer_media_id = am.media_id
+  WHERE (f.created_by = $1 OR EXISTS (
+    SELECT 1 FROM flashcard_shares fs
+    WHERE fs.flashcard_id = f.flashcard_id
+      AND fs.recipient_id = $1
+      AND fs.status != 'revoked'
+      AND fs.recipient_status = 'accepted'
+  ) OR (f.is_private = false AND NOT EXISTS (
+    SELECT 1 FROM public_card_removals pr
+    WHERE pr.flashcard_id = f.flashcard_id AND pr.user_id = $1
+  )))
+  AND f.flashcard_id != $2
+  AND f.answer_form = $3
+  AND f.answer IS NOT NULL
+  AND f.answer != $4
+  AND COALESCE(f.class, '') = COALESCE($5, '')
+  AND COALESCE(f.category, '') = COALESCE($6, '')
+) AS distinct_blocks
+ORDER BY RANDOM()
+LIMIT $7;

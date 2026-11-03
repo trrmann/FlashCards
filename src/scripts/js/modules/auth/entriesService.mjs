@@ -27,6 +27,40 @@ class EntriesService {
    */
   static QUESTION_TYPES = ['standard', 'true_false', 'multiple_choice', 'audio'];
 
+  static BLOCK_FORMS = ['text', 'image', 'text_tts', 'audio'];
+
+  static ANSWER_MODES = ['choice', 'listen'];
+
+  /**
+   * Store a media payload (data URL) and return its id.
+   */
+  async createMedia(userId, kind, data) {
+    const result = await this.database.query(this.constructor.queries.insert_media, [
+      userId,
+      kind,
+      data,
+    ]);
+    return result.rows[0].media_id;
+  }
+
+  async getMedia(mediaId) {
+    const result = await this.database.query(this.constructor.queries.select_media, [mediaId]);
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Resolve a block descriptor {form, media} into [form, mediaId], storing
+   * new media as needed. Media kind derives from the form.
+   */
+  async resolveBlock(userId, block) {
+    const form = this.constructor.BLOCK_FORMS.includes(block?.form) ? block.form : 'text';
+    let mediaId = null;
+    if ((form === 'image' || form === 'audio') && block?.media) {
+      mediaId = await this.createMedia(userId, form === 'image' ? 'image' : 'audio', block.media);
+    }
+    return [form, mediaId];
+  }
+
   /**
    * Current storage usage for a user's cards (text + media bytes).
    */
@@ -49,6 +83,14 @@ class EntriesService {
     const questionType = this.constructor.QUESTION_TYPES.includes(extras.questionType)
       ? extras.questionType
       : 'standard';
+    const answerMode = this.constructor.ANSWER_MODES.includes(extras.answerMode)
+      ? extras.answerMode
+      : 'choice';
+    const lang = String(extras.lang || 'en-US').slice(0, 16);
+    const answerLang = extras.answerLang ? String(extras.answerLang).slice(0, 16) : null;
+
+    const [questionForm, questionMediaId] = await this.resolveBlock(userId, extras.questionBlock);
+    const [answerForm, answerMediaId] = await this.resolveBlock(userId, extras.answerBlock);
 
     const result = await this.database.query(this.constructor.queries.insert_flashcard, [
       userId,
@@ -59,15 +101,19 @@ class EntriesService {
       category,
       flashClass,
       questionType,
-      extras.questionImage || null,
-      extras.answerImage || null,
-      extras.questionAudio || null,
+      lang,
+      answerLang,
+      answerMode,
+      questionForm,
+      questionMediaId,
+      answerForm,
+      answerMediaId,
     ]);
 
     const card = result.rows[0];
 
     if (Array.isArray(extras.options) && extras.options.length > 0) {
-      await this.replaceFlashcardOptions(card.flashcard_id, extras.options);
+      await this.replaceFlashcardOptions(card.flashcard_id, extras.options, userId);
     }
 
     return card;
@@ -77,17 +123,22 @@ class EntriesService {
    * Replace the authored options for a flashcard (used by multiple_choice,
    * true_false, and audio question types).
    */
-  async replaceFlashcardOptions(flashcardId, options) {
+  async replaceFlashcardOptions(flashcardId, options, userId = null) {
     await this.database.query(this.constructor.queries.delete_flashcard_options, [flashcardId]);
     let order = 0;
     for (const option of options) {
       const text = String(option.text ?? '').trim();
-      if (!text) continue;
+      const hasMedia = option?.form && option.form !== 'text' && option.media;
+      if (!text && !hasMedia) continue;
+      const [optionForm, optionMediaId] =
+        userId && option?.form ? await this.resolveBlock(userId, option) : ['text', null];
       await this.database.query(this.constructor.queries.insert_flashcard_option, [
         flashcardId,
         text,
         Boolean(option.isCorrect),
         order,
+        optionForm,
+        optionMediaId,
       ]);
       order += 1;
     }
@@ -234,9 +285,13 @@ class EntriesService {
       'class',
       'is_private',
       'question_type',
-      'question_image',
-      'answer_image',
-      'question_audio',
+      'lang',
+      'answer_lang',
+      'answer_mode',
+      'question_form',
+      'answer_form',
+      'question_media_id',
+      'answer_media_id',
     ];
     const fields = [];
     const values = [];

@@ -29,9 +29,11 @@ class EntriesRouter extends BaseRouter {
           category,
           class: flashClass,
           questionType,
-          questionImage,
-          answerImage,
-          questionAudio,
+          lang,
+          answerLang,
+          answerMode,
+          questionBlock,
+          answerBlock,
           options,
         } = req.body;
 
@@ -46,9 +48,11 @@ class EntriesRouter extends BaseRouter {
         const payloadBytes =
           (question?.length || 0) +
           (answer?.length || 0) +
-          (questionImage?.length || 0) +
-          (answerImage?.length || 0) +
-          (questionAudio?.length || 0);
+          (questionBlock?.media?.length || 0) +
+          (answerBlock?.media?.length || 0) +
+          (Array.isArray(options)
+            ? options.reduce((sum, option) => sum + (option?.media?.length || 0), 0)
+            : 0);
         const used = await entriesService.getStorageUsage(req.session.userId);
         const limit = await userAuthService.getStorageLimit(req.session.userId);
         if (limit !== null && used + payloadBytes > limit) {
@@ -65,7 +69,7 @@ class EntriesRouter extends BaseRouter {
           lesson || null,
           category || null,
           flashClass || null,
-          { questionType, questionImage, answerImage, questionAudio, options }
+          { questionType, lang, answerLang, answerMode, questionBlock, answerBlock, options }
         );
 
         return res.status(201).json({
@@ -513,7 +517,11 @@ class EntriesRouter extends BaseRouter {
         }
 
         if (Array.isArray(req.body.options)) {
-          await entriesService.replaceFlashcardOptions(req.params.flashcardId, req.body.options);
+          await entriesService.replaceFlashcardOptions(
+            req.params.flashcardId,
+            req.body.options,
+            req.session.userId
+          );
         }
 
         return res.status(200).json({
