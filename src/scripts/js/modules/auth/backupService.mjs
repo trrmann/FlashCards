@@ -33,6 +33,7 @@ class BackupService {
     'flashcards',
     'flashcard_options',
     'flashcard_shares',
+    'public_card_removals',
     'leitner_boxes',
     'flashcard_leitner_progress',
     'practice_history',
@@ -53,6 +54,12 @@ class BackupService {
     roles: { naturalKey: 'role_name', id: 'role_id' },
     rights: { naturalKey: 'right_key', id: 'right_id' },
   };
+
+  /**
+   * Columns (in any backed-up table) that hold a users.user_id reference.
+   * Rewritten on import when a backup user is merged into an existing account.
+   */
+  static userReferenceColumns = ['user_id', 'created_by', 'owner_id', 'recipient_id'];
 
   /**
    * Serial-PK tables whose sequences must be realigned after an import.
@@ -158,6 +165,71 @@ class BackupService {
   }
 
   /**
+   * Map exported user ids to the ids of existing accounts with the same
+   * username (case-insensitive), falling back to email. A backup restored into
+   * an install whose accounts were re-created (e.g. a new database where the
+   * admin ran initial setup) would otherwise fail on the users unique
+   * constraints and orphan every row that references those users.
+   * @returns {Promise<Map<string, string>>} exported user_id -> existing user_id
+   */
+  async buildUserIdMap(backupUsers, results) {
+    const map = new Map();
+    if (backupUsers.length === 0) return map;
+
+    let existingRows;
+    try {
+      const existing = await this.identityDatabase.query(
+        this.constructor.queries.select_all_rows_template.replace('{{table}}', 'users')
+      );
+      existingRows = existing.rows;
+    } catch {
+      return map; // users table absent; nothing to merge into
+    }
+
+    const key = (value) => String(value ?? '').toLowerCase();
+    const byUsername = new Map(existingRows.map((user) => [key(user.username), user]));
+    const byEmail = new Map(existingRows.map((user) => [key(user.email), user]));
+
+    for (const user of backupUsers) {
+      const usernameMatch = byUsername.get(key(user.username));
+      const emailMatch = byEmail.get(key(user.email));
+
+      if (usernameMatch && emailMatch && usernameMatch.user_id !== emailMatch.user_id) {
+        results.warnings.push(
+          `User ${user.username}: username and email belong to different existing accounts; not merged`
+        );
+        continue;
+      }
+
+      const match = usernameMatch || emailMatch;
+      if (match && match.user_id !== user.user_id) {
+        map.set(user.user_id, match.user_id);
+        results.warnings.push(
+          `Merged backup user ${user.username} into existing account ${match.username}`
+        );
+      }
+    }
+
+    return map;
+  }
+
+  /**
+   * Rewrite user references in every backed-up table using the merge map.
+   */
+  remapUserReferences(data, userIdMap) {
+    for (const rows of Object.values(data)) {
+      if (!Array.isArray(rows)) continue;
+      for (const row of rows) {
+        for (const column of this.constructor.userReferenceColumns) {
+          if (row[column] && userIdMap.has(row[column])) {
+            row[column] = userIdMap.get(row[column]);
+          }
+        }
+      }
+    }
+  }
+
+  /**
    * Build and run an upsert for one row.
    * Existing records are updated to the imported values (import wins).
    */
@@ -257,6 +329,14 @@ class BackupService {
     }
     for (const row of backup.data.flashcard_options || []) {
       scrubReference(row, 'option_media_id');
+    }
+
+    // Users are identified by username/email, not by their install-specific
+    // UUID: merge backup users into existing accounts and rewrite every user
+    // reference so dependent rows do not violate users foreign keys.
+    const userIdMap = await this.buildUserIdMap(backup.data.users || [], results);
+    if (userIdMap.size > 0) {
+      this.remapUserReferences(backup.data, userIdMap);
     }
 
     const idMaps = {}; // table -> Map(exported id -> current id)

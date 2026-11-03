@@ -112,9 +112,6 @@ BEGIN
 END
 $migrate_v1_media$;
 
-ALTER TABLE flashcard_options ADD COLUMN IF NOT EXISTS option_form VARCHAR(10) NOT NULL DEFAULT 'text';
-ALTER TABLE flashcard_options ADD COLUMN IF NOT EXISTS option_media_id UUID REFERENCES media(media_id) ON DELETE SET NULL;
-
 ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS question_type VARCHAR(20) NOT NULL DEFAULT 'standard';
 
 CREATE TABLE IF NOT EXISTS flashcard_options (
@@ -127,6 +124,9 @@ CREATE TABLE IF NOT EXISTS flashcard_options (
 );
 
 CREATE INDEX IF NOT EXISTS idx_flashcard_options_card ON flashcard_options(flashcard_id, sort_order);
+
+ALTER TABLE flashcard_options ADD COLUMN IF NOT EXISTS option_form VARCHAR(10) NOT NULL DEFAULT 'text';
+ALTER TABLE flashcard_options ADD COLUMN IF NOT EXISTS option_media_id UUID REFERENCES media(media_id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS public_card_removals (
   user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,

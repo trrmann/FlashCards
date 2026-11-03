@@ -37,7 +37,8 @@ export class PostgresDatabase {
       database: config.database ?? process.env.DB_PG_DATABASE,
       user: config.user ?? process.env.DB_PG_USER,
       password: config.password ?? process.env.DB_PG_PASSWORD,
-      ssl: config.ssl ?? this.DEFAULT_SSL,
+      // DB_PG_SSL=disable is for the local scratch cluster (local-db.sh); Render requires SSL.
+      ssl: config.ssl ?? (process.env.DB_PG_SSL === 'disable' ? false : this.DEFAULT_SSL),
       max: config.max ?? this.DEFAULT_POOL_MAX,
       idleTimeoutMillis: config.idleTimeoutMillis ?? this.DEFAULT_IDLE_TIMEOUT_MS,
       connectionTimeoutMillis: config.connectionTimeoutMillis ?? this.DEFAULT_CONNECTION_TIMEOUT_MS,
