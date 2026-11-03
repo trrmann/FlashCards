@@ -25,14 +25,21 @@ class EntriesService {
    * @param {string} flashClass - Class this belongs to (optional)
    * @returns {Promise<object>} Created flashcard
    */
+  static QUESTION_TYPES = ['standard', 'true_false', 'multiple_choice', 'audio'];
+
   async createFlashcard(
     userId,
     question,
     answer,
     lesson = null,
     category = null,
-    flashClass = null
+    flashClass = null,
+    extras = {}
   ) {
+    const questionType = this.constructor.QUESTION_TYPES.includes(extras.questionType)
+      ? extras.questionType
+      : 'standard';
+
     const result = await this.database.query(this.constructor.queries.insert_flashcard, [
       userId,
       question,
@@ -41,9 +48,58 @@ class EntriesService {
       lesson,
       category,
       flashClass,
+      questionType,
+      extras.questionImage || null,
+      extras.answerImage || null,
+      extras.questionAudio || null,
     ]);
 
-    return result.rows[0];
+    const card = result.rows[0];
+
+    if (Array.isArray(extras.options) && extras.options.length > 0) {
+      await this.replaceFlashcardOptions(card.flashcard_id, extras.options);
+    }
+
+    return card;
+  }
+
+  /**
+   * Replace the authored options for a flashcard (used by multiple_choice,
+   * true_false, and audio question types).
+   */
+  async replaceFlashcardOptions(flashcardId, options) {
+    await this.database.query(this.constructor.queries.delete_flashcard_options, [flashcardId]);
+    let order = 0;
+    for (const option of options) {
+      const text = String(option.text ?? '').trim();
+      if (!text) continue;
+      await this.database.query(this.constructor.queries.insert_flashcard_option, [
+        flashcardId,
+        text,
+        Boolean(option.isCorrect),
+        order,
+      ]);
+      order += 1;
+    }
+  }
+
+  async getFlashcardOptions(flashcardId) {
+    const result = await this.database.query(this.constructor.queries.select_flashcard_options, [
+      flashcardId,
+    ]);
+    return result.rows;
+  }
+
+  async getOptionsForCards(flashcardIds) {
+    const result = await this.database.query(this.constructor.queries.select_options_for_cards, [
+      flashcardIds,
+    ]);
+    const map = new Map();
+    for (const row of result.rows) {
+      if (!map.has(row.flashcard_id)) map.set(row.flashcard_id, []);
+      map.get(row.flashcard_id).push(row);
+    }
+    return map;
   }
 
   /**
@@ -160,7 +216,18 @@ class EntriesService {
       return null;
     }
 
-    const allowedFields = ['question', 'answer', 'lesson', 'category', 'class', 'is_private'];
+    const allowedFields = [
+      'question',
+      'answer',
+      'lesson',
+      'category',
+      'class',
+      'is_private',
+      'question_type',
+      'question_image',
+      'answer_image',
+      'question_audio',
+    ];
     const fields = [];
     const values = [];
     let paramCount = 1;

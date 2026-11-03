@@ -206,6 +206,60 @@ class PracticeService {
   }
 
   /**
+   * Build options for typed questions:
+   * - true_false: fixed True/False pair, correct from the answer text
+   * - multiple_choice / audio with authored options:
+   *   mixed correct+wrong -> authored set as-is;
+   *   all options correct -> options rendered incorrect + "All of the above" correct;
+   *   all options wrong   -> options rendered incorrect + "None of the above" correct
+   * Returns null for standard cards (pool-generated options apply).
+   */
+  async buildTypedOptions(card) {
+    const shuffleOptions = (options) => options.sort(() => Math.random() - 0.5);
+
+    if (card.question_type === 'true_false') {
+      const truthy = String(card.answer).trim().toLowerCase() === 'true';
+      return [
+        { text: 'True', isCorrect: truthy },
+        { text: 'False', isCorrect: !truthy },
+      ];
+    }
+
+    if (card.question_type === 'multiple_choice' || card.question_type === 'audio') {
+      const result = await this.database.query(this.constructor.queries.select_flashcard_options, [
+        card.flashcard_id,
+      ]);
+      const authored = result.rows;
+      if (authored.length === 0) {
+        // Audio cards may rely on pool-generated options
+        return card.question_type === 'audio' ? null : null;
+      }
+
+      const correctCount = authored.filter((option) => option.is_correct).length;
+
+      if (correctCount === authored.length) {
+        // Every authored option is correct -> "All of the above" is the answer
+        return shuffleOptions([
+          ...authored.map((option) => ({ text: option.option_text, isCorrect: false })),
+        ]).concat([{ text: 'All of the above', isCorrect: true }]);
+      }
+
+      if (correctCount === 0) {
+        // Every authored option is wrong -> "None of the above" is the answer
+        return shuffleOptions([
+          ...authored.map((option) => ({ text: option.option_text, isCorrect: false })),
+        ]).concat([{ text: 'None of the above', isCorrect: true, isNoneOfAbove: true }]);
+      }
+
+      return shuffleOptions(
+        authored.map((option) => ({ text: option.option_text, isCorrect: option.is_correct }))
+      );
+    }
+
+    return null;
+  }
+
+  /**
    * Generate multiple choice options for a flashcard
    * Periodically includes "None of the above" option for critical thinking
    * Ratio: ~80-90% shows correct answer, ~10-20% shows "None of the above"
@@ -219,6 +273,12 @@ class PracticeService {
     console.log(
       `[DEBUG] generateMultipleChoiceOptions - Card: ${correctCard.question.substring(0, 40)}..., Class: ${correctCard.class}, Category: ${correctCard.category}`
     );
+
+    // Typed questions provide their own option sets.
+    const typed = await this.buildTypedOptions(correctCard);
+    if (typed) {
+      return typed;
+    }
 
     // Get the none_of_above_count for this card
     const progressResult = await this.database.query(

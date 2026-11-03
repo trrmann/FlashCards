@@ -29,6 +29,7 @@ class BackupService {
     'user_rights',
     'lessons',
     'flashcards',
+    'flashcard_options',
     'flashcard_shares',
     'leitner_boxes',
     'flashcard_leitner_progress',

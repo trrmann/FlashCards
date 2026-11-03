@@ -16,13 +16,24 @@ class EntriesRouter extends BaseRouter {
      * POST /api/entries
      * Create a new flashcard entry
      */
-    router.post('/', express.json(), async (req, res) => {
+    router.post('/', express.json({ limit: '15mb' }), async (req, res) => {
       try {
         if (!req.session.userId) {
           return res.status(401).json({ status: 'error', message: 'Not authenticated' });
         }
 
-        const { question, answer, lesson, category, class: flashClass } = req.body;
+        const {
+          question,
+          answer,
+          lesson,
+          category,
+          class: flashClass,
+          questionType,
+          questionImage,
+          answerImage,
+          questionAudio,
+          options,
+        } = req.body;
 
         if (!question || !answer) {
           return res.status(400).json({
@@ -37,7 +48,8 @@ class EntriesRouter extends BaseRouter {
           answer,
           lesson || null,
           category || null,
-          flashClass || null
+          flashClass || null,
+          { questionType, questionImage, answerImage, questionAudio, options }
         );
 
         return res.status(201).json({
@@ -432,7 +444,7 @@ class EntriesRouter extends BaseRouter {
      * PUT /api/entries/:flashcardId
      * Update a flashcard entry
      */
-    router.put('/:flashcardId', express.json(), async (req, res) => {
+    router.put('/:flashcardId', express.json({ limit: '15mb' }), async (req, res) => {
       try {
         if (!req.session.userId) {
           return res.status(401).json({ status: 'error', message: 'Not authenticated' });
@@ -449,6 +461,10 @@ class EntriesRouter extends BaseRouter {
             status: 'error',
             message: 'Not authorized or flashcard not found',
           });
+        }
+
+        if (Array.isArray(req.body.options)) {
+          await entriesService.replaceFlashcardOptions(req.params.flashcardId, req.body.options);
         }
 
         return res.status(200).json({

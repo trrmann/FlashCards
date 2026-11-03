@@ -112,3 +112,11 @@ Resolved on 2026-11-03 (round 4):
 - investigate requiring a question to be answered with audio and testing
   pronunciation
 - image upload as the question or the answer in all card forms
+- export and import should use two linked file types: a JSON for the data and a
+  zip of the media for the media, bidirectional, at all import and export points
+  in the app (entries export/import and admin backup download/import)
+- the sys admin should be able to limit a user's storage max; users should be
+  told the limit exists and how much they have used / have remaining; the limit
+  must be adjustable, and if it is reduced below a user's current usage the user
+  needs to be notified that they are over and must remove elements (further
+  enforcement follow-up to be figured out later)

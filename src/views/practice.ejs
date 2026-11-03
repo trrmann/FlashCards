@@ -230,6 +230,40 @@
         min-height: 100px;
       }
 
+      .question-tools {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-end;
+        margin-bottom: 0.5rem;
+      }
+
+      .btn-tool {
+        border: 1px solid #ddd;
+        background: #fff;
+        border-radius: 6px;
+        padding: 0.35rem 0.7rem;
+        cursor: pointer;
+        font-size: 0.85rem;
+      }
+
+      .btn-tool:hover {
+        background: #f0f7ff;
+        border-color: #007bff;
+      }
+
+      .question-media-image {
+        max-width: 100%;
+        max-height: 260px;
+        margin: 0 auto 0.75rem auto;
+        border-radius: 6px;
+      }
+
+      #voice-feedback {
+        margin-top: 0.75rem;
+        font-size: 0.9rem;
+        color: #475569;
+      }
+
       .question-text {
         font-size: 1.5rem;
         font-weight: bold;
@@ -421,7 +455,14 @@
         <div id="practice-area">
           <!-- Question Display -->
           <div class="question-box">
+            <div class="question-tools">
+              <button type="button" class="btn-tool" id="tts-button" title="Read the question aloud" style="display: none;">🔊 Listen</button>
+              <button type="button" class="btn-tool" id="voice-answer-button" title="Say the answer aloud to check your pronunciation" style="display: none;">🎤 Say answer</button>
+            </div>
+            <img id="question-image" class="question-media-image" style="display: none;" alt="Question image" />
+            <audio id="question-audio" controls style="display: none; margin: 0.5rem auto;"></audio>
             <div class="question-text" id="question-text">Loading first card...</div>
+            <div id="voice-feedback" style="display: none;"></div>
           </div>
 
           <!-- Multiple Choice Options -->
@@ -478,6 +519,10 @@
 
       // Load the first card when page loads
       document.addEventListener('DOMContentLoaded', async () => {
+        const ttsButton = document.getElementById('tts-button');
+        if (ttsButton) ttsButton.addEventListener('click', speakQuestion);
+        const voiceButton = document.getElementById('voice-answer-button');
+        if (voiceButton) voiceButton.addEventListener('click', listenForAnswer);
         // Capture session start time for tracking repetitions
         sessionStartTime = new Date().toISOString();
         
@@ -659,6 +704,83 @@
         await loadNextCard();
       });
 
+      function renderQuestionMedia(card) {
+        const image = document.getElementById('question-image');
+        if (card.question_image) {
+          image.src = card.question_image;
+          image.style.display = 'block';
+        } else {
+          image.style.display = 'none';
+        }
+
+        const audio = document.getElementById('question-audio');
+        if (card.question_audio) {
+          audio.src = card.question_audio;
+          audio.style.display = 'block';
+        } else {
+          audio.style.display = 'none';
+        }
+
+        // TTS read-aloud (Web Speech API - no server, no keys)
+        const ttsButton = document.getElementById('tts-button');
+        ttsButton.style.display = 'speechSynthesis' in window && card.question ? 'inline-block' : 'none';
+
+        // Voice answer (SpeechRecognition - Chrome/Edge/Safari)
+        const voiceButton = document.getElementById('voice-answer-button');
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        voiceButton.style.display = SpeechRec ? 'inline-block' : 'none';
+        document.getElementById('voice-feedback').style.display = 'none';
+      }
+
+      function speakQuestion() {
+        if (!currentCard || !('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(new SpeechSynthesisUtterance(currentCard.question));
+      }
+
+      function normalizeSpeech(text) {
+        return String(text || '')
+          .toLowerCase()
+          .replace(/[^a-z0-9 ]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+      }
+
+      function listenForAnswer() {
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRec || !currentOptions) return;
+        const feedback = document.getElementById('voice-feedback');
+        feedback.style.display = 'block';
+        feedback.textContent = '🎤 Listening…';
+
+        const recognition = new SpeechRec();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 3;
+
+        recognition.onresult = (event) => {
+          const alternatives = [...event.results[0]].map((alt) => normalizeSpeech(alt.transcript));
+          const correct = currentOptions.find((option) => option.isCorrect);
+          const correctText = normalizeSpeech(correct ? correct.text : '');
+          const heard = alternatives[0] || '';
+          const matched = alternatives.some(
+            (alt) => alt === correctText || (correctText && alt.includes(correctText))
+          );
+
+          if (matched) {
+            feedback.innerHTML = `✅ Pronunciation recognized: "<em>${heard}</em>" — selecting the matching answer.`;
+            const index = currentOptions.findIndex((option) => option.isCorrect);
+            if (index >= 0 && !answered) selectOption(index);
+          } else {
+            feedback.innerHTML = `❌ Heard "<em>${heard}</em>" — expected "<em>${correct ? correct.text : ''}</em>". Try again.`;
+          }
+        };
+        recognition.onerror = (event) => {
+          feedback.textContent = 'Speech recognition error: ' + event.error;
+        };
+        recognition.start();
+      }
+
       async function loadNextCard() {
         answered = false;
         const statusMsg = document.getElementById('status-message');
@@ -722,6 +844,7 @@
 
             // Display question
             document.getElementById('question-text').textContent = currentCard.question;
+            renderQuestionMedia(currentCard);
 
             // Display multiple choice options
             displayOptions();

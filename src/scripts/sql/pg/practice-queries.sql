@@ -343,3 +343,9 @@ WHERE p.user_id = $1
   )))
 GROUP BY COALESCE(f.category, '')
 ORDER BY category;
+
+-- Query: select_flashcard_options
+SELECT option_id, flashcard_id, option_text, is_correct, sort_order
+FROM flashcard_options
+WHERE flashcard_id = $1
+ORDER BY sort_order, created_at;

@@ -117,8 +117,9 @@ export class Server {
     );
     this.app.use(session(sessionConfig));
 
-    // Parse JSON request bodies for API endpoints
-    this.app.use(express.json());
+    // Parse JSON request bodies for API endpoints. The limit accommodates
+    // base64 media payloads (card images/audio) and backup imports.
+    this.app.use(express.json({ limit: '50mb' }));
 
     this.app.use(express.static(path.join(this.constructor.projectRoot, 'public')));
 

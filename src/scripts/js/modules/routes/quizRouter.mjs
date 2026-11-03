@@ -103,6 +103,9 @@ class QuizRouter extends BaseRouter {
         question: q.question,
         answer: q.answer,
         difficulty_score: q.difficulty_score,
+        question_type: q.question_type,
+        question_image: q.question_image,
+        question_audio: q.question_audio,
         options,
       });
     }

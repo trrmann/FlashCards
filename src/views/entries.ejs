@@ -29,6 +29,49 @@
           </div>
 
           <div class="form-group">
+            <label for="question-type">Question Type:</label>
+            <select id="question-type" name="questionType">
+              <option value="standard">Standard (options generated from your cards)</option>
+              <option value="true_false">True / False</option>
+              <option value="multiple_choice">Multiple choice (provide your own options)</option>
+              <option value="audio">Audio question (record, answer by choice)</option>
+            </select>
+            <small id="question-type-hint"></small>
+          </div>
+
+          <div class="form-group question-type-panel" id="options-editor" style="display: none;">
+            <label>Answer Options:</label>
+            <small>
+              Mark each option correct or wrong. All correct adds "All of the above";
+              all wrong adds "None of the above"; a mix plays as authored.
+            </small>
+            <div id="options-rows"></div>
+            <button type="button" class="btn btn-secondary" id="add-option-btn">+ Add Option</button>
+          </div>
+
+          <div class="form-group question-type-panel" id="audio-recorder" style="display: none;">
+            <label>Question Audio:</label>
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+              <button type="button" class="btn btn-secondary" id="record-audio-btn">🎙️ Record</button>
+              <button type="button" class="btn btn-secondary" id="stop-audio-btn" style="display: none;">⏹ Stop</button>
+              <audio id="audio-preview" controls style="display: none;"></audio>
+              <button type="button" class="btn btn-danger" id="clear-audio-btn" style="display: none;">Clear</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="question-image">Question Image (optional):</label>
+            <input type="file" id="question-image" accept="image/*" />
+            <img id="question-image-preview" class="media-preview" style="display: none;" alt="Question image preview" />
+          </div>
+
+          <div class="form-group">
+            <label for="answer-image">Answer Image (optional):</label>
+            <input type="file" id="answer-image" accept="image/*" />
+            <img id="answer-image-preview" class="media-preview" style="display: none;" alt="Answer image preview" />
+          </div>
+
+          <div class="form-group">
             <label for="class">Class:</label>
             <input
               type="text"
@@ -758,6 +801,48 @@
   .studyable-topline {
     margin-bottom: 0.75rem;
   }
+
+  .media-preview {
+    max-width: 240px;
+    max-height: 160px;
+    display: block;
+    margin-top: 0.5rem;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 6px;
+  }
+
+  .option-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin: 0.4rem 0;
+  }
+
+  .option-row .option-text {
+    flex: 1;
+  }
+
+  .type-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: #ede9fe;
+    color: #5b21b6;
+    border-radius: 999px;
+    padding: 0.1rem 0.55rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .entry-media {
+    max-width: 200px;
+    max-height: 140px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color, #ddd);
+    display: block;
+    margin: 0.4rem 0;
+  }
 </style>
 
 <script>
@@ -895,6 +980,11 @@
             category,
             class: flashClass,
             is_private,
+            questionType: document.getElementById('question-type').value,
+            questionImage: mediaState.questionImage,
+            answerImage: mediaState.answerImage,
+            questionAudio: mediaState.questionAudio,
+            options: collectOptionRows(),
           }),
         });
 
@@ -1040,10 +1130,14 @@
               <input type="checkbox" class="entry-select" data-flashcard-id="${entry.flashcard_id}" />
             </label>
             <div class="entry-content">
+              ${entry.question_type && entry.question_type !== 'standard' ? `<span class="type-badge">${escapeHtml(entry.question_type.replace('_', ' '))}</span>` : ''}
               <div class="entry-question">${escapeHtml(entry.question)}</div>
+              ${entry.question_image ? `<img class="entry-media" src="${entry.question_image}" alt="Question image" />` : ''}
+              ${entry.question_audio ? `<audio controls src="${entry.question_audio}" style="display:block;margin:0.4rem 0;"></audio>` : ''}
               <div class="entry-answer">
                 <strong>Answer:</strong> ${escapeHtml(entry.answer)}
               </div>
+              ${entry.answer_image ? `<img class="entry-media" src="${entry.answer_image}" alt="Answer image" />` : ''}
               <div class="entry-metadata">
                 ${
                   entry.class
@@ -1572,6 +1666,105 @@
     openShareDialog([entryId]);
   }
 
+  // --- Question type / media authoring state ---
+  const mediaState = { questionImage: null, answerImage: null, questionAudio: null };
+  let mediaRecorder = null;
+  let audioChunks = [];
+
+  function wireFileToState(inputId, previewId, stateKey, maxMB) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    input.addEventListener('change', () => {
+      const file = input.files && input.files[0];
+      const preview = document.getElementById(previewId);
+      if (!file) {
+        mediaState[stateKey] = null;
+        preview.style.display = 'none';
+        return;
+      }
+      if (file.size > maxMB * 1024 * 1024) {
+        alert(`File too large (max ${maxMB}MB)`);
+        input.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        mediaState[stateKey] = reader.result; // data URL
+        preview.src = reader.result;
+        preview.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function collectOptionRows() {
+    return [...document.querySelectorAll('#options-rows .option-row')].map((row) => ({
+      text: row.querySelector('.option-text').value,
+      isCorrect: row.querySelector('.option-correct').checked,
+    }));
+  }
+
+  function addOptionRow(text = '', isCorrect = false) {
+    const row = document.createElement('div');
+    row.className = 'option-row';
+    row.innerHTML = `
+      <input type="text" class="option-text" placeholder="Option text" />
+      <label><input type="checkbox" class="option-correct" /> correct</label>
+      <button type="button" class="btn btn-danger option-remove">✕</button>
+    `;
+    row.querySelector('.option-text').value = text;
+    row.querySelector('.option-correct').checked = isCorrect;
+    row.querySelector('.option-remove').addEventListener('click', () => row.remove());
+    document.getElementById('options-rows').appendChild(row);
+  }
+
+  function updateTypePanels() {
+    const type = document.getElementById('question-type').value;
+    document.getElementById('options-editor').style.display =
+      type === 'multiple_choice' || type === 'audio' ? 'block' : 'none';
+    document.getElementById('audio-recorder').style.display = type === 'audio' ? 'block' : 'none';
+    const hint = document.getElementById('question-type-hint');
+    hint.textContent =
+      type === 'true_false'
+        ? 'Set the Answer field to exactly True or False.'
+        : type === 'audio'
+          ? 'Record the audio to listen to; the Question text is a fallback/description.'
+          : '';
+  }
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+        const reader = new FileReader();
+        reader.onload = () => {
+          mediaState.questionAudio = reader.result;
+          const preview = document.getElementById('audio-preview');
+          preview.src = reader.result;
+          preview.style.display = 'inline-block';
+          document.getElementById('clear-audio-btn').style.display = 'inline-block';
+        };
+        reader.readAsDataURL(blob);
+        stream.getTracks().forEach((track) => track.stop());
+      };
+      mediaRecorder.start();
+      document.getElementById('record-audio-btn').style.display = 'none';
+      document.getElementById('stop-audio-btn').style.display = 'inline-block';
+    } catch (error) {
+      alert('Microphone unavailable: ' + error.message);
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+    document.getElementById('record-audio-btn').style.display = 'inline-block';
+    document.getElementById('stop-audio-btn').style.display = 'none';
+  }
+
   function getSelectedEntryIds() {
     return [...document.querySelectorAll('.entry-select:checked')].map(
       (checkbox) => checkbox.dataset.flashcardId
@@ -1709,6 +1902,21 @@
       );
     const restoreSelectedBtn = document.getElementById('restore-selected-btn');
     if (restoreSelectedBtn) restoreSelectedBtn.addEventListener('click', restoreSelectedPublic);
+    const typeSelect = document.getElementById('question-type');
+    if (typeSelect) {
+      typeSelect.addEventListener('change', updateTypePanels);
+      updateTypePanels();
+      wireFileToState('question-image', 'question-image-preview', 'questionImage', 2);
+      wireFileToState('answer-image', 'answer-image-preview', 'answerImage', 2);
+      document.getElementById('add-option-btn').addEventListener('click', () => addOptionRow());
+      document.getElementById('record-audio-btn').addEventListener('click', startRecording);
+      document.getElementById('stop-audio-btn').addEventListener('click', stopRecording);
+      document.getElementById('clear-audio-btn').addEventListener('click', () => {
+        mediaState.questionAudio = null;
+        document.getElementById('audio-preview').style.display = 'none';
+        document.getElementById('clear-audio-btn').style.display = 'none';
+      });
+    }
   });
 
   async function deleteEntry(entryId) {

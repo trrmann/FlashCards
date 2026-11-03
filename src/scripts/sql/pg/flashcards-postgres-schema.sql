@@ -48,6 +48,22 @@ CREATE TABLE IF NOT EXISTS flashcards (
 CREATE INDEX IF NOT EXISTS idx_flashcards_user_id ON flashcards(user_id);
 CREATE INDEX IF NOT EXISTS idx_flashcards_category ON flashcards(category, user_id);
 
+ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS question_type VARCHAR(20) NOT NULL DEFAULT 'standard';
+ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS question_image TEXT;
+ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS answer_image TEXT;
+ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS question_audio TEXT;
+
+CREATE TABLE IF NOT EXISTS flashcard_options (
+  option_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  flashcard_id UUID NOT NULL REFERENCES flashcards(flashcard_id) ON DELETE CASCADE,
+  option_text TEXT NOT NULL,
+  is_correct BOOLEAN NOT NULL DEFAULT false,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_flashcard_options_card ON flashcard_options(flashcard_id, sort_order);
+
 CREATE TABLE IF NOT EXISTS public_card_removals (
   user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
   flashcard_id UUID NOT NULL REFERENCES flashcards(flashcard_id) ON DELETE CASCADE,

@@ -1,22 +1,27 @@
 -- Query: insert_flashcard
-INSERT INTO flashcards (user_id, question, answer, created_by, lesson, category, class, is_private)
-VALUES ($1, $2, $3, $4, $5, $6, $7, true)
-RETURNING flashcard_id, question, answer, lesson, category, class, is_private, created_at;
+INSERT INTO flashcards (user_id, question, answer, created_by, lesson, category, class, is_private,
+                        question_type, question_image, answer_image, question_audio)
+VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8, $9, $10, $11)
+RETURNING flashcard_id, question, answer, lesson, category, class, is_private, question_type,
+          question_image, answer_image, question_audio, created_at;
 
 -- Query: select_user_flashcards
-SELECT flashcard_id, question, answer, lesson, category, class, is_private, created_at
+SELECT flashcard_id, question, answer, lesson, category, class, is_private, question_type,
+       question_image, answer_image, question_audio, created_at
 FROM flashcards
 WHERE created_by = $1
 ORDER BY created_at DESC;
 
 -- Query: select_flashcard_by_question
-SELECT flashcard_id, question, answer, lesson, category, class, is_private, created_at
+SELECT flashcard_id, question, answer, lesson, category, class, is_private, question_type,
+       question_image, answer_image, question_audio, created_at
 FROM flashcards
 WHERE created_by = $1 AND question = $2
 LIMIT 1;
 
 -- Query: select_user_flashcards_filtered_template
-SELECT flashcard_id, question, answer, lesson, category, class, is_private, created_at
+SELECT flashcard_id, question, answer, lesson, category, class, is_private, question_type,
+       question_image, answer_image, question_audio, created_at
 FROM flashcards
 WHERE created_by = $1
   {{filter_clause}}
@@ -204,3 +209,22 @@ ON CONFLICT (user_id, flashcard_id) DO NOTHING;
 -- Query: delete_public_card_removals_batch
 DELETE FROM public_card_removals
 WHERE user_id = $1 AND flashcard_id = ANY($2::uuid[]);
+
+-- Query: select_flashcard_options
+SELECT option_id, flashcard_id, option_text, is_correct, sort_order
+FROM flashcard_options
+WHERE flashcard_id = $1
+ORDER BY sort_order, created_at;
+
+-- Query: insert_flashcard_option
+INSERT INTO flashcard_options (flashcard_id, option_text, is_correct, sort_order)
+VALUES ($1, $2, $3, $4);
+
+-- Query: delete_flashcard_options
+DELETE FROM flashcard_options WHERE flashcard_id = $1;
+
+-- Query: select_options_for_cards
+SELECT option_id, flashcard_id, option_text, is_correct, sort_order
+FROM flashcard_options
+WHERE flashcard_id = ANY($1::uuid[])
+ORDER BY flashcard_id, sort_order, created_at;

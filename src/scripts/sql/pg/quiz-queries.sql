@@ -1,5 +1,6 @@
 -- Query: select_quiz_cards_template
-SELECT f.flashcard_id, f.question, f.answer, f.difficulty_score, f.class, f.category, f.lesson
+SELECT f.flashcard_id, f.question, f.answer, f.difficulty_score, f.class, f.category, f.lesson,
+       f.question_type, f.question_image, f.question_audio
 FROM flashcards f
 WHERE (f.created_by = $1 OR EXISTS (
     SELECT 1 FROM flashcard_shares fs
