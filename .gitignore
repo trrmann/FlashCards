@@ -3,4 +3,7 @@ node_modules/
 .env.backup
 .env.example
 .deployment/
-.deployment/last-run.logflashcards-backup-*.json
+.deployment/last-run.log
+flashcards-backup-*.json
+flashcards-backup-media-*.zip
+
