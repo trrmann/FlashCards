@@ -41,3 +41,23 @@ Also fixed in the same pass (reported separately):
   **Resolved:** `statusMsg` was declared inside one branch of `loadNextCard` and
   referenced in a sibling branch; it is now declared once at the top of the
   function, and the no-card branch properly reveals the status message box.
+
+Resolved on 2026-11-03 (round 2):
+
+- ~~the card lists even with a filter get long they need to be collapsable by class, lesson and category (if a distinction exists)~~
+  **Resolved:** Entries lists (Your Flashcards, Shared with Me, Public Cards) render
+  as nested collapsible groups by class -> lesson -> category; a grouping level is
+  only created when more than one distinct value exists at that level, and group
+  headers show card counts.
+- ~~also need a multi select ability (with the action buttons available) in the accept / reject / remove options of the shared cards and the remove public cards.~~
+  **Resolved:** Shared with Me and Public Cards sections each have per-card
+  checkboxes, a Select All toggle, and a Remove Selected action (profile Pending
+  Shares already had Accept/Reject Selected).
+- ~~when a record is rejected or removed from share or public the action of share is teh share record needs to be deleted, the public records need to have the ability to reallow the record back for that user~~
+  **Resolved:** Rejecting or removing a share now deletes the flashcard_shares
+  record outright (previously it was only marked rejected, which also blocked the
+  owner from ever re-sharing); owner revocation deletes the record too. Public-card
+  removals remain reversible: the Removed list's Restore button reallows the card
+  for that user. Also fixed in this pass: the quiz lesson dropdown failed for class
+  names containing spaces (server double-encoded the class name), and the Shared
+  with Me section now clears when the last shared card is removed.

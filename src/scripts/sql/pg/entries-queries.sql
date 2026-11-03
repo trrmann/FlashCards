@@ -54,8 +54,7 @@ DO UPDATE SET status = 'active', recipient_status = COALESCE(flashcard_shares.re
 RETURNING share_id, owner_id, recipient_id, flashcard_id, status, recipient_status, shared_at;
 
 -- Query: revoke_flashcard_share
-UPDATE flashcard_shares
-SET status = 'revoked', revoked_at = NOW()
+DELETE FROM flashcard_shares
 WHERE flashcard_id = $1 AND owner_id = $2 AND recipient_id = $3;
 
 -- Query: accept_flashcard_share
@@ -65,10 +64,9 @@ WHERE share_id = $1 AND recipient_id = $2
 RETURNING share_id, owner_id, recipient_id, flashcard_id, status, recipient_status;
 
 -- Query: reject_flashcard_share
-UPDATE flashcard_shares
-SET recipient_status = 'rejected', rejected_at = NOW()
+DELETE FROM flashcard_shares
 WHERE share_id = $1 AND recipient_id = $2
-RETURNING share_id, owner_id, recipient_id, flashcard_id, status, recipient_status;
+RETURNING share_id, owner_id, recipient_id, flashcard_id;
 
 -- Query: select_pending_shares
 SELECT fs.share_id, fs.owner_id, fs.flashcard_id, fs.recipient_status, fs.shared_at,
@@ -85,7 +83,7 @@ ORDER BY fs.shared_at DESC;
 -- Query: select_accepted_shares
 SELECT fs.share_id, fs.owner_id, fs.flashcard_id, fs.recipient_status, fs.accepted_at,
        u.username, u.full_name,
-       f.question, f.answer, f.lesson, f.created_at
+       f.question, f.answer, f.class, f.lesson, f.category, f.created_at
 FROM flashcard_shares fs
 JOIN users u ON fs.owner_id = u.user_id
 JOIN flashcards f ON fs.flashcard_id = f.flashcard_id

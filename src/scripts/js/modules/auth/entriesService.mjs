@@ -327,7 +327,7 @@ class EntriesService {
    * @param {string} flashcardId - Flashcard ID
    * @param {string} ownerId - User ID who owns the flashcard
    * @param {string} recipientId - User ID who received the share
-   * @returns {Promise<boolean>} True if revoked
+   * @returns {Promise<boolean>} True if revoked (share record deleted)
    */
   async revokeShare(flashcardId, ownerId, recipientId) {
     const result = await this.database.query(this.constructor.queries.revoke_flashcard_share, [
@@ -358,8 +358,9 @@ class EntriesService {
    * Reject a shared flashcard
    * @param {string} shareId - Share ID
    * @param {string} recipientId - User ID rejecting the share
-   * @returns {Promise<object>} Updated share
-   * Note: Rejection is not reported back to owner
+   * @returns {Promise<object>} Deleted share identifiers
+   * Note: Rejection deletes the share record (not reported to the owner),
+   * so the owner may share the card again later.
    */
   async rejectShare(shareId, recipientId) {
     const result = await this.database.query(this.constructor.queries.reject_flashcard_share, [

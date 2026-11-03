@@ -121,6 +121,13 @@
       <!-- Shared with Me Section -->
       <div class="shared-entries-section" style="display: none;">
         <h2>Shared with Me</h2>
+        <div class="list-bulk-controls">
+          <label>
+            <input type="checkbox" id="select-all-shared" />
+            Select All
+          </label>
+          <button type="button" class="btn btn-danger" id="remove-selected-shared-btn">Remove Selected</button>
+        </div>
         <div id="shared-entries-list" class="entries-list">
           <p class="loading">Loading shared flashcards...</p>
         </div>
@@ -133,6 +140,13 @@
           Public cards from other users are automatically included in your practice
           and quizzes. Remove any you don't want to study.
         </p>
+        <div class="list-bulk-controls">
+          <label>
+            <input type="checkbox" id="select-all-public" />
+            Select All
+          </label>
+          <button type="button" class="btn btn-danger" id="remove-selected-public-btn">Remove Selected</button>
+        </div>
         <div id="public-entries-list" class="entries-list">
           <p class="loading">Loading public cards...</p>
         </div>
@@ -636,10 +650,55 @@
     padding: 0.25rem 0.5rem 0 0;
   }
 
-  .entry-select {
+  .entry-select,
+  .shared-select,
+  .public-select {
     width: 1.1rem;
     height: 1.1rem;
     cursor: pointer;
+  }
+
+  .entry-group {
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    padding: 0 0.75rem;
+  }
+
+  .entry-group-summary {
+    cursor: pointer;
+    padding: 0.6rem 0.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+  }
+
+  .entry-group-count {
+    font-size: 0.85rem;
+    color: #64748b;
+    font-weight: 400;
+  }
+
+  .entry-group-body {
+    padding-bottom: 0.75rem;
+  }
+
+  .entry-group .entry-group {
+    margin-left: 0.75rem;
+  }
+
+  .list-bulk-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .list-bulk-controls label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
   }
 </style>
 
@@ -812,6 +871,50 @@
     });
   }
 
+  /**
+   * Render cards into collapsible groups nested by class -> lesson -> category.
+   * A grouping level is only created when more than one distinct value exists
+   * among the cards at that level (the "distinction" rule).
+   */
+  function renderGroupedEntries(cards, renderCard, levels) {
+    const groupLevels = levels || ['class', 'lesson', 'category'];
+
+    function build(cardsAtLevel, levelIndex) {
+      if (levelIndex >= groupLevels.length) {
+        return cardsAtLevel.map(renderCard).join('');
+      }
+
+      const field = groupLevels[levelIndex];
+      const values = [...new Set(cardsAtLevel.map((card) => card[field] || ''))];
+
+      if (values.length <= 1) {
+        // No distinction at this level - skip to the next
+        return build(cardsAtLevel, levelIndex + 1);
+      }
+
+      return values
+        .sort((a, b) => a.localeCompare(b))
+        .map((value) => {
+          const group = cardsAtLevel.filter((card) => (card[field] || '') === value);
+          const label = value || `(No ${field})`;
+          return `
+            <details class="entry-group" open>
+              <summary class="entry-group-summary">
+                <span class="entry-group-label">${escapeHtml(label)}</span>
+                <span class="entry-group-count">${group.length} card${group.length === 1 ? '' : 's'}</span>
+              </summary>
+              <div class="entry-group-body">
+                ${build(group, levelIndex + 1)}
+              </div>
+            </details>
+          `;
+        })
+        .join('');
+    }
+
+    return build(cards, 0);
+  }
+
   async function loadUserEntries() {
     const list = document.getElementById('entries-list');
 
@@ -830,9 +933,7 @@
       const data = await response.json();
 
       if (data.status === 'success' && data.entries && data.entries.length > 0) {
-        list.innerHTML = data.entries
-          .map(
-            (entry) => `
+        list.innerHTML = renderGroupedEntries(data.entries, (entry) => `
           <div class="entry-card">
             <label class="entry-select-label" title="Select for batch share">
               <input type="checkbox" class="entry-select" data-flashcard-id="${entry.flashcard_id}" />
@@ -886,9 +987,7 @@
               </button>
             </div>
           </div>
-        `
-          )
-          .join('');
+        `);
       } else {
         list.innerHTML =
           '<div class="empty-state"><p>No flashcards yet.</p><p>Create your first flashcard above!</p></div>';
@@ -908,10 +1007,11 @@
 
       if (data.status === 'success' && data.shares && data.shares.length > 0) {
         section.style.display = 'block';
-        list.innerHTML = data.shares
-          .map(
-            (share) => `
+        list.innerHTML = renderGroupedEntries(data.shares, (share) => `
           <div class="entry-card">
+            <label class="entry-select-label" title="Select for batch remove">
+              <input type="checkbox" class="shared-select" data-share-id="${share.share_id}" />
+            </label>
             <div class="entry-content">
               <div class="entry-question">${escapeHtml(share.question)}</div>
               <div class="entry-answer">
@@ -953,13 +1053,80 @@
               </button>
             </div>
           </div>
-        `
-          )
-          .join('');
+        `);
+      } else {
+        section.style.display = 'none';
+        list.innerHTML = '';
       }
     } catch (error) {
       console.error('Error loading shared entries:', error);
     }
+  }
+
+  function getSelectedSharedIds() {
+    return [...document.querySelectorAll('.shared-select:checked')].map(
+      (box) => box.dataset.shareId
+    );
+  }
+
+  async function removeSelectedShared() {
+    const ids = getSelectedSharedIds();
+    if (ids.length === 0) {
+      alert('Check at least one shared flashcard first');
+      return;
+    }
+    if (!confirm(`Remove ${ids.length} shared flashcard(s) from your list? The share records are deleted and the owners may share them again.`))
+      return;
+
+    let done = 0;
+    const failures = [];
+    for (const shareId of ids) {
+      try {
+        const response = await fetch(`/api/entries/shares/${shareId}/reject`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+        if (response.ok) done += 1;
+        else failures.push((await response.json()).message);
+      } catch (error) {
+        failures.push(error.message);
+      }
+    }
+    alert(`${done} removed${failures.length ? `; ${failures.length} failed` : ''}`);
+    loadSharedEntries();
+  }
+
+  function getSelectedPublicIds() {
+    return [...document.querySelectorAll('.public-select:checked')].map(
+      (box) => box.dataset.flashcardId
+    );
+  }
+
+  async function removeSelectedPublic() {
+    const ids = getSelectedPublicIds();
+    if (ids.length === 0) {
+      alert('Check at least one public card first');
+      return;
+    }
+    if (!confirm(`Remove ${ids.length} public card(s) from your study set? You can restore them later.`))
+      return;
+
+    let done = 0;
+    const failures = [];
+    for (const flashcardId of ids) {
+      try {
+        const response = await fetch(`/api/entries/public/${flashcardId}/remove`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+        if (response.ok) done += 1;
+        else failures.push((await response.json()).message);
+      } catch (error) {
+        failures.push(error.message);
+      }
+    }
+    alert(`${done} removed${failures.length ? `; ${failures.length} failed` : ''}`);
+    loadPublicEntries();
   }
 
   async function editEntry(entryId) {
@@ -1142,10 +1309,11 @@
       section.style.display = hasAny ? 'block' : 'none';
 
       if (data.status === 'success' && data.cards.length > 0) {
-        list.innerHTML = data.cards
-          .map(
-            (card) => `
+        list.innerHTML = renderGroupedEntries(data.cards, (card) => `
           <div class="entry-card">
+            <label class="entry-select-label" title="Select for batch remove">
+              <input type="checkbox" class="public-select" data-flashcard-id="${card.flashcard_id}" />
+            </label>
             <div class="entry-content">
               <div class="entry-question">${escapeHtml(card.question)}</div>
               <div class="entry-answer"><strong>Answer:</strong> ${escapeHtml(card.answer)}</div>
@@ -1162,9 +1330,7 @@
               <button class="btn btn-danger" onclick="removePublicCard('${card.flashcard_id}')">Remove</button>
             </div>
           </div>
-        `
-          )
-          .join('');
+        `);
       } else {
         list.innerHTML = '<p style="color: #64748b;">No public cards from other users.</p>';
       }
@@ -1391,6 +1557,20 @@
     const makePrivateBtn = document.getElementById('make-private-selected-btn');
     if (makePrivateBtn)
       makePrivateBtn.addEventListener('click', () => setVisibilityForSelected(true));
+    const selectAllShared = document.getElementById('select-all-shared');
+    if (selectAllShared)
+      selectAllShared.addEventListener('change', (e) =>
+        document.querySelectorAll('.shared-select').forEach((box) => (box.checked = e.target.checked))
+      );
+    const removeSharedBtn = document.getElementById('remove-selected-shared-btn');
+    if (removeSharedBtn) removeSharedBtn.addEventListener('click', removeSelectedShared);
+    const selectAllPublic = document.getElementById('select-all-public');
+    if (selectAllPublic)
+      selectAllPublic.addEventListener('change', (e) =>
+        document.querySelectorAll('.public-select').forEach((box) => (box.checked = e.target.checked))
+      );
+    const removePublicBtn = document.getElementById('remove-selected-public-btn');
+    if (removePublicBtn) removePublicBtn.addEventListener('click', removeSelectedPublic);
   });
 
   async function deleteEntry(entryId) {

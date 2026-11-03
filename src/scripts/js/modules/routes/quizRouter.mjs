@@ -396,7 +396,7 @@ class QuizRouter extends BaseRouter {
 
         const result = await flashCardsDb.query(
           this.constructor.queries.select_distinct_lessons_for_class,
-          [encodeURIComponent(className), req.session.userId]
+          [className, req.session.userId]
         );
 
         return res.status(200).json({
