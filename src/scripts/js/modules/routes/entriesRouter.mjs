@@ -290,6 +290,74 @@ class EntriesRouter extends BaseRouter {
     });
 
     /**
+     * POST /api/entries/public/remove-batch
+     * Remove multiple public cards from this user's study set in one request
+     */
+    router.post('/public/remove-batch', express.json(), async (req, res) => {
+      try {
+        if (!req.session.userId) {
+          return res.status(401).json({ status: 'error', message: 'Not authenticated' });
+        }
+
+        const flashcardIds = Array.isArray(req.body.flashcardIds) ? req.body.flashcardIds : [];
+        if (flashcardIds.length === 0) {
+          return res.status(400).json({
+            status: 'error',
+            message: 'flashcardIds must be a non-empty array',
+          });
+        }
+
+        const removed = await entriesService.removePublicCardsBatch(
+          req.session.userId,
+          flashcardIds
+        );
+
+        return res.status(200).json({
+          status: 'success',
+          message: `${removed} public card(s) removed from your study set`,
+          removed,
+        });
+      } catch (error) {
+        console.error('Batch remove public cards error:', error.message);
+        return res.status(500).json({ status: 'error', message: 'Failed to remove public cards' });
+      }
+    });
+
+    /**
+     * POST /api/entries/public/restore-batch
+     * Restore multiple removed public cards in one request
+     */
+    router.post('/public/restore-batch', express.json(), async (req, res) => {
+      try {
+        if (!req.session.userId) {
+          return res.status(401).json({ status: 'error', message: 'Not authenticated' });
+        }
+
+        const flashcardIds = Array.isArray(req.body.flashcardIds) ? req.body.flashcardIds : [];
+        if (flashcardIds.length === 0) {
+          return res.status(400).json({
+            status: 'error',
+            message: 'flashcardIds must be a non-empty array',
+          });
+        }
+
+        const restored = await entriesService.restorePublicCardsBatch(
+          req.session.userId,
+          flashcardIds
+        );
+
+        return res.status(200).json({
+          status: 'success',
+          message: `${restored} public card(s) restored to your study set`,
+          restored,
+        });
+      } catch (error) {
+        console.error('Batch restore public cards error:', error.message);
+        return res.status(500).json({ status: 'error', message: 'Failed to restore public cards' });
+      }
+    });
+
+    /**
      * POST /api/entries/public/:flashcardId/remove
      * Remove a public card from this user's study set
      */

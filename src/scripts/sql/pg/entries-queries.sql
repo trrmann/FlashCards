@@ -195,3 +195,12 @@ UPDATE flashcards
 SET is_private = $1, updated_at = NOW()
 WHERE created_by = $2 AND flashcard_id = ANY($3::uuid[])
 RETURNING flashcard_id;
+
+-- Query: insert_public_card_removals_batch
+INSERT INTO public_card_removals (user_id, flashcard_id)
+SELECT $1, unnest($2::uuid[])
+ON CONFLICT (user_id, flashcard_id) DO NOTHING;
+
+-- Query: delete_public_card_removals_batch
+DELETE FROM public_card_removals
+WHERE user_id = $1 AND flashcard_id = ANY($2::uuid[]);

@@ -245,6 +245,30 @@ class EntriesService {
   }
 
   /**
+   * Remove multiple public cards from this user's study set in one statement.
+   * @returns {Promise<number>} Count of removal markers created
+   */
+  async removePublicCardsBatch(userId, flashcardIds) {
+    const result = await this.database.query(
+      this.constructor.queries.insert_public_card_removals_batch,
+      [userId, flashcardIds]
+    );
+    return result.rowCount;
+  }
+
+  /**
+   * Restore multiple removed public cards in one statement.
+   * @returns {Promise<number>} Count of removal markers deleted
+   */
+  async restorePublicCardsBatch(userId, flashcardIds) {
+    const result = await this.database.query(
+      this.constructor.queries.delete_public_card_removals_batch,
+      [userId, flashcardIds]
+    );
+    return result.rowCount;
+  }
+
+  /**
    * List public cards this user removed (for undo).
    */
   async getRemovedPublicCards(userId) {

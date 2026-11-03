@@ -85,3 +85,30 @@ Resolved on 2026-11-03 (round 3):
   distractor pool); quizzes use all cards up to 20 and subset larger pools to at
   most 20 by difficulty distribution. The guideline chips reflect exactly these
   numbers.
+
+Resolved on 2026-11-03 (round 4):
+
+- ~~the mass remove public records failed to work on render~~
+  **Resolved:** Mass remove previously issued one HTTP request per card from the
+  browser (100+ sequential round-trips), which was slow and fragile under
+  production latency. It now posts a single batch request to
+  POST /api/entries/public/remove-batch backed by one set-based statement
+  (verified: 105 cards removed in under 100 ms). Restore uses
+  POST /api/entries/public/restore-batch the same way.
+- ~~the restore also needs multi select with select all and restore selected capabilities~~
+  **Resolved:** The Removed public cards list now has per-card checkboxes, a
+  Select All toggle, and a Restore Selected button using the batch restore
+  endpoint; the list also clears correctly after restoring the last card.
+
+## open
+
+- true/false questions
+- multiple choice where the card provides its own wrong options
+- list-of-correct-answers questions with an "All of the above" option
+- list-of-all-wrong-options questions with "None of the above" functionality
+- audio-recording questions: listen to a recording, answer via multiple choice
+  (same option types as the other question kinds)
+- investigate audio reading (text-to-speech) of any question for listening
+- investigate requiring a question to be answered with audio and testing
+  pronunciation
+- image upload as the question or the answer in all card forms

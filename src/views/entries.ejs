@@ -158,6 +158,13 @@
         </div>
         <details id="removed-public-details" style="margin-top: 1rem; display: none;">
           <summary style="cursor: pointer;">Removed public cards</summary>
+          <div class="list-bulk-controls" style="margin-top: 0.75rem;">
+            <label>
+              <input type="checkbox" id="select-all-removed" />
+              Select All
+            </label>
+            <button type="button" class="btn btn-primary" id="restore-selected-btn">Restore Selected</button>
+          </div>
           <div id="removed-public-list" class="entries-list" style="margin-top: 0.75rem;"></div>
         </details>
       </div>
@@ -658,7 +665,8 @@
 
   .entry-select,
   .shared-select,
-  .public-select {
+  .public-select,
+  .removed-select {
     width: 1.1rem;
     height: 1.1rem;
     cursor: pointer;
@@ -1204,21 +1212,46 @@
     if (!confirm(`Remove ${ids.length} public card(s) from your study set? You can restore them later.`))
       return;
 
-    let done = 0;
-    const failures = [];
-    for (const flashcardId of ids) {
-      try {
-        const response = await fetch(`/api/entries/public/${flashcardId}/remove`, {
-          method: 'POST',
-          credentials: 'include',
-        });
-        if (response.ok) done += 1;
-        else failures.push((await response.json()).message);
-      } catch (error) {
-        failures.push(error.message);
-      }
+    try {
+      const response = await fetch('/api/entries/public/remove-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ flashcardIds: ids }),
+      });
+      const data = await response.json();
+      alert(data.status === 'success' ? data.message : 'Error: ' + data.message);
+    } catch (error) {
+      alert('Error: ' + error.message);
     }
-    alert(`${done} removed${failures.length ? `; ${failures.length} failed` : ''}`);
+    loadPublicEntries();
+  }
+
+  function getSelectedRemovedIds() {
+    return [...document.querySelectorAll('.removed-select:checked')].map(
+      (box) => box.dataset.flashcardId
+    );
+  }
+
+  async function restoreSelectedPublic() {
+    const ids = getSelectedRemovedIds();
+    if (ids.length === 0) {
+      alert('Check at least one removed card first');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/entries/public/restore-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ flashcardIds: ids }),
+      });
+      const data = await response.json();
+      alert(data.status === 'success' ? data.message : 'Error: ' + data.message);
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
     loadPublicEntries();
   }
 
@@ -1436,6 +1469,9 @@
           .map(
             (card) => `
           <div class="entry-card">
+            <label class="entry-select-label" title="Select for batch restore">
+              <input type="checkbox" class="removed-select" data-flashcard-id="${card.flashcard_id}" />
+            </label>
             <div class="entry-content">
               <div class="entry-question">${escapeHtml(card.question)}</div>
               <div class="entry-metadata">
@@ -1454,6 +1490,8 @@
           .join('');
       } else {
         removedDetails.style.display = 'none';
+        removedDetails.open = false;
+        removedList.innerHTML = '';
       }
     } catch (error) {
       console.error('Failed to load public cards:', error);
@@ -1664,6 +1702,13 @@
       );
     const removePublicBtn = document.getElementById('remove-selected-public-btn');
     if (removePublicBtn) removePublicBtn.addEventListener('click', removeSelectedPublic);
+    const selectAllRemoved = document.getElementById('select-all-removed');
+    if (selectAllRemoved)
+      selectAllRemoved.addEventListener('change', (e) =>
+        document.querySelectorAll('.removed-select').forEach((box) => (box.checked = e.target.checked))
+      );
+    const restoreSelectedBtn = document.getElementById('restore-selected-btn');
+    if (restoreSelectedBtn) restoreSelectedBtn.addEventListener('click', restoreSelectedPublic);
   });
 
   async function deleteEntry(entryId) {
