@@ -232,6 +232,39 @@ export class PostgresDatabase {
 
   static #introspectionQueries = null;
 
+  static #transactionQueries = null;
+
+  static get transactionQueries() {
+    // Same subclass-safe pattern as introspectionQueries.
+    if (!PostgresDatabase.#transactionQueries) {
+      PostgresDatabase.#transactionQueries = PostgresDatabase.loadNamedSqlStatements(
+        'pg/transaction-queries.sql',
+        PostgresDatabase.sqlRoot
+      );
+    }
+    return PostgresDatabase.#transactionQueries;
+  }
+
+  /**
+   * Run `work(client)` inside one transaction on a dedicated connection.
+   * Commits when it resolves; rolls back and rethrows when it throws.
+   */
+  async withTransaction(work) {
+    const queries = PostgresDatabase.transactionQueries;
+    const client = await this.pool.connect();
+    try {
+      await client.query(queries.begin_transaction);
+      const result = await work(client);
+      await client.query(queries.commit_transaction);
+      return result;
+    } catch (error) {
+      await client.query(queries.rollback_transaction);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   static get introspectionQueries() {
     // Reference PostgresDatabase explicitly: private static fields are only
     // declared on this class, so `this.#...` would throw when the getter is

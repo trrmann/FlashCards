@@ -55,6 +55,9 @@ FlashCards/
         │   │   ├── baseRouter.mjs
         │   │   ├── systemRouter.mjs  authRouter.mjs  usersRouter.mjs  navigationRouter.mjs
         │   │   └── entriesRouter.mjs  practiceRouter.mjs  quizRouter.mjs  adminRouter.mjs
+        │   ├── tools/
+        │   │   ├── backupClient.mjs        # BackupClient / BackupCli (HTTP backup + restore)
+        │   │   └── backup-cli.mjs          # Entry used by backup.sh / restore.sh
         │   └── tests/
         │       ├── preview-tests.mjs       # npm run test:preview entry
         │       ├── previewTestSuite.mjs    # Lighthouse / HTML / CSS / memory / Web Vitals
@@ -62,13 +65,16 @@ FlashCards/
         │       ├── backup-roundtrip.mjs     # npm run test:roundtrip entry
         │       └── backupRoundTripTest.mjs  # Backup wipe/restore proof (local DB only)
         ├── sh/                           # Shell scripts: on PATH in the VS Code terminal (any dir)
+        │   ├── backup.sh                 # Download a full backup (JSON + ZIP) from any environment
         │   ├── deploy.sh                 # deploy.sh -dev | -preview | -prod | -all
-        │   └── local-db.sh               # Local scratch PostgreSQL (LOCAL_DATABASE.md)
+        │   ├── local-db.sh               # Local scratch PostgreSQL (LOCAL_DATABASE.md)
+        │   └── restore.sh                # Restore / recover an empty database in one command
         └── sql/pg/
             ├── iam-postgres-schema.sql          # IAM tables + role seed
             ├── flashcards-postgres-schema.sql   # App tables + idempotent migrations
             ├── *-queries.sql                    # Named queries (-- Query: name)
-            └── test-queries.sql                 # Test-only (local scratch DB)
+            ├── test-queries.sql                 # Test-only (local scratch DB)
+            └── transaction-queries.sql          # BEGIN / COMMIT / ROLLBACK for withTransaction()
 ```
 
 ## Pages

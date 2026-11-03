@@ -428,6 +428,16 @@ deploy_prod() {
     else
         log INFO "Production URL: $render_url"
     fi
+
+    # CODING_STANDARDS 0.7: take a fresh full backup of production before every release.
+    if [ -z "$render_url" ]; then
+        error_exit "RENDER_URL is required in .env to back up production before deploying."
+    fi
+    log INFO "Backing up production before release (admin sign-in required)..."
+    if ! "${SCRIPT_DIR}/backup.sh" "$render_url" 2>&1 | tee -a "${LOG_FILE}"; then
+        error_exit "Pre-release backup failed; nothing was deployed. Check .deployment/last-run.log for details."
+    fi
+    log SUCCESS "Production backup saved (see ~/FlashCardsBackups)"
     
     # Auto-format any changes to documentation/config files
     log INFO "Running code format check..."

@@ -312,12 +312,29 @@ so both paths end in the same state. `initial-setup` is mainly useful for script
 
 ## Restoring a backup into a new database
 
-Render free-tier databases expire (see `DB_PG_EXPIRE`). To move to a new database:
+Render free-tier databases are reset monthly (see `DB_PG_EXPIRE`). The procedure:
 
-1. Before expiry, download **both** backup files (Profile → Backup & Restore: JSON + media ZIP).
-2. Point the environment at the new database and start the server (the schemas bootstrap automatically).
-3. Create the first account at `/login`, ideally with the same username as your old admin account.
-4. Profile → Backup & Restore → import the JSON and the ZIP together.
+1. **Before the reset**, back up production (both files):
+
+   ```bash
+   backup.sh            # uses RENDER_URL from .env; saves to ~/FlashCardsBackups/<timestamp>_<host>/
+   ```
+
+   `deploy.sh -prod` also does this before every release. The Profile page's Backup & Restore downloads the same two files.
+
+2. Point the Render web service at the new database (`DB_PG_*`, `DB_PG_EXPIRE`) and let it start. The schemas
+   bootstrap automatically.
+3. **Restore in one command.** On an empty database it creates the admin through initial setup, then imports:
+
+   ```bash
+   restore.sh https://<app>.onrender.com ~/FlashCardsBackups/<folder>/flashcards-backup.json \
+              ~/FlashCardsBackups/<folder>/flashcards-backup-media.zip
+   ```
+
+   It prompts for the admin username/password (and email/name when the database is empty). Use the **same
+   admin username** as in the backup.
+
+The import is all-or-nothing: if any row fails, nothing is changed and the error names the table.
 
 Backup users are matched to existing accounts by username (then email), so your new admin account
 is merged with its backed-up identity. Its cards, shares, and progress import under the new id.

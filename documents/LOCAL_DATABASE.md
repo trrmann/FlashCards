@@ -56,6 +56,7 @@ CODING_STANDARDS § 0.7 on this database. It **drops and rebuilds the schema**, 
 2. Export (JSON + ZIP) → wipe → bootstrap → admin re-created under a new id → import → compare every table,
    read directly from the database, plus the media bytes.
 3. Import the same backup again → nothing changes.
+4. Import a corrupt backup (a valid user change plus a failing row) → rejected, and nothing changes.
 
 ## Verified (2026-11-03)
 

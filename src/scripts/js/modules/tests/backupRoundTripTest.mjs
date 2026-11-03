@@ -332,8 +332,41 @@ export class BackupRoundTripTest {
     await backupService.importApplicationData(structuredClone(original.backup), original.archive);
     this.compareSnapshots(restored, await this.snapshot(), new Map(), 'idempotent');
 
+    console.log('\n4. Corrupt backup: import must be rejected and change nothing');
+    await this.checkAtomicImport(original);
+
     console.log(`\n${this.checks - this.failures.length}/${this.checks} checks passed`);
     return { success: this.failures.length === 0, failures: this.failures };
+  }
+
+  /**
+   * A backup whose first table holds a valid change (a user's full name) and
+   * whose later table holds a row that must fail (an option pointing at a card
+   * that does not exist). The import must throw and leave every table as it was,
+   * proving the earlier change was rolled back.
+   */
+  async checkAtomicImport(original) {
+    const beforeAttempt = await this.snapshot();
+    const corrupt = structuredClone(original.backup);
+    corrupt.data.users[0].full_name = 'Changed by a failed import';
+    corrupt.data.flashcard_options.push({
+      ...corrupt.data.flashcard_options[0],
+      option_id: '00000000-0000-4000-8000-000000000001',
+      flashcard_id: '00000000-0000-4000-8000-000000000002',
+    });
+
+    let rejection = null;
+    try {
+      await backupService.importApplicationData(corrupt, original.archive);
+    } catch (error) {
+      rejection = error;
+    }
+    this.check(
+      'corrupt import was rejected',
+      rejection !== null && /flashcard_options/.test(rejection.message),
+      rejection ? rejection.message : 'import succeeded'
+    );
+    this.compareSnapshots(beforeAttempt, await this.snapshot(), new Map(), 'rolled back');
   }
 
   /**

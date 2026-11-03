@@ -209,7 +209,8 @@ Templates use `{{placeholders}}` for dynamic filter clauses; values are always b
 
 ## Backup and recovery
 
-- In-app: admin **Backup & Restore** on the Profile page (JSON + media ZIP). See API_ENDPOINTS.md.
+- In-app: admin **Backup & Restore** on the Profile page (JSON + media ZIP), or from a terminal with `backup.sh` /
+  `restore.sh` (SYSTEM_INITIAL_SETUP.md → restoring into a new database). Import is all-or-nothing.
   Every table except the transient `session` table is included. The automated round-trip test
   (`npm run test:roundtrip`, also run by `deploy.sh -preview`) proves a wipe → bootstrap → re-created admin → import
   rebuilds every table and media item.

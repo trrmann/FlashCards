@@ -13,6 +13,11 @@ deploy.sh -dev            # dev server on :5000, waits for /api/health, opens br
 deploy.sh -preview        # strict format+lint, server on :4000, runs test:preview
 deploy.sh -prod           # prettier, `git add .` + commit, push main, poll RENDER_URL
 deploy.sh -all            # dev → (Enter) → preview → (Enter) → prod
+
+backup.sh [url]             # full backup (JSON + ZIP) to ~/FlashCardsBackups (default: RENDER_URL)
+restore.sh <url> <json> <zip>  # restore; on an empty DB creates the admin first
+local-db.sh start|serve|run # local scratch PostgreSQL (LOCAL_DATABASE.md)
+npm run test:roundtrip      # backup wipe/restore proof (local DB)
 ```
 
 Log of the last `deploy.sh` run: `.deployment/last-run.log`.

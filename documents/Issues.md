@@ -31,10 +31,10 @@ The Render free database's data is deleted every month ([CODING_STANDARDS.md § 
 
 - [x] Add `public_card_removals` to backup/restore (2026-11-03)
 - [x] Automated round-trip test: `npm run test:roundtrip` (local DB; also run by `deploy.sh -preview`) (2026-11-03)
-- [ ] Make recovery onto an empty database a documented, single procedure (first admin + import), ideally scripted
-- [ ] Backup routine: a fresh full backup (JSON + ZIP) before every prod release and before each `DB_PG_EXPIRE`;
-      keep `DB_PG_EXPIRE` current for each new database
-- [ ] Consider making the import transactional (all-or-nothing) and reporting a per-table summary
+- [x] One-command recovery onto an empty database: `restore.sh <url> <json> <zip>` creates the admin, then imports (2026-11-03)
+- [x] Backup before every prod release: `deploy.sh -prod` runs `backup.sh` against `RENDER_URL` first and stops if it fails (2026-11-03)
+- [ ] Monthly routine (owner): run `backup.sh` before each `DB_PG_EXPIRE`, and set `DB_PG_EXPIRE` for each new database
+- [x] Import is all-or-nothing (one transaction; any failing row rolls back everything) (2026-11-03)
 
 ### 3. Separate the IAM and make it multi-app, with organizations and groups, and bring in WurmTools' IAM
 
@@ -226,6 +226,20 @@ Found in the code/documentation review of 2026-11-03 (not yet fixed):
 - **`.env.example` lists many unused keys** (`DATABASE_URL`, `JWT_*`, `DB_SCHEMA`, `CORS_*`, …).
 - **Unused leftovers:** `src/data/test.db`, `leitner_boxes` and `lessons` tables, `flashcards.is_public`/
   `difficulty`/`lesson_id`, `flashcard_leitner_progress.session_streak`, `user_rights`/`rights` (no routes).
+
+Resolved on 2026-11-03 (data safety, part 2):
+
+- ~~recovery needs manual steps; backups are manual; the import can leave a partial restore~~
+  **Resolved:** `PostgresDatabase.withTransaction()` (transaction commands in `transaction-queries.sql`);
+  `BackupService.importApplicationData` runs every write in one transaction and throws (naming the table) on the
+  first failing row. The upsert SQL now takes only identifier lists (`SET (cols) = (SELECT cols FROM (SELECT
+EXCLUDED.*) …)`), removing the last inline-SQL fragment in the backup service; its helper closures became methods.
+  New `tools/backupClient.mjs` (`BackupClient`, `BackupCli`) with `src/scripts/sh/backup.sh` and `restore.sh`;
+  `deploy.sh -prod` takes a production backup before releasing. Verified: round-trip test 106/106 (new step 4: a
+  corrupt backup that also renames a user is rejected and nothing changes; with the transaction bypassed the test
+  fails). End to end on the local server: `backup.sh` → wipe → `restore.sh` created the admin and restored every
+  table (users 3, flashcards 3, media 2, removals 1, progress 1); a restored user logged in with their original
+  password; a second restore changed nothing.
 
 Resolved on 2026-11-03 (data safety, part 1):
 

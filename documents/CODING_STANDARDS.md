@@ -292,7 +292,6 @@ database must never mean losing data. Every change must keep these guarantees:
 | `auth/userAuthService.mjs` | 86                        | Partial profile update builds `col = $n`                            |
 | `auth/userAuthService.mjs` | 134, 143, 145             | `BEGIN` / `COMMIT` / `ROLLBACK` strings                             |
 | `routes/quizRouter.mjs`    | 143–153                   | Filter fragments, and the router runs queries itself                |
-| `auth/backupService.mjs`   | 247                       | `col = EXCLUDED.col` assignment list built in JS                    |
 
 ### 0.2 Inline styles
 
@@ -307,7 +306,6 @@ None. The audit found 0 `style=` attributes, `<style>` blocks, or `.style` uses 
 - **Helper closures inside methods** (to become methods):
   - `db/postgresDatabase.mjs:265` `describeStatement`
   - `auth/practiceService.mjs:227` `shuffleOptions`, `:1015` `toStats`, `:1028` `addInto`, `:1036` `finish`
-  - `auth/backupService.mjs:188` `key` (added in the 2026-11-03 import fix), `:319` `scrubReference`
   - `routes/quizRouter.mjs:42` and `:72`: duplicate `shuffle` (should be one shared method)
   - `routes/entriesRouter.mjs:282` `blockFrom`
 - `routes/entriesRouter.mjs:134` assigns `this.collectExportSet` inside `registerRoutes()` instead of declaring a method.
@@ -341,13 +339,10 @@ None. The audit found 0 `style=` attributes, `<style>` blocks, or `.style` uses 
 
 ### 0.7 Data safety
 
-- Recovery onto an empty database needs a manual first-admin step before the import (documented in
-  SYSTEM_INITIAL_SETUP.md). It works since the 2026-11-03 user-merge fix, but it isn't automated.
-- Backups are manual (admin downloads from the Profile page). `DB_PG_EXPIRE` must be updated by hand
-  for each new database, and nothing checks that a recent backup exists.
+- The monthly backup before a reset is a manual step (`backup.sh`); only production releases take one
+  automatically. `DB_PG_EXPIRE` must be updated by hand for each new database.
 - The round-trip test (`npm run test:roundtrip`, run by `deploy.sh -preview`) uses synthetic data on the local
   scratch database. It doesn't cover the legacy tables that nothing writes (`rights`, `role_rights`, `lessons`, `leitner_boxes`).
-- The import isn't transactional. A failure partway leaves a partial restore, which is safe to re-run but not atomic.
 
 ### 0.8 IAM separation
 

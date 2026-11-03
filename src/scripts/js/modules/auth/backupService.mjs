@@ -156,12 +156,21 @@ class BackupService {
 
   /**
    * Fetch the primary key column names for a table.
+   * @param {{query: Function}} executor - A database adapter or a transaction client
    */
-  async getPrimaryKeyColumns(db, table) {
-    const result = await db.query(db.constructor.introspectionQueries.get_primary_key_columns, [
-      table,
-    ]);
+  async getPrimaryKeyColumns(executor, table) {
+    const result = await executor.query(
+      this.database.constructor.introspectionQueries.get_primary_key_columns,
+      [table]
+    );
     return result.rows.map((row) => row.column_name);
+  }
+
+  /**
+   * Case-insensitive identity key for matching usernames and emails.
+   */
+  static identityKey(value) {
+    return String(value ?? '').toLowerCase();
   }
 
   /**
@@ -186,7 +195,7 @@ class BackupService {
       return map; // users table absent; nothing to merge into
     }
 
-    const key = (value) => String(value ?? '').toLowerCase();
+    const key = this.constructor.identityKey;
     const byUsername = new Map(existingRows.map((user) => [key(user.username), user]));
     const byEmail = new Map(existingRows.map((user) => [key(user.email), user]));
 
@@ -230,40 +239,51 @@ class BackupService {
   }
 
   /**
-   * Build and run an upsert for one row.
-   * Existing records are updated to the imported values (import wins).
+   * Upsert one row. Existing records are updated to the imported values (import wins).
+   * Only identifiers and $n placeholders are filled into the SQL templates (CODING_STANDARDS 0.1).
+   * @param {{query: Function}} executor - A database adapter or a transaction client
    */
-  async upsertRow(db, table, row, conflictColumns) {
+  async upsertRow(executor, table, row, conflictColumns) {
     const columns = Object.keys(row);
     const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
     const updatable = columns.filter((c) => !conflictColumns.includes(c));
+    const template =
+      updatable.length > 0
+        ? this.constructor.queries.upsert_rows_template
+        : this.constructor.queries.upsert_rows_ignore_template;
 
-    let statement;
-    if (updatable.length > 0) {
-      statement = this.constructor.queries.upsert_rows_template
-        .replace('{{table}}', table)
-        .replace('{{columns}}', columns.join(', '))
-        .replace('{{placeholders}}', placeholders)
-        .replace('{{conflict_columns}}', conflictColumns.join(', '))
-        .replace('{{update_assignments}}', updatable.map((c) => `${c} = EXCLUDED.${c}`).join(', '));
-    } else {
-      statement = this.constructor.queries.upsert_rows_ignore_template
-        .replace('{{table}}', table)
-        .replace('{{columns}}', columns.join(', '))
-        .replace('{{placeholders}}', placeholders)
-        .replace('{{conflict_columns}}', conflictColumns.join(', '));
-    }
+    const statement = template
+      .replace('{{table}}', table)
+      .replace('{{columns}}', columns.join(', '))
+      .replace('{{placeholders}}', placeholders)
+      .replace('{{conflict_columns}}', conflictColumns.join(', '))
+      .replaceAll('{{update_columns}}', updatable.join(', '));
 
-    await db.query(
+    await executor.query(
       statement,
       columns.map((c) => row[c])
     );
   }
 
   /**
+   * Clear a media reference that will not resolve after import, with a warning.
+   * The media reference columns are nullable by design.
+   */
+  scrubMediaReference(row, column, availableMedia, results) {
+    if (row[column] && !availableMedia.has(row[column])) {
+      results.warnings.push(`Cleared ${column} ${row[column]}: media not available`);
+      row[column] = null;
+    }
+  }
+
+  /**
    * Import a backup with upsert semantics. Existing rows (matched by key)
    * are updated to the imported values; new rows are inserted; rows absent
    * from the backup are left untouched.
+   *
+   * All-or-nothing: every write runs in one transaction. If any row fails, the
+   * whole import is rolled back and an error naming the table is thrown, so a
+   * restore never leaves the database half-imported.
    *
    * roles/rights are matched by natural key (role_name/right_key) and their
    * install-specific UUIDs are remapped in user_roles/role_rights so a
@@ -317,18 +337,12 @@ class BackupService {
     } catch {
       // media table absent on this install; scrub all references
     }
-    const scrubReference = (row, column) => {
-      if (row[column] && !availableMedia.has(row[column])) {
-        results.warnings.push(`Cleared ${column} ${row[column]}: media not available`);
-        row[column] = null;
-      }
-    };
     for (const row of backup.data.flashcards || []) {
-      scrubReference(row, 'question_media_id');
-      scrubReference(row, 'answer_media_id');
+      this.scrubMediaReference(row, 'question_media_id', availableMedia, results);
+      this.scrubMediaReference(row, 'answer_media_id', availableMedia, results);
     }
     for (const row of backup.data.flashcard_options || []) {
-      scrubReference(row, 'option_media_id');
+      this.scrubMediaReference(row, 'option_media_id', availableMedia, results);
     }
 
     // Users are identified by username/email, not by their install-specific
@@ -339,8 +353,19 @@ class BackupService {
       this.remapUserReferences(backup.data, userIdMap);
     }
 
-    const idMaps = {}; // table -> Map(exported id -> current id)
+    // Every write below runs in one transaction on one connection (IAM and app
+    // tables currently share the database), so a failure rolls everything back.
+    await this.database.withTransaction((client) => this.importTables(client, backup, results));
 
+    return results;
+  }
+
+  /**
+   * Upsert every table in FK-safe order on the given transaction client, then
+   * realign serial sequences. Throws on the first failing row (the caller rolls back).
+   */
+  async importTables(client, backup, results) {
+    const idMaps = {}; // table -> Map(exported id -> current id)
     const importOrder = [...this.constructor.iamTables, ...this.constructor.appTables];
 
     for (const table of importOrder) {
@@ -350,91 +375,77 @@ class BackupService {
         continue;
       }
 
-      const db = this.databaseFor(table);
       const natural = this.constructor.naturalKeyTables[table];
+      const conflictColumns = natural
+        ? [natural.naturalKey]
+        : await this.getPrimaryKeyColumns(client, table);
+      if (conflictColumns.length === 0) {
+        throw new Error(`Import aborted: no primary key found for ${table}`);
+      }
 
-      try {
-        let conflictColumns;
-        if (natural) {
-          conflictColumns = [natural.naturalKey];
-        } else {
-          conflictColumns = await this.getPrimaryKeyColumns(db, table);
+      let imported = 0;
+      for (const dataRow of rows) {
+        const row = this.prepareRow(dataRow, table, natural, idMaps, results);
+        if (!row) continue;
+        try {
+          await this.upsertRow(client, table, row, conflictColumns);
+        } catch (error) {
+          throw new Error(`Import aborted at table ${table}: ${error.message}`, { cause: error });
         }
+        imported += 1;
+      }
+      results.imported[table] = imported;
 
-        if (conflictColumns.length === 0) {
-          results.failed[table] = 'No primary key found for upsert';
-          continue;
-        }
-
-        let imported = 0;
-        for (const dataRow of rows) {
-          const row = { ...dataRow };
-
-          // Natural-key tables: never force the exported UUID onto this install.
-          if (natural) {
-            delete row[natural.id];
-          }
-
-          // Remap foreign keys that reference natural-key tables.
-          for (const [refTable, ref] of Object.entries(this.constructor.naturalKeyTables)) {
-            const map = idMaps[refTable];
-            if (map && row[ref.id] !== undefined) {
-              const mapped = map.get(row[ref.id]);
-              if (!mapped) {
-                results.warnings.push(
-                  `Skipped ${table} row: unknown ${refTable} id ${row[ref.id]}`
-                );
-                row.__skip = true;
-                break;
-              }
-              row[ref.id] = mapped;
-            }
-          }
-          if (row.__skip) continue;
-
-          try {
-            await this.upsertRow(db, table, row, conflictColumns);
-            imported += 1;
-          } catch (error) {
-            results.warnings.push(`Failed to import row in ${table}: ${error.message}`);
-          }
-        }
-
-        results.imported[table] = imported;
-
-        // After importing a natural-key table, build the exported->current id map.
-        if (natural) {
-          const current = await db.query(
-            this.constructor.queries.select_all_rows_template.replace('{{table}}', table)
-          );
-          const byNatural = new Map(
-            current.rows.map((r) => [r[natural.naturalKey], r[natural.id]])
-          );
-          idMaps[table] = new Map(
-            rows
-              .filter((r) => byNatural.has(r[natural.naturalKey]))
-              .map((r) => [r[natural.id], byNatural.get(r[natural.naturalKey])])
-          );
-        }
-      } catch (error) {
-        results.failed[table] = error.message;
+      if (natural) {
+        idMaps[table] = await this.naturalKeyIdMap(client, table, natural, rows);
       }
     }
 
     // Realign serial sequences so future inserts do not collide.
     for (const [table, column] of Object.entries(this.constructor.serialPkTables)) {
-      try {
-        await this.databaseFor(table).query(
-          this.constructor.queries.reset_serial_sequence_template
-            .replace(/\{\{table\}\}/g, table)
-            .replace(/\{\{column\}\}/g, column)
-        );
-      } catch (error) {
-        results.warnings.push(`Could not reset sequence for ${table}: ${error.message}`);
+      await client.query(
+        this.constructor.queries.reset_serial_sequence_template
+          .replace(/\{\{table\}\}/g, table)
+          .replace(/\{\{column\}\}/g, column)
+      );
+    }
+  }
+
+  /**
+   * Copy a backup row for import: drop the install-specific id of natural-key
+   * tables and remap references to them. Returns null to skip an unresolvable row.
+   */
+  prepareRow(dataRow, table, natural, idMaps, results) {
+    const row = { ...dataRow };
+    if (natural) delete row[natural.id];
+
+    for (const [refTable, ref] of Object.entries(this.constructor.naturalKeyTables)) {
+      const map = idMaps[refTable];
+      if (map && row[ref.id] !== undefined) {
+        const mapped = map.get(row[ref.id]);
+        if (!mapped) {
+          results.warnings.push(`Skipped ${table} row: unknown ${refTable} id ${row[ref.id]}`);
+          return null;
+        }
+        row[ref.id] = mapped;
       }
     }
+    return row;
+  }
 
-    return results;
+  /**
+   * After importing a natural-key table, map exported ids to this install's ids.
+   */
+  async naturalKeyIdMap(client, table, natural, rows) {
+    const current = await client.query(
+      this.constructor.queries.select_all_rows_template.replace('{{table}}', table)
+    );
+    const byNatural = new Map(current.rows.map((r) => [r[natural.naturalKey], r[natural.id]]));
+    return new Map(
+      rows
+        .filter((r) => byNatural.has(r[natural.naturalKey]))
+        .map((r) => [r[natural.id], byNatural.get(r[natural.naturalKey])])
+    );
   }
 
   /**

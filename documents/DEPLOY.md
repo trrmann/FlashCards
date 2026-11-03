@@ -254,14 +254,15 @@ All operations are idempotent - safe to repeat.
 ### Prod Flow:
 
 1. Checks everything
-2. Runs `npm run format` (Prettier writes changes)
-3. If **any tracked file** differs from HEAD, runs `git add .` and commits with the message
+2. Backs up production with `backup.sh` (admin sign-in prompt; saved to `~/FlashCardsBackups`). Stops if it fails
+3. Runs `npm run format` (Prettier writes changes)
+4. If **any tracked file** differs from HEAD, runs `git add .` and commits with the message
    "build: Auto-format code before production deployment"
-4. Pushes to GitHub `origin main`
-5. Waits 45 s, then polls `RENDER_URL` up to 60 times every 2 s
-6. Opens the production URL; returns (deployment continues on Render)
+5. Pushes to GitHub `origin main`
+6. Waits 45 s, then polls `RENDER_URL` up to 60 times every 2 s
+7. Opens the production URL; returns (deployment continues on Render)
 
-> ⚠️ Step 3 uses `git add .`. It commits **all** pending work, including untracked files that are not
+> ⚠️ Step 4 uses `git add .`. It commits **all** pending work, including untracked files that are not
 > git-ignored (e.g. `documents/notes.md`), under the auto-format message. Commit or stash your work
 > deliberately before running `-prod`. It also pushes `main` regardless of the current branch name.
 
