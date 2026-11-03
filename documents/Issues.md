@@ -140,6 +140,23 @@ Open design points carried from the v1 review:
   export so media is referenced by id rather than duplicated per card
 - pronunciation variant: say the question (reading) vs say the answer (recall)
 
+Confirmed decisions (2026-11-03):
+
+- standard-type scoring with non-text answer blocks: distractors are drawn from
+  other cards' answer blocks of the same form in the same class+category
+  (images compete with images, audio with audio); text pool behavior unchanged
+- one lang per card (the question language) drives TTS voice selection and
+  True/False button localization (built-in label map + TTS in that language)
+- media is stored in a media table and referenced by id from blocks, so the
+  JSON + media-zip export references media files by id instead of duplicating
+  data per card; v1 inline columns (question_image/answer_image/question_audio)
+  are migrated into blocks and dropped (no legacy)
+- NEW answer type "listen": the user answers by speaking; the recording is
+  converted via speech recognition and the transcript is matched against the
+  answer text - testing pronunciation. This is an answer mode on the card
+  (choice vs listen) available for any question form whose answer has text to
+  match against.
+
 Resolved on 2026-11-03 (round 5 follow-up):
 
 - ~~the true false should not force the user to type true or false; the answer should be a toggle button in the setup, and practice and quiz should follow this UX standard~~
