@@ -123,6 +123,29 @@ language) transcribes the user's speech and matches it against the answer text
 as a pronunciation test. Non-text answer blocks draw same-form distractors
 (images compete with images, audio with audio) from the same class+category.
 
+Follow-up fixes (2026-11-03, round 6b):
+
+- ~~when you choose an audio question, is the text block for the question used at all? if not it will cause confusion~~
+  **Resolved:** It is used — the text is shown (and read aloud) alongside the
+  audio — but it is now explicitly optional: for audio questions the form
+  relabels the field to "Question caption (optional)", drops the required flag,
+  and the hint explains that the recording is the question. The server accepts
+  an empty question when the question block is recorded audio (and still
+  rejects audio cards with neither text nor a recording). Practice, quiz, and
+  the entries lists hide the empty text (lists show a "🔊 Audio question"
+  placeholder instead).
+- ~~when there are multiple possible answers, the image answer needs to allow multiple images with the same capabilities as text multiple-option answers~~
+  **Resolved:** Each authored option row (create and edit forms) now has a 📷
+  image attach button (2MB max, preview + remove); image options post as
+  {form: 'image', media} blocks, mix freely with text options, keep the same
+  correct/wrong marking (including All/None-of-the-above), and the edit dialog
+  loads existing option images back for re-editing. Verified end-to-end: a
+  multiple-choice card with two image options and one text option plays in
+  practice with the images rendered as the answer buttons. Also fixed in this
+  pass: replacing a card's options or deleting a card now garbage-collects
+  media rows that are no longer referenced (previously they were orphaned and
+  kept counting against the user's storage quota).
+
 Original design notes follow.
 
 Concept: every content slot is a "media block" that can take one of four forms:

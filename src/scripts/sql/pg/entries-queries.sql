@@ -262,3 +262,14 @@ RETURNING media_id;
 
 -- Query: select_media
 SELECT media_id, user_id, kind, data FROM media WHERE media_id = $1;
+
+-- Query: delete_unreferenced_media
+DELETE FROM media m
+WHERE m.user_id = $1
+  AND NOT EXISTS (
+    SELECT 1 FROM flashcards f
+    WHERE f.question_media_id = m.media_id OR f.answer_media_id = m.media_id
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM flashcard_options o WHERE o.option_media_id = m.media_id
+  );

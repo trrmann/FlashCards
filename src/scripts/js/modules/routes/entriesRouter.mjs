@@ -37,7 +37,9 @@ class EntriesRouter extends BaseRouter {
           options,
         } = req.body;
 
-        if (!question || !answer) {
+        // Audio questions carry the question in the recording; text is an optional caption
+        const isAudioQuestion = questionBlock?.form === 'audio' && Boolean(questionBlock?.media);
+        if ((!question && !isAudioQuestion) || !answer) {
           return res.status(400).json({
             status: 'error',
             message: 'Question and answer are required',
@@ -64,7 +66,7 @@ class EntriesRouter extends BaseRouter {
 
         const flashcard = await entriesService.createFlashcard(
           req.session.userId,
-          question,
+          question || '',
           answer,
           lesson || null,
           category || null,

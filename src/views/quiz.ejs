@@ -705,10 +705,10 @@
       `;
       card.innerHTML = `
         <div class="question-number">Question ${index + 1}
-          ${'speechSynthesis' in window ? `<button type="button" class="quiz-tts" data-text="${escapeHtml(question.question)}" data-lang="${escapeHtml(question.lang || 'en-US')}" title="Read aloud">🔊</button>` : ''}
+          ${'speechSynthesis' in window && question.question ? `<button type="button" class="quiz-tts" data-text="${escapeHtml(question.question)}" data-lang="${escapeHtml(question.lang || 'en-US')}" title="Read aloud">🔊</button>` : ''}
         </div>
         ${mediaHTML}
-        <div class="question-text">${escapeHtml(question.question)}</div>
+        ${question.question ? `<div class="question-text">${escapeHtml(question.question)}</div>` : ''}
         <div class="quiz-options" data-card-id="${question.card_id}">
           ${optionsHTML}
         </div>

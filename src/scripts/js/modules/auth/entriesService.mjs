@@ -142,6 +142,16 @@ class EntriesService {
       ]);
       order += 1;
     }
+    if (userId) await this.cleanupUnreferencedMedia(userId);
+  }
+
+  /**
+   * Remove media rows no longer referenced by any card or option
+   * (option/media replacement and card deletion leave orphans otherwise,
+   * which would count against the user's storage quota).
+   */
+  async cleanupUnreferencedMedia(userId) {
+    await this.database.query(this.constructor.queries.delete_unreferenced_media, [userId]);
   }
 
   async getFlashcardOptions(flashcardId) {
@@ -333,6 +343,7 @@ class EntriesService {
       userId,
     ]);
 
+    if (result.rowCount > 0) await this.cleanupUnreferencedMedia(userId);
     return result.rowCount > 0;
   }
 

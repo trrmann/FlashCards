@@ -889,8 +889,10 @@
             currentCard = data.card;
             currentOptions = data.options;
 
-            // Display question
-            document.getElementById('question-text').textContent = currentCard.question;
+            // Display question (audio questions may have no caption text)
+            const questionTextEl = document.getElementById('question-text');
+            questionTextEl.textContent = currentCard.question || '';
+            questionTextEl.style.display = currentCard.question ? '' : 'none';
             renderQuestionMedia(currentCard);
 
             // Display multiple choice options

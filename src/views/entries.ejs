@@ -906,6 +906,12 @@
     flex: 1;
   }
 
+  .option-row .option-image-preview {
+    max-height: 48px;
+    max-width: 80px;
+    border-radius: 4px;
+  }
+
   .type-badge {
     display: inline-block;
     font-size: 0.7rem;
@@ -1226,7 +1232,7 @@
             <div class="entry-content">
               ${entry.question_type && entry.question_type !== 'standard' ? `<span class="type-badge">${escapeHtml(entry.question_type.replace('_', ' '))}</span>` : ''}
               ${entry.answer_mode === 'listen' ? '<span class="type-badge">listen</span>' : ''}
-              <div class="entry-question">${escapeHtml(entry.question)}</div>
+              <div class="entry-question">${entry.question ? escapeHtml(entry.question) : '🔊 Audio question'}</div>
               ${entry.question_form === 'image' && entry.question_media_data ? `<img class="entry-media" src="${entry.question_media_data}" alt="Question image" />` : ''}
               ${entry.question_form === 'audio' && entry.question_media_data ? `<audio controls src="${entry.question_media_data}" style="display:block;margin:0.4rem 0;"></audio>` : ''}
               <div class="entry-answer">
@@ -1465,7 +1471,7 @@
           const optRes = await fetch(`/api/entries/${entryId}/options`, { credentials: 'include' });
           const optData = await optRes.json();
           if (optData.status === 'success') {
-            optData.options.forEach((o) => addEditOptionRow(o.option_text, o.is_correct));
+            optData.options.forEach((o) => addEditOptionRow(o.option_text, o.is_correct, o.option_form, o.option_media_data));
           }
         } catch (e) { console.error('options load failed', e); }
         document.getElementById('edit-answer').value = entry.answer || '';
@@ -1593,6 +1599,8 @@
             options: [...document.querySelectorAll('#edit-options-rows .option-row')].map((row) => ({
               text: row.querySelector('.option-text').value,
               isCorrect: row.querySelector('.option-correct').checked,
+              form: row._optionMedia ? 'image' : 'text',
+              media: row._optionMedia || undefined,
             })),
           }),
         });
@@ -1648,7 +1656,7 @@
               <input type="checkbox" class="public-select" data-flashcard-id="${card.flashcard_id}" />
             </label>
             <div class="entry-content">
-              <div class="entry-question">${escapeHtml(card.question)}</div>
+              <div class="entry-question">${card.question ? escapeHtml(card.question) : '🔊 Audio question'}</div>
               <div class="entry-answer"><strong>Answer:</strong> ${escapeHtml(card.answer)}</div>
               <div class="entry-metadata">
                 <div class="entry-metadata-item">
@@ -1680,7 +1688,7 @@
               <input type="checkbox" class="removed-select" data-flashcard-id="${card.flashcard_id}" />
             </label>
             <div class="entry-content">
-              <div class="entry-question">${escapeHtml(card.question)}</div>
+              <div class="entry-question">${card.question ? escapeHtml(card.question) : '🔊 Audio question'}</div>
               <div class="entry-metadata">
                 <div class="entry-metadata-item">
                   <span class="entry-metadata-label">By:</span>
@@ -1821,21 +1829,60 @@
     return [...document.querySelectorAll('#options-rows .option-row')].map((row) => ({
       text: row.querySelector('.option-text').value,
       isCorrect: row.querySelector('.option-correct').checked,
+      form: row._optionMedia ? 'image' : 'text',
+      media: row._optionMedia || undefined,
     }));
   }
 
-  function addOptionRow(text = '', isCorrect = false) {
+  function makeOptionRow(text = '', isCorrect = false, form = 'text', media = null) {
     const row = document.createElement('div');
     row.className = 'option-row';
     row.innerHTML = `
       <input type="text" class="option-text" placeholder="Option text" />
       <label><input type="checkbox" class="option-correct" /> correct</label>
+      <button type="button" class="btn btn-secondary option-image-btn" title="Use an image for this option">📷</button>
+      <input type="file" class="option-image-input" accept="image/*" style="display: none;" />
+      <img class="option-image-preview" style="display: none;" alt="Option image" />
+      <button type="button" class="btn btn-danger option-image-clear" style="display: none;" title="Remove the image">🗑</button>
       <button type="button" class="btn btn-danger option-remove">✕</button>
     `;
     row.querySelector('.option-text').value = text;
     row.querySelector('.option-correct').checked = isCorrect;
+    const imageInput = row.querySelector('.option-image-input');
+    const preview = row.querySelector('.option-image-preview');
+    const clearBtn = row.querySelector('.option-image-clear');
+    const setOptionImage = (dataUrl) => {
+      row._optionMedia = dataUrl || null;
+      preview.src = dataUrl || '';
+      preview.style.display = dataUrl ? 'inline-block' : 'none';
+      clearBtn.style.display = dataUrl ? 'inline-block' : 'none';
+    };
+    row.querySelector('.option-image-btn').addEventListener('click', () => imageInput.click());
+    imageInput.addEventListener('change', () => {
+      const file = imageInput.files && imageInput.files[0];
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Option image too large (max 2MB)');
+        imageInput.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => setOptionImage(reader.result);
+      reader.readAsDataURL(file);
+    });
+    clearBtn.addEventListener('click', () => {
+      imageInput.value = '';
+      setOptionImage(null);
+    });
     row.querySelector('.option-remove').addEventListener('click', () => row.remove());
-    document.getElementById('options-rows').appendChild(row);
+    if (form === 'image' && media) setOptionImage(media);
+    return row;
+  }
+
+  function addOptionRow(text = '', isCorrect = false, form = 'text', media = null) {
+    document
+      .getElementById('options-rows')
+      .appendChild(makeOptionRow(text, isCorrect, form, media));
   }
 
   function updateTypePanels() {
@@ -1850,10 +1897,23 @@
     answerField.closest('.form-group').style.display = type === 'true_false' ? 'none' : 'block';
     answerField.required = type !== 'true_false';
     if (type === 'true_false') syncTrueFalseAnswer();
+    // Audio questions live in the recording; the text becomes an optional caption
+    const questionField = document.getElementById('question');
+    const questionLabel = document.querySelector('label[for="question"]');
+    if (type === 'audio') {
+      questionLabel.textContent = 'Question caption (optional):';
+      questionField.required = false;
+      questionField.placeholder =
+        'Optional caption shown (and read aloud) alongside the recorded audio...';
+    } else {
+      questionLabel.textContent = 'Question:';
+      questionField.required = true;
+      questionField.placeholder = 'Enter the question or front of the flashcard...';
+    }
     const hint = document.getElementById('question-type-hint');
     hint.textContent =
       type === 'audio'
-        ? 'Record the audio to listen to; the Question text is a fallback/description.'
+        ? 'The recording is the question. The caption text is optional and is shown with the audio if provided.'
         : '';
   }
 
@@ -1923,18 +1983,10 @@
     syncEditTrueFalseAnswer();
   }
 
-  function addEditOptionRow(text = '', isCorrect = false) {
-    const row = document.createElement('div');
-    row.className = 'option-row';
-    row.innerHTML = `
-      <input type="text" class="option-text" placeholder="Option text" />
-      <label><input type="checkbox" class="option-correct" /> correct</label>
-      <button type="button" class="btn btn-danger option-remove">✕</button>
-    `;
-    row.querySelector('.option-text').value = text;
-    row.querySelector('.option-correct').checked = isCorrect;
-    row.querySelector('.option-remove').addEventListener('click', () => row.remove());
-    document.getElementById('edit-options-rows').appendChild(row);
+  function addEditOptionRow(text = '', isCorrect = false, form = 'text', media = null) {
+    document
+      .getElementById('edit-options-rows')
+      .appendChild(makeOptionRow(text, isCorrect, form, media));
   }
 
   function getSelectedEntryIds() {
