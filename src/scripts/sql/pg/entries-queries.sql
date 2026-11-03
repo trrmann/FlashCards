@@ -28,7 +28,8 @@ WHERE created_by = $1
 ORDER BY created_at DESC;
 
 -- Query: select_flashcard_with_access
-SELECT f.flashcard_id, f.question, f.answer, f.lesson, f.category, f.class, f.is_private, f.created_by, f.created_at,
+SELECT f.flashcard_id, f.question, f.answer, f.lesson, f.category, f.class, f.is_private, f.created_by,
+       f.question_type, f.question_image, f.answer_image, f.question_audio, f.created_at,
        u.username, u.full_name
 FROM flashcards f
 LEFT JOIN users u ON f.created_by = u.user_id

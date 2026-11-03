@@ -39,6 +39,14 @@
             <small id="question-type-hint"></small>
           </div>
 
+          <div class="form-group question-type-panel" id="tf-toggle-panel" style="display: none;">
+            <label>Correct Answer:</label>
+            <div class="tf-toggle" role="group" aria-label="True or False answer">
+              <button type="button" id="tf-true-btn" class="tf-btn selected">True</button>
+              <button type="button" id="tf-false-btn" class="tf-btn">False</button>
+            </div>
+          </div>
+
           <div class="form-group question-type-panel" id="options-editor" style="display: none;">
             <label>Answer Options:</label>
             <small>
@@ -281,6 +289,14 @@
             <option value="multiple_choice">Multiple choice (own options)</option>
             <option value="audio">Audio question</option>
           </select>
+        </div>
+
+        <div class="form-group" id="edit-tf-toggle-panel" style="display: none;">
+          <label>Correct Answer:</label>
+          <div class="tf-toggle" role="group" aria-label="True or False answer">
+            <button type="button" id="edit-tf-true-btn" class="tf-btn selected">True</button>
+            <button type="button" id="edit-tf-false-btn" class="tf-btn">False</button>
+          </div>
         </div>
 
         <div class="form-group" id="edit-options-editor" style="display: none;">
@@ -825,6 +841,27 @@
     margin-top: 0.5rem;
     border: 1px solid var(--border-color, #ddd);
     border-radius: 6px;
+  }
+
+  .tf-toggle {
+    display: inline-flex;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .tf-btn {
+    border: none;
+    background: #fff;
+    padding: 0.5rem 1.5rem;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+
+  .tf-btn.selected {
+    background: #2563eb;
+    color: #fff;
+    font-weight: 600;
   }
 
   .option-row {
@@ -1377,6 +1414,9 @@
         // Populate the edit form
         document.getElementById('edit-question').value = entry.question || '';
         document.getElementById('edit-question-type').value = entry.question_type || 'standard';
+        if ((entry.question_type || '') === 'true_false') {
+          selectEditTrueFalse(String(entry.answer).trim().toLowerCase() === 'true');
+        }
         updateEditTypePanels();
         document.getElementById('edit-options-rows').innerHTML = '';
         try {
@@ -1754,13 +1794,29 @@
     document.getElementById('options-editor').style.display =
       type === 'multiple_choice' || type === 'audio' ? 'block' : 'none';
     document.getElementById('audio-recorder').style.display = type === 'audio' ? 'block' : 'none';
+    document.getElementById('tf-toggle-panel').style.display =
+      type === 'true_false' ? 'block' : 'none';
+    // True/false answers come from the toggle, not the textarea
+    const answerField = document.getElementById('answer');
+    answerField.closest('.form-group').style.display = type === 'true_false' ? 'none' : 'block';
+    answerField.required = type !== 'true_false';
+    if (type === 'true_false') syncTrueFalseAnswer();
     const hint = document.getElementById('question-type-hint');
     hint.textContent =
-      type === 'true_false'
-        ? 'Set the Answer field to exactly True or False.'
-        : type === 'audio'
-          ? 'Record the audio to listen to; the Question text is a fallback/description.'
-          : '';
+      type === 'audio'
+        ? 'Record the audio to listen to; the Question text is a fallback/description.'
+        : '';
+  }
+
+  function syncTrueFalseAnswer() {
+    const isTrue = document.getElementById('tf-true-btn').classList.contains('selected');
+    document.getElementById('answer').value = isTrue ? 'True' : 'False';
+  }
+
+  function selectTrueFalse(isTrue) {
+    document.getElementById('tf-true-btn').classList.toggle('selected', isTrue);
+    document.getElementById('tf-false-btn').classList.toggle('selected', !isTrue);
+    syncTrueFalseAnswer();
   }
 
   async function startRecording() {
@@ -1800,6 +1856,22 @@
     const type = document.getElementById('edit-question-type').value;
     document.getElementById('edit-options-editor').style.display =
       type === 'multiple_choice' || type === 'audio' ? 'block' : 'none';
+    document.getElementById('edit-tf-toggle-panel').style.display =
+      type === 'true_false' ? 'block' : 'none';
+    const answerField = document.getElementById('edit-answer');
+    answerField.closest('.form-group').style.display = type === 'true_false' ? 'none' : 'block';
+    if (type === 'true_false') syncEditTrueFalseAnswer();
+  }
+
+  function syncEditTrueFalseAnswer() {
+    const isTrue = document.getElementById('edit-tf-true-btn').classList.contains('selected');
+    document.getElementById('edit-answer').value = isTrue ? 'True' : 'False';
+  }
+
+  function selectEditTrueFalse(isTrue) {
+    document.getElementById('edit-tf-true-btn').classList.toggle('selected', isTrue);
+    document.getElementById('edit-tf-false-btn').classList.toggle('selected', !isTrue);
+    syncEditTrueFalseAnswer();
   }
 
   function addEditOptionRow(text = '', isCorrect = false) {
@@ -1960,8 +2032,12 @@
       wireFileToState('question-image', 'question-image-preview', 'questionImage', 2);
       wireFileToState('answer-image', 'answer-image-preview', 'answerImage', 2);
       document.getElementById('add-option-btn').addEventListener('click', () => addOptionRow());
+      document.getElementById('tf-true-btn').addEventListener('click', () => selectTrueFalse(true));
+      document.getElementById('tf-false-btn').addEventListener('click', () => selectTrueFalse(false));
       const editType = document.getElementById('edit-question-type');
       if (editType) editType.addEventListener('change', updateEditTypePanels);
+      document.getElementById('edit-tf-true-btn').addEventListener('click', () => selectEditTrueFalse(true));
+      document.getElementById('edit-tf-false-btn').addEventListener('click', () => selectEditTrueFalse(false));
       const editAddOpt = document.getElementById('edit-add-option-btn');
       if (editAddOpt) editAddOpt.addEventListener('click', () => addEditOptionRow());
       document.getElementById('record-audio-btn').addEventListener('click', startRecording);

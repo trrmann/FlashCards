@@ -106,6 +106,15 @@ Resolved on 2026-11-03 (round 4):
   zip of the media for the media, bidirectional, at all import and export points
   in the app (entries export/import and admin backup download/import)
 
+Resolved on 2026-11-03 (round 5 follow-up):
+
+- ~~the true false should not force the user to type true or false; the answer should be a toggle button in the setup, and practice and quiz should follow this UX standard~~
+  **Resolved:** The create and edit forms show a True/False toggle button pair for
+  true/false cards (the answer textarea is hidden and populated from the toggle);
+  practice and quiz already presented True/False as clickable option buttons, and
+  this was re-verified. Also fixed: the single-card fetch used by the edit dialog
+  did not return question_type/media, so edits loaded as 'standard'.
+
 Resolved on 2026-11-03 (round 5):
 
 - ~~true/false questions~~
