@@ -106,6 +106,40 @@ Resolved on 2026-11-03 (round 4):
   zip of the media for the media, bidirectional, at all import and export points
   in the app (entries export/import and admin backup download/import)
 
+### multimedia question/answer unified model (design)
+
+Concept: every content slot is a "media block" that can take one of four forms:
+
+1. text
+2. image
+3. text + text-to-audio (TTS reads the text aloud; language/voice selectable)
+4. audio (recorded)
+
+Applied to the question kinds:
+
+- **Standard (Question / Answer):** the question is a media block and the answer
+  is a media block - any form on either side.
+- **True/False:** the question is a media block (including audio forms); the
+  answer remains the True/False toggle buttons, but the button labels/speech
+  should follow the language of the question (e.g. localized True/False and TTS
+  in that language).
+- **Multiple choice (preselected options):** the question is a media block and
+  every authored option is itself a media block - options can be text, images,
+  text+TTS, or recorded audio clips.
+
+Open design points carried from the v1 review:
+
+- options table must gain media columns (option image/audio + form marker)
+- an answer_audio slot / answer-side TTS falls out of the model naturally
+  (answer is a media block)
+- image-form answers require authored options (pool text-matching does not
+  apply to images)
+- TTS language/voice selection per card (question language) so listening and
+  the T/F buttons follow the question's language
+- media library/reuse should be designed together with the JSON + media-zip
+  export so media is referenced by id rather than duplicated per card
+- pronunciation variant: say the question (reading) vs say the answer (recall)
+
 Resolved on 2026-11-03 (round 5 follow-up):
 
 - ~~the true false should not force the user to type true or false; the answer should be a toggle button in the setup, and practice and quiz should follow this UX standard~~
