@@ -81,6 +81,9 @@ class EntriesRouter extends BaseRouter {
         });
       } catch (error) {
         console.error('Create entry error:', error.message);
+        if (error.statusCode === 400) {
+          return res.status(400).json({ status: 'error', message: error.message });
+        }
         return res.status(500).json({ status: 'error', message: 'Failed to create entry' });
       }
     });
@@ -505,6 +508,10 @@ class EntriesRouter extends BaseRouter {
           return res.status(401).json({ status: 'error', message: 'Not authenticated' });
         }
 
+        if (Array.isArray(req.body.options)) {
+          entriesService.validateOptionForms(req.body.options);
+        }
+
         const updated = await entriesService.updateFlashcard(
           req.params.flashcardId,
           req.session.userId,
@@ -533,6 +540,9 @@ class EntriesRouter extends BaseRouter {
         });
       } catch (error) {
         console.error('Update entry error:', error.message);
+        if (error.statusCode === 400) {
+          return res.status(400).json({ status: 'error', message: error.message });
+        }
         return res.status(500).json({ status: 'error', message: 'Failed to update entry' });
       }
     });

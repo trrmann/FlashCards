@@ -14,6 +14,12 @@ WHERE (f.created_by = $1 OR EXISTS (
     SELECT 1 FROM public_card_removals pr
     WHERE pr.flashcard_id = f.flashcard_id AND pr.user_id = $1
   )))
+  AND EXISTS (
+    SELECT 1 FROM flashcard_leitner_progress lp
+    WHERE lp.flashcard_id = f.flashcard_id
+      AND lp.user_id = $1
+      AND (lp.times_correct + lp.times_incorrect > 0 OR lp.last_reviewed IS NOT NULL)
+  )
   {{filter_clause}}
 ORDER BY RANDOM();
 

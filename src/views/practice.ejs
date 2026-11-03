@@ -984,6 +984,9 @@
           return;
         }
 
+        // Several correct options (but not all) = select-all-that-apply
+        const multiSelect = currentOptions.filter((option) => option.isCorrect).length > 1;
+
         currentOptions.forEach((option, index) => {
           const button = document.createElement('button');
           button.className = 'option-button';
@@ -1011,10 +1014,29 @@
               });
             }
           }
-          button.onclick = () => selectOption(index);
+          button.onclick = multiSelect
+            ? () => {
+                if (!answered) button.classList.toggle('selected');
+              }
+            : () => selectOption(index);
           button.disabled = answered;
           container.appendChild(button);
         });
+
+        if (multiSelect) {
+          const note = document.createElement('p');
+          note.className = 'listen-mode-note';
+          note.textContent = '☑️ Select all correct answers, then press Check Answers.';
+          container.prepend(note);
+          const checkBtn = document.createElement('button');
+          checkBtn.type = 'button';
+          checkBtn.id = 'check-answers-btn';
+          checkBtn.className = 'next-button';
+          checkBtn.textContent = 'Check Answers';
+          checkBtn.onclick = submitMultiSelect;
+          checkBtn.disabled = answered;
+          container.appendChild(checkBtn);
+        }
       }
 
       async function selectOption(optionIndex) {
@@ -1028,20 +1050,68 @@
         });
         buttons[optionIndex].classList.add('selected');
 
+        const selectedOption = currentOptions[optionIndex];
+        await submitAnswer(selectedOption.text, selectedOption.isCorrect, (data) => {
+          if (data.isCorrect) {
+            buttons[optionIndex].classList.remove('selected');
+            buttons[optionIndex].classList.add('correct');
+          } else {
+            buttons[optionIndex].classList.remove('selected');
+            buttons[optionIndex].classList.add('incorrect');
+
+            // Highlight correct answer or "None of the above"
+            const correctIndex = currentOptions.findIndex((o) => o.isCorrect);
+            buttons[correctIndex].classList.add('correct');
+          }
+        });
+      }
+
+      // Select-all-that-apply: correct only when the selected set matches the
+      // correct set exactly.
+      async function submitMultiSelect() {
+        if (answered) return;
+        const buttons = [...document.querySelectorAll('.option-button')];
+        const selectedIdx = buttons
+          .map((btn, i) => (btn.classList.contains('selected') ? i : -1))
+          .filter((i) => i >= 0);
+        if (selectedIdx.length === 0) return;
+        answered = true;
+        buttons.forEach((btn) => {
+          btn.disabled = true;
+        });
+        const checkBtn = document.getElementById('check-answers-btn');
+        if (checkBtn) checkBtn.disabled = true;
+
+        const isCorrect = currentOptions.every(
+          (option, i) => Boolean(option.isCorrect) === selectedIdx.includes(i)
+        );
+        const selectedAnswer = selectedIdx
+          .map((i) => currentOptions[i].text || 'image option')
+          .join('; ');
+        await submitAnswer(selectedAnswer, isCorrect, (data) => {
+          buttons.forEach((btn, i) => {
+            if (i >= currentOptions.length) return;
+            btn.classList.remove('selected');
+            if (currentOptions[i].isCorrect) btn.classList.add('correct');
+            else if (selectedIdx.includes(i)) btn.classList.add('incorrect');
+          });
+        });
+      }
+
+      async function submitAnswer(selectedAnswer, isCorrect, decorate) {
         try {
           // Get active filters from sessionStorage
           const studyFiltersJson = sessionStorage.getItem('studyFilters');
           const filters = studyFiltersJson ? JSON.parse(studyFiltersJson) : {};
 
-          const selectedOption = currentOptions[optionIndex];
           const response = await fetch('/api/practice/answer', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',  // Important: send cookies with request
             body: JSON.stringify({
               flashcardId: currentCard.flashcard_id,
-              selectedAnswer: selectedOption.text,
-              isCorrect: selectedOption.isCorrect,
+              selectedAnswer,
+              isCorrect,
               sessionStartTime: sessionStartTime,
               filterClass: filters.class || null,
               filterLesson: filters.lesson || null,
@@ -1049,14 +1119,14 @@
             }),
           });
 
-          console.log('[selectOption] Response status:', response.status);
+          console.log('[submitAnswer] Response status:', response.status);
           
           if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
           }
 
           const data = await response.json();
-          console.log('[selectOption] Response data:', data);
+          console.log('[submitAnswer] Response data:', data);
 
           if (data.status === 'success') {
             // Show feedback
@@ -1064,7 +1134,7 @@
             let feedbackText = data.message;
 
             // If "None of the above" was the correct answer and user got it wrong, show actual answer
-            if (!data.isCorrect && currentOptions[optionIndex].text !== 'None of the above') {
+            if (!data.isCorrect && selectedAnswer !== 'None of the above') {
               const noneOfAboveOption = currentOptions.find((o) => o.isNoneOfAbove === true);
               if (noneOfAboveOption) {
                 feedbackText += ` (Correct answer: ${currentCard.answer})`;
@@ -1088,18 +1158,8 @@
               ? 'feedback-message feedback-correct'
               : 'feedback-message feedback-incorrect';
 
-            // Style correct/incorrect option
-            if (data.isCorrect) {
-              buttons[optionIndex].classList.remove('selected');
-              buttons[optionIndex].classList.add('correct');
-            } else {
-              buttons[optionIndex].classList.remove('selected');
-              buttons[optionIndex].classList.add('incorrect');
-
-              // Highlight correct answer or "None of the above"
-              const correctIndex = currentOptions.findIndex((o) => o.isCorrect);
-              buttons[correctIndex].classList.add('correct');
-            }
+            // Style the option buttons for this answer mode
+            decorate(data);
 
             // Show next button (or "repeat" if more attempts needed)
             const nextBtn = document.getElementById('next-button');
@@ -1111,7 +1171,7 @@
             nextBtn.style.display = 'block';
 
             // Refresh stats after each answer
-            console.log('[selectOption] Refreshing stats after answer submission...');
+            console.log('[submitAnswer] Refreshing stats after answer submission...');
             await refreshStatsForActiveFilters();
           } else {
             alert('Error: ' + data.error);

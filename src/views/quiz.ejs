@@ -134,6 +134,12 @@
     margin-top: 0.75rem;
   }
 
+  .multi-select-note {
+    font-size: 0.85rem;
+    color: #555;
+    margin: 0.3rem 0;
+  }
+
   .quiz-option {
     text-align: left;
     padding: 0.75rem 1rem;
@@ -681,6 +687,8 @@
     quiz.questions.forEach((question, index) => {
       const card = document.createElement('div');
       card.className = 'question-card';
+      const multiSelect =
+        (question.options || []).filter((option) => option.isCorrect).length > 1;
       const optionsHTML = (question.options || [])
         .map(
           (option, optIndex) => `
@@ -690,6 +698,7 @@
           data-card-id="${question.card_id}"
           data-option-index="${optIndex}"
           data-correct="${option.isCorrect}"
+          data-multi="${multiSelect}"
         >${
           option.form === 'image' && option.media
             ? `<img class="option-media-image" src="${option.media}" alt="Option image" />`
@@ -709,6 +718,7 @@
         </div>
         ${mediaHTML}
         ${question.question ? `<div class="question-text">${escapeHtml(question.question)}</div>` : ''}
+        ${multiSelect ? '<div class="multi-select-note">☑️ Select all correct answers.</div>' : ''}
         <div class="quiz-options" data-card-id="${question.card_id}">
           ${optionsHTML}
         </div>
@@ -734,9 +744,14 @@
       });
     });
 
-    // Option selection: one choice per question
+    // Option selection: one choice per question, or toggle when the
+    // question has several correct answers (select-all-that-apply)
     document.querySelectorAll('.quiz-option').forEach((btn) => {
       btn.addEventListener('click', (e) => {
+        if (e.currentTarget.dataset.multi === 'true') {
+          e.currentTarget.classList.toggle('selected');
+          return;
+        }
         const cardId = e.currentTarget.dataset.cardId;
         document
           .querySelectorAll(`.quiz-option[data-card-id="${cardId}"]`)
@@ -769,12 +784,23 @@
       // Collect answers from selected options
       const answers = [];
       quiz.questions.forEach((question) => {
-        const selected = document.querySelector(
-          `.quiz-option.selected[data-card-id="${question.card_id}"]`
-        );
+        const opts = [
+          ...document.querySelectorAll(`.quiz-option[data-card-id="${question.card_id}"]`),
+        ];
+        const multi = opts.some((opt) => opt.dataset.multi === 'true');
+        let isCorrect;
+        if (multi) {
+          // Correct only when the selected set matches the correct set exactly
+          isCorrect = opts.every(
+            (opt) => (opt.dataset.correct === 'true') === opt.classList.contains('selected')
+          );
+        } else {
+          const selected = opts.find((opt) => opt.classList.contains('selected'));
+          isCorrect = selected ? selected.dataset.correct === 'true' : false;
+        }
         answers.push({
           card_id: question.card_id,
-          is_correct: selected ? selected.dataset.correct === 'true' : false,
+          is_correct: isCorrect,
         });
       });
 

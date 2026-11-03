@@ -89,6 +89,8 @@ class EntriesService {
     const lang = String(extras.lang || 'en-US').slice(0, 16);
     const answerLang = extras.answerLang ? String(extras.answerLang).slice(0, 16) : null;
 
+    if (Array.isArray(extras.options)) this.validateOptionForms(extras.options);
+
     const [questionForm, questionMediaId] = await this.resolveBlock(userId, extras.questionBlock);
     const [answerForm, answerMediaId] = await this.resolveBlock(userId, extras.answerBlock);
 
@@ -120,16 +122,36 @@ class EntriesService {
   }
 
   /**
+   * Answer options must be homogeneous: all text(-like) or all images, never
+   * a mix, so practice and quiz displays are consistent. Returns the usable
+   * (non-empty) options; throws a 400-flagged error on a mixed set.
+   */
+  validateOptionForms(options) {
+    const usable = (options || []).filter((option) => {
+      const text = String(option?.text ?? '').trim();
+      const hasMedia = option?.form && option.form !== 'text' && option.media;
+      return text || hasMedia;
+    });
+    const hasImage = usable.some((option) => option.form === 'image' && option.media);
+    const hasNonImage = usable.some((option) => !(option.form === 'image' && option.media));
+    if (hasImage && hasNonImage) {
+      const error = new Error('Answer options must be all text or all images, not a mix');
+      error.statusCode = 400;
+      throw error;
+    }
+    return usable;
+  }
+
+  /**
    * Replace the authored options for a flashcard (used by multiple_choice,
    * true_false, and audio question types).
    */
   async replaceFlashcardOptions(flashcardId, options, userId = null) {
+    const usable = this.validateOptionForms(options);
     await this.database.query(this.constructor.queries.delete_flashcard_options, [flashcardId]);
     let order = 0;
-    for (const option of options) {
+    for (const option of usable) {
       const text = String(option.text ?? '').trim();
-      const hasMedia = option?.form && option.form !== 'text' && option.media;
-      if (!text && !hasMedia) continue;
       const [optionForm, optionMediaId] =
         userId && option?.form ? await this.resolveBlock(userId, option) : ['text', null];
       await this.database.query(this.constructor.queries.insert_flashcard_option, [

@@ -50,8 +50,10 @@
           <div class="form-group question-type-panel" id="options-editor" style="display: none;">
             <label>Answer Options:</label>
             <small>
-              Mark each option correct or wrong. All correct adds "All of the above";
-              all wrong adds "None of the above"; a mix plays as authored.
+              Mark each option correct or wrong. Options must be all text or all
+              images (not a mix). All correct adds "All of the above"; all wrong
+              adds "None of the above"; several correct plays as
+              select-all-that-apply; otherwise it plays as authored.
             </small>
             <div id="options-rows"></div>
             <button type="button" class="btn btn-secondary" id="add-option-btn">+ Add Option</button>
@@ -332,6 +334,10 @@
 
         <div class="form-group" id="edit-options-editor" style="display: none;">
           <label>Answer Options:</label>
+          <small>
+            Mark each option correct or wrong. Options must be all text or all
+            images (not a mix); several correct plays as select-all-that-apply.
+          </small>
           <div id="edit-options-rows"></div>
           <button type="button" class="btn btn-secondary" id="edit-add-option-btn">+ Add Option</button>
         </div>
@@ -1056,6 +1062,13 @@
       const flashClass = document.getElementById('class').value;
       const is_private = document.getElementById('is_private').checked;
 
+      const optionBlocks = collectOptionRows();
+      if (optionFormsMixed(optionBlocks)) {
+        statusSpan.textContent = 'Error: answer options must be all text or all images, not a mix.';
+        statusSpan.className = 'error';
+        return;
+      }
+
       try {
         statusSpan.textContent = 'Creating...';
         statusSpan.className = '';
@@ -1084,7 +1097,7 @@
               mediaState.answerImage,
               document.getElementById('answer-tts').checked
             ),
-            options: collectOptionRows(),
+            options: optionBlocks,
           }),
         });
 
@@ -1581,6 +1594,20 @@
       const entryId = editForm.dataset.entryId;
       const statusSpan = document.getElementById('edit-form-status');
 
+      const editOptionBlocks = [...document.querySelectorAll('#edit-options-rows .option-row')].map(
+        (row) => ({
+          text: row.querySelector('.option-text').value,
+          isCorrect: row.querySelector('.option-correct').checked,
+          form: row._optionMedia ? 'image' : 'text',
+          media: row._optionMedia || undefined,
+        })
+      );
+      if (optionFormsMixed(editOptionBlocks)) {
+        statusSpan.textContent = 'Error: answer options must be all text or all images, not a mix.';
+        statusSpan.className = 'error';
+        return;
+      }
+
       try {
         statusSpan.textContent = 'Saving...';
         statusSpan.className = '';
@@ -1596,12 +1623,7 @@
             category: document.getElementById('edit-category').value,
             is_private: document.getElementById('edit-is-private').checked,
             question_type: document.getElementById('edit-question-type').value,
-            options: [...document.querySelectorAll('#edit-options-rows .option-row')].map((row) => ({
-              text: row.querySelector('.option-text').value,
-              isCorrect: row.querySelector('.option-correct').checked,
-              form: row._optionMedia ? 'image' : 'text',
-              media: row._optionMedia || undefined,
-            })),
+            options: editOptionBlocks,
           }),
         });
 
@@ -1832,6 +1854,14 @@
       form: row._optionMedia ? 'image' : 'text',
       media: row._optionMedia || undefined,
     }));
+  }
+
+  // Options must be homogeneous: all text or all images (matches the server rule)
+  function optionFormsMixed(options) {
+    const usable = options.filter((o) => (o.text && o.text.trim()) || o.media);
+    const hasImage = usable.some((o) => o.media);
+    const hasText = usable.some((o) => !o.media);
+    return hasImage && hasText;
   }
 
   function makeOptionRow(text = '', isCorrect = false, form = 'text', media = null) {

@@ -199,6 +199,40 @@ Confirmed decisions (2026-11-03):
   (choice vs listen) available for any question form whose answer has text to
   match against.
 
+Follow-up fixes (2026-11-03, round 6c):
+
+- ~~the audio and multiple choice card types still do not allow multiple images to be added as possible answers with a track on which are correct or not (only allow 1); it needs the same multi-answer ability as the text answers~~
+  **Resolved:** Verified working in the current code — every option row has its
+  own 📷 image attach, any number of image options can be added, and each keeps
+  its own correct/wrong checkbox (confirmed by browser test: a card with
+  multiple image options plus correct flags stored and played). The behavior
+  was missing on Render only because the feature wave had not been deployed
+  yet. Additionally, several-correct now plays properly (next item).
+- ~~the images also need to allow multiple to be correct, so the answer needs to accommodate that~~
+  **Resolved:** When several options (but not all) are marked correct, the
+  question plays as select-all-that-apply in both practice and quiz: options
+  toggle instead of radio-select, a note says "Select all correct answers",
+  practice gains a Check Answers button, and the answer is correct only when
+  the selected set matches the correct set exactly (verified: superset
+  selection scores incorrect with correct options highlighted; exact set
+  scores correct; quiz scored 100% on an exact-set answer). All-correct and
+  all-wrong sets keep their All/None-of-the-above behavior.
+- ~~in the question display (practice / quiz) it should be either text entries or images, not both~~
+  **Resolved:** Answer options must now be homogeneous — all text or all
+  images. Enforced client-side (create and edit forms show an error before
+  posting) and server-side (EntriesService.validateOptionForms throws a
+  400 "Answer options must be all text or all images, not a mix" on create
+  and update).
+- ~~a quiz should only present a form of a question that was practiced; if text or image was presented, only the version practiced will be available in quiz~~
+  **Resolved:** The quiz card pool now requires at least one practice attempt
+  on the card by this user (flashcard_leitner_progress with recorded attempts).
+  Because question/answer/option forms are stored on the card and quiz renders
+  from the same stored blocks practice uses, a practiced card always appears in
+  the quiz in exactly the form (text/image/TTS/audio) it was practiced in.
+  Verified: an unpracticed card is excluded ("No flashcards available for
+  quiz"); after one practice attempt the card appears in the quiz with the
+  same image options.
+
 Resolved on 2026-11-03 (round 5 follow-up):
 
 - ~~the true false should not force the user to type true or false; the answer should be a toggle button in the setup, and practice and quiz should follow this UX standard~~
