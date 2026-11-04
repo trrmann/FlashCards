@@ -1,8 +1,8 @@
 /**
- * User Service Module
- * Handles identity operations through the IAM database and user-scoped
- * application data (cascade deletes, special right assignments) through
- * the application database.
+ * User Service Module (IAM client for FlashCards)
+ * Identity operations through the IAM database: users, application access,
+ * app-scoped roles (direct or through groups), platform admins, and rights.
+ * Never touches application tables (CODING_STANDARDS 0.8).
  */
 
 import { identityManagementDb } from '../db/identityManagementDatabase.mjs';
@@ -14,8 +14,15 @@ class UserAuthService {
     identityManagementDb.constructor.sqlRoot
   );
 
+  /** The application this server is, in the multi-app IAM. */
+  static APP_KEY = 'flashcards';
+
   constructor(database = identityManagementDb) {
     this.database = database;
+  }
+
+  get appKey() {
+    return this.constructor.APP_KEY;
   }
 
   async createUser(username, email, password, fullName = null, isPublic = false) {
@@ -29,6 +36,7 @@ class UserAuthService {
     ]);
 
     const user = result.rows[0];
+    await this.enrollInApp(user.user_id);
     await this.assignRole(user.user_id, 'user');
     return user;
   }
@@ -46,7 +54,10 @@ class UserAuthService {
   }
 
   async findUserById(userId) {
-    const result = await this.database.query(this.constructor.queries.find_user_by_id, [userId]);
+    const result = await this.database.query(this.constructor.queries.find_user_by_id, [
+      userId,
+      this.appKey,
+    ]);
     return result.rows[0] || null;
   }
 
@@ -61,6 +72,12 @@ class UserAuthService {
 
     if (!passwordMatch) {
       return null;
+    }
+
+    if (!(await this.hasAppAccess(user.user_id)) && !(await this.isPlatformAdmin(user.user_id))) {
+      const error = new Error('Your account does not have access to FlashCards');
+      error.statusCode = 403;
+      throw error;
     }
 
     const userWithoutPassword = { ...user };
@@ -98,7 +115,7 @@ class UserAuthService {
   }
 
   async getAllUsers() {
-    const result = await this.database.query(this.constructor.queries.get_all_users);
+    const result = await this.database.query(this.constructor.queries.get_all_users, [this.appKey]);
     return result.rows;
   }
 
@@ -139,9 +156,66 @@ class UserAuthService {
     return new Map(result.rows.map((row) => [row.user_id, row]));
   }
 
-  async isAdmin(userId) {
-    const result = await this.database.query(this.constructor.queries.get_is_admin, [userId]);
+  /**
+   * Admin of an application (default: FlashCards), directly or through a group.
+   * Platform admins are admins of every application.
+   */
+  async isAdmin(userId, appKey = this.appKey) {
+    if (!userId) return false;
+    const result = await this.database.query(this.constructor.queries.get_is_admin, [
+      userId,
+      appKey,
+    ]);
     return result.rows.length > 0 && result.rows[0].is_admin;
+  }
+
+  async isPlatformAdmin(userId) {
+    if (!userId) return false;
+    const result = await this.database.query(this.constructor.queries.get_is_platform_admin, [
+      userId,
+    ]);
+    return Boolean(result.rows[0]?.is_platform_admin);
+  }
+
+  async enrollInApp(userId, appKey = this.appKey) {
+    await this.database.query(this.constructor.queries.enroll_user_in_app, [appKey, userId]);
+  }
+
+  async hasAppAccess(userId, appKey = this.appKey) {
+    const result = await this.database.query(this.constructor.queries.has_app_access, [
+      appKey,
+      userId,
+    ]);
+    return Boolean(result.rows[0]?.has_access);
+  }
+
+  /**
+   * Set a user's status ('active' | 'disabled') in an application.
+   * @returns {Promise<object|null>} The membership, or null if the user is not enrolled
+   */
+  async setAppAccess(userId, status, appKey = this.appKey) {
+    const result = await this.database.query(this.constructor.queries.set_app_access, [
+      appKey,
+      userId,
+      status,
+    ]);
+    return result.rows[0] || null;
+  }
+
+  async listApplications() {
+    const result = await this.database.query(this.constructor.queries.list_applications);
+    return result.rows;
+  }
+
+  /**
+   * @param {string|null} appKey - Application key, or null for a platform-wide role
+   */
+  async findRole(appKey, roleName) {
+    const result = await this.database.query(this.constructor.queries.find_role, [
+      appKey,
+      roleName,
+    ]);
+    return result.rows[0] || null;
   }
 
   async updateLastPageVisited(userId, page) {
@@ -178,17 +252,31 @@ class UserAuthService {
     await this.assignRole(userId, 'admin');
   }
 
-  async assignRole(userId, roleName) {
-    await this.database.query(this.constructor.queries.assign_role, [userId, roleName]);
+  /**
+   * The first user of an install administers FlashCards and the platform.
+   */
+  async makeFirstAdmin(userId) {
+    await this.setUserAdmin(userId);
+    await this.assignRole(userId, 'platform_admin', null);
   }
 
-  async revokeRole(userId, roleName) {
-    await this.database.query(this.constructor.queries.revoke_role, [userId, roleName]);
+  /**
+   * @param {string|null} appKey - Application key (default FlashCards), or null for a platform role
+   */
+  async assignRole(userId, roleName, appKey = this.appKey) {
+    await this.database.query(this.constructor.queries.assign_role, [userId, roleName, appKey]);
   }
 
+  async revokeRole(userId, roleName, appKey = this.appKey) {
+    await this.database.query(this.constructor.queries.revoke_role, [userId, roleName, appKey]);
+  }
+
+  /**
+   * Every role the user holds, directly or through a group: [{ role_name, app_key }].
+   */
   async getUserRoles(userId) {
     const result = await this.database.query(this.constructor.queries.get_user_roles, [userId]);
-    return result.rows.map((row) => row.role_name);
+    return result.rows;
   }
 
   /**
@@ -198,6 +286,7 @@ class UserAuthService {
   async getUserRights(userId) {
     const roleResult = await this.database.query(this.constructor.queries.get_role_rights, [
       userId,
+      this.appKey,
     ]);
     const rights = new Set(roleResult.rows.map((row) => row.right_key));
 
@@ -271,7 +360,10 @@ class UserAuthService {
   }
 
   async getUserDisplayInfo(userId) {
-    const result = await this.database.query(this.constructor.queries.get_user_display, [userId]);
+    const result = await this.database.query(this.constructor.queries.get_user_display, [
+      userId,
+      this.appKey,
+    ]);
     return result.rows[0] || null;
   }
 }

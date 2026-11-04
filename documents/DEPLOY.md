@@ -247,7 +247,7 @@ All operations are idempotent - safe to repeat.
 3. Preview only: strict format + lint
 4. Starts `npm run dev` with `NODE_ENV=development` or `preview` (nodemon, `--env-file=.env`)
 5. Waits up to 30 s for the server (dev: `/api/health`; preview: `/`)
-6. Preview only: runs `npm run test:preview` against port 4000, then `npm run test:roundtrip` on the local scratch DB
+6. Preview only: runs `npm run test:preview` against port 4000, then `npm run test:roundtrip` and `npm run test:iam` on the local scratch DB
    (starts it if needed; fails the preview if it is missing; set it up once with `local-db.sh init`)
 7. Opens browser; server continues running in background
 

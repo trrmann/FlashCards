@@ -11,11 +11,11 @@ document summarizes them.
 Both adapters connect to the **same PostgreSQL database**, but each domain has **its own PostgreSQL
 schema** (IAM phase 1, CODING_STANDARDS § 0.8):
 
-| Schema       | Owner adapter                | Connection `search_path` | Contents                                       |
-| ------------ | ---------------------------- | ------------------------ | ---------------------------------------------- |
-| `iam`        | `IdentityManagementDatabase` | `iam, public`            | Identities, roles, rights, sessions            |
-| `flashcards` | `FlashCardsDatabase`         | `flashcards, public`     | All FlashCards data                            |
-| `public`     | —                            | —                        | Only the `uuid-ossp` and `pgcrypto` extensions |
+| Schema       | Owner adapter                | Connection `search_path` | Contents                                                                 |
+| ------------ | ---------------------------- | ------------------------ | ------------------------------------------------------------------------ |
+| `iam`        | `IdentityManagementDatabase` | `iam, public`            | Identities, applications, roles, rights, organizations, groups, sessions |
+| `flashcards` | `FlashCardsDatabase`         | `flashcards, public`     | All FlashCards data                                                      |
+| `public`     | —                            | —                        | Only the `uuid-ossp` and `pgcrypto` extensions                           |
 
 The search path is set as a connection option (`PostgresDatabase.SCHEMA`), so each adapter's SQL stays
 unqualified within its own domain. The only cross-domain link is the foreign key from app tables to
@@ -88,12 +88,40 @@ session                       (express-session store)
 | `last_page_visited`                           | VARCHAR(255) | Default `/`; used as the post-login redirect                   |
 | `last_visited_at`, `created_at`, `updated_at` | TIMESTAMP    |                                                                |
 
+### `applications`, `application_users`
+
+- `applications(app_id, app_key UNIQUE, name, status)`, seeded with `flashcards`.
+- `application_users(app_id, user_id, status, joined_at)`: who may use which app. Signing in to FlashCards
+  requires an `active` row (platform admins are exempt). New users are enrolled when created.
+
 ### `roles`, `rights`, `role_rights`, `user_roles`
 
-- `roles(role_id, role_name UNIQUE, description)`, seeded with `admin` and `user`.
-- `rights(right_id, right_key UNIQUE, description)` and `role_rights(role_id, right_id)` exist for future
-  fine-grained permissions. **Authorization today checks only `admin` role membership.**
-- `user_roles(user_id, role_id)` PK on both. The first user (initial setup or first registration) gets `admin`.
+- `roles(role_id, app_id, role_name, description)`, unique on `(app_id, role_name)` with `NULLS NOT DISTINCT`.
+  `app_id` NULL means platform-wide. Seeded: FlashCards `admin` and `user`, and platform `platform_admin`.
+- `rights(right_id, app_id, right_key, description)`, unique on `(app_id, right_key)`, and
+  `role_rights(role_id, right_id)` exist for future fine-grained permissions. **Authorization today checks
+  role membership only** (FlashCards `admin`, `platform_admin`).
+- `user_roles(user_id, role_id)` PK on both. The first user (initial setup or first registration) gets
+  FlashCards `admin` and `platform_admin`.
+
+### `organizations`, `organization_members`, `groups`, `group_members`, `group_roles`
+
+- `organizations(org_id, name, slug UNIQUE, status, created_by)`.
+- `organization_members(org_id, user_id, org_role)` with `org_role` ∈ `owner`/`admin`/`member`.
+- `groups(group_id, org_id, name, description)`, unique `(org_id, name)`. Groups belong to one organization.
+- `group_members(group_id, user_id)`. The service only adds organization members, and removing a member from
+  the organization removes them from its groups.
+- `group_roles(group_id, role_id)`. Every member of the group holds the role.
+
+### View `effective_user_roles`
+
+Every role a user holds, `direct` or through a `group`, with its `app_key`. All admin and rights checks read this view.
+
+### One-time upgrade steps (phase 2)
+
+On the first start after phase 2, the schema file converts the old global `admin`/`user` roles into FlashCards roles,
+grants `platform_admin` to the existing FlashCards admins (only while nobody holds it yet), and enrolls every
+existing user in FlashCards (only while the app has no members). Later starts change nothing.
 
 ### `session`
 

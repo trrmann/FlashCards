@@ -14,7 +14,7 @@ ORDER BY a.attnum;
 -- Tables in the adapter's own schema (the first schema on its search_path).
 SELECT table_name
 FROM information_schema.tables
-WHERE table_schema = current_schema()
+WHERE table_schema = current_schema() AND table_type = 'BASE TABLE'
 ORDER BY table_name;
 
 -- Query: select_table_columns

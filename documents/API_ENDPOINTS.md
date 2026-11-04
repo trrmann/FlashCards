@@ -129,6 +129,7 @@ Body: `{ username, password }`. Disabled users (`status = 'disabled'`) cannot lo
 
 - `200` `{ status, message, user: { user_id, username, email, full_name }, redirectTo: "<last page visited>" }`
 - `401` invalid credentials
+- `403` the account has no active access to FlashCards (`application_users`); platform admins are exempt
 
 ### POST /api/auth/logout
 
@@ -136,7 +137,7 @@ Destroys the session. `200` `{ status, message }`.
 
 ### GET /api/auth/current
 
-`200` `{ status, user }` where `user` = `{ user_id, username, email, full_name, status, is_public, created_at, updated_at, is_admin }`.
+`200` `{ status, user }` where `user` = `{ user_id, username, email, full_name, status, is_public, created_at, updated_at, is_admin, is_platform_admin }`. `is_admin` is true for FlashCards admins (directly or through a group) and platform admins.
 `401` if not logged in (session destroyed if the user no longer exists).
 
 ---
@@ -427,6 +428,46 @@ Body: `{ answers: [{ card_id, is_correct }] }`. Owner only. The score is `round(
 
 ---
 
+## IAM — `/api/iam` (all require auth)
+
+Organizations, members, groups, group roles, platform admins, and application access
+(IAM phase 2, IAM_MULTI_APP_DESIGN.md). Malformed ids return `404`. Non-members get `404` for an
+organization, so its existence isn't revealed.
+
+**Who may do what:** platform admins can do everything and alone create/delete organizations.
+Organization owners/admins manage that organization's members and groups. Only owners or platform
+admins grant or remove `owner`, and an organization always keeps at least one owner (`409`).
+Roles held by groups can be changed only by platform admins or admins of the role's application.
+
+| Method | Path                                            | Body                             | Notes                                                                                                                                                                     |
+| ------ | ----------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/iam/organizations`                        | —                                | `{ isPlatformAdmin, organizations: [{ org_id, name, slug, status, my_role, member_count, group_count }] }`. All organizations for platform admins, otherwise the caller's |
+| POST   | `/api/iam/organizations`                        | `{ name, slug, ownerUsername? }` | Platform admins. Slug: 3–100 chars, `a-z 0-9 -`. Owner defaults to the caller. `201`; `409` duplicate slug                                                                |
+| PUT    | `/api/iam/organizations/:orgId`                 | `{ name?, status? }`             | Owner/admin. `status`: `active`/`disabled`                                                                                                                                |
+| DELETE | `/api/iam/organizations/:orgId`                 | —                                | Platform admins. Cascades to members and groups                                                                                                                           |
+| GET    | `/api/iam/organizations/:orgId/members`         | —                                | Members: `user_id, username, full_name, org_role, joined_at` (owners first)                                                                                               |
+| POST   | `/api/iam/organizations/:orgId/members`         | `{ username, orgRole? }`         | Owner/admin. `orgRole`: `owner`/`admin`/`member` (default). `409` already a member                                                                                        |
+| PUT    | `/api/iam/organizations/:orgId/members/:userId` | `{ orgRole }`                    | Owner/admin; owner changes need an owner                                                                                                                                  |
+| DELETE | `/api/iam/organizations/:orgId/members/:userId` | —                                | Owner/admin. Also removes the user from the organization's groups                                                                                                         |
+| GET    | `/api/iam/organizations/:orgId/groups`          | —                                | Groups with `member_count`                                                                                                                                                |
+| POST   | `/api/iam/organizations/:orgId/groups`          | `{ name, description? }`         | Owner/admin. `409` duplicate name in the organization                                                                                                                     |
+| PUT    | `/api/iam/groups/:groupId`                      | `{ name?, description? }`        | Owner/admin of the group's organization                                                                                                                                   |
+| DELETE | `/api/iam/groups/:groupId`                      | —                                | Owner/admin                                                                                                                                                               |
+| GET    | `/api/iam/groups/:groupId/members`              | —                                | Organization members                                                                                                                                                      |
+| POST   | `/api/iam/groups/:groupId/members`              | `{ username }`                   | Owner/admin. The user must already be an organization member (`400`)                                                                                                      |
+| DELETE | `/api/iam/groups/:groupId/members/:userId`      | —                                | Owner/admin                                                                                                                                                               |
+| GET    | `/api/iam/groups/:groupId/roles`                | —                                | `[{ role_id, role_name, app_key }]` (`app_key` null = platform-wide)                                                                                                      |
+| POST   | `/api/iam/groups/:groupId/roles`                | `{ appKey, roleName }`           | Platform admins or that app's admins. Every group member then holds the role (e.g. `flashcards`/`admin`)                                                                  |
+| DELETE | `/api/iam/groups/:groupId/roles/:roleId`        | —                                | Same authority as granting                                                                                                                                                |
+| POST   | `/api/iam/platform-admins/:userId`              | —                                | Platform admins: grant platform admin                                                                                                                                     |
+| DELETE | `/api/iam/platform-admins/:userId`              | —                                | Platform admins: revoke (not yourself, `400`)                                                                                                                             |
+| GET    | `/api/iam/applications`                         | —                                | Platform admins: registered applications with active user counts                                                                                                          |
+| PUT    | `/api/iam/applications/:appKey/users/:userId`   | `{ status }`                     | Platform admins or that app's admins: `active`/`disabled`. Disabled users can't sign in to that app (`403`). Not yourself                                                 |
+
+Tested by `npm run test:iam` (79 checks against the real server on the local scratch database).
+
+---
+
 ## Admin — `/api/admin` (auth + `admin` role)
 
 ### Users
@@ -455,10 +496,10 @@ Body: `{ answers: [{ card_id, is_correct }] }`. Owner only. The score is `round(
 | POST   | `/api/admin/backup/import`         | Body `{ backup, mediaArchive? }` (50 MB). **Upsert**: update existing rows, insert new ones, delete nothing. **All-or-nothing**: one transaction; any failing row rolls back the whole import and returns `500` with the table and error. Roles/rights are matched by name and their ids remapped. Users are matched to existing accounts by username (case-insensitive), falling back to email. A matched user's id is rewritten throughout the backup (`user_id`, `created_by`, `owner_id`, `recipient_id`), so a backup restores into a fresh database whose admin was re-created. The existing account's row is then updated from the backup, including `password_hash`. Unresolvable media references are cleared, with warnings. `{ results: { imported, failed: {}, warnings } }`. Scriptable with `backup.sh` / `restore.sh` |
 | GET    | `/api/admin/backup/history`        | `?limit=` (default 100, max 1000). Rows from `import_export_logs`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
-Tables in the backup:
-`users, roles, rights, role_rights, user_roles` (IAM), then
-`user_rights, lessons, media, flashcards, flashcard_options, flashcard_shares, public_card_removals, leitner_boxes, flashcard_leitner_progress, practice_history, session_card_attempts, difficulty_history, quizzes, quiz_questions, quiz_results, import_export_logs`.
-Only the transient `session` table is left out. `npm run test:roundtrip` proves that every other table survives a wipe and restore (see LOCAL_DATABASE.md).
+Tables in the backup (format **3.0**):
+`users, applications, roles, rights, role_rights, user_roles, user_rights, application_users, organizations, organization_members, groups, group_members, group_roles` (IAM), then
+`lessons, media, flashcards, flashcard_options, flashcard_shares, public_card_removals, leitner_boxes, flashcard_leitner_progress, practice_history, session_card_attempts, difficulty_history, quizzes, quiz_questions, quiz_results, import_export_logs`.
+Only the transient `session` table is left out. Applications and roles are matched by natural key (app key; app + role name). Older format 2.0 backups still restore: their `admin`/`user` roles become FlashCards roles and every restored user is enrolled in FlashCards. `npm run test:roundtrip` proves that every other table survives a wipe and restore (see LOCAL_DATABASE.md).
 
 > The backup JSON contains password hashes and every user's data. Treat it as a secret.
 

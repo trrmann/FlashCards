@@ -347,7 +347,8 @@ None. The audit found 0 `style=` attributes, `<style>` blocks, or `.style` uses 
 
 - Phase 1 (separate `iam`/`flashcards` schemas, no cross-domain SQL, cascade deletes) is done on the
   `review-and-data-safety` branch (not yet in production).
-- The IAM has no applications, organizations, or groups yet, and roles/rights are global (phase 2).
+- Phase 2 backend (applications, app-scoped roles, organizations, groups, `/api/iam`) is done on the same branch;
+  the management page is not built yet.
 - The IAM still runs inside FlashCards, not as a separate service (phase 3).
 
 ### Other

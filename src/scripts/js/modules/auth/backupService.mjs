@@ -10,6 +10,7 @@
 import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
 import { identityManagementDb } from '../db/identityManagementDatabase.mjs';
 import { mediaArchiveService } from './mediaArchiveService.mjs';
+import { userAuthService, UserAuthService } from './userAuthService.mjs';
 
 class BackupService {
   static queries = flashCardsDb.constructor.loadNamedSqlStatements(
@@ -21,7 +22,21 @@ class BackupService {
    * Identity tables (IAM database ownership), in FK-safe import order.
    * The transient session store is intentionally excluded.
    */
-  static iamTables = ['users', 'roles', 'rights', 'role_rights', 'user_roles', 'user_rights'];
+  static iamTables = [
+    'users',
+    'applications',
+    'roles',
+    'rights',
+    'role_rights',
+    'user_roles',
+    'user_rights',
+    'application_users',
+    'organizations',
+    'organization_members',
+    'groups',
+    'group_members',
+    'group_roles',
+  ];
 
   /**
    * Application tables (app database ownership), in FK-safe import order.
@@ -50,9 +65,16 @@ class BackupService {
    * and their ids are remapped in referencing tables.
    */
   static naturalKeyTables = {
-    roles: { naturalKey: 'role_name', id: 'role_id' },
-    rights: { naturalKey: 'right_key', id: 'right_id' },
+    applications: { naturalKey: ['app_key'], id: 'app_id' },
+    roles: { naturalKey: ['app_id', 'role_name'], id: 'role_id' },
+    rights: { naturalKey: ['app_id', 'right_key'], id: 'right_id' },
   };
+
+  /** Backup format: 3.0 adds applications, app-scoped roles, organizations, and groups. */
+  static FORMAT_VERSION = '3.0';
+
+  /** Roles that were global before format 3.0 and now belong to FlashCards. */
+  static LEGACY_APP_ROLES = ['admin', 'user'];
 
   /**
    * Columns (in any backed-up table) that hold a users.user_id reference.
@@ -97,7 +119,7 @@ class BackupService {
    */
   async exportApplicationData() {
     const backup = {
-      version: '2.0',
+      version: this.constructor.FORMAT_VERSION,
       exportedAt: new Date().toISOString(),
       schema: {},
       data: {},
@@ -356,6 +378,8 @@ class BackupService {
     // Users are identified by username/email, not by their install-specific
     // UUID: merge backup users into existing accounts and rewrite every user
     // reference so dependent rows do not violate users foreign keys.
+    await this.upgradeLegacyBackup(backup, results);
+
     const userIdMap = await this.buildUserIdMap(backup.data.users || [], results);
     if (userIdMap.size > 0) {
       this.remapUserReferences(backup.data, userIdMap);
@@ -363,7 +387,11 @@ class BackupService {
 
     // Every write below runs in one transaction on one connection (IAM and app
     // tables currently share the database), so a failure rolls everything back.
-    await this.database.withTransaction((client) => this.importTables(client, backup, results));
+    // Tables are addressed schema-qualified; the IAM connection is used so the
+    // IAM's own named queries (legacy enrollment) resolve on its search_path.
+    await this.identityDatabase.withTransaction((client) =>
+      this.importTables(client, backup, results)
+    );
 
     return results;
   }
@@ -385,16 +413,18 @@ class BackupService {
 
       const natural = this.constructor.naturalKeyTables[table];
       const conflictColumns = natural
-        ? [natural.naturalKey]
+        ? natural.naturalKey
         : await this.getPrimaryKeyColumns(client, this.qualifiedName(table));
       if (conflictColumns.length === 0) {
         throw new Error(`Import aborted: no primary key found for ${table}`);
       }
 
       let imported = 0;
+      const naturalRows = []; // [exported id, prepared row] for natural-key tables
       for (const dataRow of rows) {
         const row = this.prepareRow(dataRow, table, natural, idMaps, results);
         if (!row) continue;
+        if (natural) naturalRows.push([dataRow[natural.id], row]);
         try {
           await this.upsertRow(client, this.qualifiedName(table), row, conflictColumns);
         } catch (error) {
@@ -405,8 +435,15 @@ class BackupService {
       results.imported[table] = imported;
 
       if (natural) {
-        idMaps[table] = await this.naturalKeyIdMap(client, table, natural, rows);
+        idMaps[table] = await this.naturalKeyIdMap(client, table, natural, naturalRows);
       }
+    }
+
+    // Backups older than format 3.0 have no application access records:
+    // enroll every user in FlashCards so restored users can sign in.
+    if (backup.legacyEnrollment) {
+      await client.query(UserAuthService.queries.enroll_all_users_in_app, [userAuthService.appKey]);
+      results.warnings.push('Legacy backup: enrolled all users in FlashCards');
     }
 
     // Realign serial sequences so future inserts do not collide.
@@ -429,7 +466,8 @@ class BackupService {
 
     for (const [refTable, ref] of Object.entries(this.constructor.naturalKeyTables)) {
       const map = idMaps[refTable];
-      if (map && row[ref.id] !== undefined) {
+      // null references (e.g. a platform-wide role's app_id) stay null
+      if (map && row[ref.id] !== undefined && row[ref.id] !== null) {
         const mapped = map.get(row[ref.id]);
         if (!mapped) {
           results.warnings.push(`Skipped ${table} row: unknown ${refTable} id ${row[ref.id]}`);
@@ -444,18 +482,57 @@ class BackupService {
   /**
    * After importing a natural-key table, map exported ids to this install's ids.
    */
-  async naturalKeyIdMap(client, table, natural, rows) {
+  static naturalKeyOf(row, natural) {
+    return JSON.stringify(natural.naturalKey.map((column) => row[column] ?? null));
+  }
+
+  /**
+   * After importing a natural-key table, map each exported id to this install's id,
+   * matching on the natural key of the prepared (already remapped) row.
+   */
+  async naturalKeyIdMap(client, table, natural, naturalRows) {
     const current = await client.query(
       this.constructor.queries.select_all_rows_template.replace(
         '{{table}}',
         this.qualifiedName(table)
       )
     );
-    const byNatural = new Map(current.rows.map((r) => [r[natural.naturalKey], r[natural.id]]));
+    const byNatural = new Map(
+      current.rows.map((r) => [this.constructor.naturalKeyOf(r, natural), r[natural.id]])
+    );
     return new Map(
-      rows
-        .filter((r) => byNatural.has(r[natural.naturalKey]))
-        .map((r) => [r[natural.id], byNatural.get(r[natural.naturalKey])])
+      naturalRows
+        .filter(([, row]) => byNatural.has(this.constructor.naturalKeyOf(row, natural)))
+        .map(([exportedId, row]) => [
+          exportedId,
+          byNatural.get(this.constructor.naturalKeyOf(row, natural)),
+        ])
+    );
+  }
+
+  /**
+   * Accept backups older than format 3.0: their global 'admin'/'user' roles become
+   * FlashCards roles of this install, and (when the backup has no application
+   * access records) every user is enrolled in FlashCards after the import.
+   */
+  async upgradeLegacyBackup(backup, results) {
+    if (Array.isArray(backup.data.application_users)) return;
+    backup.legacyEnrollment = true;
+
+    const applications = await this.identityDatabase.query(
+      this.constructor.queries.select_all_rows_template.replace('{{table}}', 'applications')
+    );
+    const appId = applications.rows.find((row) => row.app_key === userAuthService.appKey)?.app_id;
+    for (const role of backup.data.roles || []) {
+      if (role.app_id === undefined) {
+        role.app_id = this.constructor.LEGACY_APP_ROLES.includes(role.role_name) ? appId : null;
+      }
+    }
+    for (const right of backup.data.rights || []) {
+      if (right.app_id === undefined) right.app_id = null;
+    }
+    results.warnings.push(
+      `Legacy backup (format ${backup.version || 'unknown'}) upgraded to ${this.constructor.FORMAT_VERSION}`
     );
   }
 

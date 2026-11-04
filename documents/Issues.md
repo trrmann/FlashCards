@@ -61,7 +61,8 @@ Requirement: [CODING_STANDARDS.md § 0.8](./CODING_STANDARDS.md). Design, owner 
 - [x] WurmTools IAM reviewed and mapped into the design
 - [x] Decided: separate IAM service (2026-11-03)
 - [x] Phase 1: `iam`/`flashcards` schemas, no cross-domain SQL, cascade deletes via FK (2026-11-03, local DB; reaches production with the branch)
-- [ ] Phase 2: applications, app access, app-scoped roles, orgs/groups management, backup v3
+- [x] Phase 2 backend: applications, app access, app-scoped roles, orgs/groups API, backup v3 (2026-11-03, local DB)
+- [ ] Phase 2 UI: organization and group management page
 - [ ] Phase 3: IAM service, tokens, MFA, invitations, role requests, impersonation + audit, throttling, resource grants
 - [ ] Phase 4: WurmTools on the shared IAM (in the WurmTools refactor) + import of its local identity files
 - [ ] Phase 5: group-level data isolation
@@ -240,6 +241,19 @@ Found in the code/documentation review of 2026-11-03 (not yet fixed):
 - **`.env.example` lists many unused keys** (`DATABASE_URL`, `JWT_*`, `DB_SCHEMA`, `CORS_*`, …).
 - **Unused leftovers:** `src/data/test.db`, `leitner_boxes` and `lessons` tables, `flashcards.is_public`/
   `difficulty`/`lesson_id`, `flashcard_leitner_progress.session_streak`, `user_rights`/`rights` (no routes).
+
+Resolved on 2026-11-03 (IAM phase 2, backend):
+
+- ~~IAM has no applications, organizations, or groups; roles are global~~
+  **Resolved (backend):** `applications` + `application_users` (signing in requires FlashCards access; first user is
+  FlashCards admin and platform admin); roles/rights scoped by app (`NULLS NOT DISTINCT` unique index); organizations,
+  members, groups, group members, group roles; view `effective_user_roles` used by every admin check (so group roles
+  count); `OrganizationService` + `/api/iam` router; backup format 3.0 with composite natural keys and format 2.0
+  compatibility; `LocalTestCase` base class; `npm run test:iam`; `deploy.sh -preview` runs both local-DB tests.
+  Verified: `test:iam` 79/79 (negative check: disabling the manager authorization fails 4 checks); `test:roundtrip`
+  147/147 including a format 2.0 restore; migration of a populated old-layout database through phases 1 and 2
+  (roles converted, existing admin made platform admin once, all users enrolled, logins and every page working),
+  started twice with no repeated changes; lint, format, page smoke test.
 
 Resolved on 2026-11-03 (IAM phase 1):
 

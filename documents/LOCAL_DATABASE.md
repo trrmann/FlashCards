@@ -46,6 +46,12 @@ take precedence over `.env`, so the app talks only to the local database. Port 5
   production, but it copies **real users' personal data** (emails, password hashes) onto the machine.
   Run it only when that is deliberately needed, and `reset` afterwards. Automated assistants must not run it.
 
+## IAM API test
+
+`npm run test:iam` resets the local database, starts the real server in-process on port 5098, registers five users,
+and exercises every `/api/iam` endpoint as users with different roles (79 checks: success, 400/401/403/404/409, and
+side effects such as a group role granting admin access and disabled app access blocking sign-in). Same local-only guard.
+
 ## Backup round-trip test
 
 `npm run test:roundtrip` (= `local-db.sh run node src/scripts/js/modules/tests/backup-roundtrip.mjs`) proves

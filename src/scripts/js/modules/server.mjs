@@ -23,6 +23,7 @@ import navigationRouter from './routes/navigationRouter.mjs';
 import entriesRouter from './routes/entriesRouter.mjs';
 import practiceRouter from './routes/practiceRouter.mjs';
 import quizRouter from './routes/quizRouter.mjs';
+import iamRouter from './routes/iamRouter.mjs';
 
 export class Server {
   static filePath = fileURLToPath(import.meta.url);
@@ -252,6 +253,9 @@ export class Server {
 
     // Admin routes
     app.use('/api/admin', adminRouter);
+
+    // IAM: organizations, groups, group roles, platform admins, app access
+    app.use('/api/iam', iamRouter);
 
     // Health check endpoint
     app.get('/api/health', async (req, res) => {

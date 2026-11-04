@@ -285,7 +285,7 @@ run_comprehensive_tests() {
     # Run preview tests against the preview server
     if TEST_BASE_URL="http://localhost:${PORT_PREVIEW}" npm run test:preview >> "${LOG_FILE}" 2>&1; then
         log SUCCESS "All preview tests passed"
-        run_backup_roundtrip
+        run_local_db_tests
         return 0
     else
         local test_output=$(TEST_BASE_URL="http://localhost:${PORT_PREVIEW}" npm run test:preview 2>&1)
@@ -301,18 +301,21 @@ run_comprehensive_tests() {
     fi
 }
 
-run_backup_roundtrip() {
-    # CODING_STANDARDS 0.7: prove that a full backup rebuilds every table after a reset.
-    # Runs on the local scratch database only (it drops and rebuilds the schema).
-    log INFO "Running backup round-trip test (local scratch database)..."
+run_local_db_tests() {
+    # CODING_STANDARDS 0.6/0.7 tests that need a disposable database: they drop and
+    # rebuild the schema, so they run only on the local scratch database.
+    log INFO "Running local-database tests (backup round trip, IAM API)..."
     if ! "${SCRIPT_DIR}/local-db.sh" start >> "${LOG_FILE}" 2>&1; then
         error_exit "Local scratch database unavailable. Set it up once with: local-db.sh init"
     fi
-    if npm run test:roundtrip >> "${LOG_FILE}" 2>&1; then
-        log SUCCESS "Backup round-trip test passed"
-    else
-        error_exit "Backup round-trip test failed. Check .deployment/last-run.log for details."
-    fi
+    local test_name
+    for test_name in test:roundtrip test:iam; do
+        if npm run "${test_name}" >> "${LOG_FILE}" 2>&1; then
+            log SUCCESS "${test_name} passed"
+        else
+            error_exit "${test_name} failed. Check .deployment/last-run.log for details."
+        fi
+    done
 }
 
 ################################################################################

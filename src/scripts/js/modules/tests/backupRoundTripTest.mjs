@@ -6,78 +6,38 @@
  * database (local-db.sh); it refuses any other target because it drops the public schema.
  */
 
-import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
-import { identityManagementDb } from '../db/identityManagementDatabase.mjs';
+import { LocalTestCase } from './localTestCase.mjs';
 import { userAuthService } from '../auth/userAuthService.mjs';
 import { entriesService } from '../auth/entriesService.mjs';
 import { practiceService } from '../auth/practiceService.mjs';
 import { backupService, BackupService } from '../auth/backupService.mjs';
 import { mediaArchiveService } from '../auth/mediaArchiveService.mjs';
 import { QuizRouter } from '../routes/quizRouter.mjs';
+import { organizationService } from '../auth/organizationService.mjs';
 
-export class BackupRoundTripTest {
-  static LOCAL_HOSTS = ['127.0.0.1', 'localhost'];
-  static LOCAL_DATABASE_SUFFIX = '_local';
+export class BackupRoundTripTest extends LocalTestCase {
   static PASSWORD = 'RoundTrip#2026';
   static PNG =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
   static AUDIO =
     'data:audio/webm;base64,GkXfo0AgQoaBAUL3gQFC8oEEQvOBCEKCQAR3ZWJtQoeBAkKFgQIYU4BnAQAAAAAAAA==';
   static USER_REFERENCE_COLUMNS = BackupService.userReferenceColumns;
-  static NATURAL_KEYS = { roles: ['role_id', 'role_name'], rights: ['right_id', 'right_key'] };
+  static NATURAL_KEYS = {
+    applications: ['app_id', 'app_key'],
+    roles: ['role_id', 'role_name'],
+    rights: ['right_id', 'right_key'],
+  };
+  static LEGACY_ONLY_TABLES = [
+    'applications',
+    'application_users',
+    'organizations',
+    'organization_members',
+    'groups',
+    'group_members',
+    'group_roles',
+  ];
   static TRANSIENT_TABLES = ['session'];
   static UNSEEDED_TABLES = ['rights', 'role_rights', 'lessons', 'leitner_boxes'];
-
-  static testQueries = flashCardsDb.constructor.loadNamedSqlStatements(
-    'pg/test-queries.sql',
-    flashCardsDb.constructor.sqlRoot
-  );
-
-  constructor({ database = flashCardsDb, identityDatabase = identityManagementDb } = {}) {
-    this.database = database;
-    this.identityDatabase = identityDatabase;
-    this.failures = [];
-    this.checks = 0;
-  }
-
-  /**
-   * Refuse to run anywhere except the local scratch database.
-   */
-  assertLocalTarget() {
-    for (const db of [this.database, this.identityDatabase]) {
-      const { host, database } = db.config;
-      const local =
-        this.constructor.LOCAL_HOSTS.includes(host) &&
-        String(database).endsWith(this.constructor.LOCAL_DATABASE_SUFFIX);
-      if (!local) {
-        throw new Error(
-          `Refusing to run: target ${host}/${database} is not the local scratch database. Use: local-db.sh run …`
-        );
-      }
-    }
-  }
-
-  check(label, condition, detail = '') {
-    this.checks += 1;
-    if (condition) {
-      console.log(`  ✓ ${label}`);
-    } else {
-      console.log(`  ✗ ${label}${detail ? `: ${detail}` : ''}`);
-      this.failures.push(label);
-    }
-  }
-
-  /**
-   * Drop everything and bootstrap both schemas, as on a brand-new Render database.
-   */
-  async resetDatabase() {
-    await this.database.query(this.constructor.testQueries.drop_iam_schema);
-    await this.database.query(this.constructor.testQueries.drop_flashcards_schema);
-    await this.database.query(this.constructor.testQueries.drop_public_schema);
-    await this.database.query(this.constructor.testQueries.create_public_schema);
-    await this.identityDatabase.initializeSchema();
-    await this.database.initializeSchema();
-  }
 
   async createAdmin(username) {
     const admin = await userAuthService.createUser(
@@ -86,7 +46,7 @@ export class BackupRoundTripTest {
       this.constructor.PASSWORD,
       'Round Trip Admin'
     );
-    await userAuthService.setUserAdmin(admin.user_id);
+    await userAuthService.makeFirstAdmin(admin.user_id); // as initial setup does
     return admin;
   }
 
@@ -190,6 +150,22 @@ export class BackupRoundTripTest {
 
     await userAuthService.grantUserRight(alice.user_id, 'test.round_trip');
     await backupService.logImportExport(admin.user_id, 'export', 3, 'success');
+
+    const org = await organizationService.createOrganization(admin.user_id, {
+      name: 'Round Trip Org',
+      slug: 'round-trip-org',
+      ownerUsername: 'rt_alice',
+    });
+    await organizationService.addMember(alice.user_id, org.org_id, { username: 'rt_bob' });
+    const group = await organizationService.createGroup(alice.user_id, org.org_id, {
+      name: 'Study group',
+      description: 'Round trip',
+    });
+    await organizationService.addGroupMember(alice.user_id, group.group_id, { username: 'rt_bob' });
+    await organizationService.grantGroupRole(admin.user_id, group.group_id, {
+      appKey: 'flashcards',
+      roleName: 'user',
+    });
 
     return { admin, cards: [textCard, imageCard, audioCard] };
   }
@@ -337,8 +313,74 @@ export class BackupRoundTripTest {
     console.log('\n4. Corrupt backup: import must be rejected and change nothing');
     await this.checkAtomicImport(original);
 
-    console.log(`\n${this.checks - this.failures.length}/${this.checks} checks passed`);
-    return { success: this.failures.length === 0, failures: this.failures };
+    console.log('\n5. Legacy (format 2.0) backup restores into a wiped database');
+    await this.checkLegacyRestore(original, admin);
+
+    return this.summary();
+  }
+
+  /**
+   * Turn a current backup into the shape of a format 2.0 backup (before
+   * applications, app-scoped roles, organizations, and groups existed).
+   */
+  toLegacyBackup(backup) {
+    const legacy = structuredClone(backup);
+    legacy.version = '2.0';
+    const platformRoles = new Set(
+      legacy.data.roles.filter((role) => role.app_id === null).map((role) => role.role_id)
+    );
+    for (const table of this.constructor.LEGACY_ONLY_TABLES) delete legacy.data[table];
+    legacy.data.roles = legacy.data.roles
+      .filter((role) => !platformRoles.has(role.role_id))
+      .map(({ app_id: _appId, ...role }) => role);
+    legacy.data.user_roles = legacy.data.user_roles.filter(
+      (row) => !platformRoles.has(row.role_id)
+    );
+    legacy.data.rights = legacy.data.rights.map(({ app_id: _appId, ...right }) => right);
+    return legacy;
+  }
+
+  /**
+   * A format 2.0 backup must restore: its admin/user roles become FlashCards
+   * roles and every restored user can sign in to FlashCards.
+   */
+  async checkLegacyRestore(original, admin) {
+    await this.resetDatabase();
+    const recreated = await this.createAdmin('rt_admin');
+    const result = await backupService.importApplicationData(
+      this.toLegacyBackup(original.backup),
+      original.archive
+    );
+    this.check(
+      'legacy backup was upgraded',
+      result.warnings.some((w) => w.startsWith('Legacy backup (format 2.0)'))
+    );
+    const users = (await this.snapshot()).data.users;
+    this.check(
+      'legacy restore: all users restored',
+      users.length === original.backup.data.users.length
+    );
+    let allAccess = true;
+    for (const user of users) {
+      if (!(await userAuthService.hasAppAccess(user.user_id))) allAccess = false;
+    }
+    this.check('legacy restore: every user has FlashCards access', allAccess);
+    const alice = users.find((user) => user.username === 'rt_alice');
+    const roles = await userAuthService.getUserRoles(alice.user_id);
+    this.check(
+      'legacy restore: user role belongs to FlashCards',
+      roles.some((role) => role.role_name === 'user' && role.app_key === 'flashcards')
+    );
+    this.check(
+      'legacy restore: merged admin is still a platform admin',
+      admin.user_id !== recreated.user_id &&
+        (await userAuthService.isPlatformAdmin(recreated.user_id))
+    );
+    const cards = (await this.snapshot()).data.flashcards;
+    this.check(
+      'legacy restore: flashcards restored',
+      cards.length === original.backup.data.flashcards.length
+    );
   }
 
   /**
@@ -369,23 +411,6 @@ export class BackupRoundTripTest {
       rejection ? rejection.message : 'import succeeded'
     );
     this.compareSnapshots(beforeAttempt, await this.snapshot(), new Map(), 'rolled back');
-  }
-
-  /**
-   * Run the test and always release the database pools. Returns true on success.
-   */
-  async execute() {
-    try {
-      const { success } = await this.run();
-      return success;
-    } finally {
-      await this.close();
-    }
-  }
-
-  async close() {
-    await this.database.close();
-    await this.identityDatabase.close();
   }
 }
 

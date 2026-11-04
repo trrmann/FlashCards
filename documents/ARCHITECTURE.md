@@ -12,7 +12,7 @@ Express 5 app  ── server.js → src/scripts/js/modules/server.mjs (class Ser
    ├─ page routes:  /  /entries  /practice  /quiz  /login  /profile  /logout
    └─ API routers (classes extending BaseRouter):
         /api/system  /api/auth  /api/users  /api/navigation
-        /api/entries  /api/practice (+ /practice)  /api/quiz  /api/admin  /api/health
+        /api/entries  /api/practice (+ /practice)  /api/quiz  /api/admin  /api/iam  /api/health
    │
    ▼
 Services (singletons in src/scripts/js/modules/auth/)
@@ -60,14 +60,15 @@ Full reference: [API_ENDPOINTS.md](./API_ENDPOINTS.md).
 
 Despite the folder name, these are the domain services:
 
-| Service               | Responsibility                                                                           |
-| --------------------- | ---------------------------------------------------------------------------------------- |
-| `validationService`   | bcrypt hash/compare (10 rounds); username, email, and password rules                     |
-| `userAuthService`     | Users, roles (`admin`), visibility, storage limit, last page, delete-user cascade        |
-| `entriesService`      | Card CRUD, media blocks, options, storage usage, public cards, sharing, metadata         |
-| `practiceService`     | Leitner scheduling, option generation, session repetitions, stats, dashboard, difficulty |
-| `backupService`       | Full-dataset export/import (upsert) across IAM and app tables                            |
-| `mediaArchiveService` | Media ZIP build/parse (`media/<media_id>.<ext>`), manifest                               |
+| Service               | Responsibility                                                                                                 |
+| --------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `validationService`   | bcrypt hash/compare (10 rounds); username, email, and password rules                                           |
+| `userAuthService`     | Users, roles (`admin`), visibility, storage limit, last page, delete-user cascade                              |
+| `entriesService`      | Card CRUD, media blocks, options, storage usage, public cards, sharing, metadata                               |
+| `practiceService`     | Leitner scheduling, option generation, session repetitions, stats, dashboard, difficulty                       |
+| `organizationService` | IAM: organizations, members, groups, group roles, platform admins, app access (with their authorization rules) |
+| `backupService`       | Full-dataset export/import (upsert) across IAM and app tables                                                  |
+| `mediaArchiveService` | Media ZIP build/parse (`media/<media_id>.<ext>`), manifest                                                     |
 
 Each service loads its SQL as a static `queries` map, read from a named-query file in `src/scripts/sql/pg/`.
 
@@ -136,16 +137,16 @@ Two linked files at every point: a data JSON plus a media ZIP keyed by `media_id
 
 ## Security notes (current state)
 
-| Area                      | Status                                                                                               |
-| ------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Passwords                 | bcrypt, 10 rounds. Password change does not require the current password.                            |
-| Sessions                  | Server-side in Postgres; httpOnly cookie; secure in production. Set `SESSION_SECRET`.                |
-| Authorization             | Ownership checks in services (`created_by`); admin = `admin` role. Fine-grained `rights` are unused. |
-| SQL                       | Parameterized queries. Dynamic clauses come only from fixed templates and whitelisted column names.  |
-| Grading                   | Practice and quiz correctness is computed in the browser and trusted by the server.                  |
-| Rate limiting, CORS, CSRF | None (same-origin app with `sameSite=lax` cookies).                                                  |
-| Storage abuse             | Per-user quota (`storage_max_bytes`, default 25 MB) on card create and import.                       |
-| Secrets                   | `.env` is ignored by git. `.env.backup` is ignored but **is tracked** in the repo (see Issues).      |
+| Area                      | Status                                                                                                                                                                                              |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Passwords                 | bcrypt, 10 rounds. Password change does not require the current password.                                                                                                                           |
+| Sessions                  | Server-side in Postgres; httpOnly cookie; secure in production. Set `SESSION_SECRET`.                                                                                                               |
+| Authorization             | Ownership checks in services (`created_by`). Admin = FlashCards `admin` (directly or through a group) or `platform_admin`. Signing in requires FlashCards access. Fine-grained `rights` are unused. |
+| SQL                       | Parameterized queries. Dynamic clauses come only from fixed templates and whitelisted column names.                                                                                                 |
+| Grading                   | Practice and quiz correctness is computed in the browser and trusted by the server.                                                                                                                 |
+| Rate limiting, CORS, CSRF | None (same-origin app with `sameSite=lax` cookies).                                                                                                                                                 |
+| Storage abuse             | Per-user quota (`storage_max_bytes`, default 25 MB) on card create and import.                                                                                                                      |
+| Secrets                   | `.env` is ignored by git. `.env.backup` is ignored but **is tracked** in the repo (see Issues).                                                                                                     |
 
 ## Deployment
 

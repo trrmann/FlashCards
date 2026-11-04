@@ -4,7 +4,8 @@
 > preview test coverage, data safety). This page describes the **current** behavior; the gaps are listed in that document.
 
 > **Current state (2026-11-03):** the only automated tests are the preview quality suite
-> (`npm run test:preview`) and the backup round-trip test (`npm run test:roundtrip`, local scratch DB), both run by
+> (`npm run test:preview`), the backup round-trip test (`npm run test:roundtrip`), and the IAM API test
+> (`npm run test:iam`), the last two on the local scratch DB, all run by
 > `deploy.sh -preview`. There are no unit or integration tests;
 > `npm test` is a placeholder that exits 1. TESTING_STRATEGY.md describes a planned approach.
 
