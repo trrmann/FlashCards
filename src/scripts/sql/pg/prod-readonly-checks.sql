@@ -66,3 +66,12 @@ FROM pg_roles WHERE rolname NOT LIKE 'pg\_%' AND rolname <> 'postgres' ORDER BY 
 -- The public schema as in a standard database: every login may use it (for the extensions' functions).
 SELECT has_schema_privilege('public', 'public', 'USAGE') AS public_schema_usable_by_all,
        has_schema_privilege('public', 'public', 'CREATE') AS public_schema_creatable_by_all;
+
+-- Application registry (no user data): which login and schema each app is meant to use.
+SELECT app_key, status,
+       to_jsonb(a) ->> 'db_role' AS db_role, to_jsonb(a) ->> 'db_schema' AS db_schema
+FROM iam.applications a ORDER BY app_key;
+
+-- Usernames / emails that differ only in letter case (counts only, no names).
+SELECT (SELECT count(*) FROM (SELECT lower(username) FROM iam.users GROUP BY 1 HAVING count(*) > 1) d) AS username_case_duplicates,
+       (SELECT count(*) FROM (SELECT lower(email) FROM iam.users GROUP BY 1 HAVING count(*) > 1) d) AS email_case_duplicates;

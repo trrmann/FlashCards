@@ -161,6 +161,13 @@ Follow-ups:
 
 ## resolved
 
+- **Usernames and emails unique regardless of case (iam-service v0.1.8, 2026-11-04).** `Alice` could register next to
+  `alice`, and sharing (which looks users up case-insensitively) would then pick one of them. Registration and admin
+  user creation now check availability case-insensitively, backed by unique indexes on `lower(username)` /
+  `lower(email)`. Production has no case-only duplicates (read-only check). v0.1.8 also adds the IAM service's user
+  API that phase 3c will call. **Resolved:** `test:startup` 16/16, `test:roundtrip` 152/152, `test:iam` 79/79,
+  `test:cleanup` 6/6, verify clean; iam-service `test:users` 31/31.
+
 - **Shared packages: rotatable app secrets and per-app database logins (2026-11-04).** iam-service `v0.1.6` (an app
   secret's `…_PREVIOUS` value is accepted during a rotation) and `v0.1.7` (`iam-provision`: one login per service,
   limited to its own schema; `iam.applications` gains `db_role` / `db_schema`); platform-db `v0.2.2` (the local app
