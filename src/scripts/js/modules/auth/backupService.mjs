@@ -13,6 +13,9 @@ import { userAuthService, UserAuthService } from 'iam-service/services';
 import { mediaArchiveService } from './mediaArchiveService.mjs';
 
 class BackupService {
+  /** Scheduling class for backup work: it yields to users' requests (platform-db QueryScheduler). */
+  static WORK = { priority: 'background' };
+
   static queries = flashCardsDb.constructor.loadNamedSqlStatements(
     'pg/backup-queries.sql',
     flashCardsDb.constructor.sqlRoot
@@ -133,7 +136,8 @@ class BackupService {
       try {
         const structureResult = await db.query(
           db.constructor.introspectionQueries.select_table_columns,
-          [table]
+          [table],
+          BackupService.WORK
         );
 
         backup.schema[table] = {
@@ -142,7 +146,9 @@ class BackupService {
         };
 
         const dataResult = await db.query(
-          this.constructor.queries.select_all_rows_template.replace('{{table}}', table)
+          this.constructor.queries.select_all_rows_template.replace('{{table}}', table),
+          [],
+          BackupService.WORK
         );
         backup.data[table] = dataResult.rows;
       } catch (error) {
@@ -180,7 +186,9 @@ class BackupService {
    */
   async exportMediaArchive() {
     const dataResult = await this.database.query(
-      this.constructor.queries.select_all_rows_template.replace('{{table}}', 'media')
+      this.constructor.queries.select_all_rows_template.replace('{{table}}', 'media'),
+      [],
+      BackupService.WORK
     );
     return mediaArchiveService.buildArchive(dataResult.rows);
   }
@@ -219,7 +227,9 @@ class BackupService {
     let existingRows;
     try {
       const existing = await this.identityDatabase.query(
-        this.constructor.queries.select_all_rows_template.replace('{{table}}', 'users')
+        this.constructor.queries.select_all_rows_template.replace('{{table}}', 'users'),
+        [],
+        BackupService.WORK
       );
       existingRows = existing.rows;
     } catch {
@@ -362,7 +372,9 @@ class BackupService {
     const availableMedia = new Set((backup.data.media || []).map((row) => row.media_id));
     try {
       const existing = await this.database.query(
-        this.constructor.queries.select_all_rows_template.replace('{{table}}', 'media')
+        this.constructor.queries.select_all_rows_template.replace('{{table}}', 'media'),
+        [],
+        BackupService.WORK
       );
       for (const row of existing.rows) availableMedia.add(row.media_id);
     } catch {
@@ -390,8 +402,11 @@ class BackupService {
     // tables currently share the database), so a failure rolls everything back.
     // Tables are addressed schema-qualified; the IAM connection is used so the
     // IAM's own named queries (legacy enrollment) resolve on its search_path.
-    await this.identityDatabase.withTransaction((client) =>
-      this.importTables(client, backup, results)
+    // Background class (platform-db scheduler): an import may wait behind users' work, and a
+    // temporary failure reruns the whole transaction (the import is repeatable by design).
+    await this.identityDatabase.withTransaction(
+      (client) => this.importTables(client, backup, results),
+      BackupService.WORK
     );
 
     return results;

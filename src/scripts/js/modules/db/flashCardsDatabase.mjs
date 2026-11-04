@@ -11,6 +11,17 @@ import { fileURLToPath } from 'node:url';
 import { PostgresDatabase } from 'platform-db';
 
 export class FlashCardsDatabase extends PostgresDatabase {
+  /**
+   * Scheduling classes (platform-db QueryScheduler) for named queries; everything else is
+   * interactive. Backup and restore mark their own calls background (BackupService.WORK).
+   */
+  static QUERY_RULES = {
+    queries: {
+      insert_import_export_log: 'background',
+      'select_import_export_history*': 'background',
+    },
+  };
+
   static sqlRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../sql');
   static SCHEMA = 'flashcards';
 

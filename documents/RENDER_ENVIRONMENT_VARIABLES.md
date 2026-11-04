@@ -8,27 +8,31 @@ plus `RENDER_URL` in `deploy.sh`).
 
 ## Variables read by the application
 
-| Variable                      | Required in Render                  | Default                 | Used by / effect                                                                                                            |
-| ----------------------------- | ----------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                    | ✅ `production`                     | `production` if unset   | Secure cookies; port selection; DB host selection                                                                           |
-| `SESSION_SECRET`              | ✅                                  | hard-coded dev secret   | Signs the session cookie. **Must** be set to a long random value in production                                              |
-| `DB_PG_INTERNAL_HOSTNAME`     | ✅                                  | —                       | DB host when `NODE_ENV=production` or `RENDER` is set (also fallback locally)                                               |
-| `DB_PG_EXTERNAL_HOSTNAME`     | ❌ (local only)                     | —                       | DB host for local dev/preview (connects over the internet with SSL)                                                         |
-| `DB_PG_PORT`                  | ✅                                  | `5432`                  | DB port                                                                                                                     |
-| `DB_PG_DATABASE`              | ✅                                  | —                       | DB name (also reported by `/api/system/database-status`)                                                                    |
-| `DB_PG_USER`                  | ✅                                  | —                       | DB user                                                                                                                     |
-| `DB_PG_PASSWORD`              | ✅ (secret)                         | —                       | DB password                                                                                                                 |
-| `DB_PG_EXPIRE`                | recommended                         | —                       | Date the Render free DB expires (e.g. `2026-12-01`); drives the header warning banner                                       |
-| `DB_PG_SSL`                   | ❌ (never set on Render)            | SSL on                  | `disable` turns SSL off. Only for the local scratch DB (`local-db.sh`), see LOCAL_DATABASE.md                               |
-| `IAM_CLIENT_SECRET_<APP_KEY>` | ✅ on the IAM service once deployed | —                       | Application credential, e.g. `IAM_CLIENT_SECRET_FLASHCARDS` (≥ 32 chars). The same value goes to that application (step 3c) |
-| `PORT_PROD` / `PORT`          | ❌ (Render sets `PORT`)             | `3000`                  | Production listen port: `PORT_PROD`, then `PORT`, then 3000                                                                 |
-| `PORT_DEV`                    | ❌                                  | `5000`                  | Listen port when `NODE_ENV=development`                                                                                     |
-| `PORT_PREVIEW`                | ❌                                  | `4000`                  | Listen port when `NODE_ENV=preview`                                                                                         |
-| `RENDER`                      | set by Render                       | —                       | Forces internal DB hostname                                                                                                 |
-| `TEST_BASE_URL`               | ❌                                  | `http://localhost:5000` | Target of `npm run test:preview`                                                                                            |
-| `DB_PG_READ_ONLY`             | ❌ (local only)                     | `false`                 | `true` opens the database read-only: PostgreSQL refuses writes, no schema bootstrap. Set by `deploy.sh -preview --remote`   |
-| `DB_PG_ALLOW_REMOTE_WRITES`   | ❌ (never set)                      | —                       | `true` lets a development/preview server write to a remote database. Deliberate owner use only                              |
-| `GITHUB_TOKEN`                | ✅ (build only, secret)             | —                       | Read-only access to the private `trrmann/iam-service` package. Used only by `render-build.sh`, never logged                 |
+| Variable                      | Required in Render                  | Default                 | Used by / effect                                                                                                                     |
+| ----------------------------- | ----------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `NODE_ENV`                    | ✅ `production`                     | `production` if unset   | Secure cookies; port selection; DB host selection                                                                                    |
+| `SESSION_SECRET`              | ✅                                  | hard-coded dev secret   | Signs the session cookie. **Must** be set to a long random value in production                                                       |
+| `DB_PG_INTERNAL_HOSTNAME`     | ✅                                  | —                       | DB host when `NODE_ENV=production` or `RENDER` is set (also fallback locally)                                                        |
+| `DB_PG_EXTERNAL_HOSTNAME`     | ❌ (local only)                     | —                       | DB host for local dev/preview (connects over the internet with SSL)                                                                  |
+| `DB_PG_PORT`                  | ✅                                  | `5432`                  | DB port                                                                                                                              |
+| `DB_PG_DATABASE`              | ✅                                  | —                       | DB name (also reported by `/api/system/database-status`)                                                                             |
+| `DB_PG_USER`                  | ✅                                  | —                       | DB user                                                                                                                              |
+| `DB_PG_PASSWORD`              | ✅ (secret)                         | —                       | DB password                                                                                                                          |
+| `DB_PG_EXPIRE`                | recommended                         | —                       | Date the Render free DB expires (e.g. `2026-12-01`); drives the header warning banner                                                |
+| `DB_PG_SSL`                   | ❌ (never set on Render)            | SSL on                  | `disable` turns SSL off. Only for the local scratch DB (`local-db.sh`), see LOCAL_DATABASE.md                                        |
+| `IAM_CLIENT_SECRET_<APP_KEY>` | ✅ on the IAM service once deployed | —                       | Application credential, e.g. `IAM_CLIENT_SECRET_FLASHCARDS` (≥ 32 chars). The same value goes to that application (step 3c)          |
+| `PORT_PROD` / `PORT`          | ❌ (Render sets `PORT`)             | `3000`                  | Production listen port: `PORT_PROD`, then `PORT`, then 3000                                                                          |
+| `PORT_DEV`                    | ❌                                  | `5000`                  | Listen port when `NODE_ENV=development`                                                                                              |
+| `PORT_PREVIEW`                | ❌                                  | `4000`                  | Listen port when `NODE_ENV=preview`                                                                                                  |
+| `RENDER`                      | set by Render                       | —                       | Forces internal DB hostname                                                                                                          |
+| `TEST_BASE_URL`               | ❌                                  | `http://localhost:5000` | Target of `npm run test:preview`                                                                                                     |
+| `DB_PG_POOL_MAX`              | optional                            | `20`                    | Connection pool size, and the database scheduler's concurrency. Keep the total of all services under the database's connection limit |
+| `DB_PG_RATE_PER_SECOND`       | optional                            | off                     | Rate limit for database work (with `DB_PG_RATE_BURST`)                                                                               |
+| `DB_PG_QUERY_RULES`           | optional                            | —                       | Path to a JSON file overriding which named queries are `critical` / `interactive` / `background`                                     |
+| `DB_PG_SCHEDULER`             | ❌                                  | on                      | `off` bypasses the database scheduler (escape hatch)                                                                                 |
+| `DB_PG_READ_ONLY`             | ❌ (local only)                     | `false`                 | `true` opens the database read-only: PostgreSQL refuses writes, no schema bootstrap. Set by `deploy.sh -preview --remote`            |
+| `DB_PG_ALLOW_REMOTE_WRITES`   | ❌ (never set)                      | —                       | `true` lets a development/preview server write to a remote database. Deliberate owner use only                                       |
+| `GITHUB_TOKEN`                | ✅ (build only, secret)             | —                       | Read-only access to the private `trrmann/iam-service` package. Used only by `render-build.sh`, never logged                          |
 
 ## Build command
 
@@ -95,8 +99,14 @@ The startup log prints `NODE_ENV`, `PORT`, cookie security, and `✅ Database co
 
 ## Rotating the database password
 
-If a password was ever committed (it was, in this repo's history), rotate it:
+Render can't change a password in place: you add a new login, switch to it, then delete the old one. Production keeps
+running throughout. Last done 2026-11-04 (the password had been committed to this repo's history).
 
-1. Render → PostgreSQL instance → reset or rotate the credentials.
-2. Update `DB_PG_PASSWORD` in Render's Web Service environment and in your local `.env`.
-3. Restart local servers. Render redeploys on save.
+1. Render → PostgreSQL instance → **Info → Credentials → + New default credential** (for example
+   `app_admin_YYYYMMDD`). The new login acts as the original owner role, so the schema bootstrap keeps working.
+2. Put the new `DB_PG_USER` / `DB_PG_PASSWORD` (and the `DB_PG_*_URL` / `DB_PG_PSQL_COMMAND` convenience values) in
+   the local `.env`, then run `src/scripts/sh/prod-readonly-check.sh`: `login_acts_as_owner` and
+   `login_can_read_write_all` must be `t` for both schemas.
+3. Update `DB_PG_USER` and `DB_PG_PASSWORD` in the Web Service environment, then **Save and deploy** (or restart).
+4. Rerun the check until the old login shows no connections, then delete it under **Credentials**. Render revokes its
+   login but keeps it as the owner of the tables.
