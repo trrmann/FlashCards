@@ -26,7 +26,8 @@ verifying, since the failed backup import on Render needs the merge fix to compl
 >
 > - ~~The signed-in checklist below (owner, as user and admin).~~ Owner tested the release on Render on 2026-11-04,
 >   including a completed study session.
-> - Drop the empty leftover `public` tables, after a fresh backup.
+> - Drop the empty leftover `public` tables, after a fresh backup: done by the bootstrap from the next release (see
+>   resolved).
 > - ~~A guard so `deploy.sh -dev`/`-preview` can't run schema migrations against production.~~ Done: see
 >   "Local dev database" under resolved.
 > - Rotate the database password (it is in public git history).
@@ -158,6 +159,22 @@ Follow-ups:
 4. Deleting the Windows source needs the owner's separate confirmation.
 
 ## resolved
+
+- **Empty leftover tables in public after the incident (2026-11-04, owner request).** The bootstraps of iam-service
+  (`v0.1.4`) and FlashCards now drop a `public` table only when:
+  - its twin exists in `iam`/`flashcards`;
+  - it holds no data (`roles`: only the two seeded defaults);
+  - nothing outside `public` references it.
+
+  **Resolved:**
+  - Production checked read-only first (`prod-readonly-check.sh`, now also listing `public` row counts and foreign keys
+    into `public`): all 22 leftovers empty except `roles` (2 seeded defaults); no foreign keys from outside.
+  - Rehearsal on a local database built by running the old `main` schema files into `public`, twice: 22 leftovers,
+    `public.roles` with 2 rows, plus one real `iam.users` row. After the new start-up, no `public` tables remained,
+    `iam`/`flashcards` and the real row were unchanged, and a third start was clean.
+  - `test:cleanup` 6/6 (keeps a table with rows and one referenced from outside); iam-service `test:cleanup` 7/7;
+    `test:startup` 13/13, `test:roundtrip` 152/152, `test:iam` 79/79, `npm run verify` clean.
+  - Backup before the release: 7 users, 137 cards, 5 media, 8 quizzes.
 
 - **Local dev database; production only via Render (owner request, 2026-11-04).**
   - `deploy.sh -dev` and `-preview` use the local `flashcards_dev_local`, which `pull-prod.sh` refreshes from

@@ -19,6 +19,33 @@ BEGIN
 END
 $move_flashcards_tables$;
 
+-- Drop empty leftover copies in public (incident of 2026-11-04: a server from before the move
+-- recreated empty app tables in public after they had moved to flashcards). A public table is
+-- dropped only when its moved twin exists in flashcards, it holds no rows, and nothing outside
+-- public references it; CASCADE then removes only foreign keys from other public leftovers.
+-- Does nothing on a clean database.
+DO $drop_public_flashcards_leftovers$
+DECLARE
+  t TEXT;
+  has_data BOOLEAN;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['flashcard_options', 'flashcard_shares', 'public_card_removals', 'flashcard_leitner_progress', 'practice_history', 'session_card_attempts', 'difficulty_history', 'quiz_results', 'quiz_questions', 'quizzes', 'import_export_logs', 'leitner_boxes', 'media', 'flashcards', 'lessons'] LOOP
+    CONTINUE WHEN to_regclass('public.' || t) IS NULL OR to_regclass('flashcards.' || t) IS NULL;
+    EXECUTE format('SELECT EXISTS (SELECT 1 FROM public.%I)', t) INTO has_data;
+    CONTINUE WHEN has_data;
+    CONTINUE WHEN EXISTS (
+      SELECT 1
+      FROM pg_constraint con
+      JOIN pg_class cl ON cl.oid = con.conrelid
+      JOIN pg_namespace cn ON cn.oid = cl.relnamespace
+      WHERE con.contype = 'f' AND con.confrelid = to_regclass('public.' || t) AND cn.nspname <> 'public'
+    );
+    EXECUTE format('DROP TABLE public.%I CASCADE', t);
+    RAISE NOTICE 'Dropped empty leftover table public.%', t;
+  END LOOP;
+END
+$drop_public_flashcards_leftovers$;
+
 CREATE TABLE IF NOT EXISTS lessons (
   lesson_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES iam.users(user_id) ON DELETE CASCADE,
