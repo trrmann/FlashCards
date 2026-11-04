@@ -19,8 +19,9 @@ verifying, since the failed backup import on Render needs the merge fix to compl
 >
 > 0. **Shared packages: published 2026-11-04.** `trrmann/platform-db` and `trrmann/request-queue` (public) and
 >    `trrmann/iam-service` (private), each tagged `v0.1.0`; FlashCards depends on the tags. **Before step 2, on Render:**
->    add the `GITHUB_TOKEN` environment variable and set the Build Command to `bash src/scripts/sh/render-build.sh`
->    (RENDER_ENVIRONMENT_VARIABLES.md). Without them the build cannot install iam-service.
+>    add the `GITHUB_TOKEN` environment variable and set the Build Command to the fallback form in
+>    RENDER_ENVIRONMENT_VARIABLES.md (it runs `render-build.sh` when present, else `npm install`, so it is safe for
+>    today's `main`). Without them the build cannot install iam-service.
 > 1. `backup.sh` (production backup, both files).
 > 2. Merge the branch into `main`, then `deploy.sh -preview` (migrates the shared DB; the live site is down from here).
 > 3. When preview passes, `deploy.sh -prod` right away (Render runs the new code; the site is back).

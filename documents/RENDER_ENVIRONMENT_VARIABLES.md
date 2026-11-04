@@ -30,7 +30,9 @@ plus `RENDER_URL` in `deploy.sh`).
 
 ## Build command
 
-Render's **Build Command** for FlashCards is `bash src/scripts/sh/render-build.sh`. It lets npm install the shared
+Render's **Build Command** for FlashCards is
+`if [ -f src/scripts/sh/render-build.sh ]; then bash src/scripts/sh/render-build.sh; else npm install; fi`.
+That command also works for code without the script (today's `main`), so it can be set before the release. `render-build.sh` lets npm install the shared
 packages from GitHub: it rewrites `git+ssh` to HTTPS and supplies `GITHUB_TOKEN` through a git credential helper, so the
 token never appears in a URL or a log. Then it runs `npm ci`. Without the token, installing the private iam-service
 package fails with a clear message. The token should be a fine-grained GitHub token with read-only **Contents**
