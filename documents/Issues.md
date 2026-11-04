@@ -24,7 +24,8 @@ verifying, since the failed backup import on Render needs the merge fix to compl
 >
 > **Still to do:**
 >
-> - The signed-in checklist below (owner, as user and admin).
+> - ~~The signed-in checklist below (owner, as user and admin).~~ Owner tested the release on Render on 2026-11-04,
+>   including a completed study session.
 > - Drop the empty leftover `public` tables, after a fresh backup.
 > - ~~A guard so `deploy.sh -dev`/`-preview` can't run schema migrations against production.~~ Done: see
 >   "Local dev database" under resolved.
@@ -50,7 +51,8 @@ verifying, since the failed backup import on Render needs the merge fix to compl
 > If anything goes wrong: restore with `restore.sh` from step 1's files (the database layout can be rebuilt from
 > any backup). Until then, keep using `main` for `-dev`/`-preview`, or use `local-db.sh serve` for this branch.
 
-Checklist (signed in on the Render URL, as a normal user and as an admin):
+Checklist (signed in on the Render URL, as a normal user and as an admin). **Owner-tested on Render on 2026-11-04 after the
+release (`6b756ad`/`62e50c7`), including a completed study session;** keep the list for future releases:
 
 - [ ] Login / logout; redirect to last page visited after login
 - [ ] Home: Study Status dashboard (overall, class → lesson, category)
