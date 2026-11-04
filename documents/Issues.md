@@ -161,6 +161,27 @@ Follow-ups:
 
 ## resolved
 
+- **Phase 3c: identity through a gateway, in-process or over HTTP (2026-11-04).**
+  - Every identity call (sign-in, registration, first-run setup, profile, password, visibility, directory, sharing
+    look-ups, owner names, user admin, `/api/iam`) goes through `app.locals.identity`.
+  - `LocalIdentityGateway` (default) runs iam-service's `UserAccountService` in-process.
+  - `RemoteIdentityGateway` calls the IAM service through `IamClient` when `IAM_URL` is set, with:
+    - the user's tokens kept server-side in the session and refreshed once on a 401;
+    - a sign-out when the refresh fails;
+    - sessions from in-process mode signed out once when switched on;
+    - admin flags and header info cached for 30 s, and dropped on any organization change;
+    - `/api/iam` passed through with the service's status;
+    - an unreachable service answered with 503;
+    - the service woken at start-up.
+  - Both versions enforce the same rules (`UserAccountService`).
+  - The registration form now lists each failed rule.
+  - Backup and restore still read the tables directly, until per-service backups (step 3d).
+
+  **Resolved:**
+  - `test:iam` 79/79 in-process and `test:iam:remote` 79/79 over HTTP, against an IAM service started in the test;
+  - `test:identity` 13/13 (refresh, sign-out, legacy sessions, caching, pass-through, 503);
+  - `test:startup` 16/16, `test:roundtrip` 158/158, `test:cleanup` 9/9, verify clean.
+
 - **Phase 3c, in-process part: FlashCards' own data out of `iam` (2026-11-04).**
   - Per-user settings (last page visited, storage limit) moved from `iam.users` columns to `flashcards.user_settings`
     (`UserSettingsService`, `user-settings-queries.sql`).

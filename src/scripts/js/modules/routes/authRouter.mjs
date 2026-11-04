@@ -1,117 +1,60 @@
 /**
  * Authentication Routes
- * Handles user registration, login, logout, and profile operations
+ * Registration, sign-in, sign-out and the current user, through the identity gateway
+ * (in-process IAM or the IAM service). The gateway validates; these routes add the
+ * FlashCards parts: the password confirmation, the session, and the post-login page.
  */
 
 import express from 'express';
 import { BaseRouter } from './baseRouter.mjs';
 import { userSettingsService } from '../auth/userSettingsService.mjs';
-import { userAuthService, validationService } from 'iam-service/services';
+import { IdentityGateway } from '../identity/identityGateway.mjs';
 
 class AuthRouter extends BaseRouter {
+  /** Save the session, as a promise. */
+  static saveSession(req) {
+    return new Promise((resolve, reject) => {
+      req.session.save((err) => (err ? reject(err) : resolve()));
+    });
+  }
+
+  /** Sign in through the gateway (it may keep tokens in the session) and start the session. */
+  static async signIn(req, username, password) {
+    const user = await BaseRouter.identity(req).login(req, username, password);
+    req.session.userId = user.user_id;
+    req.session.username = user.username;
+    await AuthRouter.saveSession(req);
+    return user;
+  }
+
   registerRoutes() {
     const router = this.router;
 
     /**
      * POST /api/auth/register
-     * Register a new user
-     * First user is automatically made admin
+     * Register a new user and sign them in. The install's first user becomes admin.
      */
     router.post('/register', express.json(), async (req, res) => {
       try {
         const { username, email, password, passwordConfirm, fullName } = req.body;
 
-        // Validate required fields
         if (!username || !email || !password || !passwordConfirm) {
           return res.status(400).json({
             status: 'error',
             message: 'Missing required fields: username, email, password, passwordConfirm',
           });
         }
-
-        // Validate passwords match
         if (password !== passwordConfirm) {
-          return res.status(400).json({
-            status: 'error',
-            message: 'Passwords do not match',
-          });
+          return res.status(400).json({ status: 'error', message: 'Passwords do not match' });
         }
 
-        // Validate username
-        const usernameValidation = validationService.validateUsername(username);
-        if (!usernameValidation.valid) {
-          return res.status(400).json({
-            status: 'error',
-            message: 'Invalid username',
-            errors: usernameValidation.errors,
-          });
-        }
-
-        // Validate email
-        if (!validationService.validateEmail(email)) {
-          return res.status(400).json({
-            status: 'error',
-            message: 'Invalid email address',
-          });
-        }
-
-        // Validate password
-        const passwordValidation = validationService.validatePassword(password);
-        if (!passwordValidation.valid) {
-          return res.status(400).json({
-            status: 'error',
-            message: 'Password does not meet requirements',
-            errors: passwordValidation.errors,
-          });
-        }
-
-        // Check if username is available
-        const usernameAvailable = await userAuthService.isUsernameAvailable(username);
-        if (!usernameAvailable) {
-          return res.status(400).json({
-            status: 'error',
-            message: 'Username is already taken',
-          });
-        }
-
-        // Check if email is available
-        const emailAvailable = await userAuthService.isEmailAvailable(email);
-        if (!emailAvailable) {
-          return res.status(400).json({
-            status: 'error',
-            message: 'Email is already registered',
-          });
-        }
-
-        // Check if this is the first user
-        const userCount = await userAuthService.countUsers();
-        const isFirstUser = userCount === 0;
-
-        // Create user
-        const user = await userAuthService.createUser(username, email, password, fullName || null);
-
-        // If first user, set as admin
-        if (isFirstUser) {
-          await userAuthService.makeFirstAdmin(user.user_id);
-          user.is_admin = true;
-        }
-
-        // Set session
-        req.session.userId = user.user_id;
-        req.session.username = user.username;
-
-        // Wrap session.save in a promise and await it
-        await new Promise((resolve, reject) => {
-          req.session.save((err) => {
-            if (err) {
-              console.error('[REGISTER] Session save error:', err.message, err);
-              reject(err);
-            } else {
-              console.log('[REGISTER] Session saved successfully for user:', user.username);
-              resolve();
-            }
-          });
+        const { user, is_admin: isFirstUser } = await BaseRouter.identity(req).register({
+          username,
+          email,
+          password,
+          full_name: fullName || null,
         });
+        await AuthRouter.signIn(req, username, password);
 
         return res.status(201).json({
           status: 'success',
@@ -121,17 +64,12 @@ class AuthRouter extends BaseRouter {
             username: user.username,
             email: user.email,
             full_name: user.full_name,
-            is_admin: user.is_admin || false,
+            is_admin: isFirstUser,
             created_at: user.created_at,
           },
         });
       } catch (error) {
-        console.error('Registration error:', error.message);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Registration failed. Please try again.',
-          error: error.message,
-        });
+        return IdentityGateway.respond(res, error, 'Registration failed. Please try again.');
       }
     });
 
@@ -142,8 +80,6 @@ class AuthRouter extends BaseRouter {
     router.post('/login', express.json(), async (req, res) => {
       try {
         const { username, password } = req.body;
-
-        // Validate required fields
         if (!username || !password) {
           return res.status(400).json({
             status: 'error',
@@ -151,35 +87,8 @@ class AuthRouter extends BaseRouter {
           });
         }
 
-        // Authenticate user
-        const user = await userAuthService.authenticateUser(username, password);
-
-        if (!user) {
-          return res.status(401).json({
-            status: 'error',
-            message: 'Invalid username or password',
-          });
-        }
-
-        // Get user's last visited page
+        const user = await AuthRouter.signIn(req, username, password);
         const lastPage = await userSettingsService.getLastPageVisited(user.user_id);
-
-        // Set session
-        req.session.userId = user.user_id;
-        req.session.username = user.username;
-
-        // Wrap session.save in a promise and await it
-        await new Promise((resolve, reject) => {
-          req.session.save((err) => {
-            if (err) {
-              console.error('[LOGIN] Session save error:', err.message, err);
-              reject(err);
-            } else {
-              console.log('[LOGIN] Session saved successfully for user:', user.username);
-              resolve();
-            }
-          });
-        });
 
         return res.status(200).json({
           status: 'success',
@@ -193,36 +102,24 @@ class AuthRouter extends BaseRouter {
           redirectTo: lastPage,
         });
       } catch (error) {
-        if (error.statusCode === 403) {
-          return res.status(403).json({ status: 'error', message: error.message });
-        }
-        console.error('Login error:', error.message);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Login failed. Please try again.',
-          error: error.message,
-        });
+        return IdentityGateway.respond(res, error, 'Login failed. Please try again.');
       }
     });
 
     /**
      * POST /api/auth/logout
-     * Destroy user session
+     * End the IAM session (remote mode) and destroy the FlashCards session
      */
-    router.post('/logout', (req, res) => {
+    router.post('/logout', async (req, res) => {
+      await BaseRouter.identity(req)
+        .logout(req)
+        .catch((error) => console.error('IAM logout error:', error.message));
       req.session.destroy((err) => {
         if (err) {
           console.error('Logout error:', err.message);
-          return res.status(500).json({
-            status: 'error',
-            message: 'Logout failed',
-          });
+          return res.status(500).json({ status: 'error', message: 'Logout failed' });
         }
-
-        return res.status(200).json({
-          status: 'success',
-          message: 'Logged out successfully',
-        });
+        return res.status(200).json({ status: 'success', message: 'Logged out successfully' });
       });
     });
 
@@ -233,32 +130,13 @@ class AuthRouter extends BaseRouter {
     router.get('/current', async (req, res) => {
       try {
         if (!req.session.userId) {
-          return res.status(401).json({
-            status: 'error',
-            message: 'Not authenticated',
-          });
+          return res.status(401).json({ status: 'error', message: 'Not authenticated' });
         }
-
-        const user = await userAuthService.findUserById(req.session.userId);
-
-        if (!user) {
-          req.session.destroy();
-          return res.status(401).json({
-            status: 'error',
-            message: 'User not found',
-          });
-        }
-
-        return res.status(200).json({
-          status: 'success',
-          user,
-        });
+        const user = await BaseRouter.identity(req).currentUser(req);
+        return res.status(200).json({ status: 'success', user });
       } catch (error) {
-        console.error('Get current user error:', error.message);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to get current user',
-        });
+        if (IdentityGateway.errorAnswer(error)?.status === 401) req.session.destroy(() => {});
+        return IdentityGateway.respond(res, error, 'Failed to get current user');
       }
     });
   }

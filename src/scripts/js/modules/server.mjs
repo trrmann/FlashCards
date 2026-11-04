@@ -16,6 +16,10 @@
  * DB_PG_ALLOW_REMOTE_WRITES=true overrides this
  * for a deliberate owner action. A read-only server never bootstraps the schema; it only
  * checks that the schema is there.
+ *
+ * Identity (IAM phase 3c): every sign-in, account, directory, user-admin and organization call
+ * goes through an identity gateway (app.locals.identity): in-process by default, or the IAM
+ * service over HTTP when IAM_URL is set (createIdentityGateway).
  */
 
 import express from 'express';
@@ -28,7 +32,8 @@ import { appSiteData } from './appSiteData.mjs';
 import { flashCardsDb } from './db/flashCardsDatabase.mjs';
 import { identityManagementDb } from 'iam-service/db';
 import { PostgresDatabase, DatabaseTargetGuard } from 'platform-db';
-import { userAuthService } from 'iam-service/services';
+import { createIdentityGateway } from './identity/index.mjs';
+import { entriesService } from './auth/entriesService.mjs';
 import authRouter from './routes/authRouter.mjs';
 import usersRouter from './routes/usersRouter.mjs';
 import adminRouter from './routes/adminRouter.mjs';
@@ -37,7 +42,6 @@ import navigationRouter from './routes/navigationRouter.mjs';
 import entriesRouter from './routes/entriesRouter.mjs';
 import practiceRouter from './routes/practiceRouter.mjs';
 import quizRouter from './routes/quizRouter.mjs';
-import iamRouter from './routes/iamRouter.mjs';
 
 export class Server {
   static filePath = fileURLToPath(import.meta.url);
@@ -71,6 +75,7 @@ export class Server {
     identityDatabase = identityManagementDb,
     connectOptions = {},
     startupRetryMs = Server.STARTUP_RETRY_MS,
+    identity = createIdentityGateway(process.env),
   } = {}) {
     this.env = env ?? (process.env.NODE_ENV?.toLocaleLowerCase() || 'production');
     this.port = port ?? this.constructor.resolvePort(this.env);
@@ -84,7 +89,11 @@ export class Server {
     this.ready = false;
     this.stopping = false;
     this.siteData = new appSiteData();
+    this.identity = identity;
+    // Card lists show owners' names, looked up through the same gateway.
+    entriesService.identityService = identity;
     this.app = express();
+    this.app.locals.identity = identity;
 
     this.logStartupInfo();
     this.configureMiddleware();
@@ -105,6 +114,7 @@ export class Server {
       `   Cookie Security: ${this.isProduction ? 'SECURE (HTTPS only)' : 'INSECURE (HTTP)'}`
     );
     console.log(`   Session Store: PostgreSQL (connect-pg-simple)`);
+    console.log(`   Identity: ${this.identity.mode}`);
     const { host, database, readOnly } = this.identityDatabase.config;
     console.log(`   Database: ${host}/${database}${readOnly ? ' (READ-ONLY)' : ''}`);
     console.log('═══════════════════════════════════════════════════════════');
@@ -154,6 +164,7 @@ export class Server {
       `✅ Session Config: secure=${sessionConfig.cookie.secure}, sameSite=${sessionConfig.cookie.sameSite}`
     );
     this.app.use(session(sessionConfig));
+    this.app.use(this.identity.sessionMiddleware());
 
     // Parse JSON request bodies for API endpoints. The limit accommodates
     // base64 media payloads (card images/audio) and backup imports.
@@ -199,7 +210,7 @@ export class Server {
       res.locals.isLoggedIn = true;
 
       try {
-        const user = await userAuthService.getUserDisplayInfo(req.session.userId);
+        const user = await this.identity.displayInfo(req);
         if (user) {
           res.locals.fullName = user.full_name || '';
           res.locals.isAdmin = user.is_admin;
@@ -251,7 +262,7 @@ export class Server {
 
       try {
         // Check if any users exist
-        userCount = await userAuthService.countUsers();
+        userCount = await this.identity.countUsers();
         needsSetup = userCount === 0;
       } catch (error) {
         console.error('Error checking user count:', error);
@@ -315,7 +326,7 @@ export class Server {
     app.use('/api/admin', adminRouter);
 
     // IAM: organizations, groups, group roles, platform admins, app access
-    app.use('/api/iam', iamRouter);
+    app.use('/api/iam', this.identity.organizationRouter());
 
     // Health check endpoint
     app.get('/api/health', async (req, res) => {
@@ -378,6 +389,7 @@ export class Server {
    */
   async start() {
     this.stopping = false;
+    await this.identity.start();
     await new Promise((resolve) => {
       this.httpServer = this.app.listen(this.port, resolve);
     });
@@ -398,6 +410,7 @@ export class Server {
       });
       this.httpServer = null;
     }
+    await this.identity.stop();
     await this.database.close();
     await this.identityDatabase.close();
   }

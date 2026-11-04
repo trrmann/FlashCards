@@ -1,11 +1,12 @@
 /**
  * User Profile Routes
- * Handles user profile retrieval and updates
+ * The signed-in user's profile, password and directory visibility, and the share
+ * directory, through the identity gateway (in-process IAM or the IAM service).
  */
 
 import express from 'express';
 import { BaseRouter } from './baseRouter.mjs';
-import { userAuthService, validationService } from 'iam-service/services';
+import { IdentityGateway } from '../identity/identityGateway.mjs';
 
 class UsersRouter extends BaseRouter {
   registerRoutes() {
@@ -18,26 +19,11 @@ class UsersRouter extends BaseRouter {
      */
     router.get('/profile', requireAuth, async (req, res) => {
       try {
-        const user = await userAuthService.findUserById(req.session.userId);
-
-        if (!user) {
-          req.session.destroy();
-          return res.status(404).json({
-            status: 'error',
-            message: 'User not found',
-          });
-        }
-
-        return res.status(200).json({
-          status: 'success',
-          user,
-        });
+        const user = await BaseRouter.identity(req).currentUser(req);
+        return res.status(200).json({ status: 'success', user });
       } catch (error) {
-        console.error('Get profile error:', error.message);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to retrieve profile',
-        });
+        if (IdentityGateway.errorAnswer(error)?.status === 401) req.session.destroy(() => {});
+        return IdentityGateway.respond(res, error, 'Failed to retrieve profile');
       }
     });
 
@@ -48,18 +34,10 @@ class UsersRouter extends BaseRouter {
      */
     router.get('/directory', requireAuth, async (req, res) => {
       try {
-        const users = await userAuthService.getPublicUsers();
-
-        return res.status(200).json({
-          status: 'success',
-          users,
-        });
+        const users = await BaseRouter.identity(req).directory();
+        return res.status(200).json({ status: 'success', users });
       } catch (error) {
-        console.error('Get user directory error:', error.message);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to retrieve user directory',
-        });
+        return IdentityGateway.respond(res, error, 'Failed to retrieve user directory');
       }
     });
 
@@ -70,23 +48,10 @@ class UsersRouter extends BaseRouter {
     router.put('/visibility', requireAuth, express.json(), async (req, res) => {
       try {
         const { isPublic } = req.body;
-
         if (typeof isPublic !== 'boolean') {
-          return res.status(400).json({
-            status: 'error',
-            message: 'isPublic must be a boolean',
-          });
+          return res.status(400).json({ status: 'error', message: 'isPublic must be a boolean' });
         }
-
-        const result = await userAuthService.setUserVisibility(req.session.userId, isPublic);
-
-        if (!result) {
-          return res.status(404).json({
-            status: 'error',
-            message: 'User not found',
-          });
-        }
-
+        const result = await BaseRouter.identity(req).setVisibility(req, isPublic);
         return res.status(200).json({
           status: 'success',
           message: isPublic
@@ -95,11 +60,7 @@ class UsersRouter extends BaseRouter {
           isPublic: result.is_public,
         });
       } catch (error) {
-        console.error('Set visibility error:', error.message);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to update visibility',
-        });
+        return IdentityGateway.respond(res, error, 'Failed to update visibility');
       }
     });
 
@@ -110,52 +71,23 @@ class UsersRouter extends BaseRouter {
     router.put('/profile', requireAuth, express.json(), async (req, res) => {
       try {
         const { fullName, email } = req.body;
-
-        // Prepare update object
-        const updates = {};
-
-        if (fullName !== undefined) {
-          if (typeof fullName !== 'string' || fullName.length === 0) {
-            return res.status(400).json({
-              status: 'error',
-              message: 'Full name must be a non-empty string',
-            });
-          }
-          updates.full_name = fullName;
-        }
-
-        if (email !== undefined) {
-          if (!validationService.validateEmail(email)) {
-            return res.status(400).json({
-              status: 'error',
-              message: 'Invalid email address',
-            });
-          }
-          updates.email = email;
-        }
-
-        // Update user
-        const updatedUser = await userAuthService.updateUserProfile(req.session.userId, updates);
-
-        if (!updatedUser) {
-          return res.status(404).json({
+        if (fullName !== undefined && (typeof fullName !== 'string' || fullName.length === 0)) {
+          return res.status(400).json({
             status: 'error',
-            message: 'User not found',
+            message: 'Full name must be a non-empty string',
           });
         }
-
+        const user = await BaseRouter.identity(req).updateProfile(req, {
+          full_name: fullName,
+          email,
+        });
         return res.status(200).json({
           status: 'success',
           message: 'Profile updated successfully',
-          user: updatedUser,
+          user,
         });
       } catch (error) {
-        console.error('Update profile error:', error.message);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to update profile',
-          error: error.message,
-        });
+        return IdentityGateway.respond(res, error, 'Failed to update profile');
       }
     });
 
@@ -166,45 +98,15 @@ class UsersRouter extends BaseRouter {
     router.put('/password', requireAuth, express.json(), async (req, res) => {
       try {
         const { password } = req.body;
-
         if (!password) {
-          return res.status(400).json({
-            status: 'error',
-            message: 'Password is required',
-          });
+          return res.status(400).json({ status: 'error', message: 'Password is required' });
         }
-
-        // Validate password
-        const validation = validationService.validatePassword(password);
-        if (!validation.valid) {
-          return res.status(400).json({
-            status: 'error',
-            message: 'Password does not meet requirements',
-            errors: validation.errors,
-          });
-        }
-
-        // Update password in database (hashing happens in the service)
-        const updatedUser = await userAuthService.updateUserPassword(req.session.userId, password);
-
-        if (!updatedUser) {
-          return res.status(404).json({
-            status: 'error',
-            message: 'User not found',
-          });
-        }
-
-        return res.status(200).json({
-          status: 'success',
-          message: 'Password changed successfully',
-        });
+        await BaseRouter.identity(req).updatePassword(req, password);
+        return res
+          .status(200)
+          .json({ status: 'success', message: 'Password changed successfully' });
       } catch (error) {
-        console.error('Change password error:', error.message);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to change password',
-          error: error.message,
-        });
+        return IdentityGateway.respond(res, error, 'Failed to change password');
       }
     });
   }

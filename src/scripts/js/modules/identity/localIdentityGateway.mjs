@@ -1,0 +1,131 @@
+/**
+ * Identity in-process: iam-service's UserAccountService (and the user service for the few
+ * reads it doesn't wrap) on the shared database. The session holds only the user id.
+ * The organizations API is iam-service's OrganizationRouter, mounted in this server.
+ */
+
+import { userAccountService, userAuthService } from 'iam-service/services';
+import { IdentityGateway } from './identityGateway.mjs';
+import { IamRouter } from '../routes/iamRouter.mjs';
+
+export class LocalIdentityGateway extends IdentityGateway {
+  constructor({ accounts = userAccountService, users = userAuthService } = {}) {
+    super();
+    this.accounts = accounts;
+    this.users = users;
+  }
+
+  get mode() {
+    return 'local';
+  }
+
+  // ----- Sign-in -----
+
+  /** @returns {Promise<{user_id, username, email, full_name}>} */
+  login(req, username, password) {
+    return this.accounts.authenticate(username, password, this.appKey);
+  }
+
+  async logout() {}
+
+  // ----- Application calls -----
+
+  register(fields) {
+    return this.accounts.register(fields, this.appKey);
+  }
+
+  availability(query) {
+    return this.accounts.availability(query);
+  }
+
+  async countUsers() {
+    return (await this.accounts.count()).count;
+  }
+
+  /** Summary of an active user by username (any case), or null. */
+  async lookupUser(username) {
+    const user = await this.users.findUserByUsernameInsensitive(String(username));
+    return user && user.status === 'active'
+      ? { user_id: user.user_id, username: user.username, full_name: user.full_name }
+      : null;
+  }
+
+  /** Map<user_id, {user_id, username, full_name}> */
+  getUserSummaries(userIds) {
+    return this.users.getUserSummaries(userIds);
+  }
+
+  async directory() {
+    return (await this.accounts.directory()).users;
+  }
+
+  /** Header info for the session user ({full_name, is_admin, …}), or null. */
+  displayInfo(req) {
+    return req.session?.userId
+      ? this.users.getUserDisplayInfo(req.session.userId, this.appKey)
+      : Promise.resolve(null);
+  }
+
+  // ----- The signed-in user -----
+
+  async currentUser(req) {
+    return (await this.accounts.me(IdentityGateway.userIdOf(req), this.appKey)).user;
+  }
+
+  isAdmin(req) {
+    return req.session?.userId
+      ? this.accounts.isAdministrator(req.session.userId, this.appKey)
+      : Promise.resolve(false);
+  }
+
+  async updateProfile(req, fields) {
+    return (await this.accounts.updateProfile(IdentityGateway.userIdOf(req), this.appKey, fields))
+      .user;
+  }
+
+  updatePassword(req, password) {
+    return this.accounts.updatePassword(IdentityGateway.userIdOf(req), password);
+  }
+
+  setVisibility(req, isPublic) {
+    return this.accounts.setVisibility(IdentityGateway.userIdOf(req), isPublic);
+  }
+
+  // ----- Administration (the route has checked isAdmin) -----
+
+  listUsers() {
+    return this.accounts.listUsers(this.appKey);
+  }
+
+  async getUser(req, userId) {
+    return (await this.accounts.getUser(this.appKey, userId)).user;
+  }
+
+  createUser(req, fields) {
+    return this.accounts.adminCreate(this.appKey, fields);
+  }
+
+  async setUserStatus(req, userId, enabled) {
+    return (await this.accounts.setStatus(IdentityGateway.userIdOf(req), userId, enabled)).user;
+  }
+
+  deleteUser(req, userId) {
+    return this.accounts.deleteUser(IdentityGateway.userIdOf(req), this.appKey, userId);
+  }
+
+  setUserAdmin(req, userId, admin) {
+    return this.accounts.setAdmin(IdentityGateway.userIdOf(req), this.appKey, userId, admin);
+  }
+
+  setUserVisibility(req, userId, isPublic) {
+    return this.accounts.setVisibility(userId, isPublic);
+  }
+
+  // ----- Organizations, groups, platform admins, app access (/api/iam) -----
+
+  organizationRouter() {
+    return new IamRouter().router;
+  }
+}
+
+export default LocalIdentityGateway;
