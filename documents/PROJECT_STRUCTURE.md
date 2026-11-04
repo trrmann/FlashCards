@@ -72,6 +72,7 @@ FlashCards/
         │   ├── backup.sh                 # Download a full backup (JSON + ZIP) from any environment
         │   ├── deploy.sh                 # deploy.sh -dev | -preview | -prod | -all
         │   ├── local-db.sh               # Wrapper for platform-db's local-db.sh (LOCAL_DATABASE.md)
+        │   ├── render-build.sh           # Render build command: GitHub package access, then npm ci
         │   └── restore.sh                # Restore / recover an empty database in one command
         └── sql/pg/
             ├── flashcards-postgres-schema.sql   # App tables + idempotent migrations
