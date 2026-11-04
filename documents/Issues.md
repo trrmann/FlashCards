@@ -161,6 +161,26 @@ Follow-ups:
 
 ## resolved
 
+- **Phase 3c switched over on Render (2026-11-04).** Owner ran `iam-provision` (`iam_svc`, `flashcards_svc`; passwords
+  in KeePassXC), created the free `iam-service` web service (`https://iam-service-9zsf.onrender.com`, database login
+  `iam_svc`), and set `IAM_URL` / `IAM_CLIENT_SECRET` on FlashCards. **Verified:**
+  - the FlashCards log shows `Identity: remote (…)`;
+  - the IAM service is healthy and refuses calls without the app secret (401);
+  - after the owner logged in, `iam.access_tokens` has live tokens, which only remote sign-ins create;
+  - profile, admin user list and Organizations work;
+  - data unchanged (7 users).
+
+  Undo: remove `IAM_URL` on FlashCards.
+
+- **Quieter production log and no autofill in the admin form (2026-11-04).**
+  - platform-db v0.2.3 (iam-service v0.1.12) logs only slow queries in production (`DB_PG_LOG_QUERIES`) instead of
+    every query, including each health check.
+  - The admin **Create New User** form and the change-password fields no longer get the browser's saved login
+    (`autocomplete="off"` / `new-password`): Chrome had filled the admin's own username and password into the new-user
+    form.
+
+  **Resolved:** test suites below; platform-db `npm test` 56/56.
+
 - **Phase 3c: identity through a gateway, in-process or over HTTP (2026-11-04).**
   - Every identity call (sign-in, registration, first-run setup, profile, password, visibility, directory, sharing
     look-ups, owner names, user admin, `/api/iam`) goes through `app.locals.identity`.
