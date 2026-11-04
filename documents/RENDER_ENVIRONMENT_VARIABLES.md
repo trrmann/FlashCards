@@ -99,8 +99,15 @@ The startup log prints `NODE_ENV`, `PORT`, cookie security, and `✅ Database co
 
 ## Rotating the database password
 
-If a password was ever committed (it was, in this repo's history), rotate it:
+Render can't change a password in place: you add a new login, switch to it, then delete the old one. Production keeps
+running throughout. Last done 2026-11-04 (the password had been committed to this repo's history).
 
-1. Render → PostgreSQL instance → reset or rotate the credentials.
-2. Update `DB_PG_PASSWORD` in Render's Web Service environment and in your local `.env`.
-3. Restart local servers. Render redeploys on save.
+1. Render → PostgreSQL instance → **Info → Credentials → + New default credential** (for example
+   `app_admin_YYYYMMDD`). The new login acts as the original owner role, so the schema bootstrap keeps working.
+2. Put the new `DB_PG_USER` / `DB_PG_PASSWORD` (and the `DB_PG_*_URL` / `DB_PG_PSQL_COMMAND` convenience values) in
+   the local `.env`, then run `src/scripts/sh/prod-readonly-check.sh`: `login_acts_as_owner` and
+   `login_can_read_write_all` must be `t` for both schemas.
+3. Update `DB_PG_USER` and `DB_PG_PASSWORD` in the Web Service environment, then **Save and deploy** (or restart).
+4. Rerun the check until the old login shows no connections, then delete it under **Credentials**. Render revokes its
+   login but keeps it as the owner of the tables.
+

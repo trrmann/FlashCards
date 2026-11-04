@@ -30,7 +30,8 @@ verifying, since the failed backup import on Render needs the merge fix to compl
 >   resolved).
 > - ~~A guard so `deploy.sh -dev`/`-preview` can't run schema migrations against production.~~ Done: see
 >   "Local dev database" under resolved.
-> - Rotate the database password (it is in public git history).
+> - ~~Rotate the database password (it is in public git history).~~ Done 2026-11-04: see "Database password
+>   rotated" under resolved.
 
 > ⚠️ **Release plan for the `review-and-data-safety` branch.** It contains a schema migration (IAM phase 1:
 > tables move from `public` into `iam`/`flashcards`). Dev, preview, and production share one database, so the
@@ -159,6 +160,13 @@ Follow-ups:
 4. Deleting the Windows source needs the owner's separate confirmation.
 
 ## resolved
+
+- **Database password rotated (2026-11-04).** The live password was in public git history. Render credential rotation:
+  new default login `app_admin_20261104` (it acts as the `app_admin` role, which owns the `iam` and `flashcards`
+  schemas), set in the web service's environment and the local `.env`, then the old `app_admin` login was deleted
+  (Render revokes its login and keeps it as the table owner). **Verified** with `prod-readonly-check.sh`: the new login
+  acts as owner with read/write on all 31 tables; after the switch, only the new login is connected; `/api/health`
+  healthy; data unchanged (7 users, 137 cards, 5 media, 8 quizzes, 20 sessions). The old password no longer logs in.
 
 - **Queued, throttled and prioritised database work (2026-11-04, owner request).**
   - Every query now runs through platform-db `v0.2.1`'s `QueryScheduler`: concurrency = pool size, waiting limits per
@@ -316,11 +324,10 @@ Resolved on 2026-11-03 (round 4):
 
 Found in the code/documentation review of 2026-11-03 (not yet fixed):
 
-- **Security: live DB password in public git history.** `.env.backup` (tracked despite being
-  git-ignored) and `documents/RENDER_ENVIRONMENT_VARIABLES.md` contained the real `DB_PG_PASSWORD`.
-  The repo is public. Both are now cleaned/untracked, but the history still has it: **rotate the
-  Render DB password**, then optionally purge history (`git filter-repo`). The committed
-  `documents/flashcards-backup-2026-11-02.json` (users' emails + password hashes) is likewise untracked now but in history.
+- **Security: user data in public git history.** The committed `documents/flashcards-backup-2026-11-02.json`
+  (users' emails + password hashes) is untracked now but still in history. Optionally purge history
+  (`git filter-repo`), which rewrites every commit. The database password that was also in history is rotated (see
+  resolved).
 - **New cards are always private.** `insert_flashcard` hard-codes `is_private = true`, so the
   create form's "Private" checkbox (sent as `is_private`) is ignored; entries import also creates private cards.
 - **`GET /api/entries/shared-by-me` is unreachable.** It is registered after `GET /:flashcardId`,
