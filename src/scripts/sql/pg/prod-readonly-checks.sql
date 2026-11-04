@@ -10,8 +10,9 @@ UNION ALL SELECT 'iam.session', count(*) FROM iam.session
 UNION ALL SELECT 'flashcards.flashcards', count(*) FROM flashcards.flashcards
 UNION ALL SELECT 'flashcards.media', count(*) FROM flashcards.media
 UNION ALL SELECT 'flashcards.quizzes', count(*) FROM flashcards.quizzes
-UNION ALL SELECT 'public.users', count(*) FROM public.users
-UNION ALL SELECT 'public.flashcards', count(*) FROM public.flashcards;
+UNION ALL SELECT 'tables left in public', count(*)
+  FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public' AND c.relkind = 'r';
 
 -- Leftover public tables: row count of each (counts only) and whether it has a moved twin.
 SELECT c.relname AS public_table,
