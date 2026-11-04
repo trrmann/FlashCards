@@ -26,6 +26,15 @@ plus `RENDER_URL` in `deploy.sh`).
 | `PORT_PREVIEW`                | ❌                                  | `4000`                  | Listen port when `NODE_ENV=preview`                                                                                         |
 | `RENDER`                      | set by Render                       | —                       | Forces internal DB hostname                                                                                                 |
 | `TEST_BASE_URL`               | ❌                                  | `http://localhost:5000` | Target of `npm run test:preview`                                                                                            |
+| `GITHUB_TOKEN`                | ✅ (build only, secret)             | —                       | Read-only access to the private `trrmann/iam-service` package. Used only by `render-build.sh`, never logged                 |
+
+## Build command
+
+Render's **Build Command** for FlashCards is `bash src/scripts/sh/render-build.sh`. It lets npm install the shared
+packages from GitHub: it rewrites `git+ssh` to HTTPS and supplies `GITHUB_TOKEN` through a git credential helper, so the
+token never appears in a URL or a log. Then it runs `npm ci`. Without the token, installing the private iam-service
+package fails with a clear message. The token should be a fine-grained GitHub token with read-only **Contents**
+permission on `trrmann/iam-service` only.
 
 Connection settings that are **not** configurable through env (constants in `PostgresDatabase`):
 pool max 20, idle timeout 30 s, connect timeout 2 s, SSL with `rejectUnauthorized: false`.

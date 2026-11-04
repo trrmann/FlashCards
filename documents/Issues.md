@@ -17,10 +17,10 @@ verifying, since the failed backup import on Render needs the merge fix to compl
 > code currently live on Render (which expects `public`) stops working until the branch is deployed there.
 > Do it in one sitting:
 >
-> 0. **Publish the shared packages first.** FlashCards now depends on `platform-db` and `iam-service`
->    (and iam-service on `request-queue`) as `file:../…` sibling folders, which Render cannot install. Push the three
->    repositories to GitHub and switch the dependencies to `github:` URLs (pinned to a tag or commit) before step 2,
->    or the Render build fails. The repositories' visibility is the owner's decision (private needs a Render deploy key or token).
+> 0. **Shared packages: published 2026-11-04.** `trrmann/platform-db` and `trrmann/request-queue` (public) and
+>    `trrmann/iam-service` (private), each tagged `v0.1.0`; FlashCards depends on the tags. **Before step 2, on Render:**
+>    add the `GITHUB_TOKEN` environment variable and set the Build Command to `bash src/scripts/sh/render-build.sh`
+>    (RENDER_ENVIRONMENT_VARIABLES.md). Without them the build cannot install iam-service.
 > 1. `backup.sh` (production backup, both files).
 > 2. Merge the branch into `main`, then `deploy.sh -preview` (migrates the shared DB; the live site is down from here).
 > 3. When preview passes, `deploy.sh -prod` right away (Render runs the new code; the site is back).
