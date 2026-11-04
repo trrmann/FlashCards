@@ -110,4 +110,3 @@ running throughout. Last done 2026-11-04 (the password had been committed to thi
 3. Update `DB_PG_USER` and `DB_PG_PASSWORD` in the Web Service environment, then **Save and deploy** (or restart).
 4. Rerun the check until the old login shows no connections, then delete it under **Credentials**. Render revokes its
    login but keeps it as the owner of the tables.
-
