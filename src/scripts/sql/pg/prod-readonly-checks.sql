@@ -48,3 +48,17 @@ GROUP BY 1, 2 ORDER BY 1, 2;
 SELECT usename AS login, count(*) AS connections
 FROM pg_stat_activity WHERE datname = current_database() AND usename IS NOT NULL
 GROUP BY 1 ORDER BY 1;
+
+-- Per-app logins (build-order step 3): can this login create roles, and the connection limit.
+SELECT r.rolname AS acting_as, r.rolcreaterole AS can_create_roles, r.rolsuper AS superuser,
+       r.rolconnlimit AS role_connection_limit
+FROM pg_roles r WHERE r.rolname = current_user;
+
+SELECT current_setting('max_connections')::int AS max_connections,
+       current_setting('superuser_reserved_connections')::int AS reserved_for_superuser,
+       (SELECT count(*) FROM pg_stat_activity WHERE backend_type = 'client backend') AS client_connections_now,
+       current_setting('server_version') AS server_version;
+
+-- Login roles in the database (names and flags only): Render-managed and any created with SQL.
+SELECT rolname AS login_role, rolcanlogin AS can_login, rolconnlimit AS connection_limit
+FROM pg_roles WHERE rolname NOT LIKE 'pg\_%' AND rolname <> 'postgres' ORDER BY 1;
