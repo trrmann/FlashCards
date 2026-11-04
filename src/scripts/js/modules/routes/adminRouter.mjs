@@ -190,7 +190,7 @@ class AdminRouter extends BaseRouter {
      */
     router.get('/backup/export', requireAdmin, async (req, res) => {
       try {
-        const backup = await backupService.exportApplicationData();
+        const backup = await backupService.exportBackup(req);
 
         await backupService.logImportExport(
           req.session.userId,
@@ -231,7 +231,7 @@ class AdminRouter extends BaseRouter {
      */
     router.get('/backup/download', requireAuth, requireAdmin, async (req, res) => {
       try {
-        const backup = await backupService.exportApplicationData();
+        const backup = await backupService.exportBackup(req);
 
         await backupService.logImportExport(
           req.session.userId,
@@ -307,14 +307,11 @@ class AdminRouter extends BaseRouter {
         try {
           const { backup, mediaArchive } = req.body;
 
-          if (!backup || !backup.data) {
-            return res.status(400).json({
-              status: 'error',
-              message: 'Invalid backup format. Must include backup.data',
-            });
+          if (!backup || typeof backup !== 'object') {
+            return res.status(400).json({ status: 'error', message: 'Invalid backup: missing' });
           }
 
-          const results = await backupService.importApplicationData(backup, mediaArchive || null);
+          const results = await backupService.importBackup(req, backup, mediaArchive || null);
 
           const totalImported = Object.values(results.imported).reduce((a, b) => a + b, 0);
 
@@ -341,6 +338,9 @@ class AdminRouter extends BaseRouter {
             error.message
           );
 
+          // 400 bad file, 403 users need a platform admin, 422 a bad row (that step rolled back)
+          const answer = IdentityGateway.errorAnswer(error);
+          if (answer) return res.status(answer.status).json(answer.body);
           return res.status(500).json({
             status: 'error',
             message: 'Failed to import application data',

@@ -34,6 +34,7 @@ import { identityManagementDb } from 'iam-service/db';
 import { PostgresDatabase, DatabaseTargetGuard } from 'platform-db';
 import { createIdentityGateway } from './identity/index.mjs';
 import { entriesService } from './auth/entriesService.mjs';
+import { backupService } from './auth/backupService.mjs';
 import authRouter from './routes/authRouter.mjs';
 import usersRouter from './routes/usersRouter.mjs';
 import adminRouter from './routes/adminRouter.mjs';
@@ -92,6 +93,8 @@ export class Server {
     this.identity = identity;
     // Card lists show owners' names, looked up through the same gateway.
     entriesService.identityService = identity;
+    // Backups take the identity part through the same gateway (phase 3d).
+    backupService.identity = identity;
     this.app = express();
     this.app.locals.identity = identity;
 

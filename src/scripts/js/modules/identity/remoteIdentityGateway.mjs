@@ -275,6 +275,29 @@ export class RemoteIdentityGateway extends IdentityGateway {
     return this.asUser(req, (token) => this.client.setUserVisibility(token, userId, isPublic));
   }
 
+  // ----- Identity backup (the service checks the user is a platform admin) -----
+
+  async isPlatformAdmin(req) {
+    if (!req.session?.userId || !req.session.iamTokens) return false;
+    const { user } = await this.meOf(req);
+    return Boolean(user?.is_platform_admin);
+  }
+
+  async exportIdentity(req) {
+    return (await this.asUser(req, (token) => this.client.exportIdentity(token))).identity;
+  }
+
+  /** @returns {Promise<{imported, warnings, user_id_map}>} */
+  async importIdentity(req, identity, options) {
+    const result = await this.asUser(req, (token) =>
+      this.client.importIdentity(token, identity, options)
+    );
+    // A restore can change anyone's account and rights.
+    this.me.clear();
+    this.display.clear();
+    return result;
+  }
+
   // ----- Organizations, groups, platform admins, app access (/api/iam) -----
 
   /**

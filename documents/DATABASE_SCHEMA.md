@@ -278,10 +278,19 @@ Templates use `{{placeholders}}` for dynamic filter clauses; values are always b
 ## Backup and recovery
 
 - In-app: admin **Backup & Restore** on the Profile page (JSON + media ZIP), or from a terminal with `backup.sh` /
-  `restore.sh` (SYSTEM_INITIAL_SETUP.md → restoring into a new database). Import is all-or-nothing.
-  Every table except the transient `session` tables is included. Format 3.1 adds `user_settings`; older backups
-  carry those settings as `users` columns and are converted on import. The automated round-trip test
-  (`npm run test:roundtrip`, also run by `deploy.sh -preview`) proves a wipe → bootstrap → re-created admin → import
-  rebuilds every table and media item.
+  `restore.sh` (SYSTEM_INITIAL_SETUP.md → restoring into a new database).
+- **Format 4.0 (phase 3d):** each service backs up its own tables. The data JSON bundles the IAM's identity part
+  (from the IAM, platform admins only; for anyone else it is `null`) and FlashCards' part (the `flashcards` schema);
+  media stays in the ZIP. Transient tables (sessions, tokens, IAM events) are left out.
+- **Restore runs in two steps**, each all-or-nothing: users first (merged by username or email; the IAM returns the
+  old → new id map), then FlashCards' data with ids rewritten. If the second step fails, the first stays applied; the
+  error says so, and running the restore again completes it. Restoring users needs a platform admin.
+- Older files (3.1, 3.0, 2.0: one combined data set) are split into the two parts first; per-user settings in `users`
+  columns (before 3.1) become `user_settings` rows.
+- Times without a time zone are exported as clock-time text, so a restore on a machine in another time zone doesn't
+  shift them (platform-db `TableBackup`).
+- The automated round-trip test (`npm run test:roundtrip`, and `test:roundtrip:remote` through the IAM service; both
+  run by `deploy.sh -preview`) proves a wipe → bootstrap → re-created admin → import rebuilds every table and media
+  item.
 - Render: free-tier databases expire (`DB_PG_EXPIRE` drives the header warning). Take an in-app backup before expiry.
 - Manual: `pg_dump "$DB_PG_EXTERNAL_URL" > backup.sql`.

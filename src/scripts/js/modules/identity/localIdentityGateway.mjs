@@ -4,15 +4,20 @@
  * The organizations API is iam-service's OrganizationRouter, mounted in this server.
  */
 
-import { userAccountService, userAuthService } from 'iam-service/services';
-import { IdentityGateway } from './identityGateway.mjs';
+import { userAccountService, userAuthService, iamBackupService } from 'iam-service/services';
+import { IdentityGateway, IdentityError } from './identityGateway.mjs';
 import { IamRouter } from '../routes/iamRouter.mjs';
 
 export class LocalIdentityGateway extends IdentityGateway {
-  constructor({ accounts = userAccountService, users = userAuthService } = {}) {
+  constructor({
+    accounts = userAccountService,
+    users = userAuthService,
+    backups = iamBackupService,
+  } = {}) {
     super();
     this.accounts = accounts;
     this.users = users;
+    this.backups = backups;
   }
 
   get mode() {
@@ -119,6 +124,32 @@ export class LocalIdentityGateway extends IdentityGateway {
 
   setUserVisibility(req, userId, isPublic) {
     return this.accounts.setVisibility(userId, isPublic);
+  }
+
+  // ----- Identity backup (platform admins only; owner decision, phase 3d) -----
+
+  isPlatformAdmin(req) {
+    return req.session?.userId
+      ? this.users.isPlatformAdmin(req.session.userId)
+      : Promise.resolve(false);
+  }
+
+  async requirePlatformAdmin(req) {
+    if (!(await this.isPlatformAdmin(req))) {
+      throw new IdentityError(403, 'Platform administrator access required');
+    }
+  }
+
+  /** The identity part of a backup. */
+  async exportIdentity(req) {
+    await this.requirePlatformAdmin(req);
+    return this.backups.exportPart();
+  }
+
+  /** @returns {Promise<{imported, warnings, user_id_map}>} */
+  async importIdentity(req, identity, options) {
+    await this.requirePlatformAdmin(req);
+    return this.backups.importPart(identity, options);
   }
 
   // ----- Organizations, groups, platform admins, app access (/api/iam) -----
