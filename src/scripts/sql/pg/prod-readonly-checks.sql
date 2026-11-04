@@ -10,6 +10,7 @@ UNION ALL SELECT 'iam.session', count(*) FROM iam.session
 UNION ALL SELECT 'flashcards.flashcards', count(*) FROM flashcards.flashcards
 UNION ALL SELECT 'flashcards.media', count(*) FROM flashcards.media
 UNION ALL SELECT 'flashcards.quizzes', count(*) FROM flashcards.quizzes
+UNION ALL SELECT 'iam.access_tokens (live)', count(*) FROM iam.access_tokens WHERE revoked_at IS NULL AND expires_at > NOW()
 UNION ALL SELECT 'flashcards.user_settings', count(*) FROM flashcards.user_settings WHERE to_regclass('flashcards.user_settings') IS NOT NULL
 UNION ALL SELECT 'flashcards.session', count(*) FROM flashcards.session WHERE to_regclass('flashcards.session') IS NOT NULL
 UNION ALL SELECT 'tables left in public', count(*)
