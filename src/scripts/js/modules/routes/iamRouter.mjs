@@ -8,6 +8,18 @@ import { BaseRouter } from './baseRouter.mjs';
 import { organizationService, IamError } from '../auth/organizationService.mjs';
 
 class IamRouter extends BaseRouter {
+  /**
+   * @param {object} [options]
+   * @param {Function} [options.authenticate] - Middleware that admits the caller (default: FlashCards session)
+   * @param {Function} [options.actorOf] - Returns the acting user id for a request (default: session user)
+   */
+  constructor({ authenticate, actorOf } = {}) {
+    super();
+    // Read at request time, so these can be set after BaseRouter registered the routes.
+    this.authenticate = authenticate || this.requireAuth;
+    this.actorOf = actorOf || ((req) => req.session.userId);
+  }
+
   static UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   static APP_KEY = /^[a-z0-9-]{1,50}$/;
 
@@ -24,7 +36,7 @@ class IamRouter extends BaseRouter {
         }
       }
       try {
-        const body = await work(req, req.session.userId);
+        const body = await work(req, this.actorOf(req));
         return res.status(successStatus).json({ status: 'success', ...body });
       } catch (error) {
         if (error instanceof IamError) {
@@ -39,7 +51,7 @@ class IamRouter extends BaseRouter {
   registerRoutes() {
     const router = this.router;
     const service = organizationService;
-    router.use(this.requireAuth);
+    router.use((req, res, next) => this.authenticate(req, res, next));
 
     // Organizations
     router.get(

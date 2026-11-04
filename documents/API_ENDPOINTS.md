@@ -483,7 +483,11 @@ FlashCards does not call it yet (step 3c).
 | POST   | `/v1/auth/logout`  | bearer      | Revokes every token of that login                                                                                                                                                           |
 | GET    | `/v1/me`           | bearer      | `{ app_key, user (with is_admin for that app, is_platform_admin), roles }`                                                                                                                  |
 
-Tested by `npm run test:iam-service` (37 checks).
+The service also serves the organization, group, group-role, platform-admin, and application-access endpoints of
+`/api/iam` (same paths under `/v1`, e.g. `GET /v1/organizations`), with bearer tokens instead of the FlashCards
+session. Both use the same `IamRouter` and `OrganizationService`.
+
+Tested by `npm run test:iam-service` (49 checks).
 
 ---
 

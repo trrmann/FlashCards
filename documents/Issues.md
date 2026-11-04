@@ -66,7 +66,8 @@ Requirement: [CODING_STANDARDS.md § 0.8](./CODING_STANDARDS.md). Design, owner 
 - [x] Phase 3 design written (IAM_MULTI_APP_DESIGN.md → Phase 3), with 3 owner decisions listed (2026-11-04)
 - [x] Phase 3a: IAM service process, application credentials, tokens (login, refresh rotation + reuse detection, logout, `/v1/me`) (2026-11-04, local DB)
 - [ ] **Owner decisions for phase 3:** Render plan for the IAM service (free-tier cold starts), same repo or separate, token lifetimes
-- [ ] Phase 3b: move `/api/iam` and user admin/directory endpoints into the service
+- [x] Phase 3b (part 1): organization/group API served by the IAM service with bearer tokens (2026-11-04, local DB)
+- [ ] Phase 3b (part 2): user admin and directory endpoints in the service
 - [ ] Phase 3c: FlashCards switches to `IamClient` over HTTP; FlashCards session table moves to `flashcards`
 - [ ] Phase 3d: per-service backups (format 4.0), deploy scripts start both services, Render setup
 - [ ] Phase 3e: MFA, invitations, role requests, impersonation + audit, login throttling, resource grants
@@ -253,6 +254,14 @@ Found in the code/documentation review of 2026-11-03 (not yet fixed):
   meant for the home page (see CODING_STANDARDS 0.4 violations).
 - **Unused leftovers:** `src/data/test.db`, `leitner_boxes` and `lessons` tables, `flashcards.is_public`/
   `difficulty`/`lesson_id`, `flashcard_leitner_progress.session_streak`, `user_rights`/`rights` (no routes).
+
+Resolved on 2026-11-04 (IAM phase 3b, part 1):
+
+- ~~organizations/groups API only inside FlashCards~~
+  **Resolved:** `IamRouter` takes `authenticate` and `actorOf` options (defaults: FlashCards session, unchanged);
+  the IAM service mounts the same router under `/v1` with bearer-token authentication, so both share one
+  implementation of the routes and rules. Verified: test:iam-service 49/49 (12 new wiring checks; with the bearer
+  check removed, the new checks fail); test:iam 79/79 unchanged; lint and format pass.
 
 Resolved on 2026-11-04 (IAM phase 3a, service foundation):
 

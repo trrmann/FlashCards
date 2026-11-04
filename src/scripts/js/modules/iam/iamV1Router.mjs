@@ -11,6 +11,7 @@ import { validationService } from '../auth/validationService.mjs';
 import { IamError } from '../auth/organizationService.mjs';
 import { tokenService } from './tokenService.mjs';
 import { ApplicationCredentials } from './applicationCredentials.mjs';
+import { IamRouter } from '../routes/iamRouter.mjs';
 
 export class IamV1Router {
   static INVALID_LOGIN = 'Invalid username or password';
@@ -167,6 +168,15 @@ export class IamV1Router {
       '/me',
       this.requireBearer,
       this.handle((req) => this.me(req))
+    );
+
+    // Organizations, groups, group roles, platform admins, and application access:
+    // the same routes and rules as FlashCards' /api/iam, authenticated by bearer token.
+    router.use(
+      new IamRouter({
+        authenticate: this.requireBearer,
+        actorOf: (req) => req.iamToken.user_id,
+      }).router
     );
   }
 }

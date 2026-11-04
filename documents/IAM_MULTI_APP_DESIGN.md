@@ -232,13 +232,13 @@ Each service backs up its own domain. The IAM service gets `/v1/admin/backup` (I
 
 ### Steps
 
-| Step | Content                                                                                                                                                                     | Status           |
-| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
-| 3a   | Service process, health, application credentials, token model (login, refresh with rotation and reuse detection, logout, `/v1/me`), `iam.access_tokens`, service test suite | Built (local DB) |
-| 3b   | Move `/api/iam` (organizations, groups, platform admins, app access) and user admin/directory endpoints into the service                                                    | Next             |
-| 3c   | FlashCards switches to `IamClient` over HTTP; FlashCards session table moves to `flashcards`                                                                                |                  |
-| 3d   | Per-service backups (format 4.0), deploy scripts start both services, Render setup                                                                                          |                  |
-| 3e   | MFA (TOTP + recovery codes), invitations, role requests, impersonation + audit, login throttling, `resource_grants`                                                         |                  |
+| Step | Content                                                                                                                                                                     | Status                                                                                                       |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| 3a   | Service process, health, application credentials, token model (login, refresh with rotation and reuse detection, logout, `/v1/me`), `iam.access_tokens`, service test suite | Built (local DB)                                                                                             |
+| 3b   | Move `/api/iam` (organizations, groups, platform admins, app access) and user admin/directory endpoints into the service                                                    | Organizations/groups API served by the service (shared `IamRouter`); user admin and directory endpoints next |
+| 3c   | FlashCards switches to `IamClient` over HTTP; FlashCards session table moves to `flashcards`                                                                                |                                                                                                              |
+| 3d   | Per-service backups (format 4.0), deploy scripts start both services, Render setup                                                                                          |                                                                                                              |
+| 3e   | MFA (TOTP + recovery codes), invitations, role requests, impersonation + audit, login throttling, `resource_grants`                                                         |                                                                                                              |
 
 ### Owner decisions for phase 3
 

@@ -225,6 +225,80 @@ export class IamServiceTest extends LocalTestCase {
     );
   }
 
+  /**
+   * Phase 3b: the organization/group API is served by the IAM service with bearer
+   * tokens. Its rules are covered in depth by test:iam; this proves the wiring.
+   */
+  async checkOrganizations(tokens) {
+    console.log('\nOrganizations over bearer tokens (/v1)');
+    const root = tokens.root.access_token;
+    const alice = tokens.alice.access_token;
+    this.expect('organizations without a token', await this.call('GET', '/organizations'), 401);
+    this.expect(
+      'organizations with a forged token',
+      await this.call('GET', '/organizations', { token: 'forged' }),
+      401
+    );
+    this.expect(
+      'alice creates an organization',
+      await this.call('POST', '/organizations', {
+        token: alice,
+        json: { name: 'Svc Org', slug: 'svc-org' },
+      }),
+      403
+    );
+    const created = this.expect(
+      'root creates an organization',
+      await this.call('POST', '/organizations', {
+        token: root,
+        json: { name: 'Svc Org', slug: 'svc-org' },
+      }),
+      201
+    );
+    const orgId = created.organization?.org_id;
+    const before = this.expect(
+      'alice lists organizations',
+      await this.call('GET', '/organizations', { token: alice }),
+      200
+    );
+    this.check('alice is in no organization yet', before.organizations?.length === 0);
+    this.expect(
+      'root adds alice',
+      await this.call('POST', `/organizations/${orgId}/members`, {
+        token: root,
+        json: { username: 'svc_alice' },
+      }),
+      201
+    );
+    const after = this.expect(
+      'alice lists organizations again',
+      await this.call('GET', '/organizations', { token: alice }),
+      200
+    );
+    this.check(
+      'alice now sees Svc Org as a member',
+      after.organizations?.[0]?.my_role === 'member'
+    );
+    this.expect(
+      'member alice creates a group',
+      await this.call('POST', `/organizations/${orgId}/groups`, {
+        token: alice,
+        json: { name: 'G' },
+      }),
+      403
+    );
+    this.expect(
+      'alice lists applications (platform admins only)',
+      await this.call('GET', '/applications', { token: alice }),
+      403
+    );
+    this.expect(
+      'unknown /v1 route',
+      await this.call('GET', '/no-such-route', { token: root }),
+      404
+    );
+  }
+
   async checkStorage(tokens) {
     console.log('\nToken storage');
     const raw = await this.identityDatabase.query(this.constructor.queries.find_token, [
@@ -255,6 +329,7 @@ export class IamServiceTest extends LocalTestCase {
     try {
       const tokens = await this.checkCredentialsAndLogin(users);
       await this.checkMe(tokens);
+      await this.checkOrganizations(tokens);
       await this.checkStorage(tokens);
       await this.checkRefreshAndRevocation(tokens);
     } finally {
