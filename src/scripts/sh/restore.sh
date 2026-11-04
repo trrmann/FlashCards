@@ -8,7 +8,8 @@
 # Imports a backup made with backup.sh (or the Profile page) into the server at
 # <base-url>. If that database has no users yet (for example after the monthly
 # Render reset), it first creates the admin through initial setup, then imports.
-# The import is all-or-nothing: on any error nothing is changed.
+# Two steps, each all-or-nothing: users, then FlashCards' data. If the second fails, the
+# users stay restored; run this again to complete it (a rerun changes nothing that is right).
 #
 # Credentials: FLASHCARDS_ADMIN_USER / FLASHCARDS_ADMIN_PASSWORD, plus
 # FLASHCARDS_ADMIN_EMAIL / FLASHCARDS_ADMIN_NAME for an empty database; any that

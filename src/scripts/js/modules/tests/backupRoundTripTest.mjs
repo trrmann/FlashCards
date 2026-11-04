@@ -4,14 +4,23 @@
  * is wiped, including the real recovery scenario: the admin account is re-created in the
  * empty database under a new user_id before the import. Runs only against the local scratch
  * database (local-db.sh); it refuses any other target because it drops the public schema.
+ *
+ * Format 4.0 (phase 3d): the identity part goes through the identity gateway, as the signed-in
+ * admin; with `remoteIam: true` (npm run test:roundtrip:remote) through the IAM service over
+ * HTTP, started in the test. Also: the two-step restore (a failed second step keeps the first,
+ * and running it again completes it), a FlashCards-only backup for a non-platform admin, and
+ * older 3.1 and 2.0 files.
  */
 
+import crypto from 'node:crypto';
+import { TableBackup } from 'platform-db';
 import { LocalTestCase } from './localTestCase.mjs';
-import { userAuthService, organizationService } from 'iam-service/services';
-import { tokenPolicyService } from 'iam-service/server';
+import { userAuthService, organizationService, IamBackupService } from 'iam-service/services';
+import { tokenPolicyService, IamServer, ApplicationCredentials } from 'iam-service/server';
+import { LocalIdentityGateway, RemoteIdentityGateway } from '../identity/index.mjs';
 import { entriesService } from '../auth/entriesService.mjs';
 import { practiceService } from '../auth/practiceService.mjs';
-import { backupService, BackupService } from '../auth/backupService.mjs';
+import { BackupService } from '../auth/backupService.mjs';
 import { mediaArchiveService } from '../auth/mediaArchiveService.mjs';
 import { QuizRouter } from '../routes/quizRouter.mjs';
 import { userSettingsService } from '../auth/userSettingsService.mjs';
@@ -22,7 +31,10 @@ export class BackupRoundTripTest extends LocalTestCase {
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
   static AUDIO =
     'data:audio/webm;base64,GkXfo0AgQoaBAUL3gQFC8oEEQvOBCEKCQAR3ZWJtQoeBAkKFgQIYU4BnAQAAAAAAAA==';
-  static USER_REFERENCE_COLUMNS = BackupService.userReferenceColumns;
+  static USER_REFERENCE_COLUMNS = [
+    ...new Set([...BackupService.userReferenceColumns, ...IamBackupService.USER_REFERENCE_COLUMNS]),
+  ];
+  static IAM_PORT = 5095;
   static NATURAL_KEYS = {
     applications: ['app_id', 'app_key'],
     roles: ['role_id', 'role_name'],
@@ -38,7 +50,26 @@ export class BackupRoundTripTest extends LocalTestCase {
     'group_roles',
     'token_policies',
   ];
-  static TRANSIENT_TABLES = ['session', 'access_tokens'];
+  static TRANSIENT_TABLES = [
+    'session',
+    'access_tokens',
+    'user_events',
+    'application_event_cursors',
+  ];
+
+  constructor({ remoteIam = false, ...options } = {}) {
+    super(options);
+    this.remoteIam = remoteIam;
+  }
+
+  /** The signed-in admin (or user) as the backup sees them: a request with a session. */
+  async actor(username) {
+    const req = { session: {} };
+    const user = await this.identity.login(req, username, this.constructor.PASSWORD);
+    req.session.userId = user.user_id;
+    req.session.username = user.username;
+    return req;
+  }
   static UNSEEDED_TABLES = ['rights', 'role_rights', 'lessons', 'leitner_boxes'];
 
   async createAdmin(username) {
@@ -153,7 +184,7 @@ export class BackupRoundTripTest extends LocalTestCase {
     await userSettingsService.setStorageLimit(alice.user_id, 1048576);
     await userSettingsService.updateLastPageVisited(bob.user_id, '/practice');
     await userAuthService.grantUserRight(alice.user_id, 'test.round_trip');
-    await backupService.logImportExport(admin.user_id, 'export', 3, 'success');
+    await this.backups.logImportExport(admin.user_id, 'export', 3, 'success');
 
     const org = await organizationService.createOrganization(admin.user_id, {
       name: 'Round Trip Org',
@@ -190,10 +221,10 @@ export class BackupRoundTripTest extends LocalTestCase {
     return { admin, cards: [textCard, imageCard, audioCard] };
   }
 
-  async exportBoth() {
+  async exportBoth(actor) {
     return {
-      backup: await backupService.exportApplicationData(),
-      archive: await backupService.exportMediaArchive(),
+      backup: await this.backups.exportBackup(actor),
+      archive: await this.backups.exportMediaArchive(),
     };
   }
 
@@ -216,9 +247,10 @@ export class BackupRoundTripTest extends LocalTestCase {
   async snapshot() {
     const data = {};
     for (const table of await this.databaseTables()) {
-      const result = await backupService
-        .databaseFor(table)
-        .query(BackupService.queries.select_all_rows_template.replace('{{table}}', table));
+      const db = IamBackupService.TABLES.includes(table) ? this.identityDatabase : this.database;
+      const result = await db.query(
+        TableBackup.queries.select_all_rows_template.replace('{{table}}', table)
+      );
       data[table] = result.rows;
     }
     return { data };
@@ -280,14 +312,63 @@ export class BackupRoundTripTest extends LocalTestCase {
     this.check(`${label}: media archive (${before.size} item(s)) byte-identical`, identical);
   }
 
+  /** The gateway and backup service for this run: in-process, or the IAM service over HTTP. */
+  async startIdentity() {
+    this.iamServer = null;
+    if (!this.remoteIam) {
+      this.identity = new LocalIdentityGateway();
+    } else {
+      const secret = crypto.randomBytes(32).toString('hex');
+      this.iamServer = new IamServer({
+        port: this.constructor.IAM_PORT,
+        routerOptions: {
+          credentials: new ApplicationCredentials({
+            [ApplicationCredentials.envName('flashcards')]: secret,
+          }),
+        },
+      });
+      await this.iamServer.start();
+      this.identity = new RemoteIdentityGateway({
+        baseUrl: `http://127.0.0.1:${this.constructor.IAM_PORT}`,
+        clientSecret: secret,
+      });
+      await this.identity.start();
+    }
+    this.backups = new BackupService({ identity: this.identity });
+  }
+
+  async stopIdentity() {
+    await this.identity.stop();
+    if (this.iamServer) await this.iamServer.stop();
+  }
+
+  /** Wipe the database, re-create the admin under a new id, and sign them in. */
+  async freshInstall(admin) {
+    await this.resetDatabase();
+    const recreated = await this.createAdmin('rt_admin');
+    this.check('re-created admin has a new user_id', recreated.user_id !== admin.user_id);
+    return { recreated, actor: await this.actor('rt_admin') };
+  }
+
   async run() {
     this.assertLocalTarget();
-    console.log('Backup round-trip test (local scratch database)\n');
+    console.log(
+      `Backup round-trip test (local scratch database; identity ${this.remoteIam ? 'over HTTP' : 'in-process'})\n`
+    );
+    await this.startIdentity();
+    try {
+      await this.runChecks();
+    } finally {
+      await this.stopIdentity();
+    }
+    return this.summary();
+  }
 
+  async runChecks() {
     console.log('1. Fresh database + synthetic data');
     await this.resetDatabase();
     const { admin } = await this.seed();
-    const backedUp = [...BackupService.iamTables, ...BackupService.appTables];
+    const backedUp = [...IamBackupService.TABLES, ...BackupService.appTables];
     for (const table of await this.databaseTables()) {
       this.check(
         `backup covers table ${table}`,
@@ -300,20 +381,25 @@ export class BackupRoundTripTest extends LocalTestCase {
       if (this.constructor.UNSEEDED_TABLES.includes(table)) continue;
       this.check(`seeded ${table}`, rows.length > 0, 'no rows to prove the round trip with');
     }
-    const original = await this.exportBoth();
+    const original = await this.exportBoth(await this.actor('rt_admin'));
+    this.check(
+      'the backup is format 4.0 with an identity part and a FlashCards part',
+      original.backup.version === '4.0' &&
+        original.backup.identity?.data?.users?.length === 3 &&
+        original.backup.flashcards?.data?.flashcards?.length === 3
+    );
 
     console.log('\n2. Database wiped; admin re-created under a new id; backup imported');
-    await this.resetDatabase();
-    const recreated = await this.createAdmin('rt_admin');
-    this.check('re-created admin has a new user_id', recreated.user_id !== admin.user_id);
-    const result = await backupService.importApplicationData(
+    const { recreated, actor } = await this.freshInstall(admin);
+    const result = await this.backups.importBackup(
+      actor,
       structuredClone(original.backup),
       original.archive
     );
     this.check(
-      'import reported no failed tables',
-      Object.keys(result.failed).length === 0,
-      JSON.stringify(result.failed)
+      'both steps ran (identity, then FlashCards)',
+      result.steps.join(',') === 'identity,flashcards',
+      result.steps.join(',')
     );
     const unexpected = result.warnings.filter((w) => !w.startsWith('Merged backup user'));
     this.check(
@@ -324,19 +410,59 @@ export class BackupRoundTripTest extends LocalTestCase {
     const restored = await this.snapshot();
     const userIdMap = new Map([[admin.user_id, recreated.user_id]]);
     this.compareSnapshots(before, restored, userIdMap, 'restored');
-    this.compareArchives(original.archive, await backupService.exportMediaArchive(), 'restored');
+    this.compareArchives(original.archive, await this.backups.exportMediaArchive(), 'restored');
 
     console.log('\n3. Same backup imported again (must change nothing)');
-    await backupService.importApplicationData(structuredClone(original.backup), original.archive);
+    await this.backups.importBackup(actor, structuredClone(original.backup), original.archive);
     this.compareSnapshots(restored, await this.snapshot(), new Map(), 'idempotent');
 
-    console.log('\n4. Corrupt backup: import must be rejected and change nothing');
-    await this.checkAtomicImport(original);
+    console.log("\n4. A bad row in FlashCards' part: that step is rolled back");
+    await this.checkAtomicImport(original, actor);
 
-    console.log('\n5. Legacy (format 2.0) backup restores into a wiped database');
+    console.log('\n5. Two steps: the second fails, then running it again completes it');
+    await this.checkTwoStepRerun(original, actor);
+
+    console.log('\n6. Only platform admins back up and restore users');
+    await this.checkPlatformAdminOnly(original);
+
+    console.log('\n7. A format 3.1 file (one data set, as made before phase 3d) restores');
+    await this.checkFormat31(original, admin);
+
+    console.log('\n8. Legacy (format 2.0) backup restores into a wiped database');
     await this.checkLegacyRestore(original, admin);
+  }
 
-    return this.summary();
+  /** The combined single data set of format 3.1 (what backups looked like before 4.0). */
+  static toFormat31(backup) {
+    return {
+      version: '3.1',
+      exportedAt: backup.exportedAt,
+      data: {
+        ...structuredClone(backup.identity.data),
+        ...structuredClone(backup.flashcards.data),
+      },
+      mediaManifest: backup.flashcards.mediaManifest,
+    };
+  }
+
+  async checkFormat31(original, admin) {
+    const { recreated, actor } = await this.freshInstall(admin);
+    const result = await this.backups.importBackup(
+      actor,
+      this.constructor.toFormat31(original.backup),
+      original.archive
+    );
+    this.check(
+      'a 3.1 file is split and both steps run',
+      result.steps.join(',') === 'identity,flashcards'
+    );
+    const after = await this.snapshot();
+    this.check(
+      '3.1 restore: every card and user back',
+      after.data.flashcards.length === original.backup.flashcards.data.flashcards.length &&
+        after.data.users.length === original.backup.identity.data.users.length &&
+        recreated.user_id !== admin.user_id
+    );
   }
 
   /**
@@ -344,7 +470,7 @@ export class BackupRoundTripTest extends LocalTestCase {
    * applications, app-scoped roles, organizations, and groups existed).
    */
   toLegacyBackup(backup) {
-    const legacy = structuredClone(backup);
+    const legacy = this.constructor.toFormat31(backup);
     legacy.version = '2.0';
     const platformRoles = new Set(
       legacy.data.roles.filter((role) => role.app_id === null).map((role) => role.role_id)
@@ -373,20 +499,20 @@ export class BackupRoundTripTest extends LocalTestCase {
    * roles and every restored user can sign in to FlashCards.
    */
   async checkLegacyRestore(original, admin) {
-    await this.resetDatabase();
-    const recreated = await this.createAdmin('rt_admin');
-    const result = await backupService.importApplicationData(
+    const { recreated, actor } = await this.freshInstall(admin);
+    const result = await this.backups.importBackup(
+      actor,
       this.toLegacyBackup(original.backup),
       original.archive
     );
     this.check(
       'legacy backup was upgraded',
-      result.warnings.some((w) => w.startsWith('Legacy backup (format 2.0)'))
+      result.warnings.some((w) => w.startsWith('Legacy backup'))
     );
     const users = (await this.snapshot()).data.users;
     this.check(
       'legacy restore: all users restored',
-      users.length === original.backup.data.users.length
+      users.length === original.backup.identity.data.users.length
     );
     let allAccess = true;
     for (const user of users) {
@@ -411,38 +537,96 @@ export class BackupRoundTripTest extends LocalTestCase {
     const cards = (await this.snapshot()).data.flashcards;
     this.check(
       'legacy restore: flashcards restored',
-      cards.length === original.backup.data.flashcards.length
+      cards.length === original.backup.flashcards.data.flashcards.length
     );
   }
 
-  /**
-   * A backup whose first table holds a valid change (a user's full name) and
-   * whose later table holds a row that must fail (an option pointing at a card
-   * that does not exist). The import must throw and leave every table as it was,
-   * proving the earlier change was rolled back.
-   */
-  async checkAtomicImport(original) {
-    const beforeAttempt = await this.snapshot();
-    const corrupt = structuredClone(original.backup);
-    corrupt.data.users[0].full_name = 'Changed by a failed import';
-    corrupt.data.flashcard_options.push({
-      ...corrupt.data.flashcard_options[0],
+  /** A FlashCards part with an option pointing at a card that doesn't exist. */
+  static withBrokenOption(backup) {
+    const broken = structuredClone(backup);
+    const options = broken.flashcards.data.flashcard_options;
+    options.push({
+      ...options[0],
       option_id: '00000000-0000-4000-8000-000000000001',
       flashcard_id: '00000000-0000-4000-8000-000000000002',
     });
+    return broken;
+  }
 
+  /**
+   * FlashCards' part holds a valid change (a card's question) and a row that must fail: the
+   * import is refused (422 naming the table) and that step's change is rolled back.
+   */
+  async checkAtomicImport(original, actor) {
+    const beforeAttempt = await this.snapshot();
+    const corrupt = this.constructor.withBrokenOption(original.backup);
+    corrupt.flashcards.data.flashcards[0].question = 'Changed by a failed import';
     let rejection = null;
     try {
-      await backupService.importApplicationData(corrupt, original.archive);
+      await this.backups.importBackup(actor, corrupt, original.archive);
     } catch (error) {
       rejection = error;
     }
     this.check(
-      'corrupt import was rejected',
-      rejection !== null && /flashcard_options/.test(rejection.message),
-      rejection ? rejection.message : 'import succeeded'
+      'corrupt import was rejected (422, naming flashcard_options)',
+      rejection?.status === 422 && /flashcard_options/.test(rejection.message),
+      rejection ? `${rejection.status} ${rejection.message}` : 'import succeeded'
     );
     this.compareSnapshots(beforeAttempt, await this.snapshot(), new Map(), 'rolled back');
+  }
+
+  /**
+   * The identity part changes a user's name and FlashCards' part fails: step 1 stays applied
+   * (owner decision), the message says to run it again, and running the fixed file completes it.
+   */
+  async checkTwoStepRerun(original, actor) {
+    const renamed = structuredClone(original.backup);
+    const alice = renamed.identity.data.users.find((user) => user.username === 'rt_alice');
+    alice.full_name = 'Alice (restored)';
+    let rejection = null;
+    try {
+      await this.backups.importBackup(
+        actor,
+        this.constructor.withBrokenOption(renamed),
+        original.archive
+      );
+    } catch (error) {
+      rejection = error;
+    }
+    const users = (await this.snapshot()).data.users;
+    this.check(
+      'step 2 failed, step 1 stayed applied, and the message says to run it again',
+      rejection?.status === 422 &&
+        /run the restore again/.test(rejection.message) &&
+        users.find((user) => user.username === 'rt_alice')?.full_name === 'Alice (restored)',
+      rejection?.message
+    );
+    const rerun = await this.backups.importBackup(actor, renamed, original.archive);
+    this.check('running the fixed file again completes both steps', rerun.steps.length === 2);
+    await this.backups.importBackup(actor, structuredClone(original.backup), original.archive);
+  }
+
+  /** A non-platform admin's backup has no identity part, and restoring users is refused. */
+  async checkPlatformAdminOnly(original) {
+    const bob = await this.actor('rt_bob');
+    const own = await this.backups.exportBackup(bob);
+    this.check(
+      "a non-platform admin's backup has FlashCards' part only",
+      own.identity === null &&
+        own.metadata.identityIncluded === false &&
+        own.flashcards.data.flashcards.length > 0
+    );
+    let refused = null;
+    try {
+      await this.backups.importBackup(bob, structuredClone(original.backup), original.archive);
+    } catch (error) {
+      refused = error;
+    }
+    this.check(
+      'restoring users needs a platform admin (403)',
+      refused?.status === 403,
+      refused?.message
+    );
   }
 }
 

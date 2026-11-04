@@ -334,7 +334,10 @@ Render free-tier databases are reset monthly (see `DB_PG_EXPIRE`). The procedure
    It prompts for the admin username/password (and email/name when the database is empty). Use the **same
    admin username** as in the backup.
 
-The import is all-or-nothing: if any row fails, nothing is changed and the error names the table.
+The restore runs in two steps, each all-or-nothing: the users first, then FlashCards' data. If a row fails, that step
+changes nothing and the error names the table. If the second step fails, the users stay restored. Fix the cause and
+run `restore.sh` again; a second run changes nothing that is already right. Restoring users needs a platform admin
+(the first account of an install is one).
 
 Backup users are matched to existing accounts by username (then email), so your new admin account
 is merged with its backed-up identity. Its cards, shares, and progress import under the new id.

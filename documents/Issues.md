@@ -161,6 +161,25 @@ Follow-ups:
 
 ## resolved
 
+- **Phase 3d step 3: per-service backups, format 4.0 (2026-11-04).**
+  - The data JSON bundles the IAM's identity part and FlashCards' own part (platform-db `TableBackup` on the
+    `flashcards` schema).
+  - The identity part comes through the gateway, so it works in-process and over HTTP. It is included only for
+    platform admins (owner decision), and restoring users needs one (403 otherwise).
+  - Restore runs in two steps (owner decision): identity, then FlashCards' data with merged ids rewritten. A failed
+    second step answers 422, says users were restored, and asks for a rerun.
+  - 3.1, 3.0 and 2.0 files are split and restore.
+  - Fixed on the way (platform-db v0.2.4 and v0.2.5): backup column names are checked against the catalog, so a
+    crafted file can't inject SQL; times without a zone no longer shift by the machine's UTC offset when a backup
+    passes through JSON (a laptop restore of a downloaded file was affected; Render, in UTC, was not).
+
+  **Resolved:**
+  - `test:roundtrip` 167/167 in-process and `test:roundtrip:remote` 167/167 over HTTP: wiped-database restore,
+    re-import unchanged, a corrupt FlashCards part rolled back, the two-step rerun, a FlashCards-only backup for a
+    non-platform admin, 3.1 and 2.0 files;
+  - `test:iam` and `test:iam:remote` 79/79, `test:identity` 13/13, `test:startup` 16/16, `test:cleanup` 9/9, verify
+    clean.
+
 - **Phase 3c switched over on Render (2026-11-04).** Owner ran `iam-provision` (`iam_svc`, `flashcards_svc`; passwords
   in KeePassXC), created the free `iam-service` web service (`https://iam-service-9zsf.onrender.com`, database login
   `iam_svc`), and set `IAM_URL` / `IAM_CLIENT_SECRET` on FlashCards. **Verified:**
