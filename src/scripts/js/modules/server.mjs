@@ -8,6 +8,14 @@
  * waitForConnection, with backoff) and bootstraps the schemas, retrying instead of giving up.
  * Until then every request gets 503 with Retry-After, and /api/health reports "starting",
  * so Render keeps serving the previous deploy until this one is healthy.
+ *
+ * Database targets: development and preview must use a local database, or a remote one
+ * opened read-only (DB_PG_READ_ONLY=true). Starting them against a writable remote database
+ * is refused, because dev and preview share the code's schema migrations with production
+ * (2026-11-04: a dev run migrated production; platform-db DatabaseTargetGuard).
+ * DB_PG_ALLOW_REMOTE_WRITES=true overrides this
+ * for a deliberate owner action. A read-only server never bootstraps the schema; it only
+ * checks that the schema is there.
  */
 
 import express from 'express';
@@ -19,7 +27,7 @@ import pgSession from 'connect-pg-simple';
 import { appSiteData } from './appSiteData.mjs';
 import { flashCardsDb } from './db/flashCardsDatabase.mjs';
 import { identityManagementDb } from 'iam-service/db';
-import { PostgresDatabase } from 'platform-db';
+import { PostgresDatabase, DatabaseTargetGuard } from 'platform-db';
 import { userAuthService } from 'iam-service/services';
 import authRouter from './routes/authRouter.mjs';
 import usersRouter from './routes/usersRouter.mjs';
@@ -40,6 +48,8 @@ export class Server {
   /** Pause between start-up rounds after the database wait gives up or a bootstrap fails. */
   static STARTUP_RETRY_MS = 5000;
   static RETRY_AFTER_SECONDS = 5;
+  /** Tables a read-only server needs to find, since it cannot create them. */
+  static REQUIRED_TABLES = ['iam.users', 'flashcards.flashcards'];
 
   /**
    * Resolve the listening port for an environment.
@@ -66,6 +76,9 @@ export class Server {
     this.port = port ?? this.constructor.resolvePort(this.env);
     this.database = database;
     this.identityDatabase = identityDatabase;
+    // Before anything can touch the database (the session store is created below).
+    DatabaseTargetGuard.assert(this.env, identityDatabase.config);
+    DatabaseTargetGuard.assert(this.env, database.config);
     this.connectOptions = connectOptions;
     this.startupRetryMs = startupRetryMs;
     this.ready = false;
@@ -92,6 +105,8 @@ export class Server {
       `   Cookie Security: ${this.isProduction ? 'SECURE (HTTPS only)' : 'INSECURE (HTTP)'}`
     );
     console.log(`   Session Store: PostgreSQL (connect-pg-simple)`);
+    const { host, database, readOnly } = this.identityDatabase.config;
+    console.log(`   Database: ${host}/${database}${readOnly ? ' (READ-ONLY)' : ''}`);
     console.log('═══════════════════════════════════════════════════════════');
   }
 
@@ -106,6 +121,8 @@ export class Server {
       store: new PgSession({
         pool: this.identityDatabase.pool,
         tableName: 'session',
+        // Pruning deletes expired sessions; a read-only database refuses that.
+        pruneSessionInterval: this.identityDatabase.config.readOnly ? false : undefined,
         errorLog: (error) => {
           console.error('❌ Session store error:', error.message);
         },
@@ -312,8 +329,24 @@ export class Server {
   async initializeDatabase() {
     await this.identityDatabase.waitForConnection(this.connectOptions);
     await this.database.waitForConnection(this.connectOptions);
+    if (this.identityDatabase.config.readOnly) {
+      await this.verifySchemaPresent();
+      return;
+    }
     await this.identityDatabase.initializeSchema();
     await this.database.initializeSchema();
+  }
+
+  /**
+   * Read-only start: the schema can't be bootstrapped, so check that it is already there.
+   */
+  async verifySchemaPresent() {
+    for (const table of this.constructor.REQUIRED_TABLES) {
+      if (!(await this.identityDatabase.tableExists(table))) {
+        throw new Error(`Read-only database is missing ${table}; it cannot be created read-only`);
+      }
+    }
+    console.log('🔒 Read-only database: schema present, bootstrap skipped');
   }
 
   /**

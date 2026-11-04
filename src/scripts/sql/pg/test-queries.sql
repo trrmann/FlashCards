@@ -12,3 +12,7 @@ DROP SCHEMA IF EXISTS public CASCADE;
 
 -- Query: create_public_schema
 CREATE SCHEMA public;
+
+-- Query: count_users
+-- StartupTest: proves a read-only server wrote nothing.
+SELECT COUNT(*)::int AS count FROM iam.users;

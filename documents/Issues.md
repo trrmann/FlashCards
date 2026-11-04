@@ -26,7 +26,8 @@ verifying, since the failed backup import on Render needs the merge fix to compl
 >
 > - The signed-in checklist below (owner, as user and admin).
 > - Drop the empty leftover `public` tables, after a fresh backup.
-> - A guard so `deploy.sh -dev`/`-preview` can't run schema migrations against production.
+> - ~~A guard so `deploy.sh -dev`/`-preview` can't run schema migrations against production.~~ Done: see
+>   "Local dev database" under resolved.
 > - Rotate the database password (it is in public git history).
 
 > ⚠️ **Release plan for the `review-and-data-safety` branch.** It contains a schema migration (IAM phase 1:
@@ -155,6 +156,23 @@ Follow-ups:
 4. Deleting the Windows source needs the owner's separate confirmation.
 
 ## resolved
+
+- **Local dev database; production only via Render (owner request, 2026-11-04).**
+  - `deploy.sh -dev` and `-preview` use the local `flashcards_dev_local`, which `pull-prod.sh` refreshes from
+    production (read-only dump, local database dropped first, dump deleted after the restore).
+  - `deploy.sh -preview --remote` runs against production read-only (platform-db `v0.1.3` `DB_PG_READ_ONLY`:
+    PostgreSQL refuses writes, schema bootstrap skipped).
+  - The server refuses development/preview on a writable remote database (platform-db `v0.1.4` `DatabaseTargetGuard`,
+    shared with iam-service `v0.1.3`). Override: `DB_PG_ALLOW_REMOTE_WRITES`.
+  - Tests keep `flashcards_local`.
+
+  **Resolved:**
+  - `test:startup` 18/18 (guard cases; a read-only server starts without bootstrap, a sign-up fails and writes
+    nothing; after the guard moved to platform-db, its cases are tested there and `test:startup` is 13/13 with one
+    construction check); `test:roundtrip` 152/152; `test:iam` 79/79; `npm run verify` clean.
+  - platform-db 44/44 (8 read-only checks); request-queue 27/27 and iam-service 49 + 41 + 15 on platform-db `v0.1.3`.
+  - The dev path ran end to end on `flashcards_dev_local` (healthy).
+  - `deploy.sh` rejects `--remote` without `-preview`; `pull-prod.sh` cancels without changes.
 
 - **Start-up when the database isn't ready (2026-11-04, owner request: all three packages need a clean start-up).**
   - Before: FlashCards tried the database once, logged a warning and never ran the schema bootstrap again.

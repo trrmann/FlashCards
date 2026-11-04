@@ -26,6 +26,8 @@ plus `RENDER_URL` in `deploy.sh`).
 | `PORT_PREVIEW`                | ❌                                  | `4000`                  | Listen port when `NODE_ENV=preview`                                                                                         |
 | `RENDER`                      | set by Render                       | —                       | Forces internal DB hostname                                                                                                 |
 | `TEST_BASE_URL`               | ❌                                  | `http://localhost:5000` | Target of `npm run test:preview`                                                                                            |
+| `DB_PG_READ_ONLY`             | ❌ (local only)                     | `false`                 | `true` opens the database read-only: PostgreSQL refuses writes, no schema bootstrap. Set by `deploy.sh -preview --remote`   |
+| `DB_PG_ALLOW_REMOTE_WRITES`   | ❌ (never set)                      | —                       | `true` lets a development/preview server write to a remote database. Deliberate owner use only                              |
 | `GITHUB_TOKEN`                | ✅ (build only, secret)             | —                       | Read-only access to the private `trrmann/iam-service` package. Used only by `render-build.sh`, never logged                 |
 
 ## Build command
