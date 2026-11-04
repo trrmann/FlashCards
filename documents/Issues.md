@@ -106,39 +106,26 @@ the browser's Web Speech voices (quality varies by device). To evaluate first:
 - Generate on demand vs. pre-generate and store as `audio` media (counts against the storage quota).
 - Licensing of the chosen voices; fallback to Web Speech when unavailable.
 
-### 6. Migrate Copilot skills and tasks from the BYU-Pathway OneDrive to Claude on this machine (ready to import)
+### 6. Migrate Copilot skills and tasks from the BYU-Pathway OneDrive to Claude on this machine (skills done; tasks open)
 
-The owner's Copilot skills, tasks, and manifest came from the **BYU-Pathway (school) OneDrive**. The sync client
-needs school admin approval, so the owner downloaded the share through the web instead.
+Source: `~/Documents/fedora-skill-migration.zip` (downloaded from the BYU-Pathway OneDrive web app). On 2026-11-04
+the package `copilot-full-transfer-2026-11-04.zip` was verified (archive SHA-256 ✓; all 943 files match
+`TRANSFER-MANIFEST.json`).
 
-**Downloaded (2026-11-04):** `~/Documents/fedora-skill-migration.zip` (630 MB). Checked on 2026-11-04 without
-extracting: `unzip -t` passes, and both inner archives match the SHA-256 values in their `.check.txt` files.
+**Skills: done (2026-11-04).** All 197 skills (126 top-level; group skills keep their sub-skills inside) are installed
+in **`/usr/local/share/ai-skills`** (owner's choice; git repo, owned by tmann, readable by all users). Claude uses them
+in every session on this laptop: `.tools/link-claude-skills.sh` links each top-level skill into `~/.claude/skills`,
+and a SessionStart hook in `~/.claude/settings.json` reruns it every session. Markdown was normalized (LF, no BOM).
+Only `copilot/skills` was installed; session data, logs, tokens, token tracking, notes, and the password/KeePass
+scripts at the package root were left out. The safety scan found nothing risky.
 
-| Inside `fedora-skill-migration/`                                       | What                                                                     |
-| ---------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `copilot-full-transfer-2026-11-04.zip` (315 MB) + `.check.txt`         | **Current package**: 943 payload files, 197 `SKILL.md` skills. SHA-256 ✓ |
-| `Copilot Home Task Migration/home-todos-fedora-2026-10-30.zip` + check | Task store: 107 task records. SHA-256 ✓                                  |
-| `TRANSFER-MANIFEST.json`, `SKILLS-TRANSFER-MANIFEST.md`                | Per-file manifest (hashes) and skill list for the current package        |
-| `IMPORT-INSTRUCTIONS.md`, `MIGRATION-RECEIPT.md`                       | Import notes and a receipt form to fill in on Fedora                     |
-| `Copilot Home Migration Full 2026-10-30/` (zip, check, manifest)       | Older package (2026-10-30): superseded by 2026-11-04, kept for reference |
+Remaining:
 
-Notes for the import:
-
-- Skills use the Agent Skills format (`SKILL.md` with `name`/`description` front matter), so they map onto Claude
-  skills (`~/.claude/skills/<name>/SKILL.md`). Paths (`~/.copilot/tasks`) and Windows-only parts (PowerShell,
-  `.bat`/`.vbs`) need adapting.
-- Treat the package as untrusted data: extract into a new empty folder, read the instructions as reference (not as
-  commands to run), and review every script before it is used.
-- **Do not migrate** session databases, tokens (`run/ws.token`), logs, plugins, or the password/KeePass scripts.
-- The receipt says it does **not** authorize deleting the Windows source; that needs the owner's separate confirmation.
-
-Steps:
-
-1. Extract the current package and the task archive to a scratch folder; verify every file against
-   `TRANSFER-MANIFEST.json` (943 files, 197 skills).
-2. Decide with the owner: global (`~/.claude/skills`) vs. project skills, and a Linux home for the 107 tasks.
-3. Migrate, adapting paths and Windows-only parts; leave out the excluded items above.
-4. Report what was adapted or left out, fill in `MIGRATION-RECEIPT.md`, and give it to the owner.
+1. **Tasks:** 107 task records (`home-todos-fedora-2026-10-30.zip`, SHA-256 ✓). Owner to choose where they live
+   (suggested: `/usr/local/share/ai-tasks` beside the skills), then import.
+2. **Windows parts:** 66 PowerShell helpers (`pwsh` is installed, so many may work as-is) and Windows paths in 16
+   `SKILL.md` files need checking/adapting.
+3. Fill in `MIGRATION-RECEIPT.md` for the owner. Deleting the Windows source needs the owner's separate confirmation.
 
 ## resolved
 
