@@ -110,7 +110,7 @@ Get status of all required database tables.
 ```json
 {
   "status": "success",
-  "database": "shared_apps_wuy4",
+  "database": "<db-name>",
   "allTablesExist": true,
   "tables": {
     "users": {
@@ -303,23 +303,47 @@ curl -X POST http://localhost:5000/api/system/initial-setup \
 - HttpOnly cookies
 - 24-hour expiration
 
-## Future Enhancements
+## How the UI uses this
 
-Possible additions in future phases:
+The `/login` page renders a **First User Setup** form when there are no users (`GET /login` checks
+`userAuthService.countUsers()` on the server). That form posts to `POST /api/auth/register`, not to
+`/api/system/initial-setup`. Registration also grants the `admin` role when it creates the first user,
+so both paths end in the same state. `initial-setup` is mainly useful for scripted setup (curl/CI).
 
-- [ ] Role-based access control (Admin, User roles)
-- [ ] Multi-admin support
-- [ ] Initial setup configuration (site name, theme, etc.)
-- [ ] Setup wizard UI
-- [ ] Recovery mode for deleted user databases
+## Restoring a backup into a new database
 
-## Files Modified
+Render free-tier databases are reset monthly (see `DB_PG_EXPIRE`). The procedure:
 
-- `src/scripts/js/modules/routes/systemRouter.mjs` - New system routes
-- `server.js` - Added system routes mounting
+1. **Before the reset**, back up production (both files):
 
----
+   ```bash
+   backup.sh            # uses RENDER_URL from .env; saves to ~/FlashCardsBackups/<timestamp>_<host>/
+   ```
 
-**Status:** ✅ Implemented and tested
-**Endpoints:** 3 new system endpoints
-**Test Coverage:** Verified all scenarios
+   `deploy.sh -prod` also does this before every release. The Profile page's Backup & Restore downloads the same two files.
+
+2. Point the Render web service at the new database (`DB_PG_*`, `DB_PG_EXPIRE`) and let it start. The schemas
+   bootstrap automatically.
+3. **Restore in one command.** On an empty database it creates the admin through initial setup, then imports:
+
+   ```bash
+   restore.sh https://<app>.onrender.com ~/FlashCardsBackups/<folder>/flashcards-backup.json \
+              ~/FlashCardsBackups/<folder>/flashcards-backup-media.zip
+   ```
+
+   It prompts for the admin username/password (and email/name when the database is empty). Use the **same
+   admin username** as in the backup.
+
+The import is all-or-nothing: if any row fails, nothing is changed and the error names the table.
+
+Backup users are matched to existing accounts by username (then email), so your new admin account
+is merged with its backed-up identity. Its cards, shares, and progress import under the new id.
+The account's row (including the password hash) is then updated from the backup, so log in with the
+**old** password afterwards.
+
+## Implementation
+
+- `src/scripts/js/modules/routes/systemRouter.mjs`: `setup-status`, `initial-setup`, `database-status`, `db-expiration-warning`
+- `src/scripts/js/modules/server.mjs`: mounts the router at `/api/system`; `GET /login` passes `needsSetup` to the view
+- Roles: the `admin` and `user` roles are seeded by `iam-postgres-schema.sql`. More admins can be added from the
+  Profile page (Make Admin) or with `POST /api/admin/users/:userId/promote`.

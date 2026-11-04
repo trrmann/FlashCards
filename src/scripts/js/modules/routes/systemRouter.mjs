@@ -5,9 +5,9 @@
 
 import express from 'express';
 import { BaseRouter } from './baseRouter.mjs';
-import { validationService } from '../auth/validationService.mjs';
+import { identityManagementDb } from 'iam-service/db';
+import { validationService, userAuthService } from 'iam-service/services';
 import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
-import { userAuthService } from '../auth/userAuthService.mjs';
 
 class SystemRouter extends BaseRouter {
   static queries = flashCardsDb.constructor.loadNamedSqlStatements(
@@ -107,7 +107,7 @@ class SystemRouter extends BaseRouter {
 
         // Create the first user and make them the system administrator
         const user = await userAuthService.createUser(username, email, password, fullName || null);
-        await userAuthService.setUserAdmin(user.user_id);
+        await userAuthService.makeFirstAdmin(user.user_id);
 
         // Set session
         req.session.userId = user.user_id;
@@ -141,22 +141,23 @@ class SystemRouter extends BaseRouter {
      */
     router.get('/database-status', async (req, res) => {
       try {
+        // Each table is counted through the adapter of the domain that owns it.
         const tables = [
-          'users',
-          'flashcards',
-          'leitner_boxes',
-          'quizzes',
-          'quiz_questions',
-          'quiz_results',
-          'import_export_logs',
+          ['users', identityManagementDb],
+          ['flashcards', flashCardsDb],
+          ['leitner_boxes', flashCardsDb],
+          ['quizzes', flashCardsDb],
+          ['quiz_questions', flashCardsDb],
+          ['quiz_results', flashCardsDb],
+          ['import_export_logs', flashCardsDb],
         ];
 
         const tableStatus = {};
         let allTablesExist = true;
 
-        for (const table of tables) {
+        for (const [table, db] of tables) {
           try {
-            const result = await flashCardsDb.query(
+            const result = await db.query(
               this.constructor.queries.count_table_rows_template.replace('{{table}}', table)
             );
             tableStatus[table] = {

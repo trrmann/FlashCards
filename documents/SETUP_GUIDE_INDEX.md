@@ -1,5 +1,8 @@
 # 🎯 FlashCards Setup & Development Guide
 
+> **Superseded (original setup index).** Reviewed against the code on 2026-11-03. It links the superseded setup plan.
+> Use instead: [SETUP_QUICK_START.md](./SETUP_QUICK_START.md), [README.md](./README.md).
+
 ## ⚡ Quick Links
 
 **New to this project?** Start here:

@@ -4,6 +4,7 @@
  */
 
 import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
+import { userAuthService } from 'iam-service/services';
 
 class EntriesService {
   static queries = flashCardsDb.constructor.loadNamedSqlStatements(
@@ -11,8 +12,22 @@ class EntriesService {
     flashCardsDb.constructor.sqlRoot
   );
 
-  constructor(database = flashCardsDb) {
+  constructor(database = flashCardsDb, identityService = userAuthService) {
     this.database = database;
+    this.identityService = identityService;
+  }
+
+  /**
+   * Add username/full_name for the user in `idColumn` to each row, looked up
+   * through the IAM service (app SQL never joins IAM tables, CODING_STANDARDS 0.8).
+   */
+  async attachUserNames(rows, idColumn) {
+    const summaries = await this.identityService.getUserSummaries(rows.map((row) => row[idColumn]));
+    return rows.map((row) => ({
+      ...row,
+      username: summaries.get(row[idColumn])?.username ?? null,
+      full_name: summaries.get(row[idColumn])?.full_name ?? null,
+    }));
   }
 
   /**
@@ -301,7 +316,8 @@ class EntriesService {
       [flashcardId, userId]
     );
 
-    return result.rows[0] || null;
+    const [card] = await this.attachUserNames(result.rows, 'created_by');
+    return card || null;
   }
 
   /**
@@ -396,7 +412,7 @@ class EntriesService {
       this.constructor.queries.select_public_cards_for_user,
       [userId]
     );
-    return result.rows;
+    return this.attachUserNames(result.rows, 'created_by');
   }
 
   /**
@@ -452,7 +468,7 @@ class EntriesService {
     const result = await this.database.query(this.constructor.queries.select_removed_public_cards, [
       userId,
     ]);
-    return result.rows;
+    return this.attachUserNames(result.rows, 'created_by');
   }
 
   /**
@@ -582,7 +598,7 @@ class EntriesService {
       recipientId,
     ]);
 
-    return result.rows;
+    return this.attachUserNames(result.rows, 'owner_id');
   }
 
   /**
@@ -595,7 +611,7 @@ class EntriesService {
       recipientId,
     ]);
 
-    return result.rows;
+    return this.attachUserNames(result.rows, 'owner_id');
   }
 
   /**
@@ -608,7 +624,7 @@ class EntriesService {
       ownerId,
     ]);
 
-    return result.rows;
+    return this.attachUserNames(result.rows, 'recipient_id');
   }
 
   /**

@@ -1,415 +1,155 @@
 # FlashCards Architecture & System Design
 
-## System Overview
+## System overview
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      CLIENT LAYER                            │
-│  (Browser - EJS Templates, HTML, CSS, Client-side JS)      │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ HTTP/HTTPS
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    EXPRESS API LAYER                         │
-│  - Route handlers                                            │
-│  - Middleware (auth, validation, error handling)            │
-│  - Session management                                        │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ SQL
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    DATA ACCESS LAYER                         │
-│  - PostgreSQL client (pg library)                           │
-│  - Query builders / ORM                                      │
-│  - Connection pooling                                        │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  RENDER POSTGRESQL DB                        │
-│  - User accounts & authentication                           │
-│  - Flashcard definitions                                    │
-│  - Practice matrices (SRS tracking)                         │
-│  - Quiz templates and results                               │
-└─────────────────────────────────────────────────────────────┘
+```text
+Browser (EJS-rendered pages + inline <script> per page, fetch() to JSON APIs)
+   │  session cookie (connect.sid)
+   ▼
+Express 5 app  ── server.js → src/scripts/js/modules/server.mjs (class Server)
+   ├─ middleware: trust proxy · express-session (PgSession store) · express.json(50mb)
+   │              · express.static(public/) · EJS view engine · userContextMiddleware
+   ├─ page routes:  /  /entries  /practice  /quiz  /login  /profile  /logout
+   └─ API routers (classes extending BaseRouter):
+        /api/system  /api/auth  /api/users  /api/navigation
+        /api/entries  /api/practice (+ /practice)  /api/quiz  /api/admin  /api/iam  /api/health
+   │
+   ▼
+Services (singletons)
+   iam-service package: userAuthService · validationService · organizationService
+   src/scripts/js/modules/auth/: entriesService · practiceService · backupService · mediaArchiveService
+   │
+   ▼
+Database adapters
+   PostgresDatabase (platform-db package: config, pool, SQL file loader, health, expiry)
+     ├─ IdentityManagementDatabase  (iam-service package) → its iam-postgres-schema.sql
+     └─ FlashCardsDatabase          (src/scripts/js/modules/db/) → flashcards-postgres-schema.sql
+   │  pg.Pool (SSL, max 20)
+   ▼
+PostgreSQL on Render (one database, public schema)
 ```
 
----
+## Layers
 
-## Component Architecture
+### Server (`server.mjs`)
 
-### 1. Frontend (Client Layer)
+`class Server` builds the Express app in its constructor and exports a singleton `server`.
+`server.start()` listens on the port first, then initializes the database (see Bootstrap).
+`server.stop()` closes the HTTP server and both pools.
 
-**Views (EJS Templates)**
+- **Port**: `resolvePort(env)` gives development → `PORT_DEV` (5000), preview → `PORT_PREVIEW` (4000),
+  production → `PORT_PROD` → `PORT` → 3000.
+- **Environment**: `NODE_ENV` (lower-cased); defaults to `production` when unset.
+- **Sessions**: `express-session` with `connect-pg-simple` on the IAM pool, table `session`.
+  Secret is `SESSION_SECRET`, falling back to a hard-coded dev secret. Set it on Render.
+  The cookie is httpOnly, `sameSite=lax`, `secure` in production, with a 24 h max age. `trust proxy` = 1 for Render's TLS proxy.
+- **userContextMiddleware**: on every request, sets `res.locals.{userId, isLoggedIn, fullName, isAdmin, siteData}`.
+- **Page title**: `appSiteData` is a single shared instance. Each page route sets its title,
+  and the middleware sets the user's name. Because one object is shared across concurrent
+  requests, titles and names can bleed between users under concurrency.
 
-- **Layout**: Header (nav) → Main Content → Footer
-- **Navigation Structure**:
-  - Unauthenticated: Home → Login
-  - Authenticated: Home → Practice → Quiz → Entries → Profile → Logout
+### Routers (`src/scripts/js/modules/routes/`)
 
-**Page Components**
+Each router is a class extending `BaseRouter`. The base class owns an `express.Router`, the
+database handle, and the `requireAuth` and `requireAdmin` middleware. Subclasses implement
+`registerRoutes()`, and each module default-exports `instance.router`. Most routers check
+`req.session.userId` inline. `usersRouter` and `adminRouter` use the base middleware.
+Full reference: [API_ENDPOINTS.md](./API_ENDPOINTS.md).
 
-| Page     | Purpose         | Features                             |
-| -------- | --------------- | ------------------------------------ |
-| Home     | Landing page    | Welcome, intro, login link           |
-| Login    | Authentication  | Username/password form               |
-| Profile  | User settings   | Update password, name, preferences   |
-| Entries  | Card management | CRUD for flashcards, import/export   |
-| Practice | Study mode      | Configurable practice algorithm, SRS |
-| Quiz     | Assessment      | Quiz taking, score tracking          |
-| Logout   | Cleanup         | Session termination                  |
+### Services (`src/scripts/js/modules/auth/`)
 
-**Responsive Design**
+Despite the folder name, these are the domain services:
 
-- Core styles (core.css) - baseline
-- Mobile-first responsive breakpoints:
-  - Mobile (mobile.css)
-  - Tablet (tablet.css)
-  - Desktop (desktop.css)
-  - Laptop (laptop.css)
+| Service               | Responsibility                                                                                                 |
+| --------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `validationService`   | bcrypt hash/compare (10 rounds); username, email, and password rules                                           |
+| `userAuthService`     | Users, roles (`admin`), visibility, storage limit, last page, delete-user cascade                              |
+| `entriesService`      | Card CRUD, media blocks, options, storage usage, public cards, sharing, metadata                               |
+| `practiceService`     | Leitner scheduling, option generation, session repetitions, stats, dashboard, difficulty                       |
+| `organizationService` | IAM: organizations, members, groups, group roles, platform admins, app access (with their authorization rules) |
+| `backupService`       | Full-dataset export/import (upsert) across IAM and app tables                                                  |
+| `mediaArchiveService` | Media ZIP build/parse (`media/<media_id>.<ext>`), manifest                                                     |
 
----
+Each service loads its SQL as a static `queries` map, read from a named-query file in `src/scripts/sql/pg/`.
 
-### 2. Backend (Express Server)
+### Data layer
 
-**Architecture Pattern**: MVC-inspired with clear separation
+`PostgresDatabase` loads `.env` via dotenv. It reads `DB_PG_*` variables. In production
+(`NODE_ENV=production` or `RENDER` set), it uses `DB_PG_INTERNAL_HOSTNAME`; otherwise it uses
+`DB_PG_EXTERNAL_HOSTNAME`. SSL is always on with `rejectUnauthorized: false`.
+Every query is logged with its duration. An error on an idle pool client exits the process.
 
-```
-Server Structure:
-├── Routes Layer (server.js)
-├── Controllers (Planned)
-│   ├── AuthController
-│   ├── CardController
-│   ├── PracticeController
-│   ├── QuizController
-│   └── UserController
-├── Services Layer (Planned)
-│   ├── AuthService
-│   ├── CardService
-│   ├── PracticeService
-│   └── QuizService
-├── Models Layer (Planned)
-│   ├── User
-│   ├── FlashCard
-│   ├── PracticeMatrix
-│   └── Quiz
-├── Middleware (Planned)
-│   ├── Authentication
-│   ├── Error Handling
-│   └── Validation
-└── Utils
-    └── appSiteData (page metadata)
-```
+The two adapters (`IdentityManagementDatabase`, `FlashCardsDatabase`) are separate pools to the same
+database, each with its own PostgreSQL schema (`iam`, `flashcards`) on its connection `search_path`.
+App code reaches identity data only through `userAuthService` (no cross-domain SQL); app tables link to
+`iam.users` by foreign key with `ON DELETE CASCADE`. The IAM becomes a separate service in a later phase
+(IAM_MULTI_APP_DESIGN.md).
+See [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md).
 
-**Key Middleware & Concerns**
+### Frontend
 
-- **Session Management**: JWT tokens or server-side sessions
-- **Authentication**: Protect routes requiring login
-- **Validation**: Input sanitization & validation
-- **Error Handling**: Graceful error responses
-- **CORS**: Cross-origin requests (if applicable)
+- `src/views/*.ejs` pages include `partials/header.ejs`, `partials/footer.ejs`, `partials/filter-panel.ejs`, and `partials/mission.ejs`.
+  Each page's behavior is an inline `<script>` that calls the JSON APIs with `fetch`. There is no bundler and no client framework.
+- CSS (as of the class-driven styling refactor):
+  - `styles.css` → `desktop.css` → `laptop.css` → `tablet.css` → `mobile.css` → `core.css` → `forms.css` (an `@import` chain of breakpoint layers)
+  - `app.css`: shared app components
+  - `pages/<page>.css`: per-page styles, chosen by the `activePage` value each view passes to the header
+  - Visibility is toggled with classes, not inline styles.
+- `public/js/navigation-tracker.js` posts page visits to `/api/navigation/track`.
+- Browser APIs used: Web Speech (TTS for `text_tts` blocks and speech input for `listen` mode), MediaRecorder (audio recording), FileReader (images and import files).
 
----
+## Data flows
 
-### 3. Data Layer (Database)
+### Login
 
-**PostgreSQL on Render**
+`login.ejs` → `POST /api/auth/login` → `userAuthService.authenticateUser` (bcrypt, `status = 'active'`)
+→ session saved in Postgres → response `redirectTo` = last page visited → browser navigates there.
 
-**Access Methods**
+### Practice (Leitner)
 
-1. **Primary**: `PostgresDatabase` + `FlashCardsDatabase` classes in `src/scripts/js/modules/db`
-2. **Admin/Monitoring**: pgAdmin 4 (local desktop app)
-   - Connection: Render PostgreSQL URL
-   - For schema inspection, data export, manual queries
-
-**Schema Organization**
-
-The application schema is bootstrapped from SQL files under `src/scripts/sql/pg`, not from an in-process migration runner. `FlashCardsDatabase.initializeSchema()` loads `flashcards-postgres-schema.sql` and executes the statements in order. The generic `PostgresDatabase` class owns the shared SQL loading, connection config, and environment bootstrap, while the app-specific subclass is responsible for schema startup.
-
-```sql
--- Core Authentication & User Management
-CREATE TABLE users (
-  user_id UUID PRIMARY KEY,
-  username VARCHAR(255) UNIQUE NOT NULL,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  full_name VARCHAR(255),
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
--- Flashcard Definitions
-CREATE TABLE flashcards (
-  card_id UUID PRIMARY KEY,
-  user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
-  question TEXT NOT NULL,
-  answer TEXT NOT NULL,
-  category VARCHAR(100),
-  difficulty INT CHECK (difficulty >= 1 AND difficulty <= 5),
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
--- Leitner Box System Tracking
--- Box 1: Daily (new & incorrect cards)
--- Box 2: Every 2 days (medium)
--- Box 3: Weekly (mastered)
-CREATE TABLE leitner_boxes (
-  box_id UUID PRIMARY KEY,
-  user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
-  card_id UUID REFERENCES flashcards(card_id) ON DELETE CASCADE,
-  box_number INT CHECK (box_number >= 1 AND box_number <= 3),
-  review_count INT DEFAULT 0,
-  correct_count INT DEFAULT 0,
-  last_reviewed TIMESTAMP,
-  next_review TIMESTAMP,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE(user_id, card_id)
-);
-
--- Quiz Templates
-CREATE TABLE quizzes (
-  quiz_id UUID PRIMARY KEY,
-  user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
-  name VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
--- Quiz Composition (which cards in which quiz)
-CREATE TABLE quiz_questions (
-  quiz_question_id UUID PRIMARY KEY,
-  quiz_id UUID REFERENCES quizzes(quiz_id) ON DELETE CASCADE,
-  card_id UUID REFERENCES flashcards(card_id) ON DELETE CASCADE,
-  order_index INT NOT NULL
-);
-
--- Quiz Results (tracking quiz attempts)
-CREATE TABLE quiz_results (
-  result_id UUID PRIMARY KEY,
-  quiz_id UUID REFERENCES quizzes(quiz_id) ON DELETE CASCADE,
-  user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
-  score INT NOT NULL,
-  total_questions INT NOT NULL,
-  taken_at TIMESTAMP DEFAULT NOW()
-);
-
--- Import/Export Audit (optional)
-CREATE TABLE import_export_logs (
-  log_id UUID PRIMARY KEY,
-  user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
-  action VARCHAR(50), -- 'import', 'export'
-  filename VARCHAR(255),
-  card_count INT,
-  created_at TIMESTAMP DEFAULT NOW()
-);
+```text
+/practice page load → initializeAllCardsForUser → stats/schedule/summary/streak rendered
+"Start" → sessionStartTime = now (client)
+loop:
+  GET /api/practice/next?class=&lesson=&category=   → random due card + options (incl. isCorrect)
+  user answers (choice, multi-select, or "listen" self-grade); browser decides isCorrect
+  POST /api/practice/answer {flashcardId, isCorrect, sessionStartTime, filter*}
+     → session_card_attempts + practice_history rows
+     → after 3/2/1 attempts (box 1/2/3): all correct → promote, any wrong → box 1; next_review set
 ```
 
----
+Details: [LEITNER_SYSTEM.md](./LEITNER_SYSTEM.md), [NONE_OF_ABOVE_FEATURE.md](./NONE_OF_ABOVE_FEATURE.md),
+[REPETITIONS_IMPLEMENTATION.md](./REPETITIONS_IMPLEMENTATION.md).
 
-## Bootstrap Model
+### Quiz
 
-The live runtime uses the object-based database bootstrap path:
+`POST /api/quiz/start` (practiced cards only, ≤ 20, difficulty-bucketed) → client runs the quiz
+→ `POST /api/quiz/:id/submit` with per-card `is_correct` → `quiz_results`. Quiz answers do not
+affect Leitner boxes.
 
-- `PostgresDatabase` handles environment setup, pool config, generic query helpers, and static SQL file loading.
-- `FlashCardsDatabase` extends the base class and initializes the app schema from `src/scripts/sql/pg/flashcards-postgres-schema.sql`.
-- No migration module or migration runner remains in the active startup path.
+### Import / export
 
-## Data Flow
+Two linked files at every point: a data JSON plus a media ZIP keyed by `media_id`.
 
-### Authentication Flow
+- User level: `/api/entries/export` + `/export/media` → `/api/entries/import` (upsert by question text).
+- Admin level: `/api/admin/backup/download` + `/download-media` → `/api/admin/backup/import`
+  (upsert by primary key; roles/rights matched by name; users matched by username/email and their ids remapped).
 
-```
-User Input (login.ejs)
-    ↓
-POST /api/auth/login
-    ↓
-AuthController.login()
-    ↓
-AuthService.authenticate()
-    ↓
-Check credentials in DB
-    ↓
-Generate JWT Token
-    ↓
-Send token to client (cookie/localStorage)
-    ↓
-Client stores session
-```
+## Security notes (current state)
 
-### Practice Session Flow (Leitner System)
+| Area                      | Status                                                                                                                                                                                              |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Passwords                 | bcrypt, 10 rounds. Password change does not require the current password.                                                                                                                           |
+| Sessions                  | Server-side in Postgres; httpOnly cookie; secure in production. Set `SESSION_SECRET`.                                                                                                               |
+| Authorization             | Ownership checks in services (`created_by`). Admin = FlashCards `admin` (directly or through a group) or `platform_admin`. Signing in requires FlashCards access. Fine-grained `rights` are unused. |
+| SQL                       | Parameterized queries. Dynamic clauses come only from fixed templates and whitelisted column names.                                                                                                 |
+| Grading                   | Practice and quiz correctness is computed in the browser and trusted by the server.                                                                                                                 |
+| Rate limiting, CORS, CSRF | None (same-origin app with `sameSite=lax` cookies).                                                                                                                                                 |
+| Storage abuse             | Per-user quota (`storage_max_bytes`, default 25 MB) on card create and import.                                                                                                                      |
+| Secrets                   | `.env` is ignored by git. `.env.backup` is ignored but **is tracked** in the repo (see Issues).                                                                                                     |
 
-```
-User visits /practice
-    ↓
-Client requests GET /api/practice/next-card
-    ↓
-PracticeController.getNextCard()
-    ↓
-PracticeService.selectCard()
-    (prioritizes Box 1 cards, then Box 2/3 if due)
-    ↓
-Return card question
-    ↓
-User answers
-    ↓
-POST /api/practice/submit-answer
-    ↓
-PracticeService.updateLeitnerBox()
-    If Correct:
-      Promote: box_number++
-      Set next_review per box schedule
-    If Incorrect:
-      Demote: box_number = 1
-      Set next_review = NOW() + 1 day
-    ↓
-Update leitner_boxes table
-    ↓
-Return feedback & progress
-```
+## Deployment
 
-**Box Schedule:**
-
-- Box 1 (Daily): Review every 1 day
-- Box 2 (Every 2 days): Review every 2 days
-- Box 3 (Weekly): Review every 7 days
-
-### Quiz Flow
-
-```
-User creates/selects quiz on /quiz
-    ↓
-POST /api/quiz/create or GET /api/quiz/:id
-    ↓
-QuizController returns quiz_questions
-    ↓
-Client displays questions one-by-one
-    ↓
-User submits answers
-    ↓
-POST /api/quiz/:id/submit
-    ↓
-QuizService.scoreQuiz()
-    ↓
-Insert quiz_results record
-    ↓
-Display results/statistics
-```
-
-### Import/Export Flow
-
-```
-User on /entries
-    ↓
-GET /api/entries/export (or click Export button)
-    ↓
-CardService.exportUserCards()
-    ↓
-Generate JSON file
-    ↓
-Download to client
-    ↓
---- OR ---
-User uploads file
-    ↓
-POST /api/entries/import (multipart/form-data)
-    ↓
-CardService.importCards()
-    ↓
-Parse JSON, validate, insert into DB
-    ↓
-Log in import_export_logs
-    ↓
-Return import summary
-```
-
----
-
-## Security Considerations
-
-1. **Authentication**: JWT tokens with secure, httpOnly cookies
-2. **Password Storage**: bcryptjs with salt rounds (10+)
-3. **Input Validation**: Server-side validation before DB queries
-4. **SQL Injection Prevention**: Parameterized queries via pg library
-5. **CORS**: Restrict cross-origin requests
-6. **Rate Limiting**: Prevent brute-force attacks (especially login)
-7. **HTTPS**: Required in production (Render handles this)
-8. **Environment Variables**: Sensitive data in .env, never committed
-9. **User Isolation**: Row-level security (queries filter by user_id)
-
----
-
-## Performance Considerations
-
-1. **Database Indexes**:
-   - PK on all tables
-   - UNIQUE on (username, email, user_id+card_id in matrices)
-   - Foreign keys for referential integrity
-
-2. **Connection Pooling**: Use pg with pooling to reuse DB connections
-
-3. **Caching**: Consider Redis for session storage and recent cards
-
-4. **Query Optimization**:
-   - Pagination for large card lists
-   - Lazy-load quiz results
-   - Index on `user_id` for fast user isolation
-
-5. **Asset Optimization**:
-   - Minify CSS in production
-   - Bundle client-side JS (if any)
-   - CDN for static files (optional)
-
----
-
-## Scalability Plan
-
-### Phase 1 (MVP)
-
-- Single-instance Node.js server
-- Single Render PostgreSQL database
-- Local session storage (memory or cookies)
-
-### Phase 2 (Growth)
-
-- Add Redis for session/cache layer
-- Database read replicas (if traffic warrants)
-- Load balancing (if multi-instance needed)
-
-### Phase 3 (Scale)
-
-- Microservices for quiz/practice engines
-- Message queues for async processing
-- CDN for static assets
-
----
-
-## Error Handling Strategy
-
-```javascript
-// Middleware approach
-app.use(errorHandler); // Catches all errors
-
-// Pattern
-try {
-  // Logic
-} catch (error) {
-  logger.error(error);
-  res.status(500).json({
-    error: 'User-friendly message',
-    details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-  });
-}
-```
-
----
-
-## Deployment Architecture
-
-See `DEPLOYMENT_STRATEGY.md` for Render-specific setup:
-
-- Environment variables configuration
-- Database provisioning
-- CI/CD pipeline
-- Monitoring & logging
+Render web service (auto-deploys on push to `main`) plus a Render PostgreSQL database.
+Local dev and preview point to the same Render database through its external hostname.
+See [DEPLOY.md](./DEPLOY.md), [ENVIRONMENTS.md](./ENVIRONMENTS.md), and [RENDER_ENVIRONMENT_VARIABLES.md](./RENDER_ENVIRONMENT_VARIABLES.md).

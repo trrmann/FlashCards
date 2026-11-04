@@ -2,240 +2,121 @@
 
 ## Overview
 
-FlashCards is an Express.js-based web application for studying flashcards. The project aims to help users practice and quiz themselves using customizable study matrices with PostgreSQL backend storage.
+FlashCards is an Express web application for studying flashcards with a 3-box Leitner
+system, quizzes, card sharing, public cards, and multimedia (image, audio, TTS) questions
+and answers. Data is stored in PostgreSQL on Render.
 
-**Tech Stack:**
+### Tech stack
 
-- **Frontend:** EJS templates, HTML, CSS (responsive design)
-- **Backend:** Node.js with Express.js v5.3.0
-- **Database:** PostgreSQL (Render - planned)
-- **Dev Tools:** Nodemon for development
+- **Runtime:** Node.js (ES modules, `"type": "module"`), Express 5, EJS 7
+- **Database:** PostgreSQL via `pg`; sessions via `express-session` + `connect-pg-simple`
+- **Auth:** server-side sessions, `bcrypt` password hashing
+- **Media archives:** `adm-zip`
+- **Config:** `dotenv`, plus `node --env-file=.env` in `nodemon.json`
+- **Dev/test tools:** nodemon, ESLint 10 (flat config) + Prettier, Lighthouse, Puppeteer, html-validate, axe-core
 
----
+## Directory structure
 
-## Directory Structure
+FlashCards depends on two shared packages, installed from GitHub at tag `v0.1.0` (Render builds with `src/scripts/sh/render-build.sh`): **platform-db** (`PostgresDatabase`, `LocalDatabaseTest`, the shared `local-db.sh`) and **iam-service** (`IdentityManagementDatabase`, `userAuthService`, `validationService`, `organizationService`, `OrganizationRouter`, the IAM service and `IamClient`). Their code and SQL are no longer in this repository.
 
-```
+```text
 FlashCards/
-├── documents/                  # Project documentation (this folder)
-│   ├── PROJECT_STRUCTURE.md   # This file
-│   ├── ARCHITECTURE.md         # System architecture and design
-│   ├── DATABASE_SCHEMA.md      # Database design
-│   ├── API_ENDPOINTS.md        # API documentation
-│   ├── TESTING_STRATEGY.md     # Testing approach
-│   └── DEPLOYMENT_STRATEGY.md  # Deployment guide
-├── public/                     # Static assets
+├── README.md                     # Pointer only. All docs live in documents/
+├── server.js                     # Entry point: imports the Server singleton and calls start()
+├── package.json / package-lock.json
+├── nodemon.json                  # Runs node --env-file=.env server.js; watches js css ejs env
+├── eslint.config.js, .prettierrc.json, .prettierignore
+├── .vscode/settings.json, FlashCards.code-workspace  # Put src/scripts/sh on the VS Code terminal PATH
+├── .env.example                  # Template (note: several keys in it are not read by the code)
+├── documents/                    # All project documentation (+ sample data exports)
+├── public/                       # Static assets served at /
 │   ├── css/
-│   │   ├── styles.css         # Main stylesheet
-│   │   ├── core.css           # Core styles
-│   │   ├── mobile.css         # Mobile responsive
-│   │   ├── tablet.css         # Tablet responsive
-│   │   ├── desktop.css        # Desktop responsive
-│   │   └── laptop.css         # Laptop responsive
-│   └── images/                # Image assets
-├── src/                        # Source code
-│   ├── js/
-│   │   └── modules/
-│   │       └── appSiteData.mjs # Site data class (page titles, names)
-│   └── views/                  # EJS templates
-│       ├── home.ejs           # Home page
-│       ├── login.ejs          # Login form
-│       ├── profile.ejs        # User profile
-│       ├── entries.ejs        # Flashcard entries management
-│       ├── practice.ejs       # Practice mode
-│       ├── quiz.ejs           # Quiz mode
-│       ├── logout.ejs         # Logout page
-│       └── partials/
-│           ├── header.ejs     # Navigation header
-│           └── footer.ejs     # Page footer
-├── server.js                   # Express server entry point
-├── package.json               # Project dependencies
-├── nodemon.json               # Nodemon configuration
-└── .env                       # Environment variables (not committed)
+│   │   ├── styles.css            # Entry: @import chain desktop → laptop → tablet → mobile → core → forms
+│   │   ├── app.css               # Shared application components
+│   │   └── pages/                # Per-page styles: entries, home, login, logout, organizations, practice, profile, quiz
+│   └── js/
+│       ├── navigation-tracker.js  # Posts page visits to /api/navigation/track
+│       └── pages/organizations-page.js  # OrganizationsPage class (no inline page script)
+└── src/
+    ├── data/test.db              # Unused leftover (the app uses PostgreSQL only)
+    ├── views/                    # EJS pages (each with an inline <script> for its behavior)
+    │   ├── home.ejs  entries.ejs  practice.ejs  quiz.ejs
+    │   ├── login.ejs  profile.ejs  logout.ejs
+    │   └── partials/header.ejs  footer.ejs  filter-panel.ejs  mission.ejs
+    └── scripts/
+        ├── js/modules/
+        │   ├── server.mjs        # class Server: middleware, page routes, API mounting, DB bootstrap
+        │   ├── appSiteData.mjs   # Page title / user name for templates
+        │   ├── db/
+        │   │   └── flashCardsDatabase.mjs          # App schema owner (extends platform-db PostgresDatabase)
+        │   ├── auth/             # Domain services (see ARCHITECTURE.md)
+        │   │   ├── entriesService.mjs   practiceService.mjs
+        │   │   └── backupService.mjs    mediaArchiveService.mjs   # (IAM services: iam-service package)
+        │   ├── routes/           # class XRouter extends BaseRouter
+        │   │   ├── baseRouter.mjs
+        │   │   ├── systemRouter.mjs  authRouter.mjs  usersRouter.mjs  navigationRouter.mjs
+        │   │   └── entriesRouter.mjs  practiceRouter.mjs  quizRouter.mjs  adminRouter.mjs  iamRouter.mjs (iam-service OrganizationRouter + session)
+        │   ├── tools/
+        │   │   ├── backupClient.mjs        # BackupClient / BackupCli (HTTP backup + restore)
+        │   │   └── backup-cli.mjs          # Entry used by backup.sh / restore.sh
+        │   └── tests/
+        │       ├── preview-tests.mjs       # npm run test:preview entry
+        │       ├── previewTestSuite.mjs    # Lighthouse / HTML / CSS / memory / Web Vitals
+        │       ├── testResults.mjs
+        │       ├── backup-roundtrip.mjs     # npm run test:roundtrip entry
+        │       ├── backupRoundTripTest.mjs  # Backup wipe/restore proof (local DB only)
+        │       ├── localTestCase.mjs        # Extends platform-db LocalDatabaseTest: resets iam + flashcards
+        │       ├── iam-api-test.mjs         # npm run test:iam entry
+        │       └── iamApiTest.mjs           # /api/iam endpoint tests (local DB only)
+        ├── sh/                           # Shell scripts: on PATH in the VS Code terminal (any dir)
+        │   ├── backup.sh                 # Download a full backup (JSON + ZIP) from any environment
+        │   ├── deploy.sh                 # deploy.sh -dev | -preview | -prod | -all
+        │   ├── local-db.sh               # Wrapper for platform-db's local-db.sh (LOCAL_DATABASE.md)
+        │   ├── render-build.sh           # Render build command: GitHub package access, then npm ci
+        │   └── restore.sh                # Restore / recover an empty database in one command
+        └── sql/pg/
+            ├── flashcards-postgres-schema.sql   # App tables + idempotent migrations
+            ├── *-queries.sql                    # Named queries (-- Query: name)
+            └── test-queries.sql                 # Test-only (local scratch DB)
 ```
 
----
+## Pages
 
-## Current Components
+| Route            | View                | What it does                                                                                                                                                                                            |
+| ---------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`              | `home.ejs`          | Welcome; when logged in, the **Study Status** dashboard (overall, by class → lesson, by category)                                                                                                       |
+| `/entries`       | `entries.ejs`       | Create/edit cards (question types, languages, image/audio/TTS blocks, options), grouped collapsible list, bulk public/private, bulk share, Public Cards (remove/restore), Shared with Me, import/export |
+| `/practice`      | `practice.ejs`      | Leitner practice with the filter panel, statistics, schedule, catch-up mode, "listen" voice answers                                                                                                     |
+| `/quiz`          | `quiz.ejs`          | Filtered quiz builder, quiz taking, history                                                                                                                                                             |
+| `/login`         | `login.ejs`         | Login and registration; first-user setup when the database has no users                                                                                                                                 |
+| `/profile`       | `profile.ejs`       | Profile, password, share-directory visibility, pending shares; admin user management and Backup & Restore                                                                                               |
+| `/organizations` | `organizations.ejs` | Organizations, members, groups, group members, and group roles (behavior in `public/js/pages/organizations-page.js`)                                                                                    |
+| `/logout`        | `logout.ejs`        | Logout confirmation                                                                                                                                                                                     |
 
-### Server (server.js)
+## npm scripts
 
-- Express application setup
-- Static middleware for public assets
-- EJS view engine configuration
-- Route definitions for 7 main pages
-- Error handling (async route handlers)
+| Script                            | Command                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------- |
+| `npm start`                       | `node server.js` (production; env from Render or `.env` via dotenv)             |
+| `npm run dev`                     | `nodemon` → `node --env-file=.env server.js`                                    |
+| `npm run test:iam`                | IAM API tests on the local scratch DB (LOCAL_DATABASE.md)                       |
+| `npm run test:roundtrip`          | Backup wipe/restore proof on the local scratch DB (LOCAL_DATABASE.md)           |
+| `npm run test:preview`            | Preview quality suite against `TEST_BASE_URL` (default `http://localhost:5000`) |
+| `npm run format` / `format:check` | Prettier write / check                                                          |
+| `npm run lint` / `lint:fix`       | ESLint                                                                          |
+| `npm run verify`                  | format + lint                                                                   |
+| `npm test`                        | Placeholder that exits 1 (no unit tests yet)                                    |
 
-### Routes
+## Environment
 
-| Route           | Purpose                  | Status     |
-| --------------- | ------------------------ | ---------- |
-| `GET /`         | Home page                | ✅ Defined |
-| `GET /login`    | User login               | ✅ Defined |
-| `GET /profile`  | User profile management  | ✅ Defined |
-| `GET /entries`  | Manage flashcard entries | ✅ Defined |
-| `GET /practice` | Practice mode            | ✅ Defined |
-| `GET /quiz`     | Quiz mode                | ✅ Defined |
-| `GET /logout`   | User logout              | ✅ Defined |
+See [RENDER_ENVIRONMENT_VARIABLES.md](./RENDER_ENVIRONMENT_VARIABLES.md) for the variables the code reads.
+Ports: dev 5000, preview 4000, prod `PORT_PROD`/`PORT`/3000 ([PORT_CONFIGURATION.md](./PORT_CONFIGURATION.md)).
+`NODE_ENV` defaults to `production` when unset.
 
-### Data Models (Planned)
+## Where to read next
 
-#### User
-
-```
-- user_id (UUID, PK)
-- username (VARCHAR, UNIQUE)
-- email (VARCHAR, UNIQUE)
-- password_hash (VARCHAR)
-- full_name (VARCHAR)
-- created_at (TIMESTAMP)
-- updated_at (TIMESTAMP)
-```
-
-#### FlashCard
-
-```
-- card_id (UUID, PK)
-- user_id (UUID, FK)
-- question (TEXT)
-- answer (TEXT)
-- category (VARCHAR)
-- difficulty (INT: 1-5)
-- created_at (TIMESTAMP)
-- updated_at (TIMESTAMP)
-```
-
-#### PracticeMatrix
-
-```
-- matrix_id (UUID, PK)
-- user_id (UUID, FK)
-- card_id (UUID, FK)
-- review_count (INT)
-- correct_count (INT)
-- last_reviewed (TIMESTAMP)
-- next_review (TIMESTAMP)
-- ease_factor (FLOAT)
-```
-
-#### Quiz
-
-```
-- quiz_id (UUID, PK)
-- user_id (UUID, FK)
-- name (VARCHAR)
-- created_at (TIMESTAMP)
-- updated_at (TIMESTAMP)
-```
-
-#### QuizQuestion
-
-```
-- quiz_question_id (UUID, PK)
-- quiz_id (UUID, FK)
-- card_id (UUID, FK)
-- order (INT)
-```
-
-#### QuizResult
-
-```
-- result_id (UUID, PK)
-- quiz_id (UUID, FK)
-- user_id (UUID, FK)
-- score (INT)
-- total_questions (INT)
-- taken_at (TIMESTAMP)
-```
-
----
-
-## Technology Dependencies
-
-### Production Dependencies
-
-- **express** (v5.3.0) - Web framework
-- **ejs** (v7.0.2) - Templating engine
-
-### Development Dependencies
-
-- **nodemon** (v3.1.14) - Auto-restart server during development
-
-### Planned Dependencies
-
-- **pg** or **postgres** - PostgreSQL client
-- **bcryptjs** - Password hashing
-- **jsonwebtoken** (JWT) - Authentication tokens
-- **dotenv** - Environment variable management
-- **joi** - Data validation
-- **cors** - Cross-Origin Resource Sharing
-
----
-
-## Running the Project
-
-### Development
-
-```bash
-npm install
-npm run dev          # Runs with nodemon
-```
-
-### Production
-
-```bash
-npm install --production
-npm start            # Runs server.js
-```
-
-### Environment
-
-- Default port: 3000 (configurable via `PORT` env var)
-- Environment: Set via `NODE_ENV` (defaults to 'production')
-
----
-
-## Future Development Areas
-
-### Phase 1: Authentication & User Management
-
-- [ ] Database setup and connection
-- [ ] User registration/login endpoints
-- [ ] Session/JWT management
-- [ ] Password hashing and security
-
-### Phase 2: Flashcard Management
-
-- [ ] Create/Read/Update/Delete flashcards
-- [ ] Category organization
-- [ ] Difficulty ratings
-- [ ] File import/export (JSON)
-
-### Phase 3: Practice System
-
-- [ ] Practice mode with configurable matrix
-- [ ] Spaced repetition algorithm (SRS)
-- [ ] Progress tracking
-
-### Phase 4: Quiz System
-
-- [ ] Quiz creation from question sets
-- [ ] Quiz taking interface
-- [ ] Result tracking and analytics
-
-### Phase 5: Additional Features
-
-- [ ] pgAdmin integration
-- [ ] Export/Import functionality
-- [ ] User statistics and progress reporting
-- [ ] Responsive UI improvements
-
----
-
-## Known Issues
-
-- Login and profile forms missing form tags
-- No CSS styling currently (framework in place)
-- All routes are GET, no POST/PUT/DELETE implementation
-- No database integration yet
-- No authentication logic
+- [ARCHITECTURE.md](./ARCHITECTURE.md): how the layers fit together
+- [API_ENDPOINTS.md](./API_ENDPOINTS.md): every route
+- [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md): tables and bootstrap
+- [LEITNER_SYSTEM.md](./LEITNER_SYSTEM.md): practice scheduling
+- [Issues.md](./Issues.md): open issues and resolution log

@@ -1,5 +1,9 @@
 # Session Summary: Enhanced Leitner System with Multiple Repetitions & Adaptive Difficulty
 
+> **Historical record (2026-10-29).** Work-session summary (repetitions + difficulty). It reflects the code at that time and is kept for history.
+> Reviewed against the code on 2026-11-03. Difficulty is **not** recalculated during normal practice (session mode); `migrations.mjs` no longer exists (schema SQL files are bootstrapped instead).
+> Current reference: [REPETITIONS_IMPLEMENTATION.md](./REPETITIONS_IMPLEMENTATION.md), [DIFFICULTY_SCORING.md](./DIFFICULTY_SCORING.md).
+
 **Date:** 2026-10-29  
 **Status:** ✅ Complete & Production Ready
 

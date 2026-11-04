@@ -44,7 +44,7 @@ The application code automatically handles this:
 
 ## How It Works
 
-### Port Selection Logic (server.js)
+### Port Selection Logic (`Server.resolvePort` in src/scripts/js/modules/server.mjs)
 
 ```javascript
 const portMap = {
@@ -71,12 +71,12 @@ const port = portMap[NODE_ENV] || 3000;
 ```bash
 # Terminal 1: Development (port 5000)
 cd ~/Documents/Projects/FlashCards
-bash deploy.sh -dev
+deploy.sh -dev
 # App runs on http://localhost:5000
 
 # Terminal 2: Preview (port 4000)
 cd ~/Documents/Projects/FlashCards
-bash deploy.sh -preview
+deploy.sh -preview
 # App runs on http://localhost:4000
 
 # Terminal 3: Testing Render behavior (port 3000)
@@ -90,7 +90,7 @@ NODE_ENV=production npm run dev
 # Stop the current environment (Ctrl+C in the terminal)
 
 # Deploy different environment
-bash deploy.sh -preview
+deploy.sh -preview
 ```
 
 The deploy script automatically:
@@ -132,7 +132,7 @@ If you want to run multiple instances:
 
 ```bash
 # Change the port for this run
-PORT_DEV=5001 bash deploy.sh -dev
+PORT_DEV=5001 deploy.sh -dev
 ```
 
 ## Testing
@@ -155,7 +155,7 @@ All should return:
 ```json
 {
   "status": "healthy",
-  "database": "shared_apps_wuy4"
+  "database": "<db-name>"
 }
 ```
 
@@ -206,7 +206,7 @@ You can run them in separate terminal windows simultaneously.
 **A:** Yes! Override when deploying:
 
 ```bash
-PORT_DEV=8000 bash deploy.sh -dev
+PORT_DEV=8000 deploy.sh -dev
 ```
 
 ### Q: Why these specific ports?

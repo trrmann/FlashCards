@@ -1,5 +1,8 @@
 # FlashCards Project Roadmap & Execution Plan
 
+> **Superseded (original project plan from 2026-10-29).** Reviewed against the code on 2026-11-03. Most phases are built, but differently from planned (sessions not JWT, `/api/entries` not `/api/cards`, 3-box Leitner in `flashcard_leitner_progress`).
+> Use instead: [Issues.md](./Issues.md) for current work, [ARCHITECTURE.md](./ARCHITECTURE.md).
+
 ## Executive Summary
 
 The FlashCards project is a web-based flashcard study application that integrates with Render PostgreSQL for persistent storage. This document outlines the 10-phase development roadmap, immediate next steps, and project status.

@@ -1,5 +1,9 @@
 # ✅ VERIFIED: Practice API Fixes Working Correctly
 
+> **Historical record (2026-10-30).** Test log against real data. It reflects the code at that time and is kept for history.
+> Reviewed against the code on 2026-11-03. IDs and counts are from that day's database.
+> Current reference: [LEITNER_SYSTEM.md](./LEITNER_SYSTEM.md).
+
 ## Test Date: 2026-10-30
 
 ### Test Data: Real Practice Session

@@ -1,12 +1,25 @@
 # Adaptive Difficulty Scoring System
 
-**Status:** ✅ Complete and tested  
-**Commit:** e3e179f  
-**Date:** 2026-10-29
+**Introduced:** commit e3e179f (2026-10-29). Reviewed against the code 2026-11-03.
 
 ## Overview
 
-Implemented an adaptive difficulty scoring system that automatically adjusts flashcard difficulty based on performance data. Difficulty scores influence card selection priority and can guide smarter Leitner box transitions.
+Each flashcard has a `difficulty_score` from 1.00 to 5.00, derived from the success rate in `practice_history`.
+
+**Where it is used today:** only by quiz question selection (`POST /api/quiz/start`), which spreads
+questions across easy (≤ 2.0), medium (≤ 3.5), and hard (> 3.5) buckets. It does **not** affect
+Leitner box transitions or which practice card is served.
+
+**When it is recalculated:**
+
+- automatically, only in the legacy single-attempt answer path (`POST /api/practice/answer` without
+  `sessionStartTime`). The practice page always sends `sessionStartTime`, so **normal practice never
+  updates difficulty**;
+- on demand, via `POST /api/practice/difficulty/update-single` and `/update-batch`. No page calls these.
+
+As a result, most cards keep the default 3.00 unless these endpoints are called. With the quiz's
+third-per-bucket selection, that means pools larger than 20 cards produce short quizzes
+(see API_ENDPOINTS.md → Quiz).
 
 ## Difficulty Scale
 
@@ -31,26 +44,21 @@ where:
 | Success Rate | Difficulty | Category  |
 | ------------ | ---------- | --------- |
 | 100% (5/5)   | 1.0        | Very Easy |
-| 75% (3/4)    | 2.25       | Easy      |
+| 75% (3/4)    | 2.0        | Easy      |
 | 50% (2/4)    | 3.0        | Medium    |
-| 25% (1/4)    | 4.25       | Hard      |
+| 25% (1/4)    | 4.0        | Hard      |
+| no attempts  | 3.0        | Medium    |
 | 0% (0/5)     | 5.0        | Very Hard |
 
-## Private vs. Shared Calculation
+## Private vs. Public Calculation
 
-### Private Cards
+The basis is chosen by the card's `is_private` flag:
 
-- **Calculation basis:** Only owner's performance
-- **Use case:** Personal study sets where difficulty is individual
-- **Benefit:** Customized difficulty reflects personal learning pace
-- **Field:** `created_by` = current user
-
-### Shared Cards
-
-- **Calculation basis:** All users' aggregate performance
-- **Use case:** Class materials, textbooks, study guides
-- **Benefit:** Community wisdom - reflects how difficult the card is for most learners
-- **Field:** `is_private` = false
+- **Private cards** (`is_private = true`, the default): only the **owner's** attempts count
+  (`difficulty_calc_base = 'individual'`). This also applies to private cards shared directly
+  with other users. The recipients' attempts are ignored.
+- **Public cards** (`is_private = false`): every user's attempts count
+  (`difficulty_calc_base = 'shared'`).
 
 ## Database Schema
 
@@ -300,7 +308,7 @@ if (is_private) {
 
 - Initial value: **3.0 (medium)**
 - Rationale: Unknown difficulty deserves neutral starting point
-- Adaptive: Adjusts as soon as user attempts the card
+- Adjusts only when a recalculation runs (see Overview)
 
 ## Future Enhancements
 
@@ -423,4 +431,4 @@ The adaptive difficulty scoring system provides:
 - **Flexibility**: Private vs. shared calculation modes
 - **Extensibility**: Foundation for intelligent card selection and adaptive repetitions
 
-This enhancement transforms the Leitner system from purely time-based to **difficulty-aware**, enabling truly adaptive learning.
+Leitner scheduling remains purely box- and time-based. Difficulty is currently consumed only by quiz selection.

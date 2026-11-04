@@ -3,7 +3,7 @@
 ################################################################################
 # FlashCards Deployment Script
 # 
-# Usage: ./deploy.sh -dev | -preview | -prod | -all
+# Usage: deploy.sh -dev | -preview | -prod | -all   (on PATH; runnable from any directory)
 #
 # Deploys to specified environment(s) with logging and browser testing
 # All environments use local server except prod which auto-deploys to Render
@@ -11,9 +11,11 @@
 
 set -o pipefail
 
-# Script configuration - find project root
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="${SCRIPT_DIR}"
+# Script configuration - find project root.
+# This script lives in <project>/src/scripts/sh/ and is on PATH, so resolve
+# its real location (following symlinks) and walk up three levels.
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 
 # Change to project root directory (allows script to run from anywhere)
 cd "${PROJECT_ROOT}" || { echo "Failed to change to project directory"; exit 1; }
@@ -94,7 +96,7 @@ show_usage() {
 ╚════════════════════════════════════════════════════════════════╝
 
 USAGE:
-  ./deploy.sh [OPTION]
+  deploy.sh [OPTION]        (or the 'deploy' alias; works from any directory)
 
 OPTIONS:
   -dev      Deploy to local development environment
@@ -130,11 +132,11 @@ PRE-REQUISITES (automatically checked):
   ✓ server.js exists in project root
 
 EXAMPLES:
-  ./deploy.sh -dev              # Start development server
-  ./deploy.sh -preview          # Run preview deployment
-  ./deploy.sh -prod             # Deploy to production
-  ./deploy.sh -all              # Deploy all environments
-  ./deploy.sh -h                # Show this help
+  deploy.sh -dev              # Start development server
+  deploy.sh -preview          # Run preview deployment
+  deploy.sh -prod             # Deploy to production
+  deploy.sh -all              # Deploy all environments
+  deploy.sh -h                # Show this help
 
 LOGGING:
   All deployments are logged to: .deployment/last-run.log
@@ -283,6 +285,7 @@ run_comprehensive_tests() {
     # Run preview tests against the preview server
     if TEST_BASE_URL="http://localhost:${PORT_PREVIEW}" npm run test:preview >> "${LOG_FILE}" 2>&1; then
         log SUCCESS "All preview tests passed"
+        run_local_db_tests
         return 0
     else
         local test_output=$(TEST_BASE_URL="http://localhost:${PORT_PREVIEW}" npm run test:preview 2>&1)
@@ -296,6 +299,23 @@ run_comprehensive_tests() {
         echo "" >> "${LOG_FILE}"
         error_exit "Preview tests failed. Check .deployment/last-run.log for detailed results."
     fi
+}
+
+run_local_db_tests() {
+    # CODING_STANDARDS 0.6/0.7 tests that need a disposable database: they drop and
+    # rebuild the schema, so they run only on the local scratch database.
+    log INFO "Running local-database tests (backup round trip, IAM API, start-up)..."
+    if ! "${SCRIPT_DIR}/local-db.sh" start >> "${LOG_FILE}" 2>&1; then
+        error_exit "Local scratch database unavailable. Set it up once with: local-db.sh init"
+    fi
+    local test_name
+    for test_name in test:roundtrip test:iam test:startup; do
+        if npm run "${test_name}" >> "${LOG_FILE}" 2>&1; then
+            log SUCCESS "${test_name} passed"
+        else
+            error_exit "${test_name} failed. Check .deployment/last-run.log for details."
+        fi
+    done
 }
 
 ################################################################################
@@ -411,6 +431,16 @@ deploy_prod() {
     else
         log INFO "Production URL: $render_url"
     fi
+
+    # CODING_STANDARDS 0.7: take a fresh full backup of production before every release.
+    if [ -z "$render_url" ]; then
+        error_exit "RENDER_URL is required in .env to back up production before deploying."
+    fi
+    log INFO "Backing up production before release (admin sign-in required)..."
+    if ! "${SCRIPT_DIR}/backup.sh" "$render_url" 2>&1 | tee -a "${LOG_FILE}"; then
+        error_exit "Pre-release backup failed; nothing was deployed. Check .deployment/last-run.log for details."
+    fi
+    log SUCCESS "Production backup saved (see ~/FlashCardsBackups)"
     
     # Auto-format any changes to documentation/config files
     log INFO "Running code format check..."

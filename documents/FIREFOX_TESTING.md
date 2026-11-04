@@ -1,5 +1,8 @@
 # Firefox Testing & Validation Tools
 
+> **Superseded (proposal, not implemented).** Reviewed against the code on 2026-11-03. No Firefox/axe testing code exists; `axe-core` is installed but unused.
+> Use instead: [TESTING_PREVIEW.md](./TESTING_PREVIEW.md).
+
 ## Overview
 
 Firefox provides multiple testing and validation capabilities that complement Chrome's Lighthouse. This guide explains what tools are available and what needs to be added to your test suite.

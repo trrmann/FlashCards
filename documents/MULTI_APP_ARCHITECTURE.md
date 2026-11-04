@@ -1,5 +1,8 @@
 # Multi-Application Database Architecture
 
+> **Superseded (design proposal, not implemented).** Reviewed against the code on 2026-11-03. The app does not use per-application Postgres schemas or `search_path`; all tables are in `public`. `DB_SCHEMA` is not read.
+> Use instead: [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md), [ARCHITECTURE.md](./ARCHITECTURE.md).
+
 This guide explains how the FlashCards project uses a shared Render PostgreSQL database with other applications, using PostgreSQL schemas for isolation.
 
 ---

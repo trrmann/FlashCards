@@ -1,5 +1,10 @@
 # Practice Filtering Implementation - FINAL STATUS ✅
 
+> **Historical record (2026-10-29).** Status report for practice filtering. It reflects the code at that time and is kept for history.
+> Reviewed against the code on 2026-11-03. Catch-up mode ignores filters; filter matching is case-insensitive `ILIKE` with trailing `*`.
+> Current reference: [FILTER_IMPLEMENTATION.md](./FILTER_IMPLEMENTATION.md), [API_ENDPOINTS.md](./API_ENDPOINTS.md).
+> Since 2026-11-04 the generic database adapter is in the platform-db package and the IAM services in the iam-service package.
+
 **Date:** 2026-10-29 22:45 UTC  
 **Status:** ✅ COMPLETE & LINTING PASSED
 

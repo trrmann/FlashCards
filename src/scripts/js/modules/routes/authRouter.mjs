@@ -5,8 +5,7 @@
 
 import express from 'express';
 import { BaseRouter } from './baseRouter.mjs';
-import { userAuthService } from '../auth/userAuthService.mjs';
-import { validationService } from '../auth/validationService.mjs';
+import { userAuthService, validationService } from 'iam-service/services';
 
 class AuthRouter extends BaseRouter {
   registerRoutes() {
@@ -92,7 +91,7 @@ class AuthRouter extends BaseRouter {
 
         // If first user, set as admin
         if (isFirstUser) {
-          await userAuthService.setUserAdmin(user.user_id);
+          await userAuthService.makeFirstAdmin(user.user_id);
           user.is_admin = true;
         }
 
@@ -193,6 +192,9 @@ class AuthRouter extends BaseRouter {
           redirectTo: lastPage,
         });
       } catch (error) {
+        if (error.statusCode === 403) {
+          return res.status(403).json({ status: 'error', message: error.message });
+        }
         console.error('Login error:', error.message);
         return res.status(500).json({
           status: 'error',

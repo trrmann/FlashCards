@@ -1,5 +1,8 @@
 # 🚀 FlashCards Development Environment Setup Checklist
 
+> **Superseded (original setup checklist).** Reviewed against the code on 2026-11-03. Same plan as DEV_ENVIRONMENT_SETUP (`DATABASE_URL`, `flashcards_schema`, JWT, manual SQL).
+> Use instead: [SETUP_QUICK_START.md](./SETUP_QUICK_START.md).
+
 **Estimated Time: 30-45 minutes**
 
 Use this checklist to track your setup progress. Check off each item as you complete it.

@@ -17,8 +17,10 @@ ORDER BY created_at DESC
 LIMIT $2;
 
 -- Query: upsert_rows_template
+-- {{update_columns}} is a plain identifier list; the new values come from EXCLUDED in SQL.
 INSERT INTO {{table}} ({{columns}}) VALUES ({{placeholders}})
-ON CONFLICT ({{conflict_columns}}) DO UPDATE SET {{update_assignments}};
+ON CONFLICT ({{conflict_columns}}) DO UPDATE
+SET ({{update_columns}}) = (SELECT {{update_columns}} FROM (SELECT EXCLUDED.*) AS excluded_row);
 
 -- Query: upsert_rows_ignore_template
 INSERT INTO {{table}} ({{columns}}) VALUES ({{placeholders}})

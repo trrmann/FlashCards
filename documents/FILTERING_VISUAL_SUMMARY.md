@@ -1,5 +1,9 @@
 # Practice Filtering - Implementation Complete ✅
 
+> **Historical record (2026-10-29).** Feature summary. It reflects the code at that time and is kept for history.
+> Reviewed against the code on 2026-11-03. `migrations.mjs` no longer exists; distractors match class+category via COALESCE (no lesson condition).
+> Current reference: [FILTER_IMPLEMENTATION.md](./FILTER_IMPLEMENTATION.md).
+
 ## What You Asked For
 
 > the answer should be the card is limited to the full selected header, with wildcards opening up the range, and the wrong answers should match the class and category, but do not have to match the lesson

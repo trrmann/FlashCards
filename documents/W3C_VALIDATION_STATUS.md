@@ -1,5 +1,8 @@
 # W3C Testing Tools - Current vs Official
 
+> **Superseded (analysis note).** Reviewed against the code on 2026-11-03. Still true: validation uses `html-validate` and an in-browser CSS check, not the official W3C services.
+> Use instead: [TESTING_PREVIEW.md](./TESTING_PREVIEW.md).
+
 ## Current State ⚠️
 
 **Your current testing uses:**

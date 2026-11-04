@@ -1,5 +1,8 @@
 # FlashCards Project Setup Guide
 
+> **Superseded (original long-form setup plan).** Reviewed against the code on 2026-11-03. It uses `DATABASE_URL`, a `flashcards_schema` Postgres schema, JWT, bcryptjs and manual SQL, none of which the app uses. The app reads `DB_PG_*` variables, uses the `public` schema, server sessions, bcrypt, and bootstraps its schema automatically.
+> Use instead: [SETUP_QUICK_START.md](./SETUP_QUICK_START.md), [RENDER_ENVIRONMENT_VARIABLES.md](./RENDER_ENVIRONMENT_VARIABLES.md).
+
 Complete step-by-step instructions to set up your development environment with Render PostgreSQL and pgAdmin.
 
 ---

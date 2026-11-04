@@ -44,10 +44,8 @@ ORDER BY f.created_at DESC;
 SELECT f.flashcard_id, f.question, f.answer, f.lesson, f.category, f.class, f.is_private, f.created_by,
        f.question_type, f.lang, f.answer_lang, f.answer_mode, f.question_form, f.answer_form,
        f.question_media_id, f.answer_media_id,
-       qm.data AS question_media_data, am.data AS answer_media_data, f.created_at,
-       u.username, u.full_name
+       qm.data AS question_media_data, am.data AS answer_media_data, f.created_at
 FROM flashcards f
-LEFT JOIN users u ON f.created_by = u.user_id
 LEFT JOIN media qm ON f.question_media_id = qm.media_id
 LEFT JOIN media am ON f.answer_media_id = am.media_id
 WHERE f.flashcard_id = $1
@@ -93,10 +91,8 @@ RETURNING share_id, owner_id, recipient_id, flashcard_id;
 
 -- Query: select_pending_shares
 SELECT fs.share_id, fs.owner_id, fs.flashcard_id, fs.recipient_status, fs.shared_at,
-       u.username, u.full_name,
        f.question, f.answer, f.lesson
 FROM flashcard_shares fs
-JOIN users u ON fs.owner_id = u.user_id
 JOIN flashcards f ON fs.flashcard_id = f.flashcard_id
 WHERE fs.recipient_id = $1
   AND fs.status != 'revoked'
@@ -105,10 +101,8 @@ ORDER BY fs.shared_at DESC;
 
 -- Query: select_accepted_shares
 SELECT fs.share_id, fs.owner_id, fs.flashcard_id, fs.recipient_status, fs.accepted_at,
-       u.username, u.full_name,
        f.question, f.answer, f.class, f.lesson, f.category, f.created_at
 FROM flashcard_shares fs
-JOIN users u ON fs.owner_id = u.user_id
 JOIN flashcards f ON fs.flashcard_id = f.flashcard_id
 WHERE fs.recipient_id = $1
   AND fs.status != 'revoked'
@@ -117,10 +111,8 @@ ORDER BY fs.accepted_at DESC;
 
 -- Query: select_owned_shares
 SELECT fs.share_id, fs.recipient_id, fs.flashcard_id, fs.status, fs.recipient_status, fs.shared_at,
-       u.username, u.full_name,
        f.question, f.answer
 FROM flashcard_shares fs
-JOIN users u ON fs.recipient_id = u.user_id
 JOIN flashcards f ON fs.flashcard_id = f.flashcard_id
 WHERE fs.owner_id = $1
 ORDER BY fs.shared_at DESC;
@@ -185,9 +177,8 @@ ORDER BY lesson ASC;
 
 -- Query: select_public_cards_for_user
 SELECT f.flashcard_id, f.question, f.answer, f.lesson, f.category, f.class, f.created_at,
-       u.username, u.full_name
+       f.created_by
 FROM flashcards f
-LEFT JOIN users u ON f.created_by = u.user_id
 WHERE f.is_private = false
   AND f.created_by != $1
   AND NOT EXISTS (
@@ -205,11 +196,9 @@ ON CONFLICT (user_id, flashcard_id) DO NOTHING;
 DELETE FROM public_card_removals WHERE user_id = $1 AND flashcard_id = $2;
 
 -- Query: select_removed_public_cards
-SELECT f.flashcard_id, f.question, f.answer, f.lesson, f.category, f.class,
-       u.username, u.full_name
+SELECT f.flashcard_id, f.question, f.answer, f.lesson, f.category, f.class, f.created_by
 FROM public_card_removals pr
 JOIN flashcards f ON pr.flashcard_id = f.flashcard_id
-LEFT JOIN users u ON f.created_by = u.user_id
 WHERE pr.user_id = $1 AND f.is_private = false
 ORDER BY pr.created_at DESC;
 

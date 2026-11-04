@@ -1,5 +1,9 @@
 # Bug Fix: Practice Filter Timing Issue
 
+> **Historical record (2026-10-30).** Bug-fix report for the practice filter load timing. It reflects the code at that time and is kept for history.
+> Reviewed against the code on 2026-11-03. The practice page still waits ~100 ms for the filter panel to restore `sessionStorage.studyFilters` before loading the first card.
+> Current reference: [FILTER_IMPLEMENTATION.md](./FILTER_IMPLEMENTATION.md).
+
 ## ✅ VERIFIED AND FIXED
 
 **Status:** WORKING - Tested in live browser

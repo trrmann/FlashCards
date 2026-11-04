@@ -2,14 +2,19 @@
 
 ## Feature
 
+> In quizzes, an insufficient distractor pool does not show this diagnostic; the quiz falls back to
+> using the other quiz questions' answers as distractors.
+
 When there aren't enough flashcards to create multiple choice options, users now receive detailed diagnostic information in a collapsible section showing exactly what type of entries are missing.
 
 ## How It Works
 
 ### Backend Changes
 
-1. **Updated `generateMultipleChoiceOptions()`** ([src/scripts/js/modules/auth/practiceService.mjs](file:///home/tmann/Documents/Projects/FlashCards/src/scripts/js/modules/auth/practiceService.mjs:428))
-   - Now returns an object instead of null when insufficient options
+1. **Updated `generateMultipleChoiceOptions()`** ([src/scripts/js/modules/auth/practiceService.mjs](../src/scripts/js/modules/auth/practiceService.mjs))
+   - Returns this object only when fewer than 2 options can be built, i.e. **no** distractor exists
+     (1 correct + 1 wrong is accepted). True/False and cards with authored options never hit this path
+   - Non-text answer blocks (image/audio) need same-form distractors and get a form-specific message
    - Object contains `insufficientOptions: true` flag
    - Includes `diagnostic` object with detailed information
 
@@ -25,21 +30,21 @@ When there aren't enough flashcards to create multiple choice options, users now
          category: "Cells",
          lesson: "Chapter 3"
        },
-       availableWrongAnswers: 1,
-       neededWrongAnswers: 2,
+       availableWrongAnswers: 0,
+       neededWrongAnswers: 3,
        totalOptionsNeeded: 4,
-       message: "Add at least 2 more flashcards with Class: 'Biology' and Category: 'Cells' to create proper multiple choice options."
+       message: "Add at least 3 more flashcards with Class: 'Biology' and Category: 'Cells' to create proper multiple choice options."
      }
    }
    ```
 
-3. **API Endpoint** ([src/scripts/js/modules/routes/practiceRouter.mjs](file:///home/tmann/Documents/Projects/FlashCards/src/scripts/js/modules/routes/practiceRouter.mjs:178))
+3. **API Endpoint** ([src/scripts/js/modules/routes/practiceRouter.mjs](../src/scripts/js/modules/routes/practiceRouter.mjs))
    - Checks if `options.insufficientOptions` is true
    - Passes `diagnostic` object to frontend in response
 
 ### Frontend Changes
 
-1. **Collapsible Details Section** ([src/views/practice.ejs](file:///home/tmann/Documents/Projects/FlashCards/src/views/practice.ejs:667))
+1. **Collapsible Details Section** ([src/views/practice.ejs](../src/views/practice.ejs))
    - Uses HTML `<details>` element for collapsible interface
    - Default state: collapsed (user can click to expand)
    - Shows summary: "📋 What entries are missing?"

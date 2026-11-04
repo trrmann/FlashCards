@@ -1,5 +1,10 @@
 # Database Setup Complete ✅
 
+> **Historical record (2026-10-29).** Database setup report. It reflects the code at that time and is kept for history.
+> Reviewed against the code on 2026-11-03. The schema is now split into IAM and app SQL files bootstrapped on every start; many tables/columns were added (media, options, shares, removals).
+> Current reference: [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md).
+> Since 2026-11-04 the generic database adapter is in the platform-db package and the IAM services in the iam-service package.
+
 ## Summary
 
 The FlashCards application now has a complete PostgreSQL database setup with connection pooling, health monitoring, and all required tables for the Leitner System study methodology.
@@ -49,7 +54,7 @@ The FlashCards application now has a complete PostgreSQL database setup with con
   ```json
   {
     "status": "healthy",
-    "database": "shared_apps_wuy4",
+    "database": "<db-name>",
     "timestamp": "2026-10-29T17:28:16.143Z"
   }
   ```
@@ -82,7 +87,7 @@ curl http://localhost:5000/api/health
 # Example response
 {
   "status": "healthy",
-  "database": "shared_apps_wuy4",
+  "database": "<db-name>",
   "timestamp": "2026-10-29T17:28:16.143Z"
 }
 ```
@@ -113,9 +118,9 @@ try {
 ### Local Development (.env)
 
 ```env
-DB_PG_EXTERNAL_HOSTNAME=dpg-dbhnuks9v7es73beg8mg-a.virginia-postgres.render.com
+DB_PG_EXTERNAL_HOSTNAME=<db-host>.virginia-postgres.render.com
 DB_PG_PORT=5432
-DB_PG_DATABASE=shared_apps_wuy4
+DB_PG_DATABASE=<db-name>
 DB_PG_USER=app_admin
 DB_PG_PASSWORD=<password>
 ```
@@ -153,9 +158,9 @@ DB_PG_PASSWORD=<password>
 - **Status:** Successfully configured and verified
 - **Date Verified:** October 29, 2026
 - **Connection Method:** External hostname (SSL required)
-- **Hostname:** dpg-dbhnuks9v7es73beg8mg-a.virginia-postgres.render.com
+- **Hostname:** <db-host>.virginia-postgres.render.com
 - **Port:** 5432
-- **Database:** shared_apps_wuy4
+- **Database:** <db-name>
 - **User:** app_admin
 - **Verification:** Tables viewable and queryable via PgAdmin GUI
 
@@ -231,8 +236,8 @@ tail -f .deployment/last-run.log
 
 ```bash
 # Use Render's psql command
-PGPASSWORD=<password> psql -h dpg-dbhnuks9v7es73beg8mg-a.virginia-postgres.render.com \
-  -U app_admin shared_apps_wuy4
+PGPASSWORD=<password> psql -h <db-host>.virginia-postgres.render.com \
+  -U app_admin <db-name>
 
 # List all tables
 \dt

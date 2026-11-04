@@ -8,14 +8,14 @@ Dashboard statistics (Box 1, Box 2, Box 3 card counts) now dynamically update to
 
 ### Backend Changes
 
-1. **getProgressStats() Function** ([src/scripts/js/modules/auth/practiceService.mjs](file:///home/tmann/Documents/Projects/FlashCards/src/scripts/js/modules/auth/practiceService.mjs:612))
+1. **getProgressStats() Function** ([src/scripts/js/modules/auth/practiceService.mjs](../src/scripts/js/modules/auth/practiceService.mjs))
    - Now accepts optional `filters` parameter: `{class, lesson, category}`
    - Applies the same filtering logic as `getDueCardsForToday()`
    - Joins `flashcard_leitner_progress` with `flashcards` table
-   - Uses `COALESCE()` to handle NULL values in class/category fields
+   - Uses the same case-insensitive `ILIKE` patterns (trailing `*` wildcard); cards with a NULL field never match a filter on that field
    - Returns box counts for only matching cards
 
-2. **API Endpoint** ([src/scripts/js/modules/routes/practiceRouter.mjs](file:///home/tmann/Documents/Projects/FlashCards/src/scripts/js/modules/routes/practiceRouter.mjs:332))
+2. **API Endpoint** ([src/scripts/js/modules/routes/practiceRouter.mjs](../src/scripts/js/modules/routes/practiceRouter.mjs))
    - GET `/api/practice/stats` now accepts filter query parameters:
      - `?class=Biology`
      - `?lesson=Chapter1`
@@ -25,12 +25,12 @@ Dashboard statistics (Box 1, Box 2, Box 3 card counts) now dynamically update to
 
 ### Frontend Changes
 
-1. **refreshStatsForActiveFilters()** ([src/views/practice.ejs](file:///home/tmann/Documents/Projects/FlashCards/src/views/practice.ejs:566))
+1. **refreshStatsForActiveFilters()** ([src/views/practice.ejs](../src/views/practice.ejs))
    - Reads filters from `sessionStorage.getItem('studyFilters')`
    - Calls `/api/practice/stats` with filter parameters
    - Updates the dashboard stats cards with filtered counts
 
-2. **Event Listener** ([src/views/practice.ejs](file:///home/tmann/Documents/Projects/FlashCards/src/views/practice.ejs:609))
+2. **Event Listener** ([src/views/practice.ejs](../src/views/practice.ejs))
    - Listens for `filtersChanged` event from filter panel
    - Automatically calls `refreshStatsForActiveFilters()`
    - Triggers `loadNextCard()` to load a card matching new filters

@@ -6,7 +6,7 @@
 import express from 'express';
 import { BaseRouter } from './baseRouter.mjs';
 import { entriesService } from '../auth/entriesService.mjs';
-import { userAuthService } from '../auth/userAuthService.mjs';
+import { userAuthService } from 'iam-service/services';
 import { mediaArchiveService } from '../auth/mediaArchiveService.mjs';
 
 class EntriesRouter extends BaseRouter {

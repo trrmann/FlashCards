@@ -4,6 +4,23 @@
 
 The FlashCards application now includes an intelligent "None of the above" option in practice mode that appears periodically to encourage critical thinking while maintaining focus on learning the correct answers.
 
+### How options are built (all card types)
+
+`practiceService.generateMultipleChoiceOptions(userId, card, 4)` is used by both practice and quiz:
+
+| Card                                                                 | Options                                                                                                          |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `question_type = true_false`                                         | Fixed True/False pair, localized by `lang` (en, es, fr, de, pt, it), spoken via TTS                              |
+| `multiple_choice` / `audio` with authored options, mixed correctness | Authored options as-is, shuffled. Several correct options make it a **select-all-that-apply** question in the UI |
+| authored options, **all correct**                                    | Each option shown as incorrect, plus **"All of the above"** (correct)                                            |
+| authored options, **all wrong**                                      | Each option shown as incorrect, plus **"None of the above"** (correct)                                           |
+| Answer block is `image`/`audio`/`text_tts` (non-`text`)              | Correct answer block plus up to 3 same-form answer blocks from same class+category cards. No NOTA mode           |
+| Everything else (`standard` text answers)                            | The ratio-based logic below                                                                                      |
+
+Distractors come from **accessible** cards (owned, accepted shares, public and not removed) with the same
+class and category (NULL treated as empty) and a different answer text, from any lesson.
+If fewer than 2 options result, `/api/practice/next` returns `insufficientEntries: true` with a diagnostic.
+
 ## Design Philosophy
 
 This feature implements a sophisticated learning strategy based on educational research:
@@ -40,10 +57,10 @@ This ensures a roughly **85:15 ratio** of standard-to-challenge questions.
 
 #### Mode 2: None of the Above Challenge (15% of questions)
 
-- Shows 4 distractors (wrong answers from other flashcards)
+- Shows up to 3 distractors (wrong answers from other flashcards)
 - Does NOT show the correct answer as an option
-- "None of the above" appears as one of the 4 choices (as the correct option)
-- User must recognize that none of the 4 answer options match the question
+- "None of the above" is added as the correct option (up to 4 choices in total)
+- User must recognize that none of the other options match the question
 - When incorrect, the actual answer is revealed
 
 ### Examples
@@ -145,13 +162,12 @@ export async function generateMultipleChoiceOptions(userId, correctCard, optionC
   - `isCorrect`: Boolean indicating if this is the correct option
   - `isNoneOfAbove`: Boolean flag when this is "None of the above" option
 - Returns `showingNoneOfAbove`: Boolean flag indicating if this is a challenge question
-- Increments `none_of_above_count` when showing this mode
+- Increments `none_of_above_count` whenever a "None of the above" option is served (including authored all-wrong cards)
 
 #### POST /api/practice/answer
 
-- Accepts selected option index
-- Backend regenerates options and validates selection
-- Returns appropriate feedback
+- The browser grades the selection using the options' `isCorrect` flags and posts `{ flashcardId, selectedAnswer, isCorrect, sessionStartTime }`
+- The server does not regenerate options or re-check the selection
 - Leitner box progression logic unchanged
 
 ### Frontend Updates
@@ -237,15 +253,9 @@ const shouldShowCorrectAnswer = totalAttempts === 0 || noneOfAboveCount / totalA
 
 ## Migration
 
-New migration added: `add_none_of_above_tracking`
-
-Automatically:
-
-- Creates `none_of_above_count` column if it doesn't exist
-- Initializes to 0 for existing cards
-- Runs on server startup (idempotent)
-
-No user action required - existing data is preserved.
+`none_of_above_count` (INT, default 0) is part of `CREATE TABLE flashcard_leitner_progress` in
+`src/scripts/sql/pg/flashcards-postgres-schema.sql`, which is bootstrapped idempotently on every server start.
+(The original `add_none_of_above_tracking` migration module no longer exists.)
 
 ## Testing Checklist
 
@@ -261,7 +271,8 @@ To verify the feature works:
    - Feedback should work normally
 
 3. **Trigger Challenge Mode**
-   - Answer the same card 6-7 times correctly
+   - The first time a card is ever shown (0 attempts) it is always standard mode
+   - Once `none_of_above_count / attempts` is below 15% the card stays standard; at or above it, challenge mode applies
    - On subsequent attempts, watch for "None of the above" option
    - Should appear as a regular option (shuffled in position)
 

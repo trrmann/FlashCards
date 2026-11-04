@@ -1,5 +1,10 @@
 # Phase 2: User Authentication - Complete ✅
 
+> **Historical record (2026-10-29).** Phase 2 completion report. It reflects the code at that time and is kept for history.
+> Reviewed against the code on 2026-11-03. Sessions are now persisted in PostgreSQL (`connect-pg-simple`, table `session`); admin is the `admin` role in `user_roles`; routes are class-based routers under `src/scripts/js/modules/routes/`.
+> Current reference: [API_ENDPOINTS.md](./API_ENDPOINTS.md), [ARCHITECTURE.md](./ARCHITECTURE.md).
+> Since 2026-11-04 the generic database adapter is in the platform-db package and the IAM services in the iam-service package.
+
 ## Summary
 
 User authentication and profile management have been fully implemented with secure password handling, session management, and comprehensive validation.

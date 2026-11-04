@@ -1,5 +1,9 @@
 # Filter Handling and NULL Class/Category Fix
 
+> **Historical record (2026-10-30).** Bug-fix report. It reflects the code at that time and is kept for history.
+> Reviewed against the code on 2026-11-03. Still accurate: distractor matching uses `COALESCE(x, '')` so NULL class/category match each other.
+> Current reference: [NONE_OF_ABOVE_FEATURE.md](./NONE_OF_ABOVE_FEATURE.md).
+
 ## Problem
 
 When practicing with wildcard filters that should have produced multiple matching cards, the system was displaying "More Entries Needed" message instead of showing practice cards, even though sufficient cards existed in the database.

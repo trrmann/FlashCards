@@ -1,534 +1,268 @@
 # Database Schema for FlashCards
 
-## Overview
-
-This document defines the PostgreSQL database schema for the FlashCards application. The schema is designed to support user authentication, flashcard management, spaced repetition practice, and quiz tracking.
-
----
-
-## Schema Diagram
-
-```
-┌─────────────────────┐
-│      users          │
-├─────────────────────┤
-│ user_id (PK)        │
-│ username (UNIQUE)   │
-│ email (UNIQUE)      │
-│ password_hash       │
-│ full_name           │
-│ created_at          │
-│ updated_at          │
-└──────────┬──────────┘
-           │
-    ┌──────┴──────┬──────────────────┬──────────────┐
-    │             │                  │              │
-    ▼             ▼                  ▼              ▼
-┌──────────────┐ ┌────────────┐ ┌──────────┐ ┌─────────────────┐
-│ flashcards   │ │   quizzes  │ │   quiz   │ │ practice_       │
-│              │ │            │ │ questions│ │ matrices        │
-├──────────────┤ ├────────────┤ ├──────────┤ ├─────────────────┤
-│ card_id (PK) │ │ quiz_id(PK)│ │ quiz_q.. │ │ matrix_id (PK)  │
-│ user_id (FK) │ │ user_id(FK)│ │ (PK)     │ │ user_id (FK)    │
-│ question     │ │ name       │ │ quiz_id  │ │ card_id (FK)    │
-│ answer       │ │ created_at │ │ card_id  │ │ review_count    │
-│ category     │ │ updated_at │ │ order    │ │ correct_count   │
-│ difficulty   │ └────────────┘ │ (FK)     │ │ last_reviewed   │
-│ created_at   │                └──────────┘ │ next_review     │
-│ updated_at   │                             │ ease_factor     │
-└──────────────┘                             │ created_at      │
-                                             │ updated_at      │
-                                             └─────────────────┘
-```
-
----
-
-## Tables
-
-### 1. `users`
-
-Core user account information.
-
-```sql
-CREATE TABLE users (
-  user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  username VARCHAR(255) UNIQUE NOT NULL,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  full_name VARCHAR(255),
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE INDEX idx_users_username ON users(username);
-CREATE INDEX idx_users_email ON users(email);
-```
-
-**Columns:**
-
-- `user_id`: Unique identifier (UUID)
-- `username`: Login identifier, must be unique
-- `email`: Contact email, must be unique
-- `password_hash`: Bcrypt hash of password (never store plaintext)
-- `full_name`: User's display name
-- `created_at`: Account creation timestamp
-- `updated_at`: Last profile update timestamp
-
-**Notes:**
-
-- Do NOT store passwords in plaintext
-- Hash with bcryptjs (10+ rounds)
-- Updated_at should be updated on profile changes
-
----
-
-### 2. `flashcards`
-
-Flashcard definitions (question-answer pairs).
-
-```sql
-CREATE TABLE flashcards (
-  card_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-  question TEXT NOT NULL,
-  answer TEXT NOT NULL,
-  category VARCHAR(100),
-  difficulty INT CHECK (difficulty >= 1 AND difficulty <= 5),
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE INDEX idx_flashcards_user_id ON flashcards(user_id);
-CREATE INDEX idx_flashcards_category ON flashcards(category, user_id);
-```
-
-**Columns:**
-
-- `card_id`: Unique identifier (UUID)
-- `user_id`: Owner of the card (FK to users)
-- `question`: The front of the card (question/prompt)
-- `answer`: The back of the card (answer/response)
-- `category`: Organizational category (e.g., "Vocabulary", "Math")
-- `difficulty`: Self-assessed difficulty 1-5 (1=easy, 5=hard)
-- `created_at`: Card creation timestamp
-- `updated_at`: Last modification timestamp
-
-**Constraints:**
-
-- `ON DELETE CASCADE`: When user is deleted, their cards are deleted
-- Difficulty must be between 1 and 5
-
----
-
-### 3. `leitner_boxes`
-
-Leitner Box System tracking for each user-card pair.
-
-```sql
-CREATE TABLE leitner_boxes (
-  box_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-  card_id UUID NOT NULL REFERENCES flashcards(card_id) ON DELETE CASCADE,
-  box_number INT NOT NULL CHECK (box_number >= 1 AND box_number <= 3),
-  review_count INT DEFAULT 0,
-  correct_count INT DEFAULT 0,
-  last_reviewed TIMESTAMP,
-  next_review TIMESTAMP,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE(user_id, card_id)
-);
-
-CREATE INDEX idx_leitner_boxes_user_id ON leitner_boxes(user_id);
-CREATE INDEX idx_leitner_boxes_box_number ON leitner_boxes(user_id, box_number);
-CREATE INDEX idx_leitner_boxes_next_review ON leitner_boxes(user_id, next_review);
-```
-
-**Columns:**
-
-- `box_id`: Unique identifier
-- `user_id`: User who is studying this card
-- `card_id`: The card being studied
-- `box_number`: Current box (1=Daily, 2=Every 2 Days, 3=Weekly)
-- `review_count`: Total number of times reviewed
-- `correct_count`: Number of times answered correctly
-- `last_reviewed`: Timestamp of most recent review
-- `next_review`: When this card should be reviewed next
-- `created_at`: When this card was added to boxes
-- `updated_at`: Last update to any field
-
-**Leitner Box System:**
-
-The system uses 3 boxes with fixed review schedules:
-
-| Box | Review Schedule | Purpose                       | Promotion | Demotion    |
-| --- | --------------- | ----------------------------- | --------- | ----------- |
-| 1   | Daily           | New cards & incorrect answers | 1 correct | N/A         |
-| 2   | Every 2 days    | Medium difficulty             | 1 correct | 1 incorrect |
-| 3   | Weekly          | Mastered cards                | -         | 1 incorrect |
-
-**Flow Logic:**
-
-```
-Card Answered Correctly:
-  If box_number < 3:
-    box_number++
-    next_review = NOW() + box_interval[box_number]
-
-Card Answered Incorrectly:
-  If box_number > 1:
-    box_number = 1
-    next_review = NOW() + 1 day
-  Else:
-    Stays in box 1
-    next_review = NOW() + 1 day
-
-Box Review Intervals:
-  Box 1: Every 1 day (daily practice)
-  Box 2: Every 2 days
-  Box 3: Every 7 days (weekly)
-```
-
-**Notes:**
-
-- UNIQUE constraint ensures one entry per user-card pair
-- Index on `box_number` enables efficient "cards due in this box" queries
-- Index on `next_review` enables efficient "cards due today" queries
-- Simple, deterministic scheduling (no complex algorithms)
-- All incorrect answers demote back to Box 1 (aggressive drilling of weak concepts)
-
----
-
-### 4. `quizzes`
-
-Quiz templates (sets of questions grouped for testing).
-
-```sql
-CREATE TABLE quizzes (
-  quiz_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-  name VARCHAR(255) NOT NULL,
-  description TEXT,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE INDEX idx_quizzes_user_id ON quizzes(user_id);
-```
-
-**Columns:**
-
-- `quiz_id`: Unique identifier
-- `user_id`: Creator/owner of the quiz
-- `name`: Quiz title (e.g., "Chapter 3 Vocab Quiz")
-- `description`: Optional quiz description
-- `created_at`: When quiz was created
-- `updated_at`: Last modification
-
----
-
-### 5. `quiz_questions`
-
-Composition of quizzes (which cards belong to which quiz, and in what order).
-
-```sql
-CREATE TABLE quiz_questions (
-  quiz_question_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  quiz_id UUID NOT NULL REFERENCES quizzes(quiz_id) ON DELETE CASCADE,
-  card_id UUID NOT NULL REFERENCES flashcards(card_id) ON DELETE CASCADE,
-  order_index INT NOT NULL,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE INDEX idx_quiz_questions_quiz_id ON quiz_questions(quiz_id, order_index);
-CREATE INDEX idx_quiz_questions_card_id ON quiz_questions(card_id);
-```
-
-**Columns:**
-
-- `quiz_question_id`: Unique identifier
-- `quiz_id`: Which quiz this belongs to
-- `card_id`: Which flashcard is included
-- `order_index`: Position in the quiz (1, 2, 3, ...)
-- `created_at`: When added to quiz
-
-**Notes:**
-
-- Allows cards to be reused across multiple quizzes
-- Order_index determines question sequence
-- Deleting a quiz cascades to delete all its questions
-
----
-
-### 6. `quiz_results`
-
-Results and scores from quiz attempts.
-
-```sql
-CREATE TABLE quiz_results (
-  result_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  quiz_id UUID NOT NULL REFERENCES quizzes(quiz_id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-  score INT NOT NULL,
-  total_questions INT NOT NULL,
-  time_spent_seconds INT,
-  taken_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE INDEX idx_quiz_results_user_id ON quiz_results(user_id);
-CREATE INDEX idx_quiz_results_quiz_id ON quiz_results(quiz_id);
-CREATE INDEX idx_quiz_results_taken_at ON quiz_results(user_id, taken_at DESC);
-```
-
-**Columns:**
-
-- `result_id`: Unique identifier for this attempt
-- `quiz_id`: Which quiz was taken
-- `user_id`: Who took the quiz
-- `score`: Number of correct answers
-- `total_questions`: Total questions in the quiz (for reference)
-- `time_spent_seconds`: How long the quiz took
-- `taken_at`: When the quiz was completed
-
-**Usage:**
-
-- Track user progress over time
-- Compare attempts on same quiz
-- Generate statistics and reports
-
----
-
-### 7. `import_export_logs` (Optional)
-
-Audit log for flashcard imports and exports.
-
-```sql
-CREATE TABLE import_export_logs (
-  log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-  action VARCHAR(50) NOT NULL CHECK (action IN ('import', 'export')),
-  filename VARCHAR(255),
-  card_count INT,
-  status VARCHAR(50) DEFAULT 'success',
-  error_message TEXT,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE INDEX idx_import_export_logs_user_id ON import_export_logs(user_id, created_at DESC);
-```
-
-**Columns:**
-
-- `log_id`: Unique identifier
-- `user_id`: User who performed the action
-- `action`: Either 'import' or 'export'
-- `filename`: Name of the file involved
-- `card_count`: How many cards were affected
-- `status`: 'success', 'partial', 'failed'
-- `error_message`: If failed, what went wrong
-- `created_at`: When the action occurred
-
-**Usage:**
-
-- Audit trail for data changes
-- Troubleshooting import failures
-- Usage analytics
-
----
-
-## Constraints & Relationships
-
-### Foreign Keys (Referential Integrity)
-
-```sql
--- Flashcards belong to users
-ALTER TABLE flashcards
-ADD CONSTRAINT fk_flashcards_user
-FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
-
--- Practice matrices reference user and card
-ALTER TABLE practice_matrices
-ADD CONSTRAINT fk_practice_matrices_user
-FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
-
-ALTER TABLE practice_matrices
-ADD CONSTRAINT fk_practice_matrices_card
-FOREIGN KEY (card_id) REFERENCES flashcards(card_id) ON DELETE CASCADE;
-
--- Quizzes belong to users
-ALTER TABLE quizzes
-ADD CONSTRAINT fk_quizzes_user
-FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
-
--- Quiz questions reference quizzes and cards
-ALTER TABLE quiz_questions
-ADD CONSTRAINT fk_quiz_questions_quiz
-FOREIGN KEY (quiz_id) REFERENCES quizzes(quiz_id) ON DELETE CASCADE;
-
-ALTER TABLE quiz_questions
-ADD CONSTRAINT fk_quiz_questions_card
-FOREIGN KEY (card_id) REFERENCES flashcards(card_id) ON DELETE CASCADE;
-
--- Quiz results reference quizzes and users
-ALTER TABLE quiz_results
-ADD CONSTRAINT fk_quiz_results_quiz
-FOREIGN KEY (quiz_id) REFERENCES quizzes(quiz_id) ON DELETE CASCADE;
-
-ALTER TABLE quiz_results
-ADD CONSTRAINT fk_quiz_results_user
-FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
-```
-
-### Cascade Delete Behavior
-
-- **User deleted** → All related cards, quizzes, practice matrices, results deleted
-- **Card deleted** → Removed from all quizzes and practice matrices
-- **Quiz deleted** → All its results are deleted (for history)
-
----
-
-## Sample Queries
-
-### Get cards due for practice today (Box 1 - Daily)
-
-```sql
-SELECT f.*
-FROM flashcards f
-JOIN leitner_boxes lb ON f.card_id = lb.card_id
-WHERE lb.user_id = $1
-  AND lb.box_number = 1
-ORDER BY lb.next_review ASC
-LIMIT 10;
-```
-
-### Get cards due for Box 2 (Every 2 days)
-
-```sql
-SELECT f.*
-FROM flashcards f
-JOIN leitner_boxes lb ON f.card_id = lb.card_id
-WHERE lb.user_id = $1
-  AND lb.box_number = 2
-  AND lb.next_review <= NOW()
-ORDER BY lb.next_review ASC;
-```
-
-### Get mastered cards (Box 3)
-
-```sql
-SELECT f.*
-FROM flashcards f
-JOIN leitner_boxes lb ON f.card_id = lb.card_id
-WHERE lb.user_id = $1
-  AND lb.box_number = 3
-ORDER BY lb.next_review ASC;
-```
-
-### Get user's study statistics with Leitner boxes
-
-```sql
-SELECT
-  COUNT(DISTINCT CASE WHEN lb.box_number = 1 THEN lb.card_id END) as box1_count,
-  COUNT(DISTINCT CASE WHEN lb.box_number = 2 THEN lb.card_id END) as box2_count,
-  COUNT(DISTINCT CASE WHEN lb.box_number = 3 THEN lb.card_id END) as box3_count,
-  COUNT(DISTINCT lb.card_id) as total_cards,
-  ROUND(100.0 * SUM(lb.correct_count)::numeric /
-        NULLIF(SUM(lb.review_count), 0), 2) as accuracy_percent,
-  MAX(lb.last_reviewed) as last_studied
-FROM leitner_boxes lb
-WHERE lb.user_id = $1;
-```
-
-### Get cards due for review today across all boxes
-
-```sql
-SELECT
-  f.card_id,
-  f.question,
-  lb.box_number,
-  lb.next_review,
-  CASE
-    WHEN lb.box_number = 1 THEN 'Daily'
-    WHEN lb.box_number = 2 THEN 'Every 2 Days'
-    WHEN lb.box_number = 3 THEN 'Weekly'
-  END as box_label
-FROM flashcards f
-JOIN leitner_boxes lb ON f.card_id = lb.card_id
-WHERE lb.user_id = $1
-  AND lb.next_review <= NOW()
-ORDER BY lb.box_number ASC, lb.next_review ASC;
+The schema is defined in two idempotent SQL files. They are the source of truth; this
+document summarizes them.
+
+| File                                                     | Owner adapter                | Contents                                                                                                                                     |
+| -------------------------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| iam-service `src/scripts/sql/pg/iam-postgres-schema.sql` | `IdentityManagementDatabase` | Schema `iam`: users, applications, roles, rights, organizations, groups, tokens, `token_policies`, `session`; seeds roles `admin` and `user` |
+| `src/scripts/sql/pg/flashcards-postgres-schema.sql`      | `FlashCardsDatabase`         | Schema `flashcards`: all application tables (below)                                                                                          |
+
+Both adapters connect to the **same PostgreSQL database**, but each domain has **its own PostgreSQL
+schema** (IAM phase 1, CODING_STANDARDS § 0.8):
+
+| Schema       | Owner adapter                | Connection `search_path` | Contents                                                                 |
+| ------------ | ---------------------------- | ------------------------ | ------------------------------------------------------------------------ |
+| `iam`        | `IdentityManagementDatabase` | `iam, public`            | Identities, applications, roles, rights, organizations, groups, sessions |
+| `flashcards` | `FlashCardsDatabase`         | `flashcards, public`     | All FlashCards data                                                      |
+| `public`     | —                            | —                        | Only the `uuid-ossp` and `pgcrypto` extensions                           |
+
+The search path is set as a connection option (`PostgresDatabase.SCHEMA`), so each adapter's SQL stays
+unqualified within its own domain. The only cross-domain link is the foreign key from app tables to
+`iam.users(user_id) ON DELETE CASCADE`. App SQL never queries IAM tables; usernames come from
+`userAuthService.getUserSummaries()`. (`DB_SCHEMA` in `.env.example` is not read by the code.)
+
+**Migration from the old single-schema layout:** each schema file starts with `CREATE SCHEMA IF NOT EXISTS`
+and a guarded `DO` block that moves that domain's tables out of `public` (`ALTER TABLE … SET SCHEMA`, only
+if still in `public`). Data, indexes, and foreign keys move with the tables, so an existing database
+migrates in place on its first start with the new code. Verified on the local scratch database: an
+old-layout database with data in all 22 tables migrated with identical row counts.
+
+## Bootstrap and migrations
+
+There is no migration runner. On every server start, `Server.initializeDatabase()`:
+
+1. connects (`IdentityManagementDatabase.initializeDatabaseConnection`),
+2. runs every statement of the IAM schema file,
+3. checks that `users` exists, then runs every statement of the app schema file.
+
+Every statement is idempotent (`CREATE … IF NOT EXISTS`, `ALTER TABLE … ADD COLUMN IF NOT EXISTS`,
+`ON CONFLICT DO NOTHING`, and guarded `DO $$ … $$` blocks). When a statement fails, the
+remaining statements still run, and then bootstrap throws. Startup logs the error and the
+server keeps running.
+
+Schema changes are made by **appending** idempotent statements to the schema file.
+For example, the v1 media migration moved the inline `question_image`/`answer_image`/`question_audio`
+columns into `media` inside a guarded `DO $migrate_v1_media$` block.
+
+Statements must appear after the objects they depend on: a fresh database executes the file top to bottom
+exactly once. For example, an `ALTER TABLE x ADD COLUMN` must come after `CREATE TABLE IF NOT EXISTS x`.
+
+## Entity overview
+
+```text
+users ─┬─< user_roles >─ roles ─< role_rights >─ rights          (IAM)
+       ├─< user_rights
+       ├─< media
+       ├─< flashcards ─┬─< flashcard_options
+       │               ├─< flashcard_shares (owner_id, recipient_id → users)
+       │               ├─< public_card_removals
+       │               ├─< flashcard_leitner_progress
+       │               ├─< practice_history
+       │               ├─< session_card_attempts
+       │               ├─< difficulty_history
+       │               └─< quiz_questions >─ quizzes
+       ├─< quizzes ─< quiz_results
+       ├─< lessons            (legacy; not used by the routes)
+       ├─< leitner_boxes      (legacy; superseded by flashcard_leitner_progress)
+       └─< import_export_logs
+session                       (express-session store)
 ```
 
 ---
 
-## Initial Setup Script
+## IAM tables
 
-The canonical schema lives at `src/scripts/sql/pg/flashcards-postgres-schema.sql`
-and is applied automatically (idempotently) when the server starts. To apply it
-manually instead:
+### `users`
 
-```sql
--- Create extensions
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+| Column                                        | Type         | Notes                                                          |
+| --------------------------------------------- | ------------ | -------------------------------------------------------------- |
+| `user_id`                                     | UUID PK      | `gen_random_uuid()`                                            |
+| `username`                                    | VARCHAR(255) | UNIQUE, NOT NULL. App rule: 3–50 chars, `[A-Za-z0-9_-]`        |
+| `email`                                       | VARCHAR(255) | UNIQUE, NOT NULL                                               |
+| `password_hash`                               | VARCHAR(255) | bcrypt                                                         |
+| `full_name`                                   | VARCHAR(255) |                                                                |
+| `status`                                      | VARCHAR(50)  | `active` (default) or `disabled`. Disabled users cannot log in |
+| `is_public`                                   | BOOLEAN      | Listed in the share directory (default false)                  |
+| `storage_max_bytes`                           | BIGINT       | Per-user storage quota, default 26 214 400 (25 MB)             |
+| `last_page_visited`                           | VARCHAR(255) | Default `/`; used as the post-login redirect                   |
+| `last_visited_at`, `created_at`, `updated_at` | TIMESTAMP    |                                                                |
 
--- Create all tables (copy table definitions from above)
--- ...
+### `applications`, `application_users`
 
--- Insert sample data (optional, for testing)
-INSERT INTO users (username, email, password_hash, full_name) VALUES
-  ('demo', 'demo@example.com', '$2a$10$demo_hash', 'Demo User');
-```
+- `applications(app_id, app_key UNIQUE, name, status)`, seeded with `flashcards`.
+- `application_users(app_id, user_id, status, joined_at)`: who may use which app. Signing in to FlashCards
+  requires an `active` row (platform admins are exempt). New users are enrolled when created.
 
-Run with:
+### `roles`, `rights`, `role_rights`, `user_roles`
 
-```bash
-psql postgresql://user:password@host/database < scripts/init-db.sql
-```
+- `roles(role_id, app_id, role_name, description)`, unique on `(app_id, role_name)` with `NULLS NOT DISTINCT`.
+  `app_id` NULL means platform-wide. Seeded: FlashCards `admin` and `user`, and platform `platform_admin`.
+- `rights(right_id, app_id, right_key, description)`, unique on `(app_id, right_key)`, and
+  `role_rights(role_id, right_id)` exist for future fine-grained permissions. **Authorization today checks
+  role membership only** (FlashCards `admin`, `platform_admin`).
+- `user_roles(user_id, role_id)` PK on both. The first user (initial setup or first registration) gets
+  FlashCards `admin` and `platform_admin`.
+
+### `organizations`, `organization_members`, `groups`, `group_members`, `group_roles`
+
+- `organizations(org_id, name, slug UNIQUE, status, created_by)`.
+- `organization_members(org_id, user_id, org_role)` with `org_role` ∈ `owner`/`admin`/`member`.
+- `groups(group_id, org_id, name, description)`, unique `(org_id, name)`. Groups belong to one organization.
+- `group_members(group_id, user_id)`. The service only adds organization members, and removing a member from
+  the organization removes them from its groups.
+- `group_roles(group_id, role_id)`. Every member of the group holds the role.
+
+### `access_tokens` (IAM service, phase 3)
+
+`token_id`, `token_hash` (SHA-256, unique; raw tokens are never stored), `kind` (`access`/`refresh`), `family_id`
+(one per login; reuse of a rotated refresh token revokes the family), `user_id`, `app_id`, `expires_at`, `used_at`,
+`revoked_at`. Transient like `session`: not backed up.
+
+### View `effective_user_roles`
+
+Every role a user holds, `direct` or through a `group`, with its `app_key`. All admin and rights checks read this view.
+
+### One-time upgrade steps (phase 2)
+
+On the first start after phase 2, the schema file converts the old global `admin`/`user` roles into FlashCards roles,
+grants `platform_admin` to the existing FlashCards admins (only while nobody holds it yet), and enrolls every
+existing user in FlashCards (only while the app has no members). Later starts change nothing.
+
+### `session`
+
+`connect-pg-simple` store: `sid` PK, `sess` JSON, `expire` (indexed).
 
 ---
 
-## Backup & Recovery
+## Application tables
 
-### Manual Backup
+### `flashcards`
 
-```bash
-pg_dump postgresql://user:password@host:5432/database > backup.sql
-```
+| Column                                               | Type           | Notes                                                             |
+| ---------------------------------------------------- | -------------- | ----------------------------------------------------------------- |
+| `flashcard_id`                                       | UUID PK        |                                                                   |
+| `user_id`, `created_by`                              | UUID → users   | Both set to the creator; ownership checks use `created_by`        |
+| `question`, `answer`                                 | TEXT NOT NULL  | `question` may be `''` for audio questions                        |
+| `class`, `lesson`                                    | VARCHAR(255)   | Free-text grouping                                                |
+| `category`                                           | VARCHAR(100)   | Free-text grouping                                                |
+| `is_private`                                         | BOOLEAN        | Default true. `false` = public (visible to all users' study sets) |
+| `is_public`                                          | BOOLEAN        | Legacy, unused (visibility uses `is_private`)                     |
+| `difficulty`                                         | INT 1–5        | Legacy, unused                                                    |
+| `lesson_id`                                          | UUID → lessons | Legacy, unused                                                    |
+| `question_type`                                      | VARCHAR(20)    | `standard` · `true_false` · `multiple_choice` · `audio`           |
+| `lang`                                               | VARCHAR(16)    | Default `en-US` (question side)                                   |
+| `answer_lang`                                        | VARCHAR(16)    | Answer-side language (null = same as `lang`)                      |
+| `answer_mode`                                        | VARCHAR(10)    | `choice` (default) or `listen`                                    |
+| `question_form`, `answer_form`                       | VARCHAR(10)    | `text` · `text_tts` · `image` · `audio`                           |
+| `question_media_id`, `answer_media_id`               | UUID → media   | ON DELETE SET NULL                                                |
+| `difficulty_score`                                   | DECIMAL(3,2)   | 1.00–5.00, default 3.00. See DIFFICULTY_SCORING.md                |
+| `difficulty_calc_base`                               | VARCHAR(10)    | `individual` or `shared`                                          |
+| `last_difficulty_update`, `created_at`, `updated_at` | TIMESTAMP      |                                                                   |
 
-### Restore from Backup
+Indexes: `(user_id)`, `(category, user_id)`.
 
-```bash
-psql postgresql://user:password@host:5432/database < backup.sql
-```
+### `media`
 
-### Render Automated Backups
+`media_id` UUID PK, `user_id` → users, `kind` (`image` | `audio`), `data` TEXT (base64 **data URL**), `created_at`.
+Media rows that no card or option references are deleted after card deletion and option replacement.
+Storage usage per user = `SUM(LENGTH(question)+LENGTH(answer))` over owned cards + `SUM(LENGTH(data))` over owned media.
 
-- Enabled by default
-- 7-day retention on free plan
-- Available in Render dashboard
+### `flashcard_options`
 
----
+`option_id` PK, `flashcard_id` → flashcards (CASCADE), `option_text`, `is_correct`, `sort_order`,
+`option_form` (default `text`), `option_media_id` → media.
+These are the authored options for `multiple_choice`/`audio` cards. If every option is correct, practice adds
+"All of the above" as the answer. If none is correct, it adds "None of the above".
 
-## Performance Tuning
+### `flashcard_shares`
 
-### Recommended Indexes
+`share_id` PK; `owner_id`, `recipient_id`, `flashcard_id`; `status` (written as `active`);
+`recipient_status` (`pending` → `accepted`); `shared_at`, `accepted_at`, `rejected_at`, `revoked_at`.
+UNIQUE `(owner_id, recipient_id, flashcard_id)`. Reject and revoke **delete** the row, so the
+`rejected_at`/`revoked_at` columns are never written.
 
-Already included in table definitions above. Key ones:
+### `public_card_removals`
 
-- `idx_flashcards_user_id`: Fast lookup of user's cards
-- `idx_practice_matrices_next_review`: Fast query for cards due for review
-- `idx_quiz_results_taken_at`: Time-series queries
+PK `(user_id, flashcard_id)`. Records that a user removed a public card from their study set.
 
-### Statistics & Analysis
+### `flashcard_leitner_progress` (active Leitner state)
 
-```sql
--- Update statistics for query planner
-ANALYZE;
+| Column                             | Notes                                                              |
+| ---------------------------------- | ------------------------------------------------------------------ |
+| `id`                               | SERIAL PK                                                          |
+| `flashcard_id`, `user_id`          | UNIQUE pair                                                        |
+| `current_box`                      | 1, 2, or 3 (default 1)                                             |
+| `last_reviewed`                    | Set when a session's repetitions complete                          |
+| `next_review`                      | Midnight of now + 1/3/7 days for box 1/2/3; initialized to `NOW()` |
+| `times_correct`, `times_incorrect` | Incremented on every attempt                                       |
+| `none_of_above_count`              | Times "None of the above" was presented                            |
+| `session_streak`                   | Unused                                                             |
 
--- Check index usage
-SELECT schemaname, tablename, indexname
-FROM pg_indexes
-WHERE schemaname = 'public'
-ORDER BY tablename, indexname;
-```
+Rows are created lazily for every accessible card by `initializeAllCardsForUser`,
+which runs when the practice page loads and on `/api/practice/next` and `/api/practice/dashboard`.
+
+### `practice_history`
+
+One row per answered attempt: `flashcard_id`, `user_id`, `leitner_box` (the box at attempt time),
+`correct`, `response_time_ms` (currently always null), `class`, `lesson`, `category`, `created_at`.
+`class`/`lesson`/`category` hold the active practice filter if one was set, otherwise the card's own values.
+Used for the streak, today's summary, attempt totals, and difficulty scoring.
+
+### `session_card_attempts`
+
+`flashcard_id`, `user_id`, `session_start_time` (from the client), `attempt_number`, `was_correct`, `response_time_ms`.
+Indexed on `(user_id, flashcard_id, session_start_time)`. Drives the per-session repetition rule.
+
+### `difficulty_history`
+
+`flashcard_id`, `old_score`, `new_score`, `calculation_basis`, `sample_size`, `success_rate`, `created_at`.
+Written only when a recalculation changes the score.
+
+### `quizzes`, `quiz_questions`, `quiz_results`
+
+- `quizzes(quiz_id, user_id, name, description, …)`. `name` = `Quiz - <date> <time>`; `description` = JSON of the filters used, or null.
+- `quiz_questions(quiz_question_id, quiz_id, card_id → flashcards, order_index)`.
+- `quiz_results(result_id, user_id, quiz_id, score 0–100, total_questions, correct_answers, taken_at)`.
+
+### `import_export_logs`
+
+`action` ∈ `IMPORT`/`EXPORT`; `status` ∈ `pending`/`completed`/`failed`; `cards_processed`, `file_name`, `error_message`.
+Written by the admin backup routes only.
+
+### `user_rights` (schema `iam`)
+
+PK `(user_id, right_key)`, `granted`. Per-user right overrides, owned by the IAM since phase 1. The
+service methods exist, but no route uses them yet.
+
+### Legacy tables
+
+- `leitner_boxes`: the original Leitner design. Nothing writes to it; it is still counted by
+  `/api/system/database-status`, cleared on user delete, and included in backups.
+- `lessons`: an unused normalized lesson table. Lessons are stored as text on `flashcards.lesson`.
+
+## Cascade behavior
+
+Deleting a user (`userAuthService.deleteUser`) deletes only the identity row in `iam.users`. Every app
+table that references the user cascades through its foreign key, so the IAM never touches app tables.
+Deleting a flashcard cascades to its options, shares, removals, progress, history, attempts,
+difficulty history, and quiz questions. Media references are set to NULL, and orphaned media is then
+garbage-collected by the service.
+
+## Query files
+
+All SQL used at runtime lives in named-query files under `src/scripts/sql/pg/`
+(`-- Query: <name>` sections, one statement each, loaded by `PostgresDatabase.loadNamedSqlStatements`):
+`entries-queries.sql`, `practice-queries.sql`, `quiz-queries.sql`, `backup-queries.sql`,
+`system-queries.sql`, `test-queries.sql`. The IAM queries live in iam-service and the introspection and transaction queries in platform-db.
+Templates use `{{placeholders}}` for dynamic filter clauses; values are always bound parameters.
+
+## Backup and recovery
+
+- In-app: admin **Backup & Restore** on the Profile page (JSON + media ZIP), or from a terminal with `backup.sh` /
+  `restore.sh` (SYSTEM_INITIAL_SETUP.md → restoring into a new database). Import is all-or-nothing.
+  Every table except the transient `session` table is included. The automated round-trip test
+  (`npm run test:roundtrip`, also run by `deploy.sh -preview`) proves a wipe → bootstrap → re-created admin → import
+  rebuilds every table and media item.
+- Render: free-tier databases expire (`DB_PG_EXPIRE` drives the header warning). Take an in-app backup before expiry.
+- Manual: `pg_dump "$DB_PG_EXTERNAL_URL" > backup.sql`.

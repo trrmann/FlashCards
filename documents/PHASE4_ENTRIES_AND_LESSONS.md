@@ -1,5 +1,10 @@
 # Phase 4: Entries & Lesson Tracking
 
+> **Historical planning note (superseded).** This describes the Phase 4 plan. What was built differs:
+> visibility uses `flashcards.is_private` (`is_public` and the `lessons` table / `lesson_id` are unused);
+> lessons are free text on `flashcards.lesson`; the API is `/api/entries/*`, not `/api/flashcards/*`.
+> Current reference: [API_ENDPOINTS.md](./API_ENDPOINTS.md), [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md).
+
 ## Overview
 
 Phase 4 introduces flashcard entry management with privacy controls and lesson tracking for better organization.

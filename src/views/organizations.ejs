@@ -1,0 +1,138 @@
+<%- include('partials/header', { activePage: 'organizations' }) %>
+<main class="organizations-page" data-logged-in="<%= isLoggedIn ? 'true' : 'false' %>">
+  <h1>Organizations</h1>
+
+  <p id="org-signed-out" class="hidden">Please <a href="/login">log in</a> to manage organizations.</p>
+  <div id="org-status" class="org-status hidden" role="status" aria-live="polite"></div>
+
+  <div id="org-layout" class="org-layout hidden">
+    <section class="org-panel" aria-labelledby="org-list-heading">
+      <h2 id="org-list-heading">Your organizations</h2>
+      <ul id="org-list" class="org-list"></ul>
+      <p id="org-empty" class="text-muted hidden">You are not a member of any organization yet.</p>
+
+      <form id="org-create-form" class="org-form hidden">
+        <h3>Create an organization</h3>
+        <div class="form-group">
+          <label for="org-create-name">Name</label>
+          <input id="org-create-name" name="name" type="text" maxlength="255" required />
+        </div>
+        <div class="form-group">
+          <label for="org-create-slug">Short name (slug)</label>
+          <input
+            id="org-create-slug"
+            name="slug"
+            type="text"
+            maxlength="100"
+            pattern="[a-z0-9][a-z0-9\-]{1,98}[a-z0-9]"
+            required
+          />
+          <small>Lowercase letters, digits, and hyphens, e.g. study-club</small>
+        </div>
+        <div class="form-group">
+          <label for="org-create-owner">Owner username (optional)</label>
+          <input id="org-create-owner" name="ownerUsername" type="text" />
+          <small>Leave empty to become the owner yourself</small>
+        </div>
+        <button class="btn-primary" type="submit">Create organization</button>
+      </form>
+    </section>
+
+    <section id="org-detail" class="org-panel hidden" aria-labelledby="org-detail-heading">
+      <h2 id="org-detail-heading">Organization</h2>
+      <p id="org-detail-meta" class="text-muted"></p>
+
+      <form id="org-settings-form" class="org-form org-form-inline org-manager-only">
+        <div class="form-group">
+          <label for="org-settings-name">Name</label>
+          <input id="org-settings-name" name="name" type="text" maxlength="255" required />
+        </div>
+        <div class="form-group">
+          <label for="org-settings-status">Status</label>
+          <select id="org-settings-status" name="status">
+            <option value="active">Active</option>
+            <option value="disabled">Disabled</option>
+          </select>
+        </div>
+        <button class="btn-secondary" type="submit">Save</button>
+      </form>
+      <button id="org-delete" class="btn-danger hidden" type="button">Delete organization</button>
+
+      <h3>Members</h3>
+      <table class="org-table">
+        <thead>
+          <tr>
+            <th scope="col">Member</th>
+            <th scope="col">Role</th>
+            <th scope="col"><span class="visually-hidden">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody id="member-rows"></tbody>
+      </table>
+
+      <form id="member-add-form" class="org-form org-form-inline org-manager-only">
+        <div class="form-group">
+          <label for="member-add-username">Username</label>
+          <input id="member-add-username" name="username" type="text" required />
+        </div>
+        <div class="form-group">
+          <label for="member-add-role">Role</label>
+          <select id="member-add-role" name="orgRole">
+            <option value="member">Member</option>
+            <option value="admin">Admin</option>
+            <option value="owner">Owner</option>
+          </select>
+        </div>
+        <button class="btn-primary" type="submit">Add member</button>
+      </form>
+
+      <h3>Groups</h3>
+      <ul id="group-list" class="group-list"></ul>
+      <p id="group-empty" class="text-muted hidden">No groups yet.</p>
+
+      <form id="group-create-form" class="org-form org-form-inline org-manager-only">
+        <div class="form-group">
+          <label for="group-create-name">Group name</label>
+          <input id="group-create-name" name="name" type="text" maxlength="255" required />
+        </div>
+        <div class="form-group">
+          <label for="group-create-description">Description (optional)</label>
+          <input id="group-create-description" name="description" type="text" maxlength="2000" />
+        </div>
+        <button class="btn-primary" type="submit">Create group</button>
+      </form>
+
+      <div id="group-detail" class="group-detail hidden">
+        <h3 id="group-detail-heading">Group</h3>
+
+        <h4>Group members</h4>
+        <ul id="group-member-list" class="chip-list"></ul>
+        <form id="group-member-form" class="org-form org-form-inline org-manager-only">
+          <div class="form-group">
+            <label for="group-member-username">Username (organization member)</label>
+            <input id="group-member-username" name="username" type="text" required />
+          </div>
+          <button class="btn-primary" type="submit">Add to group</button>
+        </form>
+
+        <h4>Group roles</h4>
+        <p class="text-muted">Every member of the group holds these roles.</p>
+        <ul id="group-role-list" class="chip-list"></ul>
+        <form id="group-role-form" class="org-form org-form-inline org-manager-only">
+          <div class="form-group">
+            <label for="group-role-app">Application</label>
+            <input id="group-role-app" name="appKey" type="text" value="flashcards" required />
+          </div>
+          <div class="form-group">
+            <label for="group-role-name">Role</label>
+            <input id="group-role-name" name="roleName" type="text" required />
+          </div>
+          <button class="btn-secondary" type="submit">Grant role</button>
+        </form>
+        <small class="text-muted">Only platform admins and the application's admins can change group roles.</small>
+      </div>
+    </section>
+  </div>
+</main>
+<script src="/js/pages/organizations-page.js"></script>
+<%- include('partials/footer') %>

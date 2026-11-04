@@ -17,13 +17,16 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "test:preview": "node src/scripts/js/modules/tests/preview-tests.mjs",
+    "test:roundtrip": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/backup-roundtrip.mjs",
+    "test:iam": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/iam-api-test.mjs",
     "dev": "nodemon",
     "start": "node server.js",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --ext .js,.mjs",
     "lint:fix": "eslint . --ext .js,.mjs --fix",
-    "verify": "npm run format && npm run lint"
+    "verify": "npm run format && npm run lint",
+    "test:startup": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/startup-test.mjs"
   },
   "dependencies": {
     "adm-zip": "^0.6.1",
@@ -33,8 +36,10 @@
     "ejs": "^7.0.2",
     "express": "^5.3.0",
     "express-session": "^1.19.0",
+    "iam-service": "git+https://github.com/trrmann/iam-service.git#v0.1.1",
     "node-fetch": "^3.3.2",
-    "pg": "^8.23.1"
+    "pg": "^8.23.1",
+    "platform-db": "git+https://github.com/trrmann/platform-db.git#v0.1.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

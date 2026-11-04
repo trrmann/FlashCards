@@ -1,5 +1,8 @@
 # FlashCards - Environments Overview
 
+> **Target behavior** is defined by [CODING_STANDARDS.md §§ 0.5–0.7](./CODING_STANDARDS.md) (deploy stages,
+> preview test coverage, data safety). This page describes the **current** behavior; the gaps are listed in that document.
+
 ## Three Deployment Environments
 
 ### 🔵 Development (Dev)
@@ -10,17 +13,18 @@
 - **Code Location:** Local files only
 - **Access:** http://localhost:5000
 - **Use Case:** Active development, testing locally
-- **Deployment:** `./deploy.sh -dev`
+- **Deployment:** `deploy.sh -dev`
 
 ### 🟢 Preview
 
 - **Where:** Your local machine
-- **Server:** Runs on localhost:5000
+- **Server:** Runs on localhost:4000 (`NODE_ENV=preview`, `PORT_PREVIEW`)
 - **Database:** Remote on Render
 - **Code Location:** Local files only
-- **Access:** http://localhost:5000
+- **Access:** http://localhost:4000
+- **Checks:** Prettier + ESLint must pass, then `npm run test:preview` (Lighthouse, HTML/CSS, memory, Web Vitals) must pass
 - **Use Case:** Test before pushing to prod
-- **Deployment:** `./deploy.sh -preview`
+- **Deployment:** `deploy.sh -preview`
 
 ### 🔴 Production (Prod)
 
@@ -30,7 +34,7 @@
 - **Code Location:** GitHub + Render
 - **Access:** Your Render app URL
 - **Use Case:** Live application
-- **Deployment:** `./deploy.sh -prod` (auto-deploys via GitHub)
+- **Deployment:** `deploy.sh -prod` (auto-deploys via GitHub)
 
 ---
 
@@ -57,7 +61,7 @@ localhost              from GitHub)
 
 ```
 1. Make code changes locally
-2. Run: ./deploy.sh -dev
+2. Run: deploy.sh -dev
 3. Test on localhost:5000
 4. Repeat steps 1-3
 ```
@@ -66,7 +70,7 @@ localhost              from GitHub)
 
 ```
 1. Finish development
-2. Run: ./deploy.sh -preview
+2. Run: deploy.sh -preview
 3. Final local testing
 4. If OK → proceed to prod
 ```
@@ -79,7 +83,7 @@ localhost              from GitHub)
    git commit -m "Feature description"
    git push origin main
 
-2. Run: ./deploy.sh -prod
+2. Run: deploy.sh -prod
    (Waits for GitHub auto-deploy to Render)
 
 3. Test on Render URL
@@ -89,11 +93,11 @@ localhost              from GitHub)
 ### Deploy All Environments
 
 ```
-./deploy.sh -all
+deploy.sh -all
 
 Runs in order:
-  1. Dev (localhost:5000)
-  2. Preview (localhost:5000)
+  1. Dev (localhost:5000)  → press Enter
+  2. Preview (localhost:4000) → press Enter
   3. Prod (Render URL, waits for auto-deploy)
 ```
 
@@ -103,12 +107,8 @@ Runs in order:
 
 **All three environments use the same Render database:**
 
-```
-dev_apps (Render PostgreSQL)
-├─ flashcards_schema
-├─ todos_schema (future)
-└─ notes_schema (future)
-```
+One Render PostgreSQL database; all FlashCards tables live in its `public` schema
+(IAM tables and app tables, see DATABASE_SCHEMA.md). No per-application schema is used.
 
 - Dev: Connects to Render DB from localhost
 - Preview: Connects to Render DB from localhost
@@ -123,20 +123,32 @@ All share same data, so testing changes affects all environments.
 ### Dev / Preview (.env file)
 
 ```env
-DATABASE_URL=postgresql://app_admin:PASSWORD@HOST:5432/dev_apps
-NODE_ENV=development
-PORT=5000
+DB_PG_EXTERNAL_HOSTNAME=<external host from Render>
+DB_PG_INTERNAL_HOSTNAME=<internal host from Render>
+DB_PG_PORT=5432
+DB_PG_DATABASE=<db name>
+DB_PG_USER=<db user>
+DB_PG_PASSWORD=<secret>
+DB_PG_EXPIRE=<YYYY-MM-DD, free tier only>
+PORT_DEV=5000
+PORT_PREVIEW=4000
+RENDER_URL=https://<app>.onrender.com
 ```
+
+`NODE_ENV` is set by `deploy.sh` (`development` / `preview`); locally the external hostname is used.
 
 ### Prod (Render dashboard)
 
 Same variables, but managed in Render's environment settings:
 
-```
-DATABASE_URL=postgresql://app_admin:PASSWORD@HOST:5432/dev_apps
+```text
 NODE_ENV=production
-PORT=auto-assigned by Render
+SESSION_SECRET=<long random value>
+DB_PG_INTERNAL_HOSTNAME, DB_PG_PORT, DB_PG_DATABASE, DB_PG_USER, DB_PG_PASSWORD, DB_PG_EXPIRE
+PORT=assigned by Render
 ```
+
+Full list: RENDER_ENVIRONMENT_VARIABLES.md.
 
 ---
 
@@ -146,16 +158,16 @@ Use `deploy.sh` to automate deployments:
 
 ```bash
 # Dev environment
-./deploy.sh -dev
+deploy.sh -dev
 
 # Preview environment
-./deploy.sh -preview
+deploy.sh -preview
 
 # Production environment (GitHub auto-deploy)
-./deploy.sh -prod
+deploy.sh -prod
 
 # All environments in sequence
-./deploy.sh -all
+deploy.sh -all
 ```
 
 **What the script does:**
@@ -174,7 +186,7 @@ Use `deploy.sh` to automate deployments:
 
 ```
 Morning:
-  ./deploy.sh -dev
+  deploy.sh -dev
   (Opens http://localhost:5000)
 
 Code all day:
@@ -183,12 +195,12 @@ Code all day:
   3. Repeat
 
 Before lunch/end of day:
-  ./deploy.sh -preview
+  deploy.sh -preview
   (Final local test)
 
 Ready to ship:
   git push origin main
-  ./deploy.sh -prod
+  deploy.sh -prod
   (Opens render-app-url.onrender.com)
   (Waits for auto-deploy, then tests)
 ```
@@ -201,19 +213,19 @@ Ready to ship:
 
 - Check .env values
 - Check `npm install` completed
-- Check port 5000 not in use
+- Check port 5000 (dev) / 4000 (preview) not in use (the script kills existing listeners)
 
 **Prod deploy stuck:**
 
 - Check GitHub push succeeded
 - Check Render webhook configured
-- Script waits 30 seconds for auto-deploy
+- Script waits 45 seconds, then polls `RENDER_URL` up to 60 times every 2 seconds
 
 **Database errors in any env:**
 
 - All envs use same DB
 - Check pgAdmin connection
-- Verify schema exists
+- Check `/api/system/database-status` and the startup bootstrap log
 
 ---
 

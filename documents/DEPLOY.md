@@ -1,21 +1,27 @@
 # FlashCards Deploy Script
 
+> **Target behavior** is defined by [CODING_STANDARDS.md §§ 0.5–0.7](./CODING_STANDARDS.md) (deploy stages,
+> preview test coverage, data safety). This page describes the **current** behavior; the gaps are listed in that document.
+
+> **Location:** `src/scripts/sh/deploy.sh`. It's on the VS Code terminal `PATH`, so run `deploy.sh …`
+> (or the `deploy` alias) from any directory. See [DEPLOY_ACCESSIBILITY.md](./DEPLOY_ACCESSIBILITY.md).
+
 One-command deployments to dev, preview, prod, or all environments.
 
 ## Quick Start
 
 ```bash
 # Deploy to development (local)
-./deploy.sh -dev
+deploy.sh -dev
 
 # Deploy to preview (local, final test)
-./deploy.sh -preview
+deploy.sh -preview
 
 # Deploy to production (GitHub auto-deploy to Render)
-./deploy.sh -prod
+deploy.sh -prod
 
 # Deploy to all environments in sequence
-./deploy.sh -all
+deploy.sh -all
 ```
 
 ## What It Does
@@ -35,17 +41,19 @@ One-command deployments to dev, preview, prod, or all environments.
 3. **Checks Dependencies**
    - Runs `npm install` if needed
 
-4. **Runs Checks** (if configured)
-   - Linter (if `npm run lint` exists)
-   - Tests (if `npm run test` exists)
+4. **Runs Checks** (non-blocking, all environments)
+   - Lint: runs once silently, and the logged re-run happens only if that first run **passed**, so failures are effectively skipped
+   - Tests: `npm test` is a placeholder that always exits 1, so this step is always skipped
 
 5. **Deploys**
-   - Dev/Preview: Starts local server on localhost:5000
-   - Prod: Pushes to GitHub (triggers Render auto-deploy)
+   - Dev: starts `NODE_ENV=development npm run dev` on localhost:5000 and waits for `/api/health`
+   - Preview: **strict** `npm run format` + `npm run lint` (abort on failure), starts `NODE_ENV=preview npm run dev`
+     on localhost:4000, then runs `npm run test:preview` (abort on failure; server keeps running)
+   - Prod: Prettier, auto-commit, push to GitHub `main` (triggers Render auto-deploy)
 
 6. **Opens Browser**
-   - Dev/Preview: http://localhost:5000
-   - Prod: Shows Render dashboard link
+   - Dev: http://localhost:5000 · Preview: http://localhost:4000
+   - Prod: `RENDER_URL` from `.env` (or a dashboard link if unset)
 
 7. **Logs Everything**
    - Full output in `.deployment/last-run.log`
@@ -63,7 +71,7 @@ One-command deployments to dev, preview, prod, or all environments.
 
 ### -preview (Preview)
 
-- Server: localhost:5000
+- Server: localhost:4000
 - Database: Render (remote)
 - When: Final local testing before prod
 - Best for: QA testing before shipping
@@ -75,7 +83,7 @@ One-command deployments to dev, preview, prod, or all environments.
 - Database: Render (remote)
 - When: Ready to ship live
 - How: Pushes to GitHub → Render auto-deploys
-- Waits: 30 seconds for Render auto-deploy
+- Waits: 45 seconds, then polls `RENDER_URL` (up to 60 × 2 s)
 - Rerunnable: Yes (if no uncommitted changes)
 
 ### -all (All Environments)
@@ -110,8 +118,8 @@ One-command deployments to dev, preview, prod, or all environments.
 
 ### Optional:
 
-- `npm run lint` - will run if exists
-- `npm run test` - will run if exists
+- `RENDER_URL` in `.env`: enables the production health check and browser open
+- `lsof`, `curl`: used to free ports and probe the local servers
 
 ## Examples
 
@@ -119,7 +127,7 @@ One-command deployments to dev, preview, prod, or all environments.
 
 ```bash
 # Start work
-./deploy.sh -dev
+deploy.sh -dev
 
 # Make changes, test manually
 # Throughout the day, restart as needed with same command
@@ -127,28 +135,28 @@ One-command deployments to dev, preview, prod, or all environments.
 # Ready to ship
 git add .
 git commit -m "Feature: add user profiles"
-./deploy.sh -prod
+deploy.sh -prod
 ```
 
 ### Testing New Feature
 
 ```bash
 # Develop locally
-./deploy.sh -dev
+deploy.sh -dev
 
 # Final test before shipping
-./deploy.sh -preview
+deploy.sh -preview
 
 # Looks good? Ship it!
 git push origin main
-./deploy.sh -prod
+deploy.sh -prod
 ```
 
 ### Full Testing Pipeline
 
 ```bash
 # Test everything
-./deploy.sh -all
+deploy.sh -all
 
 # Press Enter at each pause to proceed
 # Dev testing (manual)
@@ -163,7 +171,7 @@ git push origin main
 ### "Permission denied" on deploy.sh
 
 ```bash
-chmod +x deploy.sh
+chmod +x src/scripts/sh/deploy.sh
 ```
 
 ### "Port 5000 already in use"
@@ -186,7 +194,7 @@ chmod +x deploy.sh
   git add .
   git commit -m "message"
   git push origin main
-  ./deploy.sh -prod
+  deploy.sh -prod
   ```
 
 ### "Server failed to start" in dev/preview
@@ -216,16 +224,16 @@ The script is fully rerunnable:
 
 ```bash
 # Dev fails?
-./deploy.sh -dev
+deploy.sh -dev
 # Fix issue
-./deploy.sh -dev  # Run again
+deploy.sh -dev  # Run again
 ```
 
 ```bash
 # Prod deploy stuck?
-./deploy.sh -prod
+deploy.sh -prod
 # Waits, then tries again
-./deploy.sh -prod  # Reruns git push
+deploy.sh -prod  # Reruns git push
 ```
 
 All operations are idempotent - safe to repeat.
@@ -235,35 +243,44 @@ All operations are idempotent - safe to repeat.
 ### Dev/Preview Flow:
 
 1. Checks everything
-2. Kills existing process on port 5000
-3. Starts `npm run dev` (NODE_ENV=dev or preview)
-4. Waits for server to respond to health check
-5. Opens browser
-6. Server continues running in background
+2. Kills any existing process on the target port (5000 dev / 4000 preview)
+3. Preview only: strict format + lint
+4. Starts `npm run dev` with `NODE_ENV=development` or `preview` (nodemon, `--env-file=.env`)
+5. Waits up to 30 s for the server (dev: `/api/health`; preview: `/`)
+6. Preview only: runs `npm run test:preview` against port 4000, then `npm run test:roundtrip`, `npm run test:iam` and `npm run test:startup` on the local scratch DB
+   (starts it if needed; fails the preview if it is missing; set it up once with `local-db.sh init`)
+7. Opens browser; server continues running in background
 
 ### Prod Flow:
 
 1. Checks everything
-2. Verifies no uncommitted changes
-3. Pushes to GitHub `main` branch
-4. Waits 30 seconds for Render webhook
-5. Opens Render dashboard link
-6. Returns (deployment continues on Render servers)
+2. Backs up production with `backup.sh` (admin sign-in prompt; saved to `~/FlashCardsBackups`). Stops if it fails
+3. Runs `npm run format` (Prettier writes changes)
+4. If **any tracked file** differs from HEAD, runs `git add .` and commits with the message
+   "build: Auto-format code before production deployment"
+5. Pushes to GitHub `origin main`
+6. Waits 45 s, then polls `RENDER_URL` up to 60 times every 2 s
+7. Opens the production URL; returns (deployment continues on Render)
+
+> ⚠️ Step 4 uses `git add .`. It commits **all** pending work, including untracked files that are not
+> git-ignored (e.g. `documents/notes.md`), under the auto-format message. Commit or stash your work
+> deliberately before running `-prod`. It also pushes `main` regardless of the current branch name.
 
 ## Stopping Services
 
 **Stop dev/preview server:**
 
 ```bash
-kill $(lsof -t -i :5000)
+kill $(lsof -t -i :5000)   # dev
+kill $(lsof -t -i :4000)   # preview
 ```
 
 **Or switch environments** (script kills automatically):
 
 ```bash
-./deploy.sh -dev   # Start dev
+deploy.sh -dev   # Start dev
 # Later...
-./deploy.sh -preview  # Script kills dev, starts preview
+deploy.sh -preview  # Starts preview on 4000 (dev on 5000 keeps running; -all stops it for you)
 ```
 
 ## Exit Codes
