@@ -161,6 +161,15 @@ Follow-ups:
 
 ## resolved
 
+- **Shared packages: rotatable app secrets and per-app database logins (2026-11-04).** iam-service `v0.1.6` (an app
+  secret's `…_PREVIOUS` value is accepted during a rotation) and `v0.1.7` (`iam-provision`: one login per service,
+  limited to its own schema; `iam.applications` gains `db_role` / `db_schema`); platform-db `v0.2.2` (the local app
+  user may create roles, like Render's). Production unchanged until phase 3c: FlashCards keeps the admin login, and the
+  `flashcards_svc` / `iam_svc` logins are created on Render by the owner with `iam-provision`. Before FlashCards
+  switches, its schema file must create the `flashcards` schema only when missing (iam-service section 3).
+  `prod-readonly-check.sh` now also shows role-creation rights, the connection limit and the `public` schema rights.
+  **Resolved:** `test:startup` 16/16, `test:roundtrip` 152/152, `test:iam` 79/79 (bootstraps the changed IAM
+  schema), `test:cleanup` 6/6, verify clean.
 - **Database password rotated (2026-11-04).** The live password was in public git history. Render credential rotation:
   new default login `app_admin_20261104` (it acts as the `app_admin` role, which owns the `iam` and `flashcards`
   schemas), set in the web service's environment and the local `.env`, then the old `app_admin` login was deleted

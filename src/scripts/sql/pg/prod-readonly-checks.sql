@@ -62,3 +62,7 @@ SELECT current_setting('max_connections')::int AS max_connections,
 -- Login roles in the database (names and flags only): Render-managed and any created with SQL.
 SELECT rolname AS login_role, rolcanlogin AS can_login, rolconnlimit AS connection_limit
 FROM pg_roles WHERE rolname NOT LIKE 'pg\_%' AND rolname <> 'postgres' ORDER BY 1;
+
+-- The public schema as in a standard database: every login may use it (for the extensions' functions).
+SELECT has_schema_privilege('public', 'public', 'USAGE') AS public_schema_usable_by_all,
+       has_schema_privilege('public', 'public', 'CREATE') AS public_schema_creatable_by_all;
