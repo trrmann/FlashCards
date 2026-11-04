@@ -28,3 +28,23 @@ FROM pg_constraint con
 JOIN pg_class cl ON cl.oid = con.conrelid JOIN pg_namespace cn ON cn.oid = cl.relnamespace
 JOIN pg_class rt ON rt.oid = con.confrelid JOIN pg_namespace rn ON rn.oid = rt.relnamespace
 WHERE con.contype = 'f' AND rn.nspname = 'public' AND cn.nspname <> 'public';
+
+-- Credentials (for a password rotation): who this session is, who owns the app schemas and tables,
+-- and whether this login can act as that owner (needed by the schema bootstrap) and use the tables.
+SELECT current_user AS login,
+       n.nspname AS schema,
+       pg_get_userbyid(n.nspowner) AS schema_owner,
+       pg_has_role(current_user, n.nspowner, 'USAGE') AS login_acts_as_owner,
+       has_schema_privilege(n.nspname, 'USAGE') AS can_use_schema
+FROM pg_namespace n WHERE n.nspname IN ('iam', 'flashcards') ORDER BY 2;
+
+SELECT n.nspname AS schema, pg_get_userbyid(c.relowner) AS table_owner, count(*) AS tables,
+       bool_and(has_table_privilege(c.oid, 'SELECT,INSERT,UPDATE,DELETE')) AS login_can_read_write_all
+FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind = 'r' AND n.nspname IN ('iam', 'flashcards')
+GROUP BY 1, 2 ORDER BY 1, 2;
+
+-- Open connections per login (no query text): the old login should reach 0 before it is deleted.
+SELECT usename AS login, count(*) AS connections
+FROM pg_stat_activity WHERE datname = current_database() AND usename IS NOT NULL
+GROUP BY 1 ORDER BY 1;
