@@ -160,6 +160,18 @@ Follow-ups:
 
 ## resolved
 
+- **Queued, throttled and prioritised database work (2026-11-04, owner request).**
+  - Every query now runs through platform-db `v0.2.1`'s `QueryScheduler`: concurrency = pool size, waiting limits per
+    class, ageing, retry through short outages, transactions retried as a whole.
+  - IAM checks are `critical` (iam-service `v0.1.5`).
+  - FlashCards' import/export log queries and all backup and restore work are `background` (`BackupService.WORK`), so
+    a large backup yields to people studying.
+  - New settings: `DB_PG_POOL_MAX`, `DB_PG_RATE_PER_SECOND`/`_BURST`, `DB_PG_QUERY_RULES`, `DB_PG_SCHEDULER`.
+
+  **Resolved:** `test:startup` 16/16 (3 scheduling-class checks), `test:roundtrip` 152/152 (backup and import through
+  the scheduler), `test:iam` 79/79, `test:cleanup` 6/6, verify clean; platform-db `test:scheduler` 21/21 and
+  `test:database` 50/50; request-queue 27/27; iam-service 53 + 41 + 18 + 7.
+
 - **Empty leftover tables in public after the incident (2026-11-04, owner request).** The bootstraps of iam-service
   (`v0.1.4`) and FlashCards now drop a `public` table only when:
   - its twin exists in `iam`/`flashcards`;

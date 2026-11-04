@@ -17,7 +17,7 @@ and answers. Data is stored in PostgreSQL on Render.
 
 ## Directory structure
 
-FlashCards depends on two shared packages, installed from GitHub (platform-db `v0.1.4`, iam-service `v0.1.4`) (Render builds with `src/scripts/sh/render-build.sh`): **platform-db** (`PostgresDatabase`, `LocalDatabaseTest`, the shared `local-db.sh`) and **iam-service** (`IdentityManagementDatabase`, `userAuthService`, `validationService`, `organizationService`, `OrganizationRouter`, the IAM service and `IamClient`). Their code and SQL are no longer in this repository.
+FlashCards depends on two shared packages, installed from GitHub (platform-db `v0.2.1`, iam-service `v0.1.5`) (Render builds with `src/scripts/sh/render-build.sh`): **platform-db** (`PostgresDatabase`, `LocalDatabaseTest`, the shared `local-db.sh`) and **iam-service** (`IdentityManagementDatabase`, `userAuthService`, `validationService`, `organizationService`, `OrganizationRouter`, the IAM service and `IamClient`). Their code and SQL are no longer in this repository.
 
 ```text
 FlashCards/

@@ -7,11 +7,13 @@
  * bootstrapping and writes nothing. Local scratch database only.
  */
 
-import { TcpRelay } from 'platform-db';
+import { TcpRelay, PostgresDatabase } from 'platform-db';
 import { IdentityManagementDatabase } from 'iam-service/db';
 import { LocalTestCase } from './localTestCase.mjs';
 import { FlashCardsDatabase } from '../db/flashCardsDatabase.mjs';
 import { Server } from '../server.mjs';
+import { BackupService } from '../auth/backupService.mjs';
+import '../auth/entriesService.mjs';
 
 export class StartupTest extends LocalTestCase {
   /** Long enough for at least one full database wait round to give up and restart. */
@@ -161,6 +163,24 @@ export class StartupTest extends LocalTestCase {
     }
   }
 
+  /**
+   * FlashCards' scheduling classes (platform-db QueryScheduler) reach its real queries.
+   */
+  checkSchedulingClasses() {
+    console.log('\nScheduling classes');
+    const sqlFor = (name) =>
+      [...PostgresDatabase.queryNames].find(([, queryName]) => queryName === name)?.[0];
+    this.check(
+      'insert_import_export_log is background',
+      this.database.classify(sqlFor('insert_import_export_log')) === 'background'
+    );
+    this.check(
+      'select_user_flashcards is interactive',
+      this.database.classify(sqlFor('select_user_flashcards')) === 'interactive'
+    );
+    this.check('backup work is background', BackupService.WORK.priority === 'background');
+  }
+
   async run() {
     this.assertLocalTarget();
     console.log('Start-up test (local scratch database)\n');
@@ -168,6 +188,7 @@ export class StartupTest extends LocalTestCase {
     await this.checkLateDatabase();
     this.checkDatabaseTargetGuard();
     await this.checkReadOnlyServer();
+    this.checkSchedulingClasses();
     return this.summary();
   }
 }
