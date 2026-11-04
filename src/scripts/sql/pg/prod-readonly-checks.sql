@@ -31,7 +31,7 @@ WHERE con.contype = 'f' AND rn.nspname = 'public' AND cn.nspname <> 'public';
 
 -- Credentials (for a password rotation): who this session is, who owns the app schemas and tables,
 -- and whether this login can act as that owner (needed by the schema bootstrap) and use the tables.
-SELECT current_user AS login,
+SELECT session_user AS login, current_user AS acting_as,
        n.nspname AS schema,
        pg_get_userbyid(n.nspowner) AS schema_owner,
        pg_has_role(current_user, n.nspowner, 'USAGE') AS login_acts_as_owner,
