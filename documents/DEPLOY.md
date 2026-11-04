@@ -250,7 +250,7 @@ All operations are idempotent - safe to repeat.
 5. Starts `npm run dev` with `NODE_ENV=development` or `preview` (nodemon, `--env-file=.env`). The server refuses to
    start in these modes on a writable remote database
 6. Waits up to 90 s for `/api/health` to answer 200 (it answers 503 until the database is ready)
-7. Preview only: runs `npm run test:preview` against port 4000, then `npm run test:roundtrip`, `npm run test:iam` and `npm run test:startup` on the local scratch DB
+7. Preview only: runs `npm run test:preview` against port 4000, then `npm run test:roundtrip`, `npm run test:iam`, `npm run test:startup` and `npm run test:cleanup` on the local scratch DB
    (starts it if needed; fails the preview if it is missing; set it up once with `local-db.sh init`)
 8. Opens browser; server continues running in background
 
