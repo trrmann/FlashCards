@@ -14,6 +14,7 @@ import { practiceService } from '../auth/practiceService.mjs';
 import { backupService, BackupService } from '../auth/backupService.mjs';
 import { mediaArchiveService } from '../auth/mediaArchiveService.mjs';
 import { QuizRouter } from '../routes/quizRouter.mjs';
+import { userSettingsService } from '../auth/userSettingsService.mjs';
 
 export class BackupRoundTripTest extends LocalTestCase {
   static PASSWORD = 'RoundTrip#2026';
@@ -149,6 +150,8 @@ export class BackupRoundTripTest extends LocalTestCase {
       1,
     ]);
 
+    await userSettingsService.setStorageLimit(alice.user_id, 1048576);
+    await userSettingsService.updateLastPageVisited(bob.user_id, '/practice');
     await userAuthService.grantUserRight(alice.user_id, 'test.round_trip');
     await backupService.logImportExport(admin.user_id, 'export', 3, 'success');
 
@@ -354,6 +357,14 @@ export class BackupRoundTripTest extends LocalTestCase {
       (row) => !platformRoles.has(row.role_id)
     );
     legacy.data.rights = legacy.data.rights.map(({ app_id: _appId, ...right }) => right);
+    // Before format 3.1, FlashCards' per-user settings were columns of users.
+    const settings = new Map(legacy.data.user_settings.map((row) => [row.user_id, row]));
+    delete legacy.data.user_settings;
+    for (const user of legacy.data.users) {
+      const row = settings.get(user.user_id);
+      user.last_page_visited = row?.last_page_visited ?? '/';
+      user.storage_max_bytes = row?.storage_max_bytes ?? '26214400';
+    }
     return legacy;
   }
 
@@ -392,6 +403,10 @@ export class BackupRoundTripTest extends LocalTestCase {
       'legacy restore: merged admin is still a platform admin',
       admin.user_id !== recreated.user_id &&
         (await userAuthService.isPlatformAdmin(recreated.user_id))
+    );
+    this.check(
+      "legacy restore: a user's storage limit (a users column before 3.1) is kept",
+      (await userSettingsService.getStorageLimit(alice.user_id)) === 1048576
     );
     const cards = (await this.snapshot()).data.flashcards;
     this.check(

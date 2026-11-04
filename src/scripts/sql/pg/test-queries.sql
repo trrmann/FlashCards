@@ -45,3 +45,24 @@ DROP TABLE IF EXISTS public.quizzes, public.media CASCADE;
 
 -- Query: public_table_exists
 SELECT to_regclass('public.' || $1) IS NOT NULL AS exists;
+
+-- SchemaCleanupTest, phase 3c moves: a database from before user_settings and flashcards.session.
+
+-- Query: move_set_iam_user_settings
+UPDATE iam.users SET storage_max_bytes = $2, last_page_visited = $3 WHERE user_id = $1;
+
+-- Query: move_insert_iam_session
+INSERT INTO iam.session (sid, sess, expire) VALUES ($1, '{}'::json, NOW() + $2::interval);
+
+-- Query: move_drop_moved_tables
+DROP TABLE IF EXISTS flashcards.user_settings, flashcards.session;
+
+-- Query: move_read_user_settings
+SELECT last_page_visited, storage_max_bytes::int AS storage_max_bytes
+FROM flashcards.user_settings WHERE user_id = $1;
+
+-- Query: move_session_ids
+SELECT sid FROM flashcards.session ORDER BY sid;
+
+-- Query: move_delete_sessions
+DELETE FROM flashcards.session;

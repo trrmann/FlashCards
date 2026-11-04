@@ -6,6 +6,7 @@
 import express from 'express';
 import { BaseRouter } from './baseRouter.mjs';
 import { entriesService } from '../auth/entriesService.mjs';
+import { userSettingsService } from '../auth/userSettingsService.mjs';
 import { userAuthService } from 'iam-service/services';
 import { mediaArchiveService } from '../auth/mediaArchiveService.mjs';
 
@@ -57,7 +58,7 @@ class EntriesRouter extends BaseRouter {
             ? options.reduce((sum, option) => sum + (option?.media?.length || 0), 0)
             : 0);
         const used = await entriesService.getStorageUsage(req.session.userId);
-        const limit = await userAuthService.getStorageLimit(req.session.userId);
+        const limit = await userSettingsService.getStorageLimit(req.session.userId);
         if (limit !== null && used + payloadBytes > limit) {
           return res.status(413).json({
             status: 'error',
@@ -332,7 +333,7 @@ class EntriesRouter extends BaseRouter {
             0
           ) + [...archiveMedia.values()].reduce((sum, item) => sum + item.dataUrl.length, 0);
         const used = await entriesService.getStorageUsage(req.session.userId);
-        const limit = await userAuthService.getStorageLimit(req.session.userId);
+        const limit = await userSettingsService.getStorageLimit(req.session.userId);
         if (limit !== null && used + payloadBytes > limit) {
           return res.status(413).json({
             status: 'error',
@@ -454,7 +455,7 @@ class EntriesRouter extends BaseRouter {
           return res.status(401).json({ status: 'error', message: 'Not authenticated' });
         }
         const used = await entriesService.getStorageUsage(req.session.userId);
-        const limit = await userAuthService.getStorageLimit(req.session.userId);
+        const limit = await userSettingsService.getStorageLimit(req.session.userId);
         return res.status(200).json({
           status: 'success',
           usedBytes: used,

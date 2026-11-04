@@ -5,6 +5,7 @@
 
 import express from 'express';
 import { BaseRouter } from './baseRouter.mjs';
+import { userSettingsService } from '../auth/userSettingsService.mjs';
 import { userAuthService, validationService } from 'iam-service/services';
 import { backupService } from '../auth/backupService.mjs';
 import { practiceService } from '../auth/practiceService.mjs';
@@ -320,7 +321,7 @@ class AdminRouter extends BaseRouter {
               message: 'maxBytes must be a non-negative integer',
             });
           }
-          const result = await userAuthService.setStorageLimit(req.params.userId, maxBytes);
+          const result = await userSettingsService.setStorageLimit(req.params.userId, maxBytes);
           if (!result) {
             return res.status(404).json({ status: 'error', message: 'User not found' });
           }

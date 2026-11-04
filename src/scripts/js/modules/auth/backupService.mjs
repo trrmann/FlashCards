@@ -46,6 +46,7 @@ class BackupService {
    * Application tables (app database ownership), in FK-safe import order.
    */
   static appTables = [
+    'user_settings',
     'lessons',
     'media',
     'flashcards',
@@ -74,8 +75,14 @@ class BackupService {
     rights: { naturalKey: ['app_id', 'right_key'], id: 'right_id' },
   };
 
-  /** Backup format: 3.0 adds applications, app-scoped roles, organizations, and groups. */
-  static FORMAT_VERSION = '3.0';
+  /**
+   * Backup format: 3.0 adds applications, app-scoped roles, organizations, and groups;
+   * 3.1 adds user_settings (FlashCards' per-user settings, moved out of iam.users).
+   */
+  static FORMAT_VERSION = '3.1';
+
+  /** Per-user settings that backups before 3.1 carry as columns of users. */
+  static LEGACY_USER_SETTINGS = ['last_page_visited', 'storage_max_bytes'];
 
   /** Roles that were global before format 3.0 and now belong to FlashCards. */
   static LEGACY_APP_ROLES = ['admin', 'user'];
@@ -392,6 +399,7 @@ class BackupService {
     // UUID: merge backup users into existing accounts and rewrite every user
     // reference so dependent rows do not violate users foreign keys.
     await this.upgradeLegacyBackup(backup, results);
+    this.upgradeUserSettings(backup);
 
     const userIdMap = await this.buildUserIdMap(backup.data.users || [], results);
     if (userIdMap.size > 0) {
@@ -550,6 +558,25 @@ class BackupService {
     results.warnings.push(
       `Legacy backup (format ${backup.version || 'unknown'}) upgraded to ${this.constructor.FORMAT_VERSION}`
     );
+  }
+
+  /**
+   * Backups before format 3.1 keep FlashCards' per-user settings as columns of users: turn
+   * them into user_settings rows (so a restore keeps storage limits). The columns stay on
+   * the user rows, which still have them while iam.users does.
+   */
+  upgradeUserSettings(backup) {
+    if (Array.isArray(backup.data.user_settings)) return;
+    const settings = [];
+    for (const user of backup.data.users || []) {
+      const fields = this.constructor.LEGACY_USER_SETTINGS.filter((field) => field in user);
+      if (fields.length === 0) continue;
+      settings.push({
+        user_id: user.user_id,
+        ...Object.fromEntries(fields.map((field) => [field, user[field]])),
+      });
+    }
+    if (settings.length) backup.data.user_settings = settings;
   }
 
   /**

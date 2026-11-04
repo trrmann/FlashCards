@@ -5,6 +5,7 @@
 
 import express from 'express';
 import { BaseRouter } from './baseRouter.mjs';
+import { userSettingsService } from '../auth/userSettingsService.mjs';
 import { userAuthService, validationService } from 'iam-service/services';
 
 class AuthRouter extends BaseRouter {
@@ -161,7 +162,7 @@ class AuthRouter extends BaseRouter {
         }
 
         // Get user's last visited page
-        const lastPage = await userAuthService.getLastPageVisited(user.user_id);
+        const lastPage = await userSettingsService.getLastPageVisited(user.user_id);
 
         // Set session
         req.session.userId = user.user_id;

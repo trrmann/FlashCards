@@ -118,11 +118,13 @@ export class Server {
     const PgSession = pgSession(session);
 
     return {
+      // FlashCards' own session table (flashcards.session; it was iam.session before phase 3c).
       store: new PgSession({
-        pool: this.identityDatabase.pool,
+        pool: this.database.pool,
+        schemaName: 'flashcards',
         tableName: 'session',
         // Pruning deletes expired sessions; a read-only database refuses that.
-        pruneSessionInterval: this.identityDatabase.config.readOnly ? false : undefined,
+        pruneSessionInterval: this.database.config.readOnly ? false : undefined,
         errorLog: (error) => {
           console.error('❌ Session store error:', error.message);
         },

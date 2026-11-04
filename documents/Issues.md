@@ -161,6 +161,20 @@ Follow-ups:
 
 ## resolved
 
+- **Phase 3c, in-process part: FlashCards' own data out of `iam` (2026-11-04).**
+  - Per-user settings (last page visited, storage limit) moved from `iam.users` columns to `flashcards.user_settings`
+    (`UserSettingsService`, `user-settings-queries.sql`).
+  - The session store moved from `iam.session` to `flashcards.session`.
+  - On first start the schema file copies both once (live sessions only, so nobody is signed out), and later starts
+    copy nothing.
+  - The `flashcards` schema is created only when missing, so `flashcards_svc` can bootstrap.
+  - Backup format 3.1 adds `user_settings`; older backups' user columns are converted on import.
+  - The old `iam` columns and `iam.session` stay until an IAM release drops them.
+
+  **Resolved:** `test:cleanup` 9/9 covers the one-time copies, including that a signed-out session doesn't come
+  back. `test:roundtrip` 158/158 covers `user_settings` in the round trip and a legacy backup keeping a storage limit.
+  `test:startup` 16/16, `test:iam` 79/79, verify clean.
+
 - **Usernames and emails unique regardless of case (iam-service v0.1.8, 2026-11-04).** `Alice` could register next to
   `alice`, and sharing (which looks users up case-insensitively) would then pick one of them. Registration and admin
   user creation now check availability case-insensitively, backed by unique indexes on `lower(username)` /

@@ -10,6 +10,8 @@ UNION ALL SELECT 'iam.session', count(*) FROM iam.session
 UNION ALL SELECT 'flashcards.flashcards', count(*) FROM flashcards.flashcards
 UNION ALL SELECT 'flashcards.media', count(*) FROM flashcards.media
 UNION ALL SELECT 'flashcards.quizzes', count(*) FROM flashcards.quizzes
+UNION ALL SELECT 'flashcards.user_settings', count(*) FROM flashcards.user_settings WHERE to_regclass('flashcards.user_settings') IS NOT NULL
+UNION ALL SELECT 'flashcards.session', count(*) FROM flashcards.session WHERE to_regclass('flashcards.session') IS NOT NULL
 UNION ALL SELECT 'tables left in public', count(*)
   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE n.nspname = 'public' AND c.relkind = 'r';

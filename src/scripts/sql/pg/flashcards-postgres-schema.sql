@@ -2,7 +2,15 @@
 -- The app adapter connects with search_path = flashcards, public. Identity tables
 -- live in the iam schema (iam-postgres-schema.sql, bootstrapped first); the only
 -- cross-domain link is the foreign key to iam.users (CODING_STANDARDS 0.8).
-CREATE SCHEMA IF NOT EXISTS flashcards;
+-- Created only when missing: CREATE SCHEMA IF NOT EXISTS checks the database-level CREATE right even
+-- when the schema exists, and FlashCards' own login (flashcards_svc, from iam-provision) doesn't have it.
+DO $create_flashcards_schema$
+BEGIN
+  IF to_regnamespace('flashcards') IS NULL THEN
+    CREATE SCHEMA flashcards;
+  END IF;
+END
+$create_flashcards_schema$;
 
 -- One-time move of this domain's tables out of the shared public schema
 -- (IAM phase 1). Moves only tables still in public and not yet in flashcards;
@@ -305,3 +313,50 @@ CREATE TABLE IF NOT EXISTS import_export_logs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_import_export_logs_user_id ON import_export_logs(user_id, created_at DESC);
+
+-- ---------------------------------------------------------------------------
+-- IAM phase 3c: FlashCards' own per-user data and sessions live in this schema,
+-- so FlashCards needs no access to iam tables except the users foreign key.
+-- ---------------------------------------------------------------------------
+
+-- Per-user settings that belong to FlashCards (they used to be columns of iam.users).
+-- On first creation, the values still in iam.users are copied once, when readable.
+DO $create_user_settings$
+BEGIN
+  IF to_regclass('flashcards.user_settings') IS NULL THEN
+    CREATE TABLE flashcards.user_settings (
+      user_id UUID PRIMARY KEY REFERENCES iam.users(user_id) ON DELETE CASCADE,
+      last_page_visited VARCHAR(255) NOT NULL DEFAULT '/',
+      storage_max_bytes BIGINT NOT NULL DEFAULT 26214400,
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+    IF has_table_privilege('iam.users', 'SELECT')
+       AND EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_schema = 'iam' AND table_name = 'users' AND column_name = 'storage_max_bytes')
+       AND EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_schema = 'iam' AND table_name = 'users' AND column_name = 'last_page_visited') THEN
+      INSERT INTO flashcards.user_settings (user_id, last_page_visited, storage_max_bytes)
+      SELECT user_id, last_page_visited, storage_max_bytes FROM iam.users;
+    END IF;
+  END IF;
+END
+$create_user_settings$;
+
+-- Session store (connect-pg-simple). On first creation, live sessions are copied once from
+-- iam.session, so nobody is signed out by the move. Transient: not part of backups.
+DO $create_session_table$
+BEGIN
+  IF to_regclass('flashcards.session') IS NULL THEN
+    CREATE TABLE flashcards.session (
+      sid VARCHAR NOT NULL PRIMARY KEY,
+      sess JSON NOT NULL,
+      expire TIMESTAMP NOT NULL
+    );
+    CREATE INDEX "IDX_flashcards_session_expire" ON flashcards.session (expire);
+    IF to_regclass('iam.session') IS NOT NULL AND has_table_privilege('iam.session', 'SELECT') THEN
+      INSERT INTO flashcards.session (sid, sess, expire)
+      SELECT sid, sess, expire FROM iam.session WHERE expire > NOW();
+    END IF;
+  END IF;
+END
+$create_session_table$;

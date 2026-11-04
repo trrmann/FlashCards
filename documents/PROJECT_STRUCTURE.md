@@ -51,6 +51,7 @@ FlashCards/
         │   │   └── flashCardsDatabase.mjs          # App schema owner (extends platform-db PostgresDatabase)
         │   ├── auth/             # Domain services (see ARCHITECTURE.md)
         │   │   ├── entriesService.mjs   practiceService.mjs
+        │   │   ├── userSettingsService.mjs   # last page, storage limit (flashcards.user_settings)
         │   │   └── backupService.mjs    mediaArchiveService.mjs   # (IAM services: iam-service package)
         │   ├── routes/           # class XRouter extends BaseRouter
         │   │   ├── baseRouter.mjs

@@ -1,9 +1,13 @@
 /**
  * Schema clean-up test: the FlashCards bootstrap drops empty leftover app tables in public
  * (copies an old server created after the tables moved to flashcards), and keeps any that
- * hold rows or that something outside public references. Local scratch database only.
+ * hold rows or that something outside public references. Also the phase 3c moves: on a
+ * database from before them, the bootstrap copies FlashCards' per-user settings out of
+ * iam.users and the live sessions out of iam.session, once; a later start copies nothing
+ * (a signed-out session must not come back). Local scratch database only.
  */
 
+import { userAuthService } from 'iam-service/services';
 import { LocalTestCase } from './localTestCase.mjs';
 
 export class SchemaCleanupTest extends LocalTestCase {
@@ -45,12 +49,46 @@ export class SchemaCleanupTest extends LocalTestCase {
     this.check('running the bootstrap again changes nothing', await this.exists('quizzes'));
   }
 
+  async checkPhase3cMoves() {
+    console.log('\nPhase 3c moves (user settings, sessions)');
+    const q = LocalTestCase.testQueries;
+    const user = await userAuthService.createUser(
+      'move_alice',
+      'move_alice@example.test',
+      'Move#2026x'
+    );
+    await this.database.query(q.move_set_iam_user_settings, [user.user_id, 4096, '/quiz']);
+    await this.database.query(q.move_insert_iam_session, ['live-session', '1 day']);
+    await this.database.query(q.move_insert_iam_session, ['expired-session', '-1 day']);
+    await this.database.query(q.move_drop_moved_tables);
+
+    await this.database.initializeSchema();
+    const settings = (await this.database.query(q.move_read_user_settings, [user.user_id])).rows[0];
+    this.check(
+      "a user's storage limit and last page are copied from iam.users",
+      settings?.storage_max_bytes === 4096 && settings?.last_page_visited === '/quiz',
+      JSON.stringify(settings)
+    );
+    const sessions = (await this.database.query(q.move_session_ids)).rows.map((row) => row.sid);
+    this.check(
+      'live sessions are copied from iam.session, expired ones are not',
+      sessions.join(',') === 'live-session',
+      sessions.join(',')
+    );
+
+    await this.database.query(q.move_delete_sessions);
+    await this.database.initializeSchema();
+    const after = (await this.database.query(q.move_session_ids)).rows.length;
+    this.check('a later start copies nothing again (signed-out sessions stay out)', after === 0);
+  }
+
   async run() {
     this.assertLocalTarget();
     console.log('Schema clean-up test (local scratch database)\n');
     await this.resetDatabase();
     try {
       await this.checkCleanup();
+      await this.checkPhase3cMoves();
     } finally {
       const q = LocalTestCase.testQueries;
       await this.database.query(q.outside_reference_drop);

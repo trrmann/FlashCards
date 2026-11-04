@@ -5,7 +5,7 @@
 
 import express from 'express';
 import { BaseRouter } from './baseRouter.mjs';
-import { userAuthService } from 'iam-service/services';
+import { userSettingsService } from '../auth/userSettingsService.mjs';
 
 class NavigationRouter extends BaseRouter {
   registerRoutes() {
@@ -50,7 +50,7 @@ class NavigationRouter extends BaseRouter {
         }
 
         // Update last page visited
-        await userAuthService.updateLastPageVisited(req.session.userId, normalizedPage);
+        await userSettingsService.updateLastPageVisited(req.session.userId, normalizedPage);
 
         return res.status(200).json({
           status: 'success',
@@ -81,7 +81,7 @@ class NavigationRouter extends BaseRouter {
           });
         }
 
-        const lastPage = await userAuthService.getLastPageVisited(req.session.userId);
+        const lastPage = await userSettingsService.getLastPageVisited(req.session.userId);
 
         return res.status(200).json({
           status: 'success',
