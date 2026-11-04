@@ -303,7 +303,6 @@ None. The audit found 0 `style=` attributes, `<style>` blocks, or `.style` uses 
   `home.ejs` (3), `partials/filter-panel.ejs` (4), `partials/header.ejs` (1), `partials/mission.ejs` (1),
   plus inline scripts in `login.ejs` and `logout.ejs`. Only `public/js/navigation-tracker.js` is already a class.
 - **Helper closures inside methods** (to become methods):
-  - platform-db `postgresDatabase.mjs` `describeStatement`
   - `auth/practiceService.mjs:227` `shuffleOptions`, `:1015` `toStats`, `:1028` `addInto`, `:1036` `finish`
   - `routes/quizRouter.mjs:42` and `:72`: duplicate `shuffle` (should be one shared method)
   - `routes/entriesRouter.mjs:282` `blockFrom`

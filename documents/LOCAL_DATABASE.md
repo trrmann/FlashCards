@@ -48,6 +48,9 @@ take precedence over `.env`, so the app talks only to the local database. Port 5
 
 ## IAM API test
 
+`npm run test:startup` starts the server before its database (reached through a TCP relay that starts late) and checks
+the 503 "starting" answers, the retry after a wait round gives up, and normal service once the database is up.
+
 `npm run test:iam` resets the local database, starts the real server in-process on port 5098, registers five users,
 and exercises every `/api/iam` endpoint as users with different roles (79 checks: success, 400/401/403/404/409, and
 side effects such as a group role granting admin access and disabled app access blocking sign-in). Same local-only guard.

@@ -43,6 +43,16 @@ pool max 20, idle timeout 30 s, connect timeout 2 s, SSL with `rejectUnauthorize
 
 > ⚠️ If `PORT_PROD` is set in Render it overrides Render's `PORT`. Don't set `PORT_PROD` in Render.
 
+## Health check and start-up
+
+Set the web service's **Health Check Path** to `/api/health` (Render → service → Settings → Health Checks).
+
+On start the server listens at once, then waits for the database (backoff from 0.5 s to 10 s, rounds of up to 120 s,
+repeated every 5 s) and bootstraps the schemas. Until that is done, every request gets **503** with `Retry-After: 5`:
+`{"status": "starting"}` on `/api/*`, a short text on pages. With the health check path set, Render keeps the previous
+deploy serving until the new one is healthy, so a deploy that can't reach the database never takes the site down.
+Platform-wide start-up order: iam-service `documents/PLATFORM_ACCESS_AND_STARTUP.md`.
+
 ## Variables used only by tooling
 
 | Variable     | Where                       | Purpose                                                         |

@@ -3,6 +3,11 @@
  * Class-based server implementation: configures the express application,
  * PostgreSQL-backed sessions, view engine, page routes, and API routers,
  * and manages startup (database connection + idempotent schema bootstrap).
+ *
+ * Start-up: the server listens at once, then waits for the database (platform-db
+ * waitForConnection, with backoff) and bootstraps the schemas, retrying instead of giving up.
+ * Until then every request gets 503 with Retry-After, and /api/health reports "starting",
+ * so Render keeps serving the previous deploy until this one is healthy.
  */
 
 import express from 'express';
@@ -14,6 +19,7 @@ import pgSession from 'connect-pg-simple';
 import { appSiteData } from './appSiteData.mjs';
 import { flashCardsDb } from './db/flashCardsDatabase.mjs';
 import { identityManagementDb } from 'iam-service/db';
+import { PostgresDatabase } from 'platform-db';
 import { userAuthService } from 'iam-service/services';
 import authRouter from './routes/authRouter.mjs';
 import usersRouter from './routes/usersRouter.mjs';
@@ -31,6 +37,9 @@ export class Server {
   static projectRoot = path.resolve(this.directory, '../../../..');
   static DEFAULT_PORT = 3000;
   static SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24; // 24 hours
+  /** Pause between start-up rounds after the database wait gives up or a bootstrap fails. */
+  static STARTUP_RETRY_MS = 5000;
+  static RETRY_AFTER_SECONDS = 5;
 
   /**
    * Resolve the listening port for an environment.
@@ -50,11 +59,17 @@ export class Server {
     port,
     database = flashCardsDb,
     identityDatabase = identityManagementDb,
+    connectOptions = {},
+    startupRetryMs = Server.STARTUP_RETRY_MS,
   } = {}) {
     this.env = env ?? (process.env.NODE_ENV?.toLocaleLowerCase() || 'production');
     this.port = port ?? this.constructor.resolvePort(this.env);
     this.database = database;
     this.identityDatabase = identityDatabase;
+    this.connectOptions = connectOptions;
+    this.startupRetryMs = startupRetryMs;
+    this.ready = false;
+    this.stopping = false;
     this.siteData = new appSiteData();
     this.app = express();
 
@@ -112,6 +127,9 @@ export class Server {
     // This ensures X-Forwarded-Proto: https is properly recognized.
     this.app.set('trust proxy', 1);
 
+    // Before anything that needs the database (sessions live there).
+    this.app.use(this.readinessMiddleware.bind(this));
+
     const sessionConfig = this.buildSessionConfig();
     console.log(
       `✅ Session Config: secure=${sessionConfig.cookie.secure}, sameSite=${sessionConfig.cookie.sameSite}`
@@ -130,6 +148,24 @@ export class Server {
 
     // Populate user info on every page
     this.app.use(this.userContextMiddleware.bind(this));
+  }
+
+  /**
+   * Middleware: until start-up has finished, answer 503 with Retry-After (JSON for /api,
+   * plain text for pages) instead of failing on a database that isn't ready.
+   */
+  readinessMiddleware(req, res, next) {
+    if (this.ready) {
+      next();
+      return;
+    }
+    res.set('Retry-After', String(this.constructor.RETRY_AFTER_SECONDS));
+    res.status(503);
+    if (req.path.startsWith('/api/')) {
+      res.json({ status: 'starting', message: 'FlashCards is starting' });
+    } else {
+      res.type('text').send('FlashCards is starting. Please try again in a few seconds.');
+    }
   }
 
   /**
@@ -274,39 +310,53 @@ export class Server {
    * IAM first (identity tables the app schema references), then the app.
    */
   async initializeDatabase() {
-    const dbReady = await this.identityDatabase.initializeDatabaseConnection();
-    if (!dbReady) {
-      console.warn('⚠️ Warning: Database connection failed. Some features may be unavailable.');
-      return false;
-    }
-
-    try {
-      await this.identityDatabase.initializeSchema();
-      await this.database.initializeSchema();
-    } catch (error) {
-      console.error('❌ Schema initialization failed:', error.message);
-    }
-    return true;
+    await this.identityDatabase.waitForConnection(this.connectOptions);
+    await this.database.waitForConnection(this.connectOptions);
+    await this.identityDatabase.initializeSchema();
+    await this.database.initializeSchema();
   }
 
   /**
-   * Start listening and initialize the database.
+   * Repeat initializeDatabase() until it succeeds (or the server is stopped), then mark the
+   * server ready. A database that is down, asleep or restarting never ends the process.
+   */
+  async prepare() {
+    for (let round = 1; !this.stopping; round += 1) {
+      try {
+        await this.initializeDatabase();
+        this.ready = true;
+        console.log('✅ FlashCards ready');
+        return;
+      } catch (error) {
+        console.error(
+          `❌ FlashCards not ready (round ${round}): ${error.message}. Retrying in ${this.startupRetryMs} ms`
+        );
+        await PostgresDatabase.sleep(this.startupRetryMs);
+      }
+    }
+  }
+
+  /**
+   * Listen at once, then prepare the database. Resolves once ready; until then requests
+   * get 503 "starting".
    * @returns {Promise<import('http').Server>} The underlying HTTP server.
    */
-  start() {
-    return new Promise((resolve) => {
-      this.httpServer = this.app.listen(this.port, async () => {
-        console.log(`Server running in ${this.env} mode on port ${this.port}`);
-        await this.initializeDatabase();
-        resolve(this.httpServer);
-      });
+  async start() {
+    this.stopping = false;
+    await new Promise((resolve) => {
+      this.httpServer = this.app.listen(this.port, resolve);
     });
+    console.log(`Server running in ${this.env} mode on port ${this.port} (starting)`);
+    await this.prepare();
+    return this.httpServer;
   }
 
   /**
    * Stop the HTTP server and close the database pools.
    */
   async stop() {
+    this.stopping = true;
+    this.ready = false;
     if (this.httpServer) {
       await new Promise((resolve, reject) => {
         this.httpServer.close((err) => (err ? reject(err) : resolve()));

@@ -304,12 +304,12 @@ run_comprehensive_tests() {
 run_local_db_tests() {
     # CODING_STANDARDS 0.6/0.7 tests that need a disposable database: they drop and
     # rebuild the schema, so they run only on the local scratch database.
-    log INFO "Running local-database tests (backup round trip, IAM API)..."
+    log INFO "Running local-database tests (backup round trip, IAM API, start-up)..."
     if ! "${SCRIPT_DIR}/local-db.sh" start >> "${LOG_FILE}" 2>&1; then
         error_exit "Local scratch database unavailable. Set it up once with: local-db.sh init"
     fi
     local test_name
-    for test_name in test:roundtrip test:iam; do
+    for test_name in test:roundtrip test:iam test:startup; do
         if npm run "${test_name}" >> "${LOG_FILE}" 2>&1; then
             log SUCCESS "${test_name} passed"
         else

@@ -17,11 +17,12 @@ verifying, since the failed backup import on Render needs the merge fix to compl
 > code currently live on Render (which expects `public`) stops working until the branch is deployed there.
 > Do it in one sitting:
 >
-> 0. **Shared packages: published 2026-11-04.** `trrmann/platform-db` and `trrmann/request-queue` (public) and
->    `trrmann/iam-service` (private), each tagged `v0.1.0`; FlashCards depends on the tags. **Before step 2, on Render:**
->    add the `GITHUB_TOKEN` environment variable and set the Build Command to the fallback form in
+> 0. **Shared packages: published 2026-11-04.** `trrmann/platform-db` (`v0.1.2`) and `trrmann/request-queue` (`v0.1.1`)
+>    are public, `trrmann/iam-service` (`v0.1.1`) is private; FlashCards depends on the tags. **Before step 2, on Render:**
+>    add the `GITHUB_TOKEN` environment variable, set the Build Command to the fallback form in
 >    RENDER_ENVIRONMENT_VARIABLES.md (it runs `render-build.sh` when present, else `npm install`, so it is safe for
->    today's `main`). Without them the build cannot install iam-service.
+>    today's `main`), and set the Health Check Path to `/api/health`. Without the first two the build cannot install
+>    iam-service.
 > 1. `backup.sh` (production backup, both files).
 > 2. Merge the branch into `main`, then `deploy.sh -preview` (migrates the shared DB; the live site is down from here).
 > 3. When preview passes, `deploy.sh -prod` right away (Render runs the new code; the site is back).
@@ -137,7 +138,20 @@ Follow-ups:
 
 ## resolved
 
-All items below were resolved on 2026-11-03 (commit `5b5be62`).
+- **Start-up when the database isn't ready (2026-11-04, owner request: all three packages need a clean start-up).**
+  - Before: FlashCards tried the database once, logged a warning and never ran the schema bootstrap again.
+  - Now it listens at once, answers 503 "starting" with `Retry-After`, waits with backoff and retries until the
+    database is up, then bootstraps.
+  - Uses platform-db `v0.1.2` (connection wait, bootstrap lock, no process exit on a dropped idle connection) and
+    iam-service `v0.1.1` (with request-queue `v0.1.1`, whose worker no longer dies on a database drop).
+  - Render: Health Check Path `/api/health`.
+
+  **Resolved:** `npm run test:startup` 7/7 (database behind a TCP relay that starts after a full wait round gave up);
+  `test:roundtrip` 152/152 and `test:iam` 79/79 unchanged; `npm run verify` clean. The package suites pass too:
+  platform-db 36/36, request-queue 27/27, iam-service 49 + 41 + 15. The design for per-app database logins,
+  rotatable app credentials and queued database work is in iam-service `documents/PLATFORM_ACCESS_AND_STARTUP.md`.
+
+The items below were resolved on 2026-11-03 (commit `5b5be62`).
 
 - ~~public cards are not available to all users like it should be~~
   **Resolved:** Public cards are auto-approved into every user's practice, quiz, and
