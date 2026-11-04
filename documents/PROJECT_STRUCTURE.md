@@ -17,7 +17,7 @@ and answers. Data is stored in PostgreSQL on Render.
 
 ## Directory structure
 
-FlashCards depends on two shared packages, installed from GitHub (platform-db `v0.2.2`, iam-service `v0.1.8`) (Render builds with `src/scripts/sh/render-build.sh`): **platform-db** (`PostgresDatabase`, `LocalDatabaseTest`, the shared `local-db.sh`) and **iam-service** (`IdentityManagementDatabase`, `userAuthService`, `validationService`, `organizationService`, `OrganizationRouter`, the IAM service and `IamClient`). Their code and SQL are no longer in this repository.
+FlashCards depends on two shared packages, installed from GitHub (platform-db `v0.2.2`, iam-service `v0.1.11`) (Render builds with `src/scripts/sh/render-build.sh`): **platform-db** (`PostgresDatabase`, `LocalDatabaseTest`, the shared `local-db.sh`) and **iam-service** (`IdentityManagementDatabase`, `userAuthService`, `validationService`, `organizationService`, `OrganizationRouter`, the IAM service and `IamClient`). Their code and SQL are no longer in this repository.
 
 ```text
 FlashCards/
@@ -53,6 +53,11 @@ FlashCards/
         │   │   ├── entriesService.mjs   practiceService.mjs
         │   │   ├── userSettingsService.mjs   # last page, storage limit (flashcards.user_settings)
         │   │   └── backupService.mjs    mediaArchiveService.mjs   # (IAM services: iam-service package)
+        │   ├── identity/         # Identity gateway (IAM phase 3c): one way to reach identity
+        │   │   ├── identityGateway.mjs        # base: error answers, helpers
+        │   │   ├── localIdentityGateway.mjs   # in-process IAM (default)
+        │   │   ├── remoteIdentityGateway.mjs  # the IAM service over HTTP (IAM_URL set)
+        │   │   └── index.mjs                  # createIdentityGateway(env)
         │   ├── routes/           # class XRouter extends BaseRouter
         │   │   ├── baseRouter.mjs
         │   │   ├── systemRouter.mjs  authRouter.mjs  usersRouter.mjs  navigationRouter.mjs

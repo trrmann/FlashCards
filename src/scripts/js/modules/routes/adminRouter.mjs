@@ -6,7 +6,7 @@
 import express from 'express';
 import { BaseRouter } from './baseRouter.mjs';
 import { userSettingsService } from '../auth/userSettingsService.mjs';
-import { userAuthService, validationService } from 'iam-service/services';
+import { IdentityGateway } from '../identity/identityGateway.mjs';
 import { backupService } from '../auth/backupService.mjs';
 import { practiceService } from '../auth/practiceService.mjs';
 
@@ -17,97 +17,34 @@ class AdminRouter extends BaseRouter {
     const requireAdmin = this.requireAdmin;
 
     /**
-     * GET /api/admin/users
-     * List all users (admin only)
+     * User administration through the identity gateway (in-process IAM or the IAM service).
+     * The gateway validates, refuses an admin disabling, deleting or demoting themselves, and
+     * (remote) checks again that the caller administers FlashCards.
      */
+    const answer = (res, error, message) => IdentityGateway.respond(res, error, message);
+    const identity = (req) => BaseRouter.identity(req);
+
+    /** GET /api/admin/users: list all users */
     router.get('/users', requireAuth, requireAdmin, async (req, res) => {
       try {
-        const users = await userAuthService.getAllUsers();
-
-        return res.status(200).json({
-          status: 'success',
-          users,
-          count: users.length,
-        });
+        const { users, count } = await identity(req).listUsers(req);
+        return res.status(200).json({ status: 'success', users, count });
       } catch (error) {
-        console.error('Get users error:', error.message);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to retrieve users',
-        });
+        return answer(res, error, 'Failed to retrieve users');
       }
     });
 
-    /**
-     * POST /api/admin/users
-     * Create a new user (admin only)
-     */
+    /** POST /api/admin/users: create a user (the admin may set directory visibility) */
     router.post('/users', requireAuth, requireAdmin, express.json(), async (req, res) => {
       try {
         const { username, email, password, fullName, isPublic } = req.body;
-
-        // Validate required fields
-        if (!username || !email || !password) {
-          return res.status(400).json({
-            status: 'error',
-            message: 'Missing required fields: username, email, password',
-          });
-        }
-
-        const errors = [];
-
-        // Validate username
-        const usernameValidation = validationService.validateUsername(username);
-        if (!usernameValidation.valid) {
-          errors.push(...usernameValidation.errors);
-        }
-
-        // Validate email
-        if (!validationService.validateEmail(email)) {
-          errors.push('Invalid email address');
-        }
-
-        // Validate password
-        const passwordValidation = validationService.validatePassword(password);
-        if (!passwordValidation.valid) {
-          errors.push(...passwordValidation.errors);
-        }
-
-        if (errors.length > 0) {
-          return res.status(400).json({
-            status: 'error',
-            message: 'Validation failed',
-            errors,
-          });
-        }
-
-        // Check if username is available
-        const usernameAvailable = await userAuthService.isUsernameAvailable(username);
-        if (!usernameAvailable) {
-          return res.status(400).json({
-            status: 'error',
-            message: 'Username is already taken',
-          });
-        }
-
-        // Check if email is available
-        const emailAvailable = await userAuthService.isEmailAvailable(email);
-        if (!emailAvailable) {
-          return res.status(400).json({
-            status: 'error',
-            message: 'Email is already registered',
-          });
-        }
-
-        // Create user (admin may set directory visibility at creation)
-        const user = await userAuthService.createUser(
+        const { user } = await identity(req).createUser(req, {
           username,
           email,
           password,
-          fullName || null,
-          Boolean(isPublic)
-        );
-
+          full_name: fullName || null,
+          is_public: Boolean(isPublic),
+        });
         return res.status(201).json({
           status: 'success',
           message: 'User created successfully',
@@ -120,148 +57,50 @@ class AdminRouter extends BaseRouter {
           },
         });
       } catch (error) {
-        console.error('Create user error:', error.message);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to create user',
-          error: error.message,
-        });
+        return answer(res, error, 'Failed to create user');
       }
     });
 
-    /**
-     * GET /api/admin/users/:userId
-     * Get specific user details (admin only)
-     */
+    /** GET /api/admin/users/:userId: one user's details */
     router.get('/users/:userId', requireAuth, requireAdmin, async (req, res) => {
       try {
-        const { userId } = req.params;
-        const user = await userAuthService.findUserById(userId);
-
-        if (!user) {
-          return res.status(404).json({
-            status: 'error',
-            message: 'User not found',
-          });
-        }
-
-        return res.status(200).json({
-          status: 'success',
-          user,
-        });
+        const user = await identity(req).getUser(req, req.params.userId);
+        return res.status(200).json({ status: 'success', user });
       } catch (error) {
-        console.error('Get user error:', error.message);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to retrieve user',
-        });
+        return answer(res, error, 'Failed to retrieve user');
       }
     });
 
-    /**
-     * POST /api/admin/users/:userId/disable
-     * Disable a user (admin only)
-     */
-    router.post('/users/:userId/disable', requireAuth, requireAdmin, async (req, res) => {
-      try {
-        const { userId } = req.params;
-
-        // Prevent disabling oneself
-        if (userId === req.session.userId) {
-          return res.status(400).json({
-            status: 'error',
-            message: 'Cannot disable your own account',
+    /** POST /api/admin/users/:userId/disable and /enable */
+    for (const [action, enabled] of [
+      ['disable', false],
+      ['enable', true],
+    ]) {
+      router.post(`/users/:userId/${action}`, requireAuth, requireAdmin, async (req, res) => {
+        try {
+          const user = await identity(req).setUserStatus(req, req.params.userId, enabled);
+          return res.status(200).json({
+            status: 'success',
+            message: `User ${action}d successfully`,
+            user,
           });
+        } catch (error) {
+          return answer(res, error, `Failed to ${action} user`);
         }
+      });
+    }
 
-        const user = await userAuthService.disableUser(userId);
-
-        if (!user) {
-          return res.status(404).json({
-            status: 'error',
-            message: 'User not found',
-          });
-        }
-
-        return res.status(200).json({
-          status: 'success',
-          message: 'User disabled successfully',
-          user,
-        });
-      } catch (error) {
-        console.error('Disable user error:', error.message);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to disable user',
-        });
-      }
-    });
-
-    /**
-     * POST /api/admin/users/:userId/enable
-     * Enable a user (admin only)
-     */
-    router.post('/users/:userId/enable', requireAuth, requireAdmin, async (req, res) => {
-      try {
-        const { userId } = req.params;
-        const user = await userAuthService.enableUser(userId);
-
-        if (!user) {
-          return res.status(404).json({
-            status: 'error',
-            message: 'User not found',
-          });
-        }
-
-        return res.status(200).json({
-          status: 'success',
-          message: 'User enabled successfully',
-          user,
-        });
-      } catch (error) {
-        console.error('Enable user error:', error.message);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to enable user',
-        });
-      }
-    });
-
-    /**
-     * DELETE /api/admin/users/:userId
-     * Delete a user and all related data (admin only)
-     */
+    /** DELETE /api/admin/users/:userId: delete a user and all their data */
     router.delete('/users/:userId', requireAuth, requireAdmin, async (req, res) => {
       try {
-        const { userId } = req.params;
-
-        // Prevent deleting oneself
-        if (userId === req.session.userId) {
-          return res.status(400).json({
-            status: 'error',
-            message: 'Cannot delete your own account',
-          });
-        }
-
-        await userAuthService.deleteUser(userId);
-
-        return res.status(200).json({
-          status: 'success',
-          message: 'User deleted successfully',
-        });
+        await identity(req).deleteUser(req, req.params.userId);
+        return res.status(200).json({ status: 'success', message: 'User deleted successfully' });
       } catch (error) {
-        console.error('Delete user error:', error.message);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to delete user',
-        });
+        return answer(res, error, 'Failed to delete user');
       }
     });
 
-    /**
-     * PUT /api/admin/users/:userId/visibility
-     * Set a user's share-directory visibility (admin only)
-     */
+    /** PUT /api/admin/users/:userId/visibility: a user's share-directory visibility */
     router.put(
       '/users/:userId/visibility',
       requireAuth,
@@ -269,36 +108,18 @@ class AdminRouter extends BaseRouter {
       express.json(),
       async (req, res) => {
         try {
-          const { userId } = req.params;
           const { isPublic } = req.body;
-
           if (typeof isPublic !== 'boolean') {
-            return res.status(400).json({
-              status: 'error',
-              message: 'isPublic must be a boolean',
-            });
+            return res.status(400).json({ status: 'error', message: 'isPublic must be a boolean' });
           }
-
-          const result = await userAuthService.setUserVisibility(userId, isPublic);
-
-          if (!result) {
-            return res.status(404).json({
-              status: 'error',
-              message: 'User not found',
-            });
-          }
-
+          const result = await identity(req).setUserVisibility(req, req.params.userId, isPublic);
           return res.status(200).json({
             status: 'success',
             message: isPublic ? 'User is now public' : 'User is now private',
             isPublic: result.is_public,
           });
         } catch (error) {
-          console.error('Set user visibility error:', error.message);
-          return res.status(500).json({
-            status: 'error',
-            message: 'Failed to update user visibility',
-          });
+          return answer(res, error, 'Failed to update user visibility');
         }
       }
     );
@@ -337,76 +158,25 @@ class AdminRouter extends BaseRouter {
       }
     );
 
-    /**
-     * POST /api/admin/users/:userId/promote
-     * Grant the system admin role to a user (admin only)
-     */
-    router.post('/users/:userId/promote', requireAuth, requireAdmin, async (req, res) => {
-      try {
-        const { userId } = req.params;
-        const user = await userAuthService.findUserById(userId);
-
-        if (!user) {
-          return res.status(404).json({
-            status: 'error',
-            message: 'User not found',
+    /** POST /api/admin/users/:userId/promote and /demote: the FlashCards admin role */
+    for (const [action, admin] of [
+      ['promote', true],
+      ['demote', false],
+    ]) {
+      router.post(`/users/:userId/${action}`, requireAuth, requireAdmin, async (req, res) => {
+        try {
+          const result = await identity(req).setUserAdmin(req, req.params.userId, admin);
+          return res.status(200).json({
+            status: 'success',
+            message: admin
+              ? `${result.username} is now a system admin`
+              : `${result.username} is no longer a system admin`,
           });
+        } catch (error) {
+          return answer(res, error, `Failed to ${action} user`);
         }
-
-        await userAuthService.setUserAdmin(userId);
-
-        return res.status(200).json({
-          status: 'success',
-          message: `${user.username} is now a system admin`,
-        });
-      } catch (error) {
-        console.error('Promote user error:', error.message);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to promote user',
-        });
-      }
-    });
-
-    /**
-     * POST /api/admin/users/:userId/demote
-     * Remove the system admin role from a user (admin only)
-     */
-    router.post('/users/:userId/demote', requireAuth, requireAdmin, async (req, res) => {
-      try {
-        const { userId } = req.params;
-
-        // Prevent removing your own admin role
-        if (userId === req.session.userId) {
-          return res.status(400).json({
-            status: 'error',
-            message: 'Cannot remove your own admin role',
-          });
-        }
-
-        const user = await userAuthService.findUserById(userId);
-
-        if (!user) {
-          return res.status(404).json({
-            status: 'error',
-            message: 'User not found',
-          });
-        }
-
-        await userAuthService.revokeRole(userId, 'admin');
-
-        return res.status(200).json({
-          status: 'success',
-          message: `${user.username} is no longer a system admin`,
-        });
-      } catch (error) {
-        console.error('Demote user error:', error.message);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to demote user',
-        });
-      }
-    });
+      });
+    }
 
     /**
      * Admin Backup and Export Routes
@@ -623,13 +393,12 @@ class AdminRouter extends BaseRouter {
           });
         }
 
-        // Verify the target user exists
-        const user = await userAuthService.findUserById(userId);
-        if (!user) {
-          return res.status(404).json({
-            status: 'error',
-            message: 'User not found',
-          });
+        // Verify the target user exists (404 from the gateway otherwise)
+        let user;
+        try {
+          user = await identity(req).getUser(req, userId);
+        } catch (error) {
+          return answer(res, error, 'Failed to reset user stats');
         }
 
         // Reset the user's Leitner progress

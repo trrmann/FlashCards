@@ -8,7 +8,7 @@
 
 import express from 'express';
 import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
-import { userAuthService } from 'iam-service/services';
+import { IdentityGateway } from '../identity/identityGateway.mjs';
 
 export class BaseRouter {
   static queries = null;
@@ -42,17 +42,30 @@ export class BaseRouter {
   }
 
   /**
+   * The identity gateway the server runs with (in-process or the IAM service).
+   * @returns {import('../identity/identityGateway.mjs').IdentityGateway}
+   */
+  static identity(req) {
+    return req.app.locals.identity;
+  }
+
+  /**
    * Middleware: require the session user to be an administrator.
    */
   async requireAdmin(req, res, next) {
-    const adminStatus = await userAuthService.isAdmin(req.session.userId);
+    let adminStatus;
+    try {
+      adminStatus = await BaseRouter.identity(req).isAdmin(req);
+    } catch (error) {
+      return IdentityGateway.respond(res, error, 'Admin check failed');
+    }
     if (!adminStatus) {
       return res.status(403).json({
         status: 'error',
         message: 'Access denied. Admin privileges required.',
       });
     }
-    next();
+    return next();
   }
 }
 

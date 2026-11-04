@@ -5,10 +5,18 @@
  * (400), authentication (401), authorization (403), not-found (404),
  * conflicts (409), and side effects (group roles granting admin, app access
  * blocking login, removing a member from the organization's groups).
+ *
+ * With `remoteIam: true` (npm run test:iam:remote) the same checks run with FlashCards
+ * reaching identity through the IAM service over HTTP (IAM phase 3c): an IamServer is
+ * started in-process on the same scratch database, and FlashCards uses a
+ * RemoteIdentityGateway with application credentials and user tokens.
  */
 
+import crypto from 'node:crypto';
+import { IamServer, ApplicationCredentials } from 'iam-service/server';
 import { Server } from '../server.mjs';
 import { LocalTestCase } from './localTestCase.mjs';
+import { LocalIdentityGateway, RemoteIdentityGateway } from '../identity/index.mjs';
 
 /**
  * One signed-in browser: keeps the session cookie between requests.
@@ -58,8 +66,11 @@ export class IamApiTest extends LocalTestCase {
   static PASSWORD = 'IamApi#2026';
   static USERS = ['root', 'alice', 'bob', 'carol', 'dave'];
 
-  constructor(options) {
+  static IAM_PORT = 5099;
+
+  constructor({ remoteIam = false, ...options } = {}) {
     super(options);
+    this.remoteIam = remoteIam;
     this.baseUrl = `http://127.0.0.1:${this.constructor.PORT}`;
     this.sessions = {};
     this.ids = {};
@@ -408,9 +419,29 @@ export class IamApiTest extends LocalTestCase {
 
   async run() {
     this.assertLocalTarget();
-    console.log('IAM API test (local scratch database)');
+    console.log(
+      `IAM API test (local scratch database; identity ${this.remoteIam ? 'over HTTP' : 'in-process'})`
+    );
     await this.resetDatabase();
-    const server = new Server({ env: 'development', port: this.constructor.PORT });
+    let iamServer = null;
+    let identity = new LocalIdentityGateway();
+    if (this.remoteIam) {
+      const secret = crypto.randomBytes(32).toString('hex');
+      iamServer = new IamServer({
+        port: this.constructor.IAM_PORT,
+        routerOptions: {
+          credentials: new ApplicationCredentials({
+            [ApplicationCredentials.envName('flashcards')]: secret,
+          }),
+        },
+      });
+      await iamServer.start();
+      identity = new RemoteIdentityGateway({
+        baseUrl: `http://127.0.0.1:${this.constructor.IAM_PORT}`,
+        clientSecret: secret,
+      });
+    }
+    const server = new Server({ env: 'development', port: this.constructor.PORT, identity });
     await server.start();
     try {
       await this.registerUsers();
@@ -421,6 +452,8 @@ export class IamApiTest extends LocalTestCase {
       await this.checkDeletion();
     } finally {
       await new Promise((resolve) => server.httpServer.close(resolve));
+      await identity.stop();
+      if (iamServer) await iamServer.stop();
     }
     return this.summary();
   }

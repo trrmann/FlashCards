@@ -6,7 +6,8 @@
 import express from 'express';
 import { BaseRouter } from './baseRouter.mjs';
 import { identityManagementDb } from 'iam-service/db';
-import { validationService, userAuthService } from 'iam-service/services';
+import { IdentityGateway } from '../identity/identityGateway.mjs';
+import { AuthRouter } from './authRouter.mjs';
 import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
 
 class SystemRouter extends BaseRouter {
@@ -24,7 +25,7 @@ class SystemRouter extends BaseRouter {
      */
     router.get('/setup-status', async (req, res) => {
       try {
-        const userCount = await userAuthService.countUsers();
+        const userCount = await BaseRouter.identity(req).countUsers();
 
         return res.status(200).json({
           status: 'success',
@@ -49,7 +50,7 @@ class SystemRouter extends BaseRouter {
     router.post('/initial-setup', express.json(), async (req, res) => {
       try {
         // Check if any users already exist
-        const userCount = await userAuthService.countUsers();
+        const userCount = await BaseRouter.identity(req).countUsers();
 
         if (userCount > 0) {
           return res.status(403).json({
@@ -77,41 +78,15 @@ class SystemRouter extends BaseRouter {
           });
         }
 
-        // Validate username
-        const usernameValidation = validationService.validateUsername(username);
-        if (!usernameValidation.valid) {
-          return res.status(400).json({
-            status: 'error',
-            message: 'Invalid username',
-            errors: usernameValidation.errors,
-          });
-        }
-
-        // Validate email
-        if (!validationService.validateEmail(email)) {
-          return res.status(400).json({
-            status: 'error',
-            message: 'Invalid email address',
-          });
-        }
-
-        // Validate password
-        const passwordValidation = validationService.validatePassword(password);
-        if (!passwordValidation.valid) {
-          return res.status(400).json({
-            status: 'error',
-            message: 'Password does not meet requirements',
-            errors: passwordValidation.errors,
-          });
-        }
-
-        // Create the first user and make them the system administrator
-        const user = await userAuthService.createUser(username, email, password, fullName || null);
-        await userAuthService.makeFirstAdmin(user.user_id);
-
-        // Set session
-        req.session.userId = user.user_id;
-        req.session.username = user.username;
+        // Create the first user: the identity gateway validates and makes the install's first
+        // account its administrator. Then sign them in.
+        const { user } = await BaseRouter.identity(req).register({
+          username,
+          email,
+          password,
+          full_name: fullName || null,
+        });
+        await AuthRouter.signIn(req, username, password);
 
         return res.status(201).json({
           status: 'success',
@@ -126,12 +101,7 @@ class SystemRouter extends BaseRouter {
           },
         });
       } catch (error) {
-        console.error('Initial setup error:', error.message);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Initial setup failed. Please try again.',
-          error: error.message,
-        });
+        return IdentityGateway.respond(res, error, 'Initial setup failed. Please try again.');
       }
     });
 

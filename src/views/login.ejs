@@ -85,7 +85,21 @@
               window.location.href = '/profile';
             }, 2000);
           } else {
-            statusDiv.innerHTML = `<p class="error">Registration failed: ${data.message}</p>`;
+            // The message, then each failed rule (e.g. password requirements), as text.
+            const message = document.createElement('p');
+            message.className = 'error';
+            message.textContent = `Registration failed: ${data.message}`;
+            statusDiv.replaceChildren(message);
+            if (Array.isArray(data.errors) && data.errors.length) {
+              const list = document.createElement('ul');
+              list.className = 'error';
+              for (const rule of data.errors) {
+                const item = document.createElement('li');
+                item.textContent = rule;
+                list.appendChild(item);
+              }
+              statusDiv.appendChild(list);
+            }
           }
         } catch (error) {
           statusDiv.innerHTML = `<p class="error">An error occurred: ${error.message}</p>`;

@@ -32,6 +32,9 @@ plus `RENDER_URL` in `deploy.sh`).
 | `DB_PG_SCHEDULER`             | ❌                                  | on                      | `off` bypasses the database scheduler (escape hatch)                                                                                 |
 | `DB_PG_READ_ONLY`             | ❌ (local only)                     | `false`                 | `true` opens the database read-only: PostgreSQL refuses writes, no schema bootstrap. Set by `deploy.sh -preview --remote`            |
 | `DB_PG_ALLOW_REMOTE_WRITES`   | ❌ (never set)                      | —                       | `true` lets a development/preview server write to a remote database. Deliberate owner use only                                       |
+| `IAM_URL`                     | not yet (phase 3c switch-over)      | — (in-process IAM)      | URL of the IAM service. When set, FlashCards reaches identity over HTTP instead of in-process. Remove it to switch back              |
+| `IAM_CLIENT_SECRET`           | with `IAM_URL` (secret)             | —                       | FlashCards' application secret, the same value as the IAM service's `IAM_CLIENT_SECRET_FLASHCARDS`. Required when `IAM_URL` is set   |
+| `IAM_CLIENT_ID`               | optional                            | `flashcards`            | FlashCards' application key at the IAM service                                                                                       |
 | `GITHUB_TOKEN`                | ✅ (build only, secret)             | —                       | Read-only access to the private `trrmann/iam-service` package. Used only by `render-build.sh`, never logged                          |
 
 ## Build command

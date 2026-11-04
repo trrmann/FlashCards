@@ -7,7 +7,6 @@ import express from 'express';
 import { BaseRouter } from './baseRouter.mjs';
 import { entriesService } from '../auth/entriesService.mjs';
 import { userSettingsService } from '../auth/userSettingsService.mjs';
-import { userAuthService } from 'iam-service/services';
 import { mediaArchiveService } from '../auth/mediaArchiveService.mjs';
 
 class EntriesRouter extends BaseRouter {
@@ -805,7 +804,7 @@ class EntriesRouter extends BaseRouter {
         const recipients = [];
         const unknownUsernames = [];
         for (const username of recipientUsernames) {
-          const user = await userAuthService.findUserByUsernameInsensitive(username);
+          const user = await BaseRouter.identity(req).lookupUser(username);
           if (user) {
             recipients.push({ user_id: user.user_id, username: user.username });
           } else {
@@ -859,7 +858,7 @@ class EntriesRouter extends BaseRouter {
         }
 
         // Get recipient ID from username (case-insensitive, whitespace-tolerant)
-        const recipient = await userAuthService.findUserByUsernameInsensitive(recipientUsername);
+        const recipient = await BaseRouter.identity(req).lookupUser(recipientUsername);
 
         if (!recipient) {
           return res.status(404).json({
