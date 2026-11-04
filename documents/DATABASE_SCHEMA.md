@@ -113,6 +113,12 @@ session                       (express-session store)
   the organization removes them from its groups.
 - `group_roles(group_id, role_id)`. Every member of the group holds the role.
 
+### `access_tokens` (IAM service, phase 3)
+
+`token_id`, `token_hash` (SHA-256, unique; raw tokens are never stored), `kind` (`access`/`refresh`), `family_id`
+(one per login; reuse of a rotated refresh token revokes the family), `user_id`, `app_id`, `expires_at`, `used_at`,
+`revoked_at`. Transient like `session`: not backed up.
+
 ### View `effective_user_roles`
 
 Every role a user holds, `direct` or through a `group`, with its `app_key`. All admin and rights checks read this view.

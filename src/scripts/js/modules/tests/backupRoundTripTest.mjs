@@ -36,7 +36,7 @@ export class BackupRoundTripTest extends LocalTestCase {
     'group_members',
     'group_roles',
   ];
-  static TRANSIENT_TABLES = ['session'];
+  static TRANSIENT_TABLES = ['session', 'access_tokens'];
   static UNSEEDED_TABLES = ['rights', 'role_rights', 'lessons', 'leitner_boxes'];
 
   async createAdmin(username) {

@@ -8,23 +8,25 @@ plus `RENDER_URL` in `deploy.sh`).
 
 ## Variables read by the application
 
-| Variable                  | Required in Render       | Default                 | Used by / effect                                                                              |
-| ------------------------- | ------------------------ | ----------------------- | --------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                | ✅ `production`          | `production` if unset   | Secure cookies; port selection; DB host selection                                             |
-| `SESSION_SECRET`          | ✅                       | hard-coded dev secret   | Signs the session cookie. **Must** be set to a long random value in production                |
-| `DB_PG_INTERNAL_HOSTNAME` | ✅                       | —                       | DB host when `NODE_ENV=production` or `RENDER` is set (also fallback locally)                 |
-| `DB_PG_EXTERNAL_HOSTNAME` | ❌ (local only)          | —                       | DB host for local dev/preview (connects over the internet with SSL)                           |
-| `DB_PG_PORT`              | ✅                       | `5432`                  | DB port                                                                                       |
-| `DB_PG_DATABASE`          | ✅                       | —                       | DB name (also reported by `/api/system/database-status`)                                      |
-| `DB_PG_USER`              | ✅                       | —                       | DB user                                                                                       |
-| `DB_PG_PASSWORD`          | ✅ (secret)              | —                       | DB password                                                                                   |
-| `DB_PG_EXPIRE`            | recommended              | —                       | Date the Render free DB expires (e.g. `2026-12-01`); drives the header warning banner         |
-| `DB_PG_SSL`               | ❌ (never set on Render) | SSL on                  | `disable` turns SSL off. Only for the local scratch DB (`local-db.sh`), see LOCAL_DATABASE.md |
-| `PORT_PROD` / `PORT`      | ❌ (Render sets `PORT`)  | `3000`                  | Production listen port: `PORT_PROD`, then `PORT`, then 3000                                   |
-| `PORT_DEV`                | ❌                       | `5000`                  | Listen port when `NODE_ENV=development`                                                       |
-| `PORT_PREVIEW`            | ❌                       | `4000`                  | Listen port when `NODE_ENV=preview`                                                           |
-| `RENDER`                  | set by Render            | —                       | Forces internal DB hostname                                                                   |
-| `TEST_BASE_URL`           | ❌                       | `http://localhost:5000` | Target of `npm run test:preview`                                                              |
+| Variable                      | Required in Render                  | Default                 | Used by / effect                                                                                                            |
+| ----------------------------- | ----------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                    | ✅ `production`                     | `production` if unset   | Secure cookies; port selection; DB host selection                                                                           |
+| `SESSION_SECRET`              | ✅                                  | hard-coded dev secret   | Signs the session cookie. **Must** be set to a long random value in production                                              |
+| `DB_PG_INTERNAL_HOSTNAME`     | ✅                                  | —                       | DB host when `NODE_ENV=production` or `RENDER` is set (also fallback locally)                                               |
+| `DB_PG_EXTERNAL_HOSTNAME`     | ❌ (local only)                     | —                       | DB host for local dev/preview (connects over the internet with SSL)                                                         |
+| `DB_PG_PORT`                  | ✅                                  | `5432`                  | DB port                                                                                                                     |
+| `DB_PG_DATABASE`              | ✅                                  | —                       | DB name (also reported by `/api/system/database-status`)                                                                    |
+| `DB_PG_USER`                  | ✅                                  | —                       | DB user                                                                                                                     |
+| `DB_PG_PASSWORD`              | ✅ (secret)                         | —                       | DB password                                                                                                                 |
+| `DB_PG_EXPIRE`                | recommended                         | —                       | Date the Render free DB expires (e.g. `2026-12-01`); drives the header warning banner                                       |
+| `DB_PG_SSL`                   | ❌ (never set on Render)            | SSL on                  | `disable` turns SSL off. Only for the local scratch DB (`local-db.sh`), see LOCAL_DATABASE.md                               |
+| `IAM_PORT`                    | ❌ (Render sets `PORT`)             | `5100`                  | Port of the IAM service (`iam-server.js`); falls back to `PORT`                                                             |
+| `IAM_CLIENT_SECRET_<APP_KEY>` | ✅ on the IAM service once deployed | —                       | Application credential, e.g. `IAM_CLIENT_SECRET_FLASHCARDS` (≥ 32 chars). The same value goes to that application (step 3c) |
+| `PORT_PROD` / `PORT`          | ❌ (Render sets `PORT`)             | `3000`                  | Production listen port: `PORT_PROD`, then `PORT`, then 3000                                                                 |
+| `PORT_DEV`                    | ❌                                  | `5000`                  | Listen port when `NODE_ENV=development`                                                                                     |
+| `PORT_PREVIEW`                | ❌                                  | `4000`                  | Listen port when `NODE_ENV=preview`                                                                                         |
+| `RENDER`                      | set by Render                       | —                       | Forces internal DB hostname                                                                                                 |
+| `TEST_BASE_URL`               | ❌                                  | `http://localhost:5000` | Target of `npm run test:preview`                                                                                            |
 
 Connection settings that are **not** configurable through env (constants in `PostgresDatabase`):
 pool max 20, idle timeout 30 s, connect timeout 2 s, SSL with `rejectUnauthorized: false`.

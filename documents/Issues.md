@@ -63,7 +63,13 @@ Requirement: [CODING_STANDARDS.md § 0.8](./CODING_STANDARDS.md). Design, owner 
 - [x] Phase 1: `iam`/`flashcards` schemas, no cross-domain SQL, cascade deletes via FK (2026-11-03, local DB; reaches production with the branch)
 - [x] Phase 2 backend: applications, app access, app-scoped roles, orgs/groups API, backup v3 (2026-11-03, local DB)
 - [x] Phase 2 UI: `/organizations` management page (2026-11-03)
-- [ ] Phase 3: IAM service, tokens, MFA, invitations, role requests, impersonation + audit, throttling, resource grants
+- [x] Phase 3 design written (IAM_MULTI_APP_DESIGN.md → Phase 3), with 3 owner decisions listed (2026-11-04)
+- [x] Phase 3a: IAM service process, application credentials, tokens (login, refresh rotation + reuse detection, logout, `/v1/me`) (2026-11-04, local DB)
+- [ ] **Owner decisions for phase 3:** Render plan for the IAM service (free-tier cold starts), same repo or separate, token lifetimes
+- [ ] Phase 3b: move `/api/iam` and user admin/directory endpoints into the service
+- [ ] Phase 3c: FlashCards switches to `IamClient` over HTTP; FlashCards session table moves to `flashcards`
+- [ ] Phase 3d: per-service backups (format 4.0), deploy scripts start both services, Render setup
+- [ ] Phase 3e: MFA, invitations, role requests, impersonation + audit, login throttling, resource grants
 - [ ] Phase 4: WurmTools on the shared IAM (in the WurmTools refactor) + import of its local identity files
 - [ ] Phase 5: group-level data isolation
 
@@ -247,6 +253,17 @@ Found in the code/documentation review of 2026-11-03 (not yet fixed):
   meant for the home page (see CODING_STANDARDS 0.4 violations).
 - **Unused leftovers:** `src/data/test.db`, `leitner_boxes` and `lessons` tables, `flashcards.is_public`/
   `difficulty`/`lesson_id`, `flashcard_leitner_progress.session_streak`, `user_rights`/`rights` (no routes).
+
+Resolved on 2026-11-04 (IAM phase 3a, service foundation):
+
+- ~~the IAM has no service of its own and no tokens~~
+  **Resolved (foundation):** `iam-server.js` + `src/scripts/js/modules/iam/` (`IamServer`, `IamV1Router`,
+  `TokenService`, `ApplicationCredentials`); `iam.access_tokens` (SHA-256 hashes only, token families);
+  `/v1/health`, `/v1/auth/login`, `/v1/auth/refresh` (rotation, reuse revokes the family), `/v1/auth/logout`, `/v1/me`;
+  application secrets from `IAM_CLIENT_SECRET_<APP_KEY>` (constant-time compare). `npm run test:iam-service`
+  (in `deploy.sh -preview`), `npm run start:iam`. Verified: test:iam-service 37/37 (with reuse detection disabled,
+  3 checks fail); test:roundtrip 147/147 and test:iam 79/79 unchanged; the standalone entry point starts, bootstraps
+  the IAM schema, reports healthy, and refuses logins without a configured secret; lint and format pass.
 
 Resolved on 2026-11-03 (IAM phase 2, management page):
 

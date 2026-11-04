@@ -52,6 +52,15 @@ take precedence over `.env`, so the app talks only to the local database. Port 5
 and exercises every `/api/iam` endpoint as users with different roles (79 checks: success, 400/401/403/404/409, and
 side effects such as a group role granting admin access and disabled app access blocking sign-in). Same local-only guard.
 
+## IAM service test
+
+`npm run test:iam-service` starts the real IAM service (`IamServer`) in-process on port 5097 with a test-only
+application secret and 2-second access tokens, then checks application credentials, login rules, `/v1/me`, hashed token
+storage, refresh rotation, refresh-reuse detection, logout, and expiry (37 checks). Same local-only guard.
+
+To run the service by hand: `IAM_PORT=5100 local-db.sh run node iam-server.js` (logins need
+`IAM_CLIENT_SECRET_FLASHCARDS` set to a value of at least 32 characters).
+
 ## Backup round-trip test
 
 `npm run test:roundtrip` (= `local-db.sh run node src/scripts/js/modules/tests/backup-roundtrip.mjs`) proves

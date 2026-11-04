@@ -223,3 +223,24 @@ CROSS JOIN applications a
 WHERE a.app_key = 'flashcards'
   AND NOT EXISTS (SELECT 1 FROM application_users au WHERE au.app_id = a.app_id)
 ON CONFLICT (app_id, user_id) DO NOTHING;
+
+-- ---------------------------------------------------------------------------
+-- IAM phase 3: tokens issued by the IAM service (opaque; only SHA-256 hashes
+-- are stored). Transient like sessions: not included in backups.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS access_tokens (
+  token_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  token_hash CHAR(64) UNIQUE NOT NULL,
+  kind VARCHAR(10) NOT NULL CHECK (kind IN ('access', 'refresh')),
+  family_id UUID NOT NULL,
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  app_id UUID NOT NULL REFERENCES applications(app_id) ON DELETE CASCADE,
+  expires_at TIMESTAMP NOT NULL,
+  used_at TIMESTAMP,
+  revoked_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_access_tokens_family_id ON access_tokens(family_id);
+CREATE INDEX IF NOT EXISTS idx_access_tokens_expires_at ON access_tokens(expires_at);

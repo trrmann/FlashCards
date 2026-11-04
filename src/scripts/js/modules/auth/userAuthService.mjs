@@ -53,10 +53,13 @@ class UserAuthService {
     return result.rows[0] || null;
   }
 
-  async findUserById(userId) {
+  /**
+   * @param {string} [appKey] - Application whose admin status `is_admin` reports (default FlashCards)
+   */
+  async findUserById(userId, appKey = this.appKey) {
     const result = await this.database.query(this.constructor.queries.find_user_by_id, [
       userId,
-      this.appKey,
+      appKey,
     ]);
     return result.rows[0] || null;
   }

@@ -469,6 +469,24 @@ Tested by `npm run test:iam` (79 checks against the real server on the local scr
 
 ---
 
+## IAM service — `/v1` (separate process, phase 3)
+
+A separate process (`iam-server.js`, port `IAM_PORT`, default 5100). Applications send `X-IAM-Client-Id` and
+`X-IAM-Client-Secret`; users act with `Authorization: Bearer <access token>`. Design: IAM_MULTI_APP_DESIGN.md → Phase 3.
+FlashCards does not call it yet (step 3c).
+
+| Method | Path               | Auth        | Notes                                                                                                                                                                                       |
+| ------ | ------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/v1/health`       | —           | `{ service: 'iam', database }`; `503` if the database is down                                                                                                                               |
+| POST   | `/v1/auth/login`   | application | `{ username, password }` → `{ tokens: { access_token, refresh_token, token_type, expires_in }, user }`. `401` invalid login or disabled account; `403` no access to the calling application |
+| POST   | `/v1/auth/refresh` | application | `{ refresh_token }` → a new pair (rotation). A reused refresh token revokes the whole login (`401`)                                                                                         |
+| POST   | `/v1/auth/logout`  | bearer      | Revokes every token of that login                                                                                                                                                           |
+| GET    | `/v1/me`           | bearer      | `{ app_key, user (with is_admin for that app, is_platform_admin), roles }`                                                                                                                  |
+
+Tested by `npm run test:iam-service` (37 checks).
+
+---
+
 ## Admin — `/api/admin` (auth + `admin` role)
 
 ### Users

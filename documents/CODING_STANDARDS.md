@@ -352,7 +352,8 @@ None. The audit found 0 `style=` attributes, `<style>` blocks, or `.style` uses 
   `review-and-data-safety` branch (not yet in production).
 - Phase 2 (applications, app-scoped roles, organizations, groups, `/api/iam`, the `/organizations` page) is done on
   the same branch.
-- The IAM still runs inside FlashCards, not as a separate service (phase 3).
+- Phase 3a built the separate IAM service (tokens, `/v1`), but FlashCards still uses the IAM in-process until
+  step 3c switches it to the service.
 
 ### Other
 

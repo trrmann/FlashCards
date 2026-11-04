@@ -177,6 +177,80 @@ it would make every app depend on FlashCards being up.
 
 Phase 1 (schema separation inside FlashCards) comes first and is unchanged by this decision.
 
+## Phase 3 design: the IAM service
+
+**Status:** design written 2026-11-04. Step 3a (service foundation and token model) is built on the local
+database. Steps 3b–3e follow. Defaults below stay within the approved decisions. The questions that are the
+owner's call are listed at the end of this section.
+
+### Shape
+
+- **Process:** a separate Node/Express process, `iam-server.js` (entry point), with its code in
+  `src/scripts/js/modules/iam/`. It is the only process that reads or writes the `iam` schema once phase 3
+  is complete. It reuses the IAM domain services (`userAuthService`, `organizationService`) that already
+  live in the IAM domain.
+- **Repository:** same repository as FlashCards for now, deployed as a second Render web service from the
+  same repo with a different start command. It can move to its own repo later without code changes, because it
+  shares no modules with FlashCards except the generic database base class.
+- **Versioned API** under `/v1`, JSON in and out, the same `{ status, message }` error shape as FlashCards.
+- **Port:** `IAM_PORT`, default 5100 locally. Render assigns `PORT` in production.
+
+### Who is calling: application credentials and user tokens
+
+| Caller                                                      | Credential                                                               | Used for                                                                        |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| An application's server (FlashCards today, WurmTools later) | `X-IAM-Client-Id: <app_key>` and `X-IAM-Client-Secret: <secret>` headers | Login, registration, refresh, and app-level lookups (user summaries, directory) |
+| A signed-in user, through an application                    | `Authorization: Bearer <access token>`                                   | `/v1/me`, organizations/groups management, logout                               |
+
+- **Application secrets** come from the IAM service's environment: `IAM_CLIENT_SECRET_<APP_KEY>`
+  (e.g. `IAM_CLIENT_SECRET_FLASHCARDS`), compared in constant time. Nothing secret is stored in the database,
+  and rotation is an environment change on both services.
+- **Tokens are opaque** random values (32 bytes, base64url). The database keeps only a SHA-256 hash
+  (`iam.access_tokens`), so a database leak doesn't reveal usable tokens, and any token can be revoked
+  immediately. JWTs were not chosen: they can't be revoked before expiry without a lookup anyway.
+- **Access tokens** last 1 hour. **Refresh tokens** last 30 days and **rotate** on every use. Each login starts
+  a token _family_. Presenting an already-used refresh token is treated as theft and revokes the whole family.
+- A token belongs to one application (the one that logged the user in). `/v1/me` reports admin status for
+  that application.
+- Tokens are transient, like sessions: they are **not** in backups. After a restore, users sign in again.
+
+### How FlashCards uses it (step 3c)
+
+FlashCards keeps its own browser session cookie (the browser never sees IAM tokens; this is the
+backend-for-frontend pattern). On login, FlashCards calls `POST /v1/auth/login` with its application
+credentials and stores the returned tokens in its server-side session. `userAuthService` is replaced by an
+`IamClient` class with the same methods, implemented as HTTP calls. Admin and role checks call `/v1/me`, cached in
+the session for a short time. The `/api/iam` routes and `organizationService` move into the service, and the
+`/organizations` page calls FlashCards, which forwards to the service with the user's token. The FlashCards
+session table moves from `iam` to the `flashcards` schema, because it belongs to the app.
+
+### Backups (step 3d)
+
+Each service backs up its own domain. The IAM service gets `/v1/admin/backup` (IAM tables, minus
+`session` and `access_tokens`), and FlashCards' backup covers the `flashcards` schema. `backup.sh` and
+`restore.sh` handle both files, and the round-trip test covers both. Backup format 4.0, with 3.0 and 2.0 still accepted.
+
+### Steps
+
+| Step | Content                                                                                                                                                                     | Status           |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| 3a   | Service process, health, application credentials, token model (login, refresh with rotation and reuse detection, logout, `/v1/me`), `iam.access_tokens`, service test suite | Built (local DB) |
+| 3b   | Move `/api/iam` (organizations, groups, platform admins, app access) and user admin/directory endpoints into the service                                                    | Next             |
+| 3c   | FlashCards switches to `IamClient` over HTTP; FlashCards session table moves to `flashcards`                                                                                |                  |
+| 3d   | Per-service backups (format 4.0), deploy scripts start both services, Render setup                                                                                          |                  |
+| 3e   | MFA (TOTP + recovery codes), invitations, role requests, impersonation + audit, login throttling, `resource_grants`                                                         |                  |
+
+### Owner decisions for phase 3
+
+1. **Render plan for the IAM service.** On the free plan a web service sleeps after 15 minutes idle and takes
+   about 50 seconds to wake. Every FlashCards login would then wait for the IAM service to wake as well.
+   The options are the free plan (accept cold starts), a paid instance for the IAM service, or keeping the IAM
+   in-process until traffic justifies a second service. The decision to separate stands; this is only about when
+   and how it is hosted.
+2. **Repository:** keep the IAM service in this repository (the default above), or create its own repository now?
+3. **Token lifetimes:** 1 hour access / 30 days refresh by default. Should "remember me" be longer, or idle
+   sessions shorter?
+
 ## Phases
 
 1. **Separation (FlashCards only):** `iam`/`flashcards` schemas, adapters on their own `search_path`,
