@@ -88,19 +88,27 @@ overrides with `min-width` queries only. `max-width` queries are not allowed.
 
 Run all three stages with `deploy.sh` (`src/scripts/sh/deploy.sh`). Each stage has one purpose:
 
-| Stage   | Command              | Runs on                           | Purpose                   | What it does                                                                                                                        |
-| ------- | -------------------- | --------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Dev     | `deploy.sh -dev`     | Local server, `:5000`             | Development and debugging | Starts the current code. **No** formatting, linting, or tests. Only what is needed to run (prerequisites, `npm install` if missing) |
-| Preview | `deploy.sh -preview` | Local server, `:4000`             | Full quality gate         | Starts the current code, then runs **all** of 0.6. Any failure stops the pipeline                                                   |
-| Prod    | `deploy.sh -prod`    | Render (auto-deploys from GitHub) | Release                   | Git commit and push to GitHub `main`. Render deploys automatically                                                                  |
+| Stage   | Command                         | Runs on                           | Purpose                   | What it does                                                                                                                        |
+| ------- | ------------------------------- | --------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Dev     | `deploy.sh -dev`                | Local server, `:5000`             | Development and debugging | Starts the current code. **No** formatting, linting, or tests. Only what is needed to run (prerequisites, `npm install` if missing) |
+| Preview | `deploy.sh -preview [--remote]` | Local server, `:4000`             | Full quality gate         | Starts the current code, then runs **all** of 0.6. Any failure stops the pipeline                                                   |
+| Prod    | `deploy.sh -prod`               | Render (auto-deploys from GitHub) | Release                   | Git commit and push to GitHub `main`. Render deploys automatically                                                                  |
 
 - **Render is the production destination and the final verification point.** Code is production-ready
   only once it is deployed on Render and verified there (health, every page, read-only API checks).
 - Preview must pass before anything is deployed to production.
-- **All three environments use the same database** (Render PostgreSQL). See 0.7 for what that means for testing and data safety.
-- **Approved exception:** schema and migration work is developed and tested first on the local scratch
-  database (`local-db.sh`, [LOCAL_DATABASE.md](./LOCAL_DATABASE.md)). Work in progress that changes the schema
-  is never run with `deploy.sh -dev`/`-preview` until it is approved for the shared database.
+- **Databases (owner decision, 2026-11-04):**
+
+  | Stage                  | Database                                                                    | Access                                                         |
+  | ---------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------- |
+  | Dev, preview           | Local `flashcards_dev_local`, refreshed from production with `pull-prod.sh` | Read/write                                                     |
+  | Preview `--remote`     | Production (Render)                                                         | **Read-only** (PostgreSQL refuses writes; no schema bootstrap) |
+  | Test suites (`test:*`) | Local `flashcards_local` (dropped and rebuilt by the tests)                 | Read/write                                                     |
+  | Prod                   | Production (Render)                                                         | Read/write                                                     |
+
+  Only Render writes to production. The server enforces this: in development and preview it refuses to start on a
+  writable remote database (override `DB_PG_ALLOW_REMOTE_WRITES=true` only for a deliberate owner action). Schema and
+  migration changes therefore reach production only through a release. See [LOCAL_DATABASE.md](./LOCAL_DATABASE.md).
 
 ### 0.6 Preview testing: every page, every API
 
@@ -124,8 +132,8 @@ practice → answer → box change, export/import round trips, and backup/restor
 
 - Test code follows 0.3. It's built from classes, e.g. a suite runner, an HTTP/API client that holds the
   session, and one test class per area. Test code lives in `src/scripts/js/modules/tests/`.
-- Because the database is shared with production (0.5), tests must use **dedicated test accounts and
-  test data**, must never modify or delete real users' data, and must remove everything they create.
+- Tests that write run only on local databases (0.5). Tests that run against production (`preview --remote`) are
+  read-only and signed-out, and must never need to write.
 
 ### 0.7 Data safety: the database is reset every month
 

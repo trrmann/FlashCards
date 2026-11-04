@@ -3,10 +3,12 @@
 ################################################################################
 # FlashCards Deployment Script
 # 
-# Usage: deploy.sh -dev | -preview | -prod | -all   (on PATH; runnable from any directory)
+# Usage: deploy.sh -dev | -preview [--remote] | -prod | -all   (on PATH; any directory)
 #
-# Deploys to specified environment(s) with logging and browser testing
-# All environments use local server except prod which auto-deploys to Render
+# Deploys to specified environment(s) with logging and browser testing.
+# Databases: dev and preview use the local dev database (flashcards_dev_local; refresh it
+# from production with pull-prod.sh). preview --remote opens production READ-ONLY.
+# Only -prod (Render) writes to production.
 ################################################################################
 
 set -o pipefail
@@ -27,6 +29,7 @@ RENDER_HEALTH_CHECKS=60  # max health check attempts (up to 2min if free tier is
 PORT_DEV=5000
 PORT_PREVIEW=4000
 PORT_PROD=3000
+DEV_DB_NAME=flashcards_dev_local   # dev/preview data; the test suites use flashcards_local
 
 # Color codes
 RED='\033[0;31m'
@@ -101,14 +104,15 @@ USAGE:
 OPTIONS:
   -dev      Deploy to local development environment
             • Starts server on localhost:5000
-            • Uses remote Render PostgreSQL
+            • Uses the LOCAL dev database (flashcards_dev_local, read/write)
+            • Refresh it from production first with: pull-prod.sh
             • Auto-opens browser when ready
             • Logs to .deployment/last-run.log
 
-  -preview  Deploy to local preview environment
-            • Final test before production
-            • Same setup as -dev but for final validation
-            • Uses remote Render PostgreSQL
+  -preview  Deploy to local preview environment (full quality gate)
+            • Default: LOCAL dev database, read/write
+            • --remote: PRODUCTION database, READ-ONLY (PostgreSQL refuses every
+              write; no schema bootstrap; signed-out checks only)
             • Auto-opens browser when ready
 
   -prod     Deploy to production (Render)
@@ -133,7 +137,8 @@ PRE-REQUISITES (automatically checked):
 
 EXAMPLES:
   deploy.sh -dev              # Start development server
-  deploy.sh -preview          # Run preview deployment
+  deploy.sh -preview          # Run preview deployment (local database)
+  deploy.sh -preview --remote # Preview against production, read-only
   deploy.sh -prod             # Deploy to production
   deploy.sh -all              # Deploy all environments
   deploy.sh -h                # Show this help
@@ -301,6 +306,46 @@ run_comprehensive_tests() {
     fi
 }
 
+################################################################################
+# Database Targets
+################################################################################
+
+use_local_database() {
+    # Dev/preview data lives in its own local database, apart from flashcards_local, which
+    # the test suites drop and rebuild. Exported settings win over .env (dotenv never
+    # overrides real environment variables).
+    "${SCRIPT_DIR}/local-db.sh" start >> "${LOG_FILE}" 2>&1 \
+        || error_exit "Local database cluster unavailable. Set it up once with: local-db.sh init"
+    LOCAL_DB_NAME="${DEV_DB_NAME}" "${SCRIPT_DIR}/local-db.sh" init >> "${LOG_FILE}" 2>&1 \
+        || error_exit "Could not create the local dev database ${DEV_DB_NAME}"
+    eval "$(LOCAL_DB_NAME="${DEV_DB_NAME}" "${SCRIPT_DIR}/local-db.sh" env)"
+    export DB_PG_READ_ONLY=false
+    log INFO "Database: LOCAL ${DB_PG_DATABASE} on ${DB_PG_EXTERNAL_HOSTNAME}:${DB_PG_PORT} (read/write)"
+    log INFO "Refresh it from production with: pull-prod.sh"
+}
+
+use_remote_read_only() {
+    # Production from .env, opened read-only: PostgreSQL refuses every write and the server
+    # skips the schema bootstrap.
+    export DB_PG_READ_ONLY=true
+    log WARN "Database: PRODUCTION (from .env), READ-ONLY. Signing in is not possible in this mode."
+}
+
+wait_until_healthy() {
+    # /api/health answers 503 until the server's database is ready, so -f waits for 200.
+    local port=$1
+    local max_attempts=${2:-90}
+    local attempt=0
+    while [ $attempt -lt $max_attempts ]; do
+        if curl -sf "http://localhost:${port}/api/health" > /dev/null 2>&1; then
+            return 0
+        fi
+        sleep 1
+        ((attempt++))
+    done
+    return 1
+}
+
 run_local_db_tests() {
     # CODING_STANDARDS 0.6/0.7 tests that need a disposable database: they drop and
     # rebuild the schema, so they run only on the local scratch database.
@@ -329,6 +374,7 @@ deploy_dev() {
     
     cd "${PROJECT_ROOT}"
     
+    use_local_database
     log INFO "Starting development server on localhost:${PORT_DEV}..."
     
     # Kill any existing process on PORT_DEV
@@ -345,32 +391,32 @@ deploy_dev() {
     log INFO "Server PID: $pid"
     log INFO "Waiting for server to start..."
     
-    # Wait for server to be ready
-    local max_attempts=30
-    local attempt=0
-    while [ $attempt -lt $max_attempts ]; do
-        if curl -s http://localhost:${PORT_DEV}/api/health > /dev/null 2>&1; then
-            log SUCCESS "Development server is running"
-            log SUCCESS "URL: http://localhost:${PORT_DEV}"
-            echo "DEV_PID=$pid" >> "${LOG_FILE}"
-            return 0
-        fi
-        sleep 1
-        ((attempt++))
-    done
-    
-    error_exit "Development server failed to start after ${max_attempts} seconds"
+    if wait_until_healthy "${PORT_DEV}"; then
+        log SUCCESS "Development server is running"
+        log SUCCESS "URL: http://localhost:${PORT_DEV}"
+        echo "DEV_PID=$pid" >> "${LOG_FILE}"
+        return 0
+    fi
+
+    error_exit "Development server did not become healthy (see .deployment/last-run.log)"
 }
 
 deploy_preview() {
+    local mode=${1:-local}
     log INFO "=========================================="
-    log INFO "DEPLOYING TO: Preview (Local)"
+    log INFO "DEPLOYING TO: Preview (local server, ${mode} database)"
     log INFO "=========================================="
     
     cd "${PROJECT_ROOT}"
     
     # Run strict code verification for preview
     run_checks_strict
+
+    if [ "${mode}" = "remote" ]; then
+        use_remote_read_only
+    else
+        use_local_database
+    fi
     
     log INFO "Starting preview server on localhost:${PORT_PREVIEW}..."
     
@@ -388,29 +434,17 @@ deploy_preview() {
     log INFO "Server PID: $pid"
     log INFO "Waiting for server to start..."
     
-    # Wait for server to be ready
-    local max_attempts=30
-    local attempt=0
-    while [ $attempt -lt $max_attempts ]; do
-        if curl -s http://localhost:${PORT_PREVIEW}/ > /dev/null 2>&1; then
-            log SUCCESS "Preview server is running"
-            log SUCCESS "URL: http://localhost:${PORT_PREVIEW}"
-            echo "PREVIEW_PID=$pid" >> "${LOG_FILE}"
-            
-            # Give server time to fully initialize
-            sleep 2
-            
-            # Run comprehensive preview tests
-            run_comprehensive_tests
-            
-            # If tests pass, return (server continues running)
-            return 0
-        fi
-        sleep 1
-        ((attempt++))
-    done
-    
-    error_exit "Preview server failed to start after ${max_attempts} seconds"
+    if wait_until_healthy "${PORT_PREVIEW}"; then
+        log SUCCESS "Preview server is running"
+        log SUCCESS "URL: http://localhost:${PORT_PREVIEW}"
+        echo "PREVIEW_PID=$pid" >> "${LOG_FILE}"
+
+        # Run comprehensive preview tests (the server keeps running afterwards)
+        run_comprehensive_tests
+        return 0
+    fi
+
+    error_exit "Preview server did not become healthy (see .deployment/last-run.log)"
 }
 
 deploy_prod() {
@@ -563,6 +597,15 @@ open_browser() {
 
 main() {
     local env=${1:-}
+    local preview_mode=local
+    case "${2:-}" in
+        "") ;;
+        --remote)
+            [ "$env" = "-preview" ] || error_exit "--remote is only valid with -preview"
+            preview_mode=remote
+            ;;
+        *) error_exit "Unknown option: $2 (only -preview --remote is supported)" ;;
+    esac
     
     if [ -z "$env" ]; then
         echo "FlashCards Deployment Script"
@@ -571,7 +614,7 @@ main() {
         echo ""
         echo "Options:"
         echo "  -dev       Deploy to development (local)"
-        echo "  -preview   Deploy to preview (local)"
+        echo "  -preview   Deploy to preview (local database; --remote: production read-only)"
         echo "  -prod      Deploy to production (Render, auto-deploy via GitHub)"
         echo "  -all       Deploy to all environments in sequence"
         echo ""
@@ -607,7 +650,7 @@ main() {
             open_browser "http://localhost:${PORT_DEV}" "Development"
             ;;
         -preview)
-            deploy_preview
+            deploy_preview "${preview_mode}"
             open_browser "http://localhost:${PORT_PREVIEW}" "Preview"
             ;;
         -prod)

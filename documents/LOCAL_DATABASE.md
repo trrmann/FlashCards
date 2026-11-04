@@ -37,14 +37,33 @@ local-db.sh run CMD …   # run any command against the local DB (e.g. the round
 take precedence over `.env`, so the app talks only to the local database. Port 5001 lets it run alongside
 `deploy.sh -dev` (5000).
 
+## Databases in the local cluster
+
+| Database               | Used by                                   | Contents                                                                        |
+| ---------------------- | ----------------------------------------- | ------------------------------------------------------------------------------- |
+| `flashcards_dev_local` | `deploy.sh -dev`, `deploy.sh -preview`    | A copy of production (`pull-prod.sh`), or empty and bootstrapped on first start |
+| `flashcards_local`     | `npm run test:*`, `local-db.sh serve/run` | Test data; the tests drop and rebuild it                                        |
+
+`deploy.sh -dev`/`-preview` create `flashcards_dev_local` if it is missing and export its `DB_PG_*` settings, which win
+over `.env`. `deploy.sh -preview --remote` uses production from `.env` read-only instead (`DB_PG_READ_ONLY=true`).
+
+## Pulling production data
+
+```bash
+pull-prod.sh        # asks for confirmation; -y skips it
+```
+
+1. Dumps production with `pg_dump`. It only reads, and if it fails, nothing local changes.
+2. Drops and recreates `flashcards_dev_local`, so nothing old is left.
+3. Restores the dump (it stops on the first error) and deletes the dump file.
+
+The copy holds **real users' personal data** (emails, password hashes). It stays in the local cluster (owner-only files
+in `~/.local/share/platform-db`) and is never committed, exported, or shared. The test database is never touched.
+
 ## Data
 
-- `serve` on an empty database bootstraps both schemas automatically. The first user registered becomes admin.
-- Use **synthetic test data** (created through the app or the API, or an entries import such as
-  `documents/language_flashcards.json`).
-- `local-db.sh load-prod` replaces the local database with a `pg_dump` of the Render database. It only reads
-  production, but it copies **real users' personal data** (emails, password hashes) onto the machine.
-  Run it only when that is deliberately needed, and `reset` afterwards. Automated assistants must not run it.
+- An empty database is bootstrapped automatically on first start. The first user registered becomes admin.
+- Tests use **synthetic data** only, in `flashcards_local`.
 
 ## IAM API test
 

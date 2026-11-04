@@ -17,7 +17,7 @@ and answers. Data is stored in PostgreSQL on Render.
 
 ## Directory structure
 
-FlashCards depends on two shared packages, installed from GitHub at tag `v0.1.0` (Render builds with `src/scripts/sh/render-build.sh`): **platform-db** (`PostgresDatabase`, `LocalDatabaseTest`, the shared `local-db.sh`) and **iam-service** (`IdentityManagementDatabase`, `userAuthService`, `validationService`, `organizationService`, `OrganizationRouter`, the IAM service and `IamClient`). Their code and SQL are no longer in this repository.
+FlashCards depends on two shared packages, installed from GitHub (platform-db `v0.1.3`, iam-service `v0.1.2`) (Render builds with `src/scripts/sh/render-build.sh`): **platform-db** (`PostgresDatabase`, `LocalDatabaseTest`, the shared `local-db.sh`) and **iam-service** (`IdentityManagementDatabase`, `userAuthService`, `validationService`, `organizationService`, `OrganizationRouter`, the IAM service and `IamClient`). Their code and SQL are no longer in this repository.
 
 ```text
 FlashCards/
@@ -73,6 +73,8 @@ FlashCards/
         │   ├── deploy.sh                 # deploy.sh -dev | -preview | -prod | -all
         │   ├── local-db.sh               # Wrapper for platform-db's local-db.sh (LOCAL_DATABASE.md)
         │   ├── render-build.sh           # Render build command: GitHub package access, then npm ci
+        │   ├── pull-prod.sh              # Refresh the local dev database from production (read-only dump)
+        │   ├── prod-readonly-check.sh    # Row counts on production, read-only
         │   └── restore.sh                # Restore / recover an empty database in one command
         └── sql/pg/
             ├── flashcards-postgres-schema.sql   # App tables + idempotent migrations

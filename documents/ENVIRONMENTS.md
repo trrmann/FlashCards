@@ -223,7 +223,7 @@ Ready to ship:
 
 **Database errors in any env:**
 
-- All envs use same DB
+- Dev/preview: local `flashcards_dev_local`; prod: Render. Run `pull-prod.sh` to refresh the local copy
 - Check pgAdmin connection
 - Check `/api/system/database-status` and the startup bootstrap log
 
@@ -233,6 +233,6 @@ Ready to ship:
 
 - **Dev and Preview are local only** - server.js doesn't deploy to Render
 - **Prod is auto-deployed** - pushing to GitHub triggers Render deployment
-- **All environments share same database** - test data is shared
+- **Dev and preview use the local dev database** (`flashcards_dev_local`, refreshed with `pull-prod.sh`); `deploy.sh -preview --remote` reads production read-only; only Render writes to production
 - **Deployment logs** - stored in `.deployment/last-run.log` (not backed up)
 - **Script is rerunnable** - safe to run multiple times

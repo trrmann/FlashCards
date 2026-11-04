@@ -245,11 +245,14 @@ All operations are idempotent - safe to repeat.
 1. Checks everything
 2. Kills any existing process on the target port (5000 dev / 4000 preview)
 3. Preview only: strict format + lint
-4. Starts `npm run dev` with `NODE_ENV=development` or `preview` (nodemon, `--env-file=.env`)
-5. Waits up to 30 s for the server (dev: `/api/health`; preview: `/`)
-6. Preview only: runs `npm run test:preview` against port 4000, then `npm run test:roundtrip`, `npm run test:iam` and `npm run test:startup` on the local scratch DB
+4. Chooses the database: the local `flashcards_dev_local` (created if missing; its `DB_PG_*` exports win over `.env`),
+   or, for `-preview --remote`, production from `.env` with `DB_PG_READ_ONLY=true`
+5. Starts `npm run dev` with `NODE_ENV=development` or `preview` (nodemon, `--env-file=.env`). The server refuses to
+   start in these modes on a writable remote database
+6. Waits up to 90 s for `/api/health` to answer 200 (it answers 503 until the database is ready)
+7. Preview only: runs `npm run test:preview` against port 4000, then `npm run test:roundtrip`, `npm run test:iam` and `npm run test:startup` on the local scratch DB
    (starts it if needed; fails the preview if it is missing; set it up once with `local-db.sh init`)
-7. Opens browser; server continues running in background
+8. Opens browser; server continues running in background
 
 ### Prod Flow:
 

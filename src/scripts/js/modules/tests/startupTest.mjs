@@ -2,7 +2,9 @@
  * Start-up test: FlashCards started before its database must listen at once, answer
  * 503 "starting" (with Retry-After) on pages and the API, keep waiting instead of
  * giving up, and serve normally once the database comes up. The database "comes up"
- * when a TCP relay to the local scratch database starts. Local scratch database only.
+ * when a TCP relay to the local scratch database starts. Also: development and preview
+ * servers refuse a writable remote database, and a read-only server starts without
+ * bootstrapping and writes nothing. Local scratch database only.
  */
 
 import { TcpRelay } from 'platform-db';
@@ -100,11 +102,79 @@ export class StartupTest extends LocalTestCase {
     }
   }
 
+  checkDatabaseTargetGuard() {
+    console.log('\nDatabase target guard (development / preview)');
+    const remote = { host: 'dpg-example.virginia-postgres.render.com', readOnly: false };
+    const refused = (env, config, processEnv = {}) => {
+      try {
+        Server.assertSafeDatabaseTarget(env, config, processEnv);
+        return false;
+      } catch (error) {
+        return /Refusing to start/.test(error.message);
+      }
+    };
+    this.check(
+      'development on a writable remote database is refused',
+      refused('development', remote)
+    );
+    this.check('preview on a writable remote database is refused', refused('preview', remote));
+    this.check('remote read-only is allowed', !refused('preview', { ...remote, readOnly: true }));
+    this.check(
+      'local database is allowed',
+      !refused('development', { host: '127.0.0.1', readOnly: false })
+    );
+    this.check(
+      'DB_PG_ALLOW_REMOTE_WRITES=true overrides',
+      !refused('development', remote, { DB_PG_ALLOW_REMOTE_WRITES: 'true' })
+    );
+    this.check('production is not restricted', !refused('production', remote));
+  }
+
+  async checkReadOnlyServer() {
+    console.log('\nRead-only server');
+    const port = await TcpRelay.freePort();
+    const base = `http://127.0.0.1:${port}`;
+    const readOnly = { readOnly: true };
+    const database = new FlashCardsDatabase({ ...this.database.config, ...readOnly });
+    const identityDatabase = new IdentityManagementDatabase({
+      ...this.identityDatabase.config,
+      ...readOnly,
+    });
+    const usersBefore = await this.identityDatabase.query(LocalTestCase.testQueries.count_users);
+    const server = new Server({ env: 'preview', port, database, identityDatabase });
+    try {
+      await server.start();
+      this.check('starts on a read-only database (bootstrap skipped)', server.ready);
+      this.check('/api/health answers 200', (await fetch(`${base}/api/health`)).status === 200);
+      this.check('/login page answers 200', (await fetch(`${base}/login`)).status === 200);
+      const register = await fetch(`${base}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: 'ro_should_fail',
+          email: 'ro_should_fail@example.test',
+          password: 'ReadOnly#2026x',
+          fullName: 'Read Only',
+        }),
+      });
+      this.check('a write request fails', register.status >= 400, String(register.status));
+      const usersAfter = await this.identityDatabase.query(LocalTestCase.testQueries.count_users);
+      this.check(
+        '… and nothing was written',
+        usersAfter.rows[0].count === usersBefore.rows[0].count
+      );
+    } finally {
+      await server.stop();
+    }
+  }
+
   async run() {
     this.assertLocalTarget();
     console.log('Start-up test (local scratch database)\n');
     await this.resetDatabase();
     await this.checkLateDatabase();
+    this.checkDatabaseTargetGuard();
+    await this.checkReadOnlyServer();
     return this.summary();
   }
 }
