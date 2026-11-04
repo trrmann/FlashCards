@@ -31,8 +31,10 @@ FlashCards/
 │   ├── css/
 │   │   ├── styles.css            # Entry: @import chain desktop → laptop → tablet → mobile → core → forms
 │   │   ├── app.css               # Shared application components
-│   │   └── pages/                # Per-page styles: entries, home, login, logout, practice, profile, quiz
-│   └── js/navigation-tracker.js  # Posts page visits to /api/navigation/track
+│   │   └── pages/                # Per-page styles: entries, home, login, logout, organizations, practice, profile, quiz
+│   └── js/
+│       ├── navigation-tracker.js  # Posts page visits to /api/navigation/track
+│       └── pages/organizations-page.js  # OrganizationsPage class (no inline page script)
 └── src/
     ├── data/test.db              # Unused leftover (the app uses PostgreSQL only)
     ├── views/                    # EJS pages (each with an inline <script> for its behavior)
@@ -83,15 +85,16 @@ FlashCards/
 
 ## Pages
 
-| Route       | View           | What it does                                                                                                                                                                                            |
-| ----------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/`         | `home.ejs`     | Welcome; when logged in, the **Study Status** dashboard (overall, by class → lesson, by category)                                                                                                       |
-| `/entries`  | `entries.ejs`  | Create/edit cards (question types, languages, image/audio/TTS blocks, options), grouped collapsible list, bulk public/private, bulk share, Public Cards (remove/restore), Shared with Me, import/export |
-| `/practice` | `practice.ejs` | Leitner practice with the filter panel, statistics, schedule, catch-up mode, "listen" voice answers                                                                                                     |
-| `/quiz`     | `quiz.ejs`     | Filtered quiz builder, quiz taking, history                                                                                                                                                             |
-| `/login`    | `login.ejs`    | Login and registration; first-user setup when the database has no users                                                                                                                                 |
-| `/profile`  | `profile.ejs`  | Profile, password, share-directory visibility, pending shares; admin user management and Backup & Restore                                                                                               |
-| `/logout`   | `logout.ejs`   | Logout confirmation                                                                                                                                                                                     |
+| Route            | View                | What it does                                                                                                                                                                                            |
+| ---------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`              | `home.ejs`          | Welcome; when logged in, the **Study Status** dashboard (overall, by class → lesson, by category)                                                                                                       |
+| `/entries`       | `entries.ejs`       | Create/edit cards (question types, languages, image/audio/TTS blocks, options), grouped collapsible list, bulk public/private, bulk share, Public Cards (remove/restore), Shared with Me, import/export |
+| `/practice`      | `practice.ejs`      | Leitner practice with the filter panel, statistics, schedule, catch-up mode, "listen" voice answers                                                                                                     |
+| `/quiz`          | `quiz.ejs`          | Filtered quiz builder, quiz taking, history                                                                                                                                                             |
+| `/login`         | `login.ejs`         | Login and registration; first-user setup when the database has no users                                                                                                                                 |
+| `/profile`       | `profile.ejs`       | Profile, password, share-directory visibility, pending shares; admin user management and Backup & Restore                                                                                               |
+| `/organizations` | `organizations.ejs` | Organizations, members, groups, group members, and group roles (behavior in `public/js/pages/organizations-page.js`)                                                                                    |
+| `/logout`        | `logout.ejs`        | Logout confirmation                                                                                                                                                                                     |
 
 ## npm scripts
 

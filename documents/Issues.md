@@ -62,7 +62,7 @@ Requirement: [CODING_STANDARDS.md § 0.8](./CODING_STANDARDS.md). Design, owner 
 - [x] Decided: separate IAM service (2026-11-03)
 - [x] Phase 1: `iam`/`flashcards` schemas, no cross-domain SQL, cascade deletes via FK (2026-11-03, local DB; reaches production with the branch)
 - [x] Phase 2 backend: applications, app access, app-scoped roles, orgs/groups API, backup v3 (2026-11-03, local DB)
-- [ ] Phase 2 UI: organization and group management page
+- [x] Phase 2 UI: `/organizations` management page (2026-11-03)
 - [ ] Phase 3: IAM service, tokens, MFA, invitations, role requests, impersonation + audit, throttling, resource grants
 - [ ] Phase 4: WurmTools on the shared IAM (in the WurmTools refactor) + import of its local identity files
 - [ ] Phase 5: group-level data isolation
@@ -239,8 +239,28 @@ Found in the code/documentation review of 2026-11-03 (not yet fixed):
 - **`appSiteData` is a shared singleton**: concurrent requests can see each other's page title / user name.
 - **`deploy.sh -prod` runs `git add .`**, committing all pending (incl. untracked) work as "Auto-format".
 - **`.env.example` lists many unused keys** (`DATABASE_URL`, `JWT_*`, `DB_SCHEMA`, `CORS_*`, …).
+- **Missing favicon:** every page requests `/favicon.ico` and gets 404 (the header's favicon link is commented out).
+- **Footer title:** reads "root' personal Flash Card Service" (stray apostrophe from `appSiteData.getNameHeadingHelp()`).
+- **Shared partials fail html-validate:** trailing whitespace in the header's inline script, and buttons without
+  `type` in `partials/filter-panel.ejs`.
+- **Shared `<main>` grid:** from 1024px, `laptop.css`/`styles.css` make every page's `<main>` a multi-column grid
+  meant for the home page (see CODING_STANDARDS 0.4 violations).
 - **Unused leftovers:** `src/data/test.db`, `leitner_boxes` and `lessons` tables, `flashcards.is_public`/
   `difficulty`/`lesson_id`, `flashcard_leitner_progress.session_streak`, `user_rights`/`rights` (no routes).
+
+Resolved on 2026-11-03 (IAM phase 2, management page):
+
+- ~~no UI for organizations and groups~~
+  **Resolved:** `/organizations` page (nav link for signed-in users): organizations list (all for platform admins) and
+  create form; per organization: settings, delete (platform admins), members with role menus and remove, groups,
+  group members, and group roles. Built to the standards: no inline script (`OrganizationsPage` class in
+  `public/js/pages/`), no inline styles, user data via `textContent`, mobile-first `pages/organizations.css` with the
+  five tiers; members see no management controls. ESLint gains a browser-scripts block; the preview suite now
+  includes `/organizations`; the shared nav wraps on tablet (an extra link overflowed at 768px).
+  Verified in headless Chrome against the local server: 27/27 checks (create organization, add member, create group,
+  add group member, grant group role, server error shown, member and signed-out views, no inline styles, no console
+  errors besides the site-wide favicon 404, page markup valid, no horizontal overflow at 375/768/1024/1280/1920 px);
+  screenshots reviewed at phone and desktop width.
 
 Resolved on 2026-11-03 (IAM phase 2, backend):
 

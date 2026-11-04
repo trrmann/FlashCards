@@ -24,6 +24,7 @@ export class PreviewTestSuite {
       { path: '/entries', name: 'Entries', type: 'page' },
       { path: '/login', name: 'Login', type: 'page' },
       { path: '/profile', name: 'Profile', type: 'page' },
+      { path: '/organizations', name: 'Organizations', type: 'page' },
       { path: '/logout', name: 'Logout', type: 'page' },
     ],
 

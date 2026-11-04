@@ -4,8 +4,6 @@
  * Browser-side code - window and document are global objects
  */
 
-/* eslint-disable no-undef */
-
 class NavigationTracker {
   constructor() {
     this.debounceTimer = null;

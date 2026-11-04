@@ -312,6 +312,9 @@ None. The audit found 0 `style=` attributes, `<style>` blocks, or `.style` uses 
 
 ### 0.4 Responsive design
 
+- `laptop.css` and `styles.css` turn every `<main>` into a 2- and 3-column grid (meant for the home page), which
+  squeezes other pages' content into one cell from 1024px up. New pages opt out (`main.<page> { display: block; }`,
+  as `/organizations` does); the shared rule should move to a home-page class.
 - `public/css/app.css` and `public/css/pages/practice.css` use `max-width: 768px` (desktop-first). Convert them to mobile-first `min-width`.
 - The large-screen tier (`min-width: 1920px`) is inside `styles.css`. Move it to `large-screen.css`
   and leave `styles.css` as the import entry only.
@@ -347,8 +350,8 @@ None. The audit found 0 `style=` attributes, `<style>` blocks, or `.style` uses 
 
 - Phase 1 (separate `iam`/`flashcards` schemas, no cross-domain SQL, cascade deletes) is done on the
   `review-and-data-safety` branch (not yet in production).
-- Phase 2 backend (applications, app-scoped roles, organizations, groups, `/api/iam`) is done on the same branch;
-  the management page is not built yet.
+- Phase 2 (applications, app-scoped roles, organizations, groups, `/api/iam`, the `/organizations` page) is done on
+  the same branch.
 - The IAM still runs inside FlashCards, not as a separate service (phase 3).
 
 ### Other

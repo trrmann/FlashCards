@@ -6,12 +6,13 @@
 @media screen and (min-width: 768px) {
   nav ul {
     flex-direction: row;
+    flex-wrap: wrap;
     justify-content: flex-start;
   }
 
   nav li a {
     border-bottom: none;
-    padding: 1.25rem 2rem;
+    padding: 1.25rem 1.25rem;
   }
 
   main {

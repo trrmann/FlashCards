@@ -220,6 +220,11 @@ export class Server {
       });
     });
 
+    app.get('/organizations', async (req, res) => {
+      siteData.setTitle('Organizations');
+      res.render('organizations', { siteData });
+    });
+
     app.get('/logout', async (req, res) => {
       siteData.setTitle('Logout');
       res.render('logout', { siteData });

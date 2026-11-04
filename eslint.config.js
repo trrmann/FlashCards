@@ -31,6 +31,14 @@ export default [
     },
   },
   {
+    // Browser scripts (public/js): classic scripts with browser globals.
+    files: ['public/js/**/*.js'],
+    languageOptions: {
+      sourceType: 'script',
+      globals: globals.browser,
+    },
+  },
+  {
     files: ['**/*.js', '**/*.mjs'],
     plugins: {
       prettier: prettierPlugin,

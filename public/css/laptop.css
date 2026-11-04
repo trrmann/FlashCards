@@ -4,6 +4,10 @@
  * laptop styles
  */
 @media screen and (min-width: 1024px) {
+  nav li a {
+    padding: 1.25rem 2rem;
+  }
+
   main {
     display: grid;
     grid-template-columns: 1fr 1fr;

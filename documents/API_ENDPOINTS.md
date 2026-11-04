@@ -56,15 +56,16 @@ Practice, quiz, distractor, and metadata queries operate on cards the user can a
 
 ## Page routes (HTML, EJS)
 
-| Method | Path        | Notes                                                                                  |
-| ------ | ----------- | -------------------------------------------------------------------------------------- |
-| GET    | `/`         | Home. Shows the study dashboard when logged in.                                        |
-| GET    | `/entries`  | Create, edit, share, import, and export flashcards.                                    |
-| GET    | `/practice` | Leitner practice. Redirects to `/login` when not logged in. Initializes progress rows. |
-| GET    | `/quiz`     | Quiz builder and history.                                                              |
-| GET    | `/login`    | Login / registration. Shows "First User Setup" when no users exist.                    |
-| GET    | `/profile`  | Profile, password, directory visibility, pending shares, admin panel.                  |
-| GET    | `/logout`   | Logout confirmation page (the actual logout is `POST /api/auth/logout`).               |
+| Method | Path             | Notes                                                                                                                                |
+| ------ | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| GET    | `/`              | Home. Shows the study dashboard when logged in.                                                                                      |
+| GET    | `/entries`       | Create, edit, share, import, and export flashcards.                                                                                  |
+| GET    | `/practice`      | Leitner practice. Redirects to `/login` when not logged in. Initializes progress rows.                                               |
+| GET    | `/quiz`          | Quiz builder and history.                                                                                                            |
+| GET    | `/login`         | Login / registration. Shows "First User Setup" when no users exist.                                                                  |
+| GET    | `/profile`       | Profile, password, directory visibility, pending shares, admin panel.                                                                |
+| GET    | `/organizations` | Organization and group management (IAM). Platform admins also create/delete organizations. Signed-out visitors get a sign-in prompt. |
+| GET    | `/logout`        | Logout confirmation page (the actual logout is `POST /api/auth/logout`).                                                             |
 
 > The practice router is mounted at both `/practice` and `/api/practice`, so every practice
 > path below also answers under the other prefix (e.g. `GET /api/practice/` renders the page,
