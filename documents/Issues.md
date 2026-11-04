@@ -107,25 +107,32 @@ the browser's Web Speech voices (quality varies by device). To evaluate first:
 - Generate on demand vs. pre-generate and store as `audio` media (counts against the storage quota).
 - Licensing of the chosen voices; fallback to Web Speech when unavailable.
 
-### 6. Migrate Copilot skills and tasks from the BYU-Pathway OneDrive to Claude on this machine (done; follow-ups open)
+### 6. Copilot skills and tasks on Fedora, with sync back to the Windows work laptop (done; follow-ups open)
 
-Source: `~/Documents/fedora-skill-migration.zip` (BYU-Pathway OneDrive, downloaded through the web app). Completed
-2026-11-04; the filled-in receipt is `~/Documents/fedora-skill-migration-RECEIPT.md`.
+Received and imported 2026-11-04 (receipt: `~/Documents/fedora-skill-migration-RECEIPT.md`).
 
-- **Skills:** all 197 skills (943-file package, every hash verified) in `/usr/local/share/ai-skills` (git). Claude
-  uses them in every session: `.tools/link-claude-skills.sh` links them into `~/.claude/skills`, run by a
-  SessionStart hook in `~/.claude/settings.json`. Not yet confirmed from a new session that Claude lists them.
-- **Tasks:** `/usr/local/share/ai-tasks` (git), used by the `ai-task-tracker` skill: 204 active (128 backlog,
-  65 completed, 4 done, 7 blocked), 4 archived, 1 template. Base: the 2026-11-04 store, plus 2 tasks only the
-  2026-10-30 export had. 100 tasks parked as blocked for the migration were restored.
-- Skills that said `~/.copilot/skills` or `~/.copilot/tasks` now point at the central folders (31 files).
+| What                     | Where on Fedora                | Access                         | GitHub (private)    |
+| ------------------------ | ------------------------------ | ------------------------------ | ------------------- |
+| 197 skills               | `/usr/local/share/ai-skills`   | all users read; owner edits    | `trrmann/ai-skills` |
+| Tasks (208 + 1 template) | `/usr/local/share/ai-tasks`    | owner only                     | `trrmann/ai-tasks`  |
+| Project data             | `/usr/local/share/ai-projects` | owner only; configs not in git | local only          |
+| Notes                    | `/usr/local/share/ai-notes`    | owner only                     | none                |
+| Tool credentials         | `~/.config/ai-tools`           | owner only                     | never               |
+
+- Claude loads the skills in every session: a SessionStart hook in `~/.claude/settings.json` runs
+  `.tools/link-claude-skills.sh`. Not yet confirmed from a new session.
+- All Copilot paths in the skills are mapped by `.tools/path-map.json` and `apply_path_map.py`, which works in both
+  directions; a round trip against the received copy is exact. All 67 PowerShell helpers parse under `pwsh`;
+  36 are portable (`.tools/FEDORA-COMPATIBILITY.md`).
+- **Sync back:** skill `ai-sync-back` exports only work skills and work tasks (`sync-scope.json`; personal and review
+  skills and personal tasks never leave). Paths are mapped back to Windows form. The PowerShell importer verifies
+  hashes, backs files up, and detects conflicts. Tested end to end, including a rerun and a second sync round.
 
 Follow-ups:
 
-1. Confirm in a new Claude session that the skills are listed (if not, switch the links to synced copies).
-2. Skills still use `~/.copilot/projects` (238 references), `~/.copilot/portfolio`, and per-tool config files under
-   `~/.copilot/`; that data was not migrated. Decide where it goes (e.g. `/usr/local/share/ai-projects`) or drop it.
-3. Check the 66 PowerShell helpers under `pwsh` and the remaining Windows paths in `SKILL.md` files.
+1. Confirm in a new Claude session that the skills are listed.
+2. Classify the 16 "review" skills (math, sciences, study topics) as work or personal in `sync-scope.json`.
+3. Give the 31 Windows-only helpers Linux equivalents, or mark them Windows-only (FEDORA-COMPATIBILITY.md).
 4. Deleting the Windows source needs the owner's separate confirmation.
 
 ## resolved
