@@ -7,3 +7,4 @@ node_modules/
 flashcards-backup-*.json
 flashcards-backup-media-*.zip
 
+.claude/settings.local.json
