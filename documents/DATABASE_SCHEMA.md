@@ -11,11 +11,11 @@ document summarizes them.
 Both adapters connect to the **same PostgreSQL database**, but each domain has **its own PostgreSQL
 schema** (IAM phase 1, CODING_STANDARDS § 0.8):
 
-| Schema       | Owner adapter                | Connection `search_path` | Contents                                                                 |
-| ------------ | ---------------------------- | ------------------------ | ------------------------------------------------------------------------ |
-| `iam`        | `IdentityManagementDatabase` | `iam, public`            | Identities, applications, roles, rights, organizations, groups, sessions |
-| `flashcards` | `FlashCardsDatabase`         | `flashcards, public`     | All FlashCards data                                                      |
-| `public`     | —                            | —                        | Only the `uuid-ossp` and `pgcrypto` extensions                           |
+| Schema       | Owner adapter                | Connection `search_path` | Contents                                                               |
+| ------------ | ---------------------------- | ------------------------ | ---------------------------------------------------------------------- |
+| `iam`        | `IdentityManagementDatabase` | `iam, public`            | Identities, applications, roles, rights, organizations, groups, tokens |
+| `flashcards` | `FlashCardsDatabase`         | `flashcards, public`     | All FlashCards data, its per-user settings and its sessions            |
+| `public`     | —                            | —                        | Only the `uuid-ossp` and `pgcrypto` extensions                         |
 
 The search path is set as a connection option (`PostgresDatabase.SCHEMA`), so each adapter's SQL stays
 unqualified within its own domain. The only cross-domain link is the foreign key from app tables to
@@ -65,8 +65,9 @@ users ─┬─< user_roles >─ roles ─< role_rights >─ rights          (IA
        ├─< quizzes ─< quiz_results
        ├─< lessons            (legacy; not used by the routes)
        ├─< leitner_boxes      (legacy; superseded by flashcard_leitner_progress)
-       └─< import_export_logs
-session                       (express-session store)
+       ├─< import_export_logs
+       └── user_settings      (FlashCards' per-user settings, one row per user)
+session                       (flashcards.session: express-session store)
 ```
 
 ---
@@ -75,18 +76,17 @@ session                       (express-session store)
 
 ### `users`
 
-| Column                                        | Type         | Notes                                                          |
-| --------------------------------------------- | ------------ | -------------------------------------------------------------- |
-| `user_id`                                     | UUID PK      | `gen_random_uuid()`                                            |
-| `username`                                    | VARCHAR(255) | UNIQUE, NOT NULL. App rule: 3–50 chars, `[A-Za-z0-9_-]`        |
-| `email`                                       | VARCHAR(255) | UNIQUE, NOT NULL                                               |
-| `password_hash`                               | VARCHAR(255) | bcrypt                                                         |
-| `full_name`                                   | VARCHAR(255) |                                                                |
-| `status`                                      | VARCHAR(50)  | `active` (default) or `disabled`. Disabled users cannot log in |
-| `is_public`                                   | BOOLEAN      | Listed in the share directory (default false)                  |
-| `storage_max_bytes`                           | BIGINT       | Per-user storage quota, default 26 214 400 (25 MB)             |
-| `last_page_visited`                           | VARCHAR(255) | Default `/`; used as the post-login redirect                   |
-| `last_visited_at`, `created_at`, `updated_at` | TIMESTAMP    |                                                                |
+| Column                                        | Type         | Notes                                                                                                  |
+| --------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------ |
+| `user_id`                                     | UUID PK      | `gen_random_uuid()`                                                                                    |
+| `username`                                    | VARCHAR(255) | UNIQUE, NOT NULL. App rule: 3–50 chars, `[A-Za-z0-9_-]`                                                |
+| `email`                                       | VARCHAR(255) | UNIQUE, NOT NULL                                                                                       |
+| `password_hash`                               | VARCHAR(255) | bcrypt                                                                                                 |
+| `full_name`                                   | VARCHAR(255) |                                                                                                        |
+| `status`                                      | VARCHAR(50)  | `active` (default) or `disabled`. Disabled users cannot log in                                         |
+| `is_public`                                   | BOOLEAN      | Listed in the share directory (default false)                                                          |
+| `storage_max_bytes`, `last_page_visited`      |              | No longer used by FlashCards (moved to `flashcards.user_settings`, phase 3c); dropped from `iam` later |
+| `last_visited_at`, `created_at`, `updated_at` | TIMESTAMP    |                                                                                                        |
 
 ### `applications`, `application_users`
 
@@ -129,13 +129,31 @@ On the first start after phase 2, the schema file converts the old global `admin
 grants `platform_admin` to the existing FlashCards admins (only while nobody holds it yet), and enrolls every
 existing user in FlashCards (only while the app has no members). Later starts change nothing.
 
-### `session`
+### `session` (in `iam`)
 
-`connect-pg-simple` store: `sid` PK, `sess` JSON, `expire` (indexed).
+The old `connect-pg-simple` store. FlashCards uses `flashcards.session` since phase 3c (below); this table is no longer
+written and will be dropped from `iam` later.
 
 ---
 
 ## Application tables
+
+### `user_settings`
+
+FlashCards' own per-user settings, moved out of `iam.users` in IAM phase 3c (the IAM keeps only identity). On its first
+creation the schema file copies the values once from `iam.users`. A user without a row has the defaults.
+
+| Column              | Type                | Notes                                              |
+| ------------------- | ------------------- | -------------------------------------------------- |
+| `user_id`           | UUID PK → iam.users | `ON DELETE CASCADE`                                |
+| `last_page_visited` | VARCHAR(255)        | Default `/`; the post-login redirect               |
+| `storage_max_bytes` | BIGINT              | Per-user storage quota, default 26 214 400 (25 MB) |
+| `updated_at`        | TIMESTAMP           |                                                    |
+
+### `session` (in `flashcards`)
+
+`connect-pg-simple` store: `sid` PK, `sess` JSON, `expire` (indexed). On its first creation the schema file copies
+the live sessions once from `iam.session`, so the move signs nobody out; later starts copy nothing.
 
 ### `flashcards`
 
@@ -254,14 +272,15 @@ garbage-collected by the service.
 All SQL used at runtime lives in named-query files under `src/scripts/sql/pg/`
 (`-- Query: <name>` sections, one statement each, loaded by `PostgresDatabase.loadNamedSqlStatements`):
 `entries-queries.sql`, `practice-queries.sql`, `quiz-queries.sql`, `backup-queries.sql`,
-`system-queries.sql`, `test-queries.sql`. The IAM queries live in iam-service and the introspection and transaction queries in platform-db.
+`system-queries.sql`, `user-settings-queries.sql`, `test-queries.sql`. The IAM queries live in iam-service and the introspection and transaction queries in platform-db.
 Templates use `{{placeholders}}` for dynamic filter clauses; values are always bound parameters.
 
 ## Backup and recovery
 
 - In-app: admin **Backup & Restore** on the Profile page (JSON + media ZIP), or from a terminal with `backup.sh` /
   `restore.sh` (SYSTEM_INITIAL_SETUP.md → restoring into a new database). Import is all-or-nothing.
-  Every table except the transient `session` table is included. The automated round-trip test
+  Every table except the transient `session` tables is included. Format 3.1 adds `user_settings`; older backups
+  carry those settings as `users` columns and are converted on import. The automated round-trip test
   (`npm run test:roundtrip`, also run by `deploy.sh -preview`) proves a wipe → bootstrap → re-created admin → import
   rebuilds every table and media item.
 - Render: free-tier databases expire (`DB_PG_EXPIRE` drives the header warning). Take an in-app backup before expiry.

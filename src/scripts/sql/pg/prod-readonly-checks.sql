@@ -10,6 +10,8 @@ UNION ALL SELECT 'iam.session', count(*) FROM iam.session
 UNION ALL SELECT 'flashcards.flashcards', count(*) FROM flashcards.flashcards
 UNION ALL SELECT 'flashcards.media', count(*) FROM flashcards.media
 UNION ALL SELECT 'flashcards.quizzes', count(*) FROM flashcards.quizzes
+UNION ALL SELECT 'flashcards.user_settings', count(*) FROM flashcards.user_settings WHERE to_regclass('flashcards.user_settings') IS NOT NULL
+UNION ALL SELECT 'flashcards.session', count(*) FROM flashcards.session WHERE to_regclass('flashcards.session') IS NOT NULL
 UNION ALL SELECT 'tables left in public', count(*)
   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE n.nspname = 'public' AND c.relkind = 'r';
@@ -66,3 +68,12 @@ FROM pg_roles WHERE rolname NOT LIKE 'pg\_%' AND rolname <> 'postgres' ORDER BY 
 -- The public schema as in a standard database: every login may use it (for the extensions' functions).
 SELECT has_schema_privilege('public', 'public', 'USAGE') AS public_schema_usable_by_all,
        has_schema_privilege('public', 'public', 'CREATE') AS public_schema_creatable_by_all;
+
+-- Application registry (no user data): which login and schema each app is meant to use.
+SELECT app_key, status,
+       to_jsonb(a) ->> 'db_role' AS db_role, to_jsonb(a) ->> 'db_schema' AS db_schema
+FROM iam.applications a ORDER BY app_key;
+
+-- Usernames / emails that differ only in letter case (counts only, no names).
+SELECT (SELECT count(*) FROM (SELECT lower(username) FROM iam.users GROUP BY 1 HAVING count(*) > 1) d) AS username_case_duplicates,
+       (SELECT count(*) FROM (SELECT lower(email) FROM iam.users GROUP BY 1 HAVING count(*) > 1) d) AS email_case_duplicates;

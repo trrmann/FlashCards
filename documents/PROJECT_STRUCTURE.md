@@ -17,7 +17,7 @@ and answers. Data is stored in PostgreSQL on Render.
 
 ## Directory structure
 
-FlashCards depends on two shared packages, installed from GitHub (platform-db `v0.2.2`, iam-service `v0.1.7`) (Render builds with `src/scripts/sh/render-build.sh`): **platform-db** (`PostgresDatabase`, `LocalDatabaseTest`, the shared `local-db.sh`) and **iam-service** (`IdentityManagementDatabase`, `userAuthService`, `validationService`, `organizationService`, `OrganizationRouter`, the IAM service and `IamClient`). Their code and SQL are no longer in this repository.
+FlashCards depends on two shared packages, installed from GitHub (platform-db `v0.2.2`, iam-service `v0.1.8`) (Render builds with `src/scripts/sh/render-build.sh`): **platform-db** (`PostgresDatabase`, `LocalDatabaseTest`, the shared `local-db.sh`) and **iam-service** (`IdentityManagementDatabase`, `userAuthService`, `validationService`, `organizationService`, `OrganizationRouter`, the IAM service and `IamClient`). Their code and SQL are no longer in this repository.
 
 ```text
 FlashCards/
@@ -51,6 +51,7 @@ FlashCards/
         │   │   └── flashCardsDatabase.mjs          # App schema owner (extends platform-db PostgresDatabase)
         │   ├── auth/             # Domain services (see ARCHITECTURE.md)
         │   │   ├── entriesService.mjs   practiceService.mjs
+        │   │   ├── userSettingsService.mjs   # last page, storage limit (flashcards.user_settings)
         │   │   └── backupService.mjs    mediaArchiveService.mjs   # (IAM services: iam-service package)
         │   ├── routes/           # class XRouter extends BaseRouter
         │   │   ├── baseRouter.mjs
