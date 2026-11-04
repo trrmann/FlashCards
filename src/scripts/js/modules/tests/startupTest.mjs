@@ -103,31 +103,24 @@ export class StartupTest extends LocalTestCase {
   }
 
   checkDatabaseTargetGuard() {
-    console.log('\nDatabase target guard (development / preview)');
-    const remote = { host: 'dpg-example.virginia-postgres.render.com', readOnly: false };
-    const refused = (env, config, processEnv = {}) => {
-      try {
-        Server.assertSafeDatabaseTarget(env, config, processEnv);
-        return false;
-      } catch (error) {
-        return /Refusing to start/.test(error.message);
-      }
-    };
+    console.log('\nDatabase target guard (platform-db DatabaseTargetGuard; cases tested there)');
+    let refused = null;
+    try {
+      new Server({
+        env: 'development',
+        port: 1,
+        database: new FlashCardsDatabase({
+          ...this.database.config,
+          host: 'dpg-example.virginia-postgres.render.com',
+        }),
+      });
+    } catch (error) {
+      refused = error;
+    }
     this.check(
-      'development on a writable remote database is refused',
-      refused('development', remote)
+      'a development server on a writable remote database is refused at construction',
+      /Refusing to start/.test(refused?.message || '')
     );
-    this.check('preview on a writable remote database is refused', refused('preview', remote));
-    this.check('remote read-only is allowed', !refused('preview', { ...remote, readOnly: true }));
-    this.check(
-      'local database is allowed',
-      !refused('development', { host: '127.0.0.1', readOnly: false })
-    );
-    this.check(
-      'DB_PG_ALLOW_REMOTE_WRITES=true overrides',
-      !refused('development', remote, { DB_PG_ALLOW_REMOTE_WRITES: 'true' })
-    );
-    this.check('production is not restricted', !refused('production', remote));
   }
 
   async checkReadOnlyServer() {

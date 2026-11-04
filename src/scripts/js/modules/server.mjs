@@ -12,7 +12,8 @@
  * Database targets: development and preview must use a local database, or a remote one
  * opened read-only (DB_PG_READ_ONLY=true). Starting them against a writable remote database
  * is refused, because dev and preview share the code's schema migrations with production
- * (2026-11-04: a dev run migrated production). DB_PG_ALLOW_REMOTE_WRITES=true overrides this
+ * (2026-11-04: a dev run migrated production; platform-db DatabaseTargetGuard).
+ * DB_PG_ALLOW_REMOTE_WRITES=true overrides this
  * for a deliberate owner action. A read-only server never bootstraps the schema; it only
  * checks that the schema is there.
  */
@@ -26,7 +27,7 @@ import pgSession from 'connect-pg-simple';
 import { appSiteData } from './appSiteData.mjs';
 import { flashCardsDb } from './db/flashCardsDatabase.mjs';
 import { identityManagementDb } from 'iam-service/db';
-import { PostgresDatabase } from 'platform-db';
+import { PostgresDatabase, DatabaseTargetGuard } from 'platform-db';
 import { userAuthService } from 'iam-service/services';
 import authRouter from './routes/authRouter.mjs';
 import usersRouter from './routes/usersRouter.mjs';
@@ -47,30 +48,8 @@ export class Server {
   /** Pause between start-up rounds after the database wait gives up or a bootstrap fails. */
   static STARTUP_RETRY_MS = 5000;
   static RETRY_AFTER_SECONDS = 5;
-  static LOCAL_HOSTS = ['127.0.0.1', 'localhost', '::1'];
-  static GUARDED_ENVIRONMENTS = ['development', 'preview'];
   /** Tables a read-only server needs to find, since it cannot create them. */
   static REQUIRED_TABLES = ['iam.users', 'flashcards.flashcards'];
-
-  /**
-   * Refuse a development or preview server on a writable remote database.
-   * @param {string} env - NODE_ENV of the server
-   * @param {{host: string, readOnly: boolean}} config - the database configuration
-   * @param {object} [processEnv]
-   */
-  static assertSafeDatabaseTarget(env, config, processEnv = process.env) {
-    if (!this.GUARDED_ENVIRONMENTS.includes(env)) return;
-    if (this.LOCAL_HOSTS.includes(config.host) || config.readOnly) return;
-    if (processEnv.DB_PG_ALLOW_REMOTE_WRITES === 'true') {
-      console.warn(`⚠️ ${env} server WRITING to remote database ${config.host} (override set)`);
-      return;
-    }
-    throw new Error(
-      `Refusing to start a ${env} server on the writable remote database ${config.host}. ` +
-        'Use the local database (deploy.sh -dev / -preview, or local-db.sh), or open the remote ' +
-        'one read-only with DB_PG_READ_ONLY=true (deploy.sh -preview --remote).'
-    );
-  }
 
   /**
    * Resolve the listening port for an environment.
@@ -98,8 +77,8 @@ export class Server {
     this.database = database;
     this.identityDatabase = identityDatabase;
     // Before anything can touch the database (the session store is created below).
-    this.constructor.assertSafeDatabaseTarget(this.env, identityDatabase.config);
-    this.constructor.assertSafeDatabaseTarget(this.env, database.config);
+    DatabaseTargetGuard.assert(this.env, identityDatabase.config);
+    DatabaseTargetGuard.assert(this.env, database.config);
     this.connectOptions = connectOptions;
     this.startupRetryMs = startupRetryMs;
     this.ready = false;
