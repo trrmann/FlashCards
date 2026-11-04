@@ -11,6 +11,24 @@ No new features or refactors until production has been checked end to end. Smoke
 Decide first: deploy the pending review fixes (backup-import user merge + schema order) before
 verifying, since the failed backup import on Render needs the merge fix to complete.
 
+> ✅ **Released 2026-11-04** (merge `5b0e79a`). What happened, for the record:
+>
+> - A `deploy.sh -dev` run of the branch (2026-11-03, nodemon restarting on file edits) had already moved production's
+>   tables into `iam`/`flashcards`. The live `main` code then recreated empty `public` tables: the site showed 0 users
+>   and offered "initial setup" to anyone. The service was suspended and `prod-readonly-check.sh` confirmed the data
+>   was intact in the new schemas.
+> - Backup taken through the release code run locally against production: 7 users, 137 cards, 5 media, 8 quizzes.
+>   Then merge, push, resume.
+> - Verified on Render: `/api/health` 200; all pages 200 (`/practice` 302 signed out); setup status ready with 7 users;
+>   row counts unchanged.
+>
+> **Still to do:**
+>
+> - The signed-in checklist below (owner, as user and admin).
+> - Drop the empty leftover `public` tables, after a fresh backup.
+> - A guard so `deploy.sh -dev`/`-preview` can't run schema migrations against production.
+> - Rotate the database password (it is in public git history).
+
 > ⚠️ **Release plan for the `review-and-data-safety` branch.** It contains a schema migration (IAM phase 1:
 > tables move from `public` into `iam`/`flashcards`). Dev, preview, and production share one database, so the
 > **first start of this branch with `deploy.sh -dev` or `-preview` migrates the production database**, and the
