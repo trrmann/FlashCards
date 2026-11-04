@@ -15,15 +15,15 @@ Express 5 app  ── server.js → src/scripts/js/modules/server.mjs (class Ser
         /api/entries  /api/practice (+ /practice)  /api/quiz  /api/admin  /api/iam  /api/health
    │
    ▼
-Services (singletons in src/scripts/js/modules/auth/)
-   userAuthService · validationService · entriesService · practiceService
-   backupService · mediaArchiveService
+Services (singletons)
+   iam-service package: userAuthService · validationService · organizationService
+   src/scripts/js/modules/auth/: entriesService · practiceService · backupService · mediaArchiveService
    │
    ▼
-Database adapters (src/scripts/js/modules/db/)
-   PostgresDatabase (generic: config, pool, SQL file loader, health, expiry)
-     ├─ IdentityManagementDatabase  → iam-postgres-schema.sql
-     └─ FlashCardsDatabase          → flashcards-postgres-schema.sql
+Database adapters
+   PostgresDatabase (platform-db package: config, pool, SQL file loader, health, expiry)
+     ├─ IdentityManagementDatabase  (iam-service package) → its iam-postgres-schema.sql
+     └─ FlashCardsDatabase          (src/scripts/js/modules/db/) → flashcards-postgres-schema.sql
    │  pg.Pool (SSL, max 20)
    ▼
 PostgreSQL on Render (one database, public schema)

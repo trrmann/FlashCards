@@ -2,18 +2,17 @@
  * App-specific PostgreSQL adapter for the FlashCards application.
  * Owns the application tables (flashcards, lessons, practice, quizzes,
  * backups, and user_rights special assignments). Identity tables are owned
- * by IdentityManagementDatabase, whose schema must be bootstrapped first.
+ * by IdentityManagementDatabase (iam-service), whose schema must be bootstrapped first.
+ * Built on platform-db; SQL comes from this project's src/scripts/sql folder.
  */
 
-import { PostgresDatabase } from './postgresDatabase.mjs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { PostgresDatabase } from 'platform-db';
 
 export class FlashCardsDatabase extends PostgresDatabase {
-  static sqlRoot = PostgresDatabase.sqlRoot;
+  static sqlRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../sql');
   static SCHEMA = 'flashcards';
-
-  constructor(config = {}) {
-    super(config);
-  }
 
   async initializeSchema() {
     // The app schema's foreign keys reference the IAM-owned users table;

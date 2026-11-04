@@ -8,9 +8,9 @@
  */
 
 import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
-import { identityManagementDb } from '../db/identityManagementDatabase.mjs';
+import { identityManagementDb } from 'iam-service/db';
+import { userAuthService, UserAuthService } from 'iam-service/services';
 import { mediaArchiveService } from './mediaArchiveService.mjs';
-import { userAuthService, UserAuthService } from './userAuthService.mjs';
 
 class BackupService {
   static queries = flashCardsDb.constructor.loadNamedSqlStatements(
@@ -36,6 +36,7 @@ class BackupService {
     'groups',
     'group_members',
     'group_roles',
+    'token_policies',
   ];
 
   /**
@@ -80,7 +81,7 @@ class BackupService {
    * Columns (in any backed-up table) that hold a users.user_id reference.
    * Rewritten on import when a backup user is merged into an existing account.
    */
-  static userReferenceColumns = ['user_id', 'created_by', 'owner_id', 'recipient_id'];
+  static userReferenceColumns = ['user_id', 'created_by', 'owner_id', 'recipient_id', 'updated_by'];
 
   /**
    * Serial-PK tables whose sequences must be realigned after an import.

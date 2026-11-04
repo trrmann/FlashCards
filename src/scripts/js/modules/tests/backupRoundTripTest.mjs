@@ -7,13 +7,13 @@
  */
 
 import { LocalTestCase } from './localTestCase.mjs';
-import { userAuthService } from '../auth/userAuthService.mjs';
+import { userAuthService, organizationService } from 'iam-service/services';
+import { tokenPolicyService } from 'iam-service/server';
 import { entriesService } from '../auth/entriesService.mjs';
 import { practiceService } from '../auth/practiceService.mjs';
 import { backupService, BackupService } from '../auth/backupService.mjs';
 import { mediaArchiveService } from '../auth/mediaArchiveService.mjs';
 import { QuizRouter } from '../routes/quizRouter.mjs';
-import { organizationService } from '../auth/organizationService.mjs';
 
 export class BackupRoundTripTest extends LocalTestCase {
   static PASSWORD = 'RoundTrip#2026';
@@ -35,6 +35,7 @@ export class BackupRoundTripTest extends LocalTestCase {
     'groups',
     'group_members',
     'group_roles',
+    'token_policies',
   ];
   static TRANSIENT_TABLES = ['session', 'access_tokens'];
   static UNSEEDED_TABLES = ['rights', 'role_rights', 'lessons', 'leitner_boxes'];
@@ -165,6 +166,22 @@ export class BackupRoundTripTest extends LocalTestCase {
     await organizationService.grantGroupRole(admin.user_id, group.group_id, {
       appKey: 'flashcards',
       roleName: 'user',
+    });
+    // Token lifetime policies: references to an application, a group, and a user.
+    await tokenPolicyService.set(admin.user_id, {
+      scopeType: 'application',
+      appKey: 'flashcards',
+      accessTtlSeconds: 1800,
+    });
+    await tokenPolicyService.set(admin.user_id, {
+      scopeType: 'group',
+      scopeId: group.group_id,
+      refreshTtlSeconds: 604800,
+    });
+    await tokenPolicyService.set(admin.user_id, {
+      scopeType: 'user',
+      scopeId: alice.user_id,
+      accessTtlSeconds: 900,
     });
 
     return { admin, cards: [textCard, imageCard, audioCard] };

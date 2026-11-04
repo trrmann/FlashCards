@@ -29,7 +29,7 @@ owner-mandated rules to section 0.
 
 - Partial updates use fixed statements, for example `SET col = COALESCE($n, col)`, or separate named queries.
 - Transactions use named queries (for example `begin_transaction` / `commit_transaction` /
-  `rollback_transaction` in a shared `transaction-queries.sql`).
+  `rollback_transaction` in platform-db's shared `transaction-queries.sql`).
 - **Only exception:** generic table-level operations where an identifier cannot be a bound parameter
   (backup/restore across all tables, introspection). The `.sql` file must hold the complete
   statement and all of its syntax. JS may fill `{{table}}`, `{{columns}}`, and `{{placeholders}}`
@@ -234,7 +234,7 @@ database must never mean losing data. Every change must keep these guarantees:
 - See **0.1**: all SQL lives in `src/scripts/sql/pg/`. Named queries go in `*-queries.sql`
   (`-- Query: name`, exactly one statement each) and are loaded into a `static queries` map.
 - **Always bind values as parameters** (`$1`, `$2`). User input never reaches a `{{slot}}`.
-- **Schema changes** are appended to the owning schema file (`iam-postgres-schema.sql` for identity,
+- **Schema changes** are appended to the owning schema file (`iam-postgres-schema.sql` in iam-service for identity,
   `flashcards-postgres-schema.sql` for app data) as idempotent statements (`IF NOT EXISTS`,
   guarded `DO $name$ … $name$` blocks). A statement must come after everything it depends on,
   because a fresh database runs the file top to bottom. There is no migration runner.
@@ -282,15 +282,15 @@ database must never mean losing data. Every change must keep these guarantees:
 
 ### 0.1 Inline SQL in JavaScript
 
-| File                       | Lines                     | What                                                                |
-| -------------------------- | ------------------------- | ------------------------------------------------------------------- |
-| `auth/practiceService.mjs` | 142–147                   | Due-box condition built in JS (`p.current_box = 1 OR …`)            |
-| `auth/practiceService.mjs` | 157–171, 809–823, 970–984 | Class/lesson/category `ILIKE` fragments (due cards, stats, summary) |
-| `auth/practiceService.mjs` | 1229                      | `AND lesson = $2` difficulty batch filter                           |
-| `auth/entriesService.mjs`  | 279–293                   | Filter `ILIKE` fragments                                            |
-| `auth/entriesService.mjs`  | 362                       | Partial update builds `col = $n`                                    |
-| `auth/userAuthService.mjs` | 79                        | Partial profile update builds `col = $n`                            |
-| `routes/quizRouter.mjs`    | 143–153                   | Filter fragments, and the router runs queries itself                |
+| File                                   | Lines                     | What                                                                |
+| -------------------------------------- | ------------------------- | ------------------------------------------------------------------- |
+| `auth/practiceService.mjs`             | 142–147                   | Due-box condition built in JS (`p.current_box = 1 OR …`)            |
+| `auth/practiceService.mjs`             | 157–171, 809–823, 970–984 | Class/lesson/category `ILIKE` fragments (due cards, stats, summary) |
+| `auth/practiceService.mjs`             | 1229                      | `AND lesson = $2` difficulty batch filter                           |
+| `auth/entriesService.mjs`              | 279–293                   | Filter `ILIKE` fragments                                            |
+| `auth/entriesService.mjs`              | 362                       | Partial update builds `col = $n`                                    |
+| iam-service `auth/userAuthService.mjs` | 79                        | Partial profile update builds `col = $n`                            |
+| `routes/quizRouter.mjs`                | 143–153                   | Filter fragments, and the router runs queries itself                |
 
 ### 0.2 Inline styles
 
@@ -303,7 +303,7 @@ None. The audit found 0 `style=` attributes, `<style>` blocks, or `.style` uses 
   `home.ejs` (3), `partials/filter-panel.ejs` (4), `partials/header.ejs` (1), `partials/mission.ejs` (1),
   plus inline scripts in `login.ejs` and `logout.ejs`. Only `public/js/navigation-tracker.js` is already a class.
 - **Helper closures inside methods** (to become methods):
-  - `db/postgresDatabase.mjs:265` `describeStatement`
+  - platform-db `postgresDatabase.mjs` `describeStatement`
   - `auth/practiceService.mjs:227` `shuffleOptions`, `:1015` `toStats`, `:1028` `addInto`, `:1036` `finish`
   - `routes/quizRouter.mjs:42` and `:72`: duplicate `shuffle` (should be one shared method)
   - `routes/entriesRouter.mjs:282` `blockFrom`

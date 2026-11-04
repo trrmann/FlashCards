@@ -4,7 +4,7 @@
  */
 
 import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
-import { userAuthService } from './userAuthService.mjs';
+import { userAuthService } from 'iam-service/services';
 
 class EntriesService {
   static queries = flashCardsDb.constructor.loadNamedSqlStatements(

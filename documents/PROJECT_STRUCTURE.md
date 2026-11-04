@@ -17,11 +17,12 @@ and answers. Data is stored in PostgreSQL on Render.
 
 ## Directory structure
 
+FlashCards depends on two shared packages (sibling repositories, `file:../…` until they are on GitHub): **platform-db** (`PostgresDatabase`, `LocalDatabaseTest`, the shared `local-db.sh`) and **iam-service** (`IdentityManagementDatabase`, `userAuthService`, `validationService`, `organizationService`, `OrganizationRouter`, the IAM service and `IamClient`). Their code and SQL are no longer in this repository.
+
 ```text
 FlashCards/
 ├── README.md                     # Pointer only. All docs live in documents/
 ├── server.js                     # Entry point: imports the Server singleton and calls start()
-├── iam-server.js                 # IAM service entry point (phase 3): IamServer.start()
 ├── package.json / package-lock.json
 ├── nodemon.json                  # Runs node --env-file=.env server.js; watches js css ejs env
 ├── eslint.config.js, .prettierrc.json, .prettierignore
@@ -47,19 +48,14 @@ FlashCards/
         │   ├── server.mjs        # class Server: middleware, page routes, API mounting, DB bootstrap
         │   ├── appSiteData.mjs   # Page title / user name for templates
         │   ├── db/
-        │   │   ├── postgresDatabase.mjs            # Generic adapter (pool, SQL loader, health, expiry)
-        │   │   ├── identityManagementDatabase.mjs  # IAM schema owner
-        │   │   └── flashCardsDatabase.mjs          # App schema owner
+        │   │   └── flashCardsDatabase.mjs          # App schema owner (extends platform-db PostgresDatabase)
         │   ├── auth/             # Domain services (see ARCHITECTURE.md)
-        │   │   ├── userAuthService.mjs  validationService.mjs
         │   │   ├── entriesService.mjs   practiceService.mjs
-        │   │   ├── backupService.mjs    mediaArchiveService.mjs
-        │   │   └── organizationService.mjs   # IAM organizations, groups, group roles, app access
+        │   │   └── backupService.mjs    mediaArchiveService.mjs   # (IAM services: iam-service package)
         │   ├── routes/           # class XRouter extends BaseRouter
         │   │   ├── baseRouter.mjs
         │   │   ├── systemRouter.mjs  authRouter.mjs  usersRouter.mjs  navigationRouter.mjs
-        │   │   └── entriesRouter.mjs  practiceRouter.mjs  quizRouter.mjs  adminRouter.mjs  iamRouter.mjs
-        │   ├── iam/                      # IAM service (phase 3): IamServer, IamV1Router, TokenService, ApplicationCredentials
+        │   │   └── entriesRouter.mjs  practiceRouter.mjs  quizRouter.mjs  adminRouter.mjs  iamRouter.mjs (iam-service OrganizationRouter + session)
         │   ├── tools/
         │   │   ├── backupClient.mjs        # BackupClient / BackupCli (HTTP backup + restore)
         │   │   └── backup-cli.mjs          # Entry used by backup.sh / restore.sh
@@ -69,22 +65,18 @@ FlashCards/
         │       ├── testResults.mjs
         │       ├── backup-roundtrip.mjs     # npm run test:roundtrip entry
         │       ├── backupRoundTripTest.mjs  # Backup wipe/restore proof (local DB only)
-        │       ├── localTestCase.mjs        # Base class: local-only guard, schema reset, checks
+        │       ├── localTestCase.mjs        # Extends platform-db LocalDatabaseTest: resets iam + flashcards
         │       ├── iam-api-test.mjs         # npm run test:iam entry
-        │       ├── iamApiTest.mjs           # /api/iam endpoint tests (local DB only)
-        │       ├── iam-service-test.mjs     # npm run test:iam-service entry
-        │       └── iamServiceTest.mjs       # IAM service /v1 tests (local DB only)
+        │       └── iamApiTest.mjs           # /api/iam endpoint tests (local DB only)
         ├── sh/                           # Shell scripts: on PATH in the VS Code terminal (any dir)
         │   ├── backup.sh                 # Download a full backup (JSON + ZIP) from any environment
         │   ├── deploy.sh                 # deploy.sh -dev | -preview | -prod | -all
-        │   ├── local-db.sh               # Local scratch PostgreSQL (LOCAL_DATABASE.md)
+        │   ├── local-db.sh               # Wrapper for platform-db's local-db.sh (LOCAL_DATABASE.md)
         │   └── restore.sh                # Restore / recover an empty database in one command
         └── sql/pg/
-            ├── iam-postgres-schema.sql          # IAM tables + role seed
             ├── flashcards-postgres-schema.sql   # App tables + idempotent migrations
             ├── *-queries.sql                    # Named queries (-- Query: name)
-            ├── test-queries.sql                 # Test-only (local scratch DB)
-            └── transaction-queries.sql          # BEGIN / COMMIT / ROLLBACK for withTransaction()
+            └── test-queries.sql                 # Test-only (local scratch DB)
 ```
 
 ## Pages
@@ -107,8 +99,6 @@ FlashCards/
 | `npm start`                       | `node server.js` (production; env from Render or `.env` via dotenv)             |
 | `npm run dev`                     | `nodemon` → `node --env-file=.env server.js`                                    |
 | `npm run test:iam`                | IAM API tests on the local scratch DB (LOCAL_DATABASE.md)                       |
-| `npm run test:iam-service`        | IAM service (`/v1`) tests on the local scratch DB                               |
-| `npm run start:iam`               | Start the IAM service (`iam-server.js`)                                         |
 | `npm run test:roundtrip`          | Backup wipe/restore proof on the local scratch DB (LOCAL_DATABASE.md)           |
 | `npm run test:preview`            | Preview quality suite against `TEST_BASE_URL` (default `http://localhost:5000`) |
 | `npm run format` / `format:check` | Prettier write / check                                                          |

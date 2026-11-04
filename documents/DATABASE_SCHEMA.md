@@ -3,10 +3,10 @@
 The schema is defined in two idempotent SQL files. They are the source of truth; this
 document summarizes them.
 
-| File                                                | Owner adapter                | Contents                                                                                                                        |
-| --------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `src/scripts/sql/pg/iam-postgres-schema.sql`        | `IdentityManagementDatabase` | Schema `iam`: `users`, `roles`, `rights`, `role_rights`, `user_roles`, `user_rights`, `session`; seeds roles `admin` and `user` |
-| `src/scripts/sql/pg/flashcards-postgres-schema.sql` | `FlashCardsDatabase`         | Schema `flashcards`: all application tables (below)                                                                             |
+| File                                                     | Owner adapter                | Contents                                                                                                                                     |
+| -------------------------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| iam-service `src/scripts/sql/pg/iam-postgres-schema.sql` | `IdentityManagementDatabase` | Schema `iam`: users, applications, roles, rights, organizations, groups, tokens, `token_policies`, `session`; seeds roles `admin` and `user` |
+| `src/scripts/sql/pg/flashcards-postgres-schema.sql`      | `FlashCardsDatabase`         | Schema `flashcards`: all application tables (below)                                                                                          |
 
 Both adapters connect to the **same PostgreSQL database**, but each domain has **its own PostgreSQL
 schema** (IAM phase 1, CODING_STANDARDS § 0.8):
@@ -254,7 +254,7 @@ garbage-collected by the service.
 All SQL used at runtime lives in named-query files under `src/scripts/sql/pg/`
 (`-- Query: <name>` sections, one statement each, loaded by `PostgresDatabase.loadNamedSqlStatements`):
 `entries-queries.sql`, `practice-queries.sql`, `quiz-queries.sql`, `backup-queries.sql`,
-`iam-user-queries.sql`, `app-user-data-queries.sql`, `system-queries.sql`, `postgres-introspection.sql`.
+`system-queries.sql`, `test-queries.sql`. The IAM queries live in iam-service and the introspection and transaction queries in platform-db.
 Templates use `{{placeholders}}` for dynamic filter clauses; values are always bound parameters.
 
 ## Backup and recovery

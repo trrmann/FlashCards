@@ -13,8 +13,8 @@ import pgSession from 'connect-pg-simple';
 
 import { appSiteData } from './appSiteData.mjs';
 import { flashCardsDb } from './db/flashCardsDatabase.mjs';
-import { identityManagementDb } from './db/identityManagementDatabase.mjs';
-import { userAuthService } from './auth/userAuthService.mjs';
+import { identityManagementDb } from 'iam-service/db';
+import { userAuthService } from 'iam-service/services';
 import authRouter from './routes/authRouter.mjs';
 import usersRouter from './routes/usersRouter.mjs';
 import adminRouter from './routes/adminRouter.mjs';

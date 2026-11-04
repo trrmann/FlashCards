@@ -9,9 +9,9 @@ Render database. It's the approved exception to "one database for all environmen
 
 | Item        | Value                                                                                                           |
 | ----------- | --------------------------------------------------------------------------------------------------------------- |
-| Script      | `src/scripts/sh/local-db.sh` (on the VS Code terminal `PATH`)                                                   |
+| Script      | `src/scripts/sh/local-db.sh` (on the VS Code terminal `PATH`): a wrapper for platform-db's shared script        |
 | Server      | The installed PostgreSQL 18 binaries (`postgresql-server` + `postgresql-contrib`), same major version as Render |
-| Data        | `~/.local/share/flashcards/` (`pgdata/`, `postgres.log`, `credentials.env`), outside the repo, mode 700/600     |
+| Data        | `~/.local/share/platform-db/` (one cluster for all platform projects), outside the repo, mode 700/600           |
 | Listens on  | `127.0.0.1:5433` only (the system PostgreSQL service on 5432 is not touched)                                    |
 | Database    | `flashcards_local`, owned by role `flashcards_app` (not a superuser, like on Render)                            |
 | Credentials | Random, generated at `init`, stored in `credentials.env` (never in the repo)                                    |
@@ -52,15 +52,9 @@ take precedence over `.env`, so the app talks only to the local database. Port 5
 and exercises every `/api/iam` endpoint as users with different roles (79 checks: success, 400/401/403/404/409, and
 side effects such as a group role granting admin access and disabled app access blocking sign-in). Same local-only guard.
 
-## IAM service test
+## IAM service tests
 
-`npm run test:iam-service` starts the real IAM service (`IamServer`) in-process on port 5097 with a test-only
-application secret and 2-second access tokens, then checks application credentials, login rules, `/v1/me`, hashed token
-storage, the organization/group API over bearer tokens, refresh rotation, refresh-reuse detection, logout, and
-expiry (49 checks). Same local-only guard.
-
-To run the service by hand: `IAM_PORT=5100 local-db.sh run node iam-server.js` (logins need
-`IAM_CLIENT_SECRET_FLASHCARDS` set to a value of at least 32 characters).
+The IAM service, token-policy, and client tests moved to the iam-service repository with the code (`npm test` there, database `iam_service_local` in the same local cluster).
 
 ## Backup round-trip test
 

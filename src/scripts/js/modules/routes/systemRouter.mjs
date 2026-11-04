@@ -5,10 +5,9 @@
 
 import express from 'express';
 import { BaseRouter } from './baseRouter.mjs';
-import { validationService } from '../auth/validationService.mjs';
+import { identityManagementDb } from 'iam-service/db';
+import { validationService, userAuthService } from 'iam-service/services';
 import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
-import { identityManagementDb } from '../db/identityManagementDatabase.mjs';
-import { userAuthService } from '../auth/userAuthService.mjs';
 
 class SystemRouter extends BaseRouter {
   static queries = flashCardsDb.constructor.loadNamedSqlStatements(

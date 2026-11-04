@@ -19,9 +19,7 @@
     "test:preview": "node src/scripts/js/modules/tests/preview-tests.mjs",
     "test:roundtrip": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/backup-roundtrip.mjs",
     "test:iam": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/iam-api-test.mjs",
-    "test:iam-service": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/iam-service-test.mjs",
     "dev": "nodemon",
-    "start:iam": "node iam-server.js",
     "start": "node server.js",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -37,8 +35,10 @@
     "ejs": "^7.0.2",
     "express": "^5.3.0",
     "express-session": "^1.19.0",
+    "iam-service": "file:../iam-service",
     "node-fetch": "^3.3.2",
-    "pg": "^8.23.1"
+    "pg": "^8.23.1",
+    "platform-db": "file:../platform-db"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -3,6 +3,7 @@
 > **Historical record (2026-10-29).** Database setup report. It reflects the code at that time and is kept for history.
 > Reviewed against the code on 2026-11-03. The schema is now split into IAM and app SQL files bootstrapped on every start; many tables/columns were added (media, options, shares, removals).
 > Current reference: [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md).
+> Since 2026-11-04 the generic database adapter is in the platform-db package and the IAM services in the iam-service package.
 
 ## Summary
 
