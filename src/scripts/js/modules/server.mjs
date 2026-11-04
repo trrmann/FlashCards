@@ -35,6 +35,7 @@ import { PostgresDatabase, DatabaseTargetGuard } from 'platform-db';
 import { createIdentityGateway } from './identity/index.mjs';
 import { entriesService } from './auth/entriesService.mjs';
 import { backupService } from './auth/backupService.mjs';
+import { UserEventConsumer } from './auth/userEventConsumer.mjs';
 import authRouter from './routes/authRouter.mjs';
 import usersRouter from './routes/usersRouter.mjs';
 import adminRouter from './routes/adminRouter.mjs';
@@ -95,8 +96,11 @@ export class Server {
     entriesService.identityService = identity;
     // Backups take the identity part through the same gateway (phase 3d).
     backupService.identity = identity;
+    // The IAM's notices (a deleted user's data is removed; phase 3d).
+    this.userEvents = new UserEventConsumer({ identity });
     this.app = express();
     this.app.locals.identity = identity;
+    this.app.locals.userEvents = this.userEvents;
 
     this.logStartupInfo();
     this.configureMiddleware();
@@ -375,6 +379,8 @@ export class Server {
         await this.initializeDatabase();
         this.ready = true;
         console.log('✅ FlashCards ready');
+        // A read-only server writes nothing, so it leaves the IAM's notices for production.
+        if (!this.database.config.readOnly) this.userEvents.start();
         return;
       } catch (error) {
         console.error(
@@ -413,6 +419,7 @@ export class Server {
       });
       this.httpServer = null;
     }
+    await this.userEvents.stop();
     await this.identity.stop();
     await this.database.close();
     await this.identityDatabase.close();

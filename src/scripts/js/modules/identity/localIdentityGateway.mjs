@@ -4,7 +4,12 @@
  * The organizations API is iam-service's OrganizationRouter, mounted in this server.
  */
 
-import { userAccountService, userAuthService, iamBackupService } from 'iam-service/services';
+import {
+  userAccountService,
+  userAuthService,
+  iamBackupService,
+  userEventService,
+} from 'iam-service/services';
 import { IdentityGateway, IdentityError } from './identityGateway.mjs';
 import { IamRouter } from '../routes/iamRouter.mjs';
 
@@ -13,11 +18,13 @@ export class LocalIdentityGateway extends IdentityGateway {
     accounts = userAccountService,
     users = userAuthService,
     backups = iamBackupService,
+    events = userEventService,
   } = {}) {
     super();
     this.accounts = accounts;
     this.users = users;
     this.backups = backups;
+    this.events = events;
   }
 
   get mode() {
@@ -124,6 +131,17 @@ export class LocalIdentityGateway extends IdentityGateway {
 
   setUserVisibility(req, userId, isPublic) {
     return this.accounts.setVisibility(userId, isPublic);
+  }
+
+  // ----- Notices from the IAM (phase 3d) -----
+
+  /** @returns {Promise<Array<{event_id, user_id, event_type}>>} the next unacknowledged events */
+  async pullEvents() {
+    return (await this.events.list(this.appKey)).events;
+  }
+
+  acknowledgeEvents(eventId) {
+    return this.events.acknowledge(this.appKey, eventId);
   }
 
   // ----- Identity backup (platform admins only; owner decision, phase 3d) -----

@@ -30,7 +30,9 @@
     "test:cleanup": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/schema-cleanup-test.mjs",
     "test:iam:remote": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/iam-api-remote-test.mjs",
     "test:identity": "node src/scripts/js/modules/tests/remote-identity-gateway-test.mjs",
-    "test:roundtrip:remote": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/backup-roundtrip-remote.mjs"
+    "test:roundtrip:remote": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/backup-roundtrip-remote.mjs",
+    "test:deletion": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/user-deletion-test.mjs",
+    "test:deletion:remote": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/user-deletion-remote-test.mjs"
   },
   "dependencies": {
     "adm-zip": "^0.6.1",

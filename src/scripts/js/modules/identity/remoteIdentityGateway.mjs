@@ -275,6 +275,16 @@ export class RemoteIdentityGateway extends IdentityGateway {
     return this.asUser(req, (token) => this.client.setUserVisibility(token, userId, isPublic));
   }
 
+  // ----- Notices from the IAM (phase 3d) -----
+
+  async pullEvents() {
+    return (await this.client.events()).events;
+  }
+
+  acknowledgeEvents(eventId) {
+    return this.client.acknowledgeEvents(eventId);
+  }
+
   // ----- Identity backup (the service checks the user is a platform admin) -----
 
   async isPlatformAdmin(req) {

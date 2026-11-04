@@ -66,3 +66,25 @@ SELECT sid FROM flashcards.session ORDER BY sid;
 
 -- Query: move_delete_sessions
 DELETE FROM flashcards.session;
+
+-- UserDeletionTest (phase 3d): no foreign keys to iam.users; orphaned rows.
+
+-- Query: count_foreign_keys_to_iam_users
+SELECT count(*)::int AS count
+FROM pg_constraint con
+JOIN pg_class cl ON cl.oid = con.conrelid
+JOIN pg_namespace n ON n.oid = cl.relnamespace
+WHERE con.contype = 'f' AND n.nspname = 'flashcards'
+  AND con.confrelid = 'iam.users'::regclass;
+
+-- Query: insert_orphan_lesson
+INSERT INTO flashcards.lessons (user_id, name) VALUES ($1, 'orphaned lesson');
+
+-- Query: add_legacy_user_foreign_keys
+-- SchemaCleanupTest: foreign keys to iam.users as databases from before phase 3d have them.
+ALTER TABLE flashcards.lessons ADD CONSTRAINT lessons_user_id_fkey
+  FOREIGN KEY (user_id) REFERENCES iam.users(user_id) ON DELETE CASCADE;
+
+-- Query: add_legacy_share_foreign_key
+ALTER TABLE flashcards.flashcard_shares ADD CONSTRAINT flashcard_shares_owner_id_fkey
+  FOREIGN KEY (owner_id) REFERENCES iam.users(user_id) ON DELETE CASCADE;

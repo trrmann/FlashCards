@@ -161,6 +161,23 @@ Follow-ups:
 
 ## resolved
 
+- **Phase 3d step 4: no foreign keys to the IAM's users; deletion notices remove a user's data (2026-11-04).**
+  - Owner decision. The 15 `REFERENCES iam.users … ON DELETE CASCADE` are gone from the schema file, and the
+    bootstrap drops existing ones (found through the catalog, no `iam` rights needed).
+  - `UserDataService.deleteUserData` removes a user's rows in the old cascade order, in one transaction.
+  - `UserEventConsumer` pulls the IAM's `user.deleted` notices at start-up, every 10 minutes, and right after an admin
+    deletes a user, then acknowledges them; a failed notice is retried.
+  - The safety net is admin-run only, never automatic: `GET/POST /api/admin/maintenance/orphans` (dry run / remove).
+    It refuses (409) when the IAM confirms none of the users or more than a quarter would go, because an emptied IAM
+    must not wipe everyone's cards.
+
+  **Resolved:**
+  - `test:deletion` 14/14 in-process and `test:deletion:remote` 14/14 over HTTP: a deleted user's every row goes and
+    nobody else's; acknowledged; re-handling harmless; failure retried; orphans found and removed; refusal removes
+    nothing;
+  - `test:cleanup` 10/10 (the bootstrap drops old foreign keys);
+  - round trip 167/167 in both modes, IAM 79/79 in both modes, `test:identity` 13/13, `test:startup` 16/16.
+
 - **Phase 3d step 3: per-service backups, format 4.0 (2026-11-04).**
   - The data JSON bundles the IAM's identity part and FlashCards' own part (platform-db `TableBackup` on the
     `flashcards` schema).
@@ -412,7 +429,11 @@ Resolved on 2026-11-03 (round 4):
 
 ## open
 
-Found in the code/documentation review of 2026-11-03 (not yet fixed):
+- **Make backups less manual (owner request, 2026-11-04).** Today the owner runs `backup.sh` (or the Profile page)
+  and types the admin password. Options to weigh after phase 3d: a scheduled Render job (paid), a timer on the laptop
+  with a stored credential instead of the prompt, or FlashCards backing itself up on a schedule to storage the owner
+  chooses. Each puts a credential in a different place: owner decision.
+  Found in the code/documentation review of 2026-11-03 (not yet fixed):
 
 - **Security: user data in public git history.** The committed `documents/flashcards-backup-2026-11-02.json`
   (users' emails + password hashes) is untracked now but still in history. Optionally purge history

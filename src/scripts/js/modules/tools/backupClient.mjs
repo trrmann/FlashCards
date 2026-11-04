@@ -113,7 +113,8 @@ export class BackupClient {
   }
 
   /**
-   * Import a backup (JSON plus optional media ZIP). All-or-nothing on the server.
+   * Import a backup (JSON plus optional media ZIP). Two steps on the server (users, then FlashCards'
+   * data), each all-or-nothing; if the second fails, running the restore again completes it.
    */
   async restore(jsonFile, zipFile = null) {
     const backup = JSON.parse(fs.readFileSync(jsonFile, 'utf8'));
