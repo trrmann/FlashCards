@@ -161,6 +161,17 @@ Follow-ups:
 
 ## resolved
 
+- **Phase 3d complete: FlashCards on its own database login in production (2026-11-05).** Owner set FlashCards'
+  Render `DB_PG_USER` to `flashcards_svc` (iam-service RENDER_SETUP.md step 6). **Verified** with
+  `prod-readonly-check.sh`:
+  - connections are `flashcards_svc` (FlashCards) and `iam_svc` (IAM service); the admin login is used only by the
+    owner's local tools;
+  - 0 foreign keys to `iam.users`; data unchanged (7 users, 137 cards);
+  - health 200, pages 200, login answered through the IAM service.
+
+  Undo: put the admin login back on FlashCards. Next: drop `iam.session` and the old `iam.users` settings columns (an
+  IAM release), backup automation, phase 3f (identity screens from the IAM).
+
 - **Login failed with 503 after the IAM service slept; `backup.sh` looked stuck (2026-11-05).**
   - The IAM client sent one request at a time and cut each try at 15 s. A login held while Render woke the service was
     resent while everything else waited behind it.
