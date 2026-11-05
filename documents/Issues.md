@@ -161,6 +161,14 @@ Follow-ups:
 
 ## resolved
 
+- **Backups without a password prompt (owner request, 2026-11-04/05).** The owner meant the login prompt: an assistant
+  couldn't take a backup before a release. `backup-login.sh` checks the FlashCards admin login and stores it in the
+  GNOME keyring (`secret-tool`; encrypted with the desktop login, never in a file, on screen or in chat).
+  `backup.sh` uses it, and still prompts only when nothing is stored and someone is at the terminal (otherwise it
+  stops with a clear message). `restore.sh` keeps asking, because a restore changes production. Also, `backup.sh` /
+  `restore.sh` tell you when the services may take a minute to wake. **Resolved:** with a dummy login stored for a
+  fake host, `backup.sh` used it without a prompt; without one and no terminal, it stopped with "run
+  backup-login.sh first"; the dummy entry was removed.
 - **Identity schema clean-up released (2026-11-05).** iam-service v0.1.19 dropped `iam.session` and FlashCards' old
   `iam.users` columns in production. **Verified** with `prod-readonly-check.sh`: 0 old columns, no `iam.session`; data
   unchanged (7 users, 137 cards, 7 user settings); FlashCards on `flashcards_svc`, IAM on `iam_svc`; both healthy;
@@ -476,12 +484,6 @@ Resolved on 2026-11-03 (round 4):
   endpoint; the list also clears correctly after restoring the last card.
 
 ## open
-
-- **Make backups less manual (owner request, 2026-11-04).** Today the owner runs `backup.sh` (or the Profile page)
-  and types the admin password. Options to weigh after phase 3d: a scheduled Render job (paid), a timer on the laptop
-  with a stored credential instead of the prompt, or FlashCards backing itself up on a schedule to storage the owner
-  chooses. Each puts a credential in a different place: owner decision.
-  Found in the code/documentation review of 2026-11-03 (not yet fixed):
 
 - **Security: user data in public git history.** The committed `documents/flashcards-backup-2026-11-02.json`
   (users' emails + password hashes) is untracked now but still in history. Optionally purge history
