@@ -322,6 +322,11 @@ Render free-tier databases are reset monthly (see `DB_PG_EXPIRE`). The procedure
 
    `deploy.sh -prod` also does this before every release. The Profile page's Backup & Restore downloads the same two files.
 
+   **No password prompt:** run `backup-login.sh` once. It asks for your FlashCards admin login, checks that it works,
+   and stores it in the GNOME keyring (encrypted with your desktop login, never in a file or on screen). From then on
+   `backup.sh` signs in with it, so an assistant can take the backup before a release too. `backup-login.sh --forget`
+   removes it. `restore.sh` always asks, because a restore changes production.
+
 2. Point the Render web service at the new database (`DB_PG_*`, `DB_PG_EXPIRE`) and let it start. The schemas
    bootstrap automatically.
 3. **Restore in one command.** On an empty database it creates the admin through initial setup, then imports:

@@ -85,3 +85,9 @@ SELECT (SELECT count(*) FROM pg_constraint con
         WHERE con.contype = 'f' AND n.nspname = 'flashcards'
           AND con.confrelid = 'iam.users'::regclass) AS flashcards_fks_to_users,
        (SELECT count(*) FROM iam.user_events) AS pending_user_events;
+
+-- Identity schema clean-up (iam-service v0.1.19): FlashCards' old columns and session table, 0 / false once done.
+SELECT (SELECT count(*) FROM information_schema.columns
+        WHERE table_schema = 'iam' AND table_name = 'users'
+          AND column_name IN ('last_page_visited', 'last_visited_at', 'storage_max_bytes')) AS old_iam_user_columns,
+       to_regclass('iam.session') IS NOT NULL AS old_iam_session_table;

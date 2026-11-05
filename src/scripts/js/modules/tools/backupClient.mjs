@@ -150,7 +150,7 @@ export class BackupClient {
 }
 
 /**
- * Command-line front end: `download <url> [dir]` and `restore <url> <json> [zip]`.
+ * Command-line front end: `download <url> [dir]`, `restore <url> <json> [zip]`, `check <url>`.
  * Credentials come from the environment (the shell wrappers prompt for them):
  * FLASHCARDS_ADMIN_USER, FLASHCARDS_ADMIN_PASSWORD, and, for an empty target,
  * FLASHCARDS_ADMIN_EMAIL and FLASHCARDS_ADMIN_NAME.
@@ -173,12 +173,20 @@ export class BackupCli {
 
   async download(baseUrl, dir) {
     const client = new BackupClient(baseUrl);
+    console.log('Signing in (if the services were asleep, this can take up to a minute)…');
     await client.login(this.credentials.username, this.credentials.password);
     const result = await client.download(dir || undefined);
     console.log(`Backup saved to ${result.dir}`);
     console.log(
       `  users ${result.metadata.totalUsers ?? '?'}, flashcards ${result.metadata.totalFlashcards ?? '?'}, media ${result.metadata.totalMedia ?? '?'}`
     );
+  }
+
+  /** Sign in only: checks a login before backup-login.sh stores it. */
+  async check(baseUrl) {
+    const client = new BackupClient(baseUrl);
+    await client.login(this.credentials.username, this.credentials.password);
+    console.log(`Login works for ${baseUrl}`);
   }
 
   async restore(baseUrl, jsonFile, zipFile) {
@@ -200,8 +208,11 @@ export class BackupCli {
       this.requireCredentials();
       if (command === 'download') await this.download(args[0], args[1]);
       else if (command === 'restore') await this.restore(args[0], args[1], args[2]);
+      else if (command === 'check') await this.check(args[0]);
       else
-        throw new Error('usage: backup-cli.mjs download <url> [dir] | restore <url> <json> [zip]');
+        throw new Error(
+          'usage: backup-cli.mjs download <url> [dir] | restore <url> <json> [zip] | check <url>'
+        );
       return 0;
     } catch (error) {
       console.error(`backup: ${error.message}`);
