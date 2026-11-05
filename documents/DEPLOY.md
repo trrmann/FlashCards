@@ -30,10 +30,12 @@ release.sh heros-companion                        # heros-companion's main (alre
 `release.sh iam-service` does the same for iam-service: backup, its full test suite, push, then waits for
 `/v1/health` to report the commit and checks that a FlashCards login still answers.
 
-`release.sh heros-companion` runs heros-companion's verify and full test suite, pushes its main, waits for its
-`/api/health` to report the commit, and checks that its sign-in answers through the IAM (401 for an unknown account).
-No backup yet: Heros keeps no data until its port step H3. Its URL comes from `HEROS_PROD_URL`, else `RENDER_URL` in
-heros-companion's git-ignored `.env`.
+`release.sh heros-companion` runs heros-companion's verify and full test suite, takes a production backup
+(heros-companion's `backup.sh`, into `~/HerosBackups`), pushes its main, waits for its `/api/health` to report the
+commit, and checks that its sign-in answers through the IAM (401 for an unknown account). The backup uses the login
+stored once with heros-companion's `src/scripts/sh/backup-login.sh` (any platform administrator); while production
+is older than Heros' port step H3 it has no Heros data, and the backup is skipped. Its URL comes from
+`HEROS_PROD_URL`, else `RENDER_URL` in heros-companion's git-ignored `.env`.
 
 Every run is logged to `.deployment/release-<time>.log`. A release takes about 15 minutes (mostly tests).
 

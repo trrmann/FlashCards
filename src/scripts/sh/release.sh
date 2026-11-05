@@ -20,9 +20,11 @@
 #       /v1/health to report the new commit; checks FlashCards still answers.
 #   release.sh heros-companion
 #       Pushes heros-companion's main (already committed, ahead of origin) after
-#       its format/lint check and every test suite; waits for its /api/health to
-#       report the new commit; checks sign-in answers through the IAM (401 for an
-#       unknown account). No backup yet: Heros keeps no data until PORT_PLAN H3.
+#       its format/lint check, every test suite and a production backup
+#       (heros-companion's backup.sh, stored login; skipped while production is
+#       older than PORT_PLAN H3 and has no Heros data); waits for its /api/health
+#       to report the new commit; checks sign-in answers through the IAM (401 for
+#       an unknown account).
 #       Its URL: HEROS_PROD_URL, else RENDER_URL in heros-companion/.env.
 #
 # A failure stops the release at that step; nothing after it runs. Logs:
@@ -210,6 +212,27 @@ heros_url() {
     fi
 }
 
+# Back up Heros production. A server older than PORT_PLAN H3 has no backup endpoint (404 when
+# signed out; H3 and later answer 401) and no Heros data, so there is nothing to back up.
+backup_heros() {
+    local url="$1" code="" tries=0
+    step "Heros production backup"
+    while [ "${tries}" -lt 12 ]; do
+        code="$(curl -s -o /dev/null -m 120 -w '%{http_code}' "${url}/api/heros/backup" || true)"
+        [ "${code}" = "503" ] || [ "${code}" = "000" ] || break
+        tries=$((tries + 1))
+        echo "Heros is waking (${code}); trying again in 10 s" | tee -a "${LOG_FILE}"
+        sleep 10
+    done
+    if [ "${code}" = "404" ]; then
+        echo "production is older than H3: no Heros data, no backup needed" | tee -a "${LOG_FILE}"
+        return
+    fi
+    [ "${code}" = "401" ] || fail "Heros backup endpoint answered ${code}, expected 401 signed out"
+    "${HEROS_ROOT}/src/scripts/sh/backup.sh" "${url}" < /dev/null 2>&1 | tee -a "${LOG_FILE}"
+    [ "${PIPESTATUS[0]}" -eq 0 ] || fail "Heros backup failed (store the login once: heros-companion/src/scripts/sh/backup-login.sh)"
+}
+
 release_heros_companion() {
     [ -d "${HEROS_ROOT}/.git" ] || fail "heros-companion not found at ${HEROS_ROOT}"
     local url
@@ -224,7 +247,9 @@ release_heros_companion() {
     (cd "${HEROS_ROOT}" && npm run -s verify) >> "${LOG_FILE}" 2>&1 || fail "heros-companion verify failed"
     require_clean "${HEROS_ROOT}"
     (cd "${HEROS_ROOT}" && npm test) >> "${LOG_FILE}" 2>&1 || fail "heros-companion tests failed (see ${LOG_FILE})"
-    grep -E 'passed' "${LOG_FILE}" | tail -2
+    grep -E 'passed' "${LOG_FILE}" | tail -3
+
+    backup_heros "${url}"
 
     step "Push heros-companion main"
     git -C "${HEROS_ROOT}" push -q origin main
@@ -249,7 +274,7 @@ case "${1:-}" in
     iam-service) release_iam_service ;;
     heros-companion) release_heros_companion ;;
     *)
-        sed -n '4,32p' "$0" | sed 's/^# \{0,1\}//'
+        sed -n '4,31p' "$0" | sed 's/^# \{0,1\}//'
         exit 2
         ;;
 esac
