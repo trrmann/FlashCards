@@ -25,16 +25,11 @@ export class FlashCardsDatabase extends PostgresDatabase {
   static sqlRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../sql');
   static SCHEMA = 'flashcards';
 
+  /**
+   * Bootstrap the flashcards schema. It needs nothing from the iam schema (phase 3d: user ids
+   * without foreign keys), so it runs on FlashCards' own login as well.
+   */
   async initializeSchema() {
-    // The app schema's foreign keys reference the IAM-owned users table;
-    // fail fast with a clear message instead of erroring statement by statement.
-    const usersExists = await this.tableExists('iam.users');
-    if (!usersExists) {
-      throw new Error(
-        'IAM schema must be bootstrapped before the FlashCards schema: required table "iam.users" is missing. Run IdentityManagementDatabase.initializeSchema() first.'
-      );
-    }
-
     return this.initializeSchemaFromFile(
       'pg/flashcards-postgres-schema.sql',
       'FlashCards Database Initialization'

@@ -163,9 +163,12 @@ export class RemoteIdentityGateway extends IdentityGateway {
     return this.client.availability(query);
   }
 
-  /** Once there are users there always are, so a positive count is remembered. */
-  async countUsers() {
-    if (this.hasUsers) return 1;
+  /**
+   * Once there are users there always are, so a positive count is remembered (the setup check
+   * only needs "any"); `fresh` asks the service for the real number.
+   */
+  async countUsers({ fresh = false } = {}) {
+    if (this.hasUsers && !fresh) return 1;
     const { count } = await this.client.countUsers();
     this.hasUsers = count > 0;
     return count;
@@ -273,6 +276,16 @@ export class RemoteIdentityGateway extends IdentityGateway {
 
   setUserVisibility(req, userId, isPublic) {
     return this.asUser(req, (token) => this.client.setUserVisibility(token, userId, isPublic));
+  }
+
+  // ----- Notices from the IAM (phase 3d) -----
+
+  async pullEvents() {
+    return (await this.client.events()).events;
+  }
+
+  acknowledgeEvents(eventId) {
+    return this.client.acknowledgeEvents(eventId);
   }
 
   // ----- Identity backup (the service checks the user is a platform admin) -----

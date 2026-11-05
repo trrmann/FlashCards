@@ -7,6 +7,7 @@ import express from 'express';
 import { BaseRouter } from './baseRouter.mjs';
 import { userSettingsService } from '../auth/userSettingsService.mjs';
 import { IdentityGateway } from '../identity/identityGateway.mjs';
+import { userDataService } from '../auth/userDataService.mjs';
 import { backupService } from '../auth/backupService.mjs';
 import { practiceService } from '../auth/practiceService.mjs';
 
@@ -94,6 +95,10 @@ class AdminRouter extends BaseRouter {
     router.delete('/users/:userId', requireAuth, requireAdmin, async (req, res) => {
       try {
         await identity(req).deleteUser(req, req.params.userId);
+        // The IAM's notice removes the user's FlashCards data; handle it now, not in 10 minutes.
+        await req.app.locals.userEvents
+          ?.pull()
+          .catch((error) => console.error('User data clean-up deferred:', error.message));
         return res.status(200).json({ status: 'success', message: 'User deleted successfully' });
       } catch (error) {
         return answer(res, error, 'Failed to delete user');
@@ -177,6 +182,32 @@ class AdminRouter extends BaseRouter {
         }
       });
     }
+
+    /**
+     * GET  /api/admin/maintenance/orphans: user ids FlashCards holds data for that the IAM
+     *      doesn't know (a dry run: nothing is removed)
+     * POST /api/admin/maintenance/orphans: remove their data; refused (409) when more than a
+     *      quarter of the users would go, which points at an IAM problem rather than orphans
+     */
+    router.get('/maintenance/orphans', requireAuth, requireAdmin, async (req, res) => {
+      try {
+        const found = await userDataService.findOrphans(identity(req));
+        return res.status(200).json({ status: 'success', ...found });
+      } catch (error) {
+        return answer(res, error, 'Orphan check failed');
+      }
+    });
+    router.post('/maintenance/orphans', requireAuth, requireAdmin, async (req, res) => {
+      try {
+        const result = await userDataService.removeOrphans(identity(req));
+        return res.status(200).json({ status: 'success', ...result });
+      } catch (error) {
+        if (error.status === 409) {
+          return res.status(409).json({ status: 'error', message: error.message });
+        }
+        return answer(res, error, 'Orphan removal failed');
+      }
+    });
 
     /**
      * Admin Backup and Export Routes

@@ -82,6 +82,22 @@ export class SchemaCleanupTest extends LocalTestCase {
     this.check('a later start copies nothing again (signed-out sessions stay out)', after === 0);
   }
 
+  /** Phase 3d: the bootstrap drops foreign keys to iam.users that older databases have. */
+  async checkUserForeignKeysDropped() {
+    console.log('\nForeign keys to iam.users (phase 3d)');
+    const q = LocalTestCase.testQueries;
+    await this.database.query(q.add_legacy_user_foreign_keys);
+    await this.database.query(q.add_legacy_share_foreign_key);
+    const before = (await this.database.query(q.count_foreign_keys_to_iam_users)).rows[0].count;
+    await this.database.initializeSchema();
+    const after = (await this.database.query(q.count_foreign_keys_to_iam_users)).rows[0].count;
+    this.check(
+      'the bootstrap drops the old foreign keys to iam.users',
+      before === 2 && after === 0,
+      `${before} → ${after}`
+    );
+  }
+
   async run() {
     this.assertLocalTarget();
     console.log('Schema clean-up test (local scratch database)\n');
@@ -89,6 +105,7 @@ export class SchemaCleanupTest extends LocalTestCase {
     try {
       await this.checkCleanup();
       await this.checkPhase3cMoves();
+      await this.checkUserForeignKeysDropped();
     } finally {
       const q = LocalTestCase.testQueries;
       await this.database.query(q.outside_reference_drop);

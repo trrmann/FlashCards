@@ -161,6 +161,56 @@ Follow-ups:
 
 ## resolved
 
+- **Login failed with 503 after the IAM service slept; `backup.sh` looked stuck (2026-11-05).**
+  - The IAM client sent one request at a time and cut each try at 15 s. A login held while Render woke the service was
+    resent while everything else waited behind it.
+  - Now 4 workers, 30 s per try and up to 120 s of waiting (iam-service v0.1.17, request-queue v0.1.6).
+  - `backup.sh` / `restore.sh` say the services may take a minute to wake, and retry a 503 three times, 10 s apart.
+  - **Also found:** `package-lock.json` kept request-queue 0.1.4 after iam-service asked for newer versions. npm doesn't
+    move a nested git dependency, and Render installs from the lock, so production never had last release's
+    per-request timeout. The lock is corrected, and `test:startup` now checks that every shared package is installed
+    at the version its dependents ask for. That check found one more drift (request-queue on platform-db 0.2.4), now
+    aligned (request-queue v0.1.7, iam-service v0.1.18).
+
+  **Resolved:**
+  - `test:startup` 17/17;
+  - request-queue `npm test` 32/32 (one worker makes a fast request wait behind a slow one; several don't);
+  - all other suites unchanged.
+
+- **Phase 3d step 5: FlashCards runs on its own database login (2026-11-04).**
+  - With the IAM service (`IAM_URL` set), start-up no longer connects to or bootstraps the `iam` schema.
+  - FlashCards' own bootstrap needs nothing from it.
+  - `/api/system/database-status` counts users through the gateway.
+  - A read-only start checks only FlashCards' table (and `iam.users` only with the IAM in-process).
+  - The log names the database login.
+
+  So FlashCards can run as `flashcards_svc`, which has no rights on `iam`.
+
+  **Resolved:**
+  - `test:own-login` 11/11. It runs the real `server.js` as a separate process on a login made by iam-service's
+    provisioner, with identity over HTTP. The server starts without touching the IAM schema; sign-up, cards, backup
+    download and restore, user deletion and the status page work; the login can't read `iam.users` (42501).
+  - All other suites unchanged.
+
+  Owner step left: switch FlashCards' Render login (iam-service RENDER_SETUP.md, step 6).
+
+- **Phase 3d step 4: no foreign keys to the IAM's users; deletion notices remove a user's data (2026-11-04).**
+  - Owner decision. The 15 `REFERENCES iam.users … ON DELETE CASCADE` are gone from the schema file, and the
+    bootstrap drops existing ones (found through the catalog, no `iam` rights needed).
+  - `UserDataService.deleteUserData` removes a user's rows in the old cascade order, in one transaction.
+  - `UserEventConsumer` pulls the IAM's `user.deleted` notices at start-up, every 10 minutes, and right after an admin
+    deletes a user, then acknowledges them; a failed notice is retried.
+  - The safety net is admin-run only, never automatic: `GET/POST /api/admin/maintenance/orphans` (dry run / remove).
+    It refuses (409) when the IAM confirms none of the users or more than a quarter would go, because an emptied IAM
+    must not wipe everyone's cards.
+
+  **Resolved:**
+  - `test:deletion` 14/14 in-process and `test:deletion:remote` 14/14 over HTTP: a deleted user's every row goes and
+    nobody else's; acknowledged; re-handling harmless; failure retried; orphans found and removed; refusal removes
+    nothing;
+  - `test:cleanup` 10/10 (the bootstrap drops old foreign keys);
+  - round trip 167/167 in both modes, IAM 79/79 in both modes, `test:identity` 13/13, `test:startup` 16/16.
+
 - **Phase 3d step 3: per-service backups, format 4.0 (2026-11-04).**
   - The data JSON bundles the IAM's identity part and FlashCards' own part (platform-db `TableBackup` on the
     `flashcards` schema).
@@ -412,7 +462,11 @@ Resolved on 2026-11-03 (round 4):
 
 ## open
 
-Found in the code/documentation review of 2026-11-03 (not yet fixed):
+- **Make backups less manual (owner request, 2026-11-04).** Today the owner runs `backup.sh` (or the Profile page)
+  and types the admin password. Options to weigh after phase 3d: a scheduled Render job (paid), a timer on the laptop
+  with a stored credential instead of the prompt, or FlashCards backing itself up on a schedule to storage the owner
+  chooses. Each puts a credential in a different place: owner decision.
+  Found in the code/documentation review of 2026-11-03 (not yet fixed):
 
 - **Security: user data in public git history.** The committed `documents/flashcards-backup-2026-11-02.json`
   (users' emails + password hashes) is untracked now but still in history. Optionally purge history

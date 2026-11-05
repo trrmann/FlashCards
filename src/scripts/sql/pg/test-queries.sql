@@ -13,6 +13,10 @@ DROP SCHEMA IF EXISTS public CASCADE;
 -- Query: create_public_schema
 CREATE SCHEMA public;
 
+-- Query: grant_public_schema_usage
+-- As in a standard database (initdb's public schema): every login may use it, none may create in it.
+GRANT USAGE ON SCHEMA public TO PUBLIC;
+
 -- Query: count_users
 -- StartupTest: proves a read-only server wrote nothing.
 SELECT COUNT(*)::int AS count FROM iam.users;
@@ -66,3 +70,47 @@ SELECT sid FROM flashcards.session ORDER BY sid;
 
 -- Query: move_delete_sessions
 DELETE FROM flashcards.session;
+
+-- UserDeletionTest (phase 3d): no foreign keys to iam.users; orphaned rows.
+
+-- Query: count_foreign_keys_to_iam_users
+SELECT count(*)::int AS count
+FROM pg_constraint con
+JOIN pg_class cl ON cl.oid = con.conrelid
+JOIN pg_namespace n ON n.oid = cl.relnamespace
+WHERE con.contype = 'f' AND n.nspname = 'flashcards'
+  AND con.confrelid = 'iam.users'::regclass;
+
+-- Query: insert_orphan_lesson
+INSERT INTO flashcards.lessons (user_id, name) VALUES ($1, 'orphaned lesson');
+
+-- Query: add_legacy_user_foreign_keys
+-- SchemaCleanupTest: foreign keys to iam.users as databases from before phase 3d have them.
+ALTER TABLE flashcards.lessons ADD CONSTRAINT lessons_user_id_fkey
+  FOREIGN KEY (user_id) REFERENCES iam.users(user_id) ON DELETE CASCADE;
+
+-- Query: add_legacy_share_foreign_key
+ALTER TABLE flashcards.flashcard_shares ADD CONSTRAINT flashcard_shares_owner_id_fkey
+  FOREIGN KEY (owner_id) REFERENCES iam.users(user_id) ON DELETE CASCADE;
+
+-- OwnLoginTest (phase 3d step 5): FlashCards running on its own database login.
+
+-- Query: own_login_set_registry
+UPDATE iam.applications SET db_role = $1, db_schema = 'flashcards' WHERE app_key = 'flashcards';
+
+-- Query: own_login_drop_test_role
+DO $drop_own_login$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fctest_flashcards_svc') THEN
+    EXECUTE 'GRANT fctest_flashcards_svc TO ' || quote_ident(current_user) || ' WITH INHERIT TRUE, SET TRUE';
+    DROP OWNED BY fctest_flashcards_svc;
+    DROP ROLE fctest_flashcards_svc;
+  END IF;
+END
+$drop_own_login$;
+
+-- Query: own_login_read_iam_users
+SELECT count(*) FROM iam.users;
+
+-- Query: own_login_user_card_count
+SELECT count(*)::int AS count FROM flashcards.flashcards WHERE user_id = $1;
