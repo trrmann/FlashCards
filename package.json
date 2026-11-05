@@ -33,7 +33,8 @@
     "test:roundtrip:remote": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/backup-roundtrip-remote.mjs",
     "test:deletion": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/user-deletion-test.mjs",
     "test:deletion:remote": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/user-deletion-remote-test.mjs",
-    "test:own-login": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/own-login-test.mjs"
+    "test:own-login": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/own-login-test.mjs",
+    "test:admin-page": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/admin-page-test.mjs"
   },
   "dependencies": {
     "adm-zip": "^0.6.1",

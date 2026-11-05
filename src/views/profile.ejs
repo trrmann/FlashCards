@@ -356,10 +356,10 @@
           // Update original data
           window.originalUser = data.user;
         } else {
-          statusDiv.innerHTML = `<p class="error">Update failed: ${data.message}</p>`;
+          statusDiv.innerHTML = `<p class="error">Update failed: ${escapeHtml(data.message)}</p>`;
         }
       } catch (error) {
-        statusDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+        statusDiv.innerHTML = `<p class="error">Error: ${escapeHtml(error.message)}</p>`;
       }
     });
 
@@ -397,78 +397,107 @@
             statusDiv.innerHTML = '';
           }, 3000);
         } else {
-          statusDiv.innerHTML = `<p class="error">Failed: ${data.message}</p>`;
+          statusDiv.innerHTML = `<p class="error">Failed: ${escapeHtml(data.message)}</p>`;
         }
       } catch (error) {
-        statusDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+        statusDiv.innerHTML = `<p class="error">Error: ${escapeHtml(error.message)}</p>`;
       }
     });
 
-    // Load admin users list
+    // Load admin users list. User data goes in as text (textContent), never as HTML: a name
+    // like <img onerror=…> must not run in the admin's browser.
+    function adminCell(row, text) {
+      const cell = document.createElement('td');
+      cell.textContent = text;
+      row.appendChild(cell);
+      return cell;
+    }
+
+    function adminButton(cell, label, onClick, className) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      if (className) button.className = className;
+      button.addEventListener('click', onClick);
+      cell.appendChild(button);
+    }
+
+    function adminMessage(container, text, className) {
+      const p = document.createElement('p');
+      p.className = className;
+      p.textContent = text;
+      container.replaceChildren(p);
+    }
+
     async function loadAdminUsersList() {
       const adminSection = document.querySelector('.admin-section');
       if (!adminSection) return; // Not admin
+      const usersList = document.getElementById('usersList');
 
       try {
         const response = await fetch('/api/admin/users', {
           credentials: 'include',
         });
         const data = await response.json();
-
-        if (data.status === 'success') {
-          const usersList = document.getElementById('usersList');
-          let html = '<table class="admin-users-table"><thead><tr>';
-          html += '<th>Username</th><th>Email</th><th>Full Name</th><th>Status</th><th>Admin</th><th>Public</th><th>Actions</th></tr></thead><tbody>';
-
-          data.users.forEach((user) => {
-            const isCurrentUser = window.currentUserId === user.user_id;
-            const isAdmin = user.is_admin ? '✓' : '–';
-            const isPublic = user.is_public ? '✓' : '–';
-            const status = user.status || 'active';
-            const actionDisabled = isCurrentUser ? 'disabled' : '';
-
-            html += `<tr>`;
-            html += `<td>${user.username}</td>`;
-            html += `<td>${user.email}</td>`;
-            html += `<td>${user.full_name || '–'}</td>`;
-            html += `<td><span class="status-badge ${status}">${status}</span></td>`;
-            html += `<td>${isAdmin}</td>`;
-            html += `<td>${isPublic}</td>`;
-            html += `<td>`;
-
-            if (!isCurrentUser) {
-              if (status === 'active') {
-                html += `<button onclick="disableUser('${user.user_id}')">Disable</button>`;
-              } else {
-                html += `<button onclick="enableUser('${user.user_id}')">Enable</button>`;
-              }
-              if (user.is_admin) {
-                html += `<button onclick="demoteUser('${user.user_id}', '${user.username}')">Remove Admin</button>`;
-              } else {
-                html += `<button onclick="promoteUser('${user.user_id}', '${user.username}')">Make Admin</button>`;
-              }
-              if (user.is_public) {
-                html += `<button onclick="setUserVisibility('${user.user_id}', '${user.username}', false)">Make Private</button>`;
-              } else {
-                html += `<button onclick="setUserVisibility('${user.user_id}', '${user.username}', true)">Make Public</button>`;
-              }
-              html += `<button onclick="deleteUser('${user.user_id}', '${user.username}')" class="btn-danger">Delete</button>`;
-            } else {
-              html += '<span class="text-muted">Current User</span>';
-            }
-
-            html += `</td></tr>`;
-          });
-
-          html += '</tbody></table>';
-          usersList.innerHTML = html;
-        } else {
-          document.getElementById('usersList').innerHTML =
-            `<p class="error">Failed to load users: ${data.message}</p>`;
+        if (data.status !== 'success') {
+          adminMessage(usersList, `Failed to load users: ${data.message}`, 'error');
+          return;
         }
+
+        const table = document.createElement('table');
+        table.className = 'admin-users-table';
+        const headRow = table.createTHead().insertRow();
+        for (const title of ['Username', 'Email', 'Full Name', 'Status', 'Admin', 'Public', 'Actions']) {
+          const th = document.createElement('th');
+          th.textContent = title;
+          headRow.appendChild(th);
+        }
+        const body = table.createTBody();
+
+        for (const user of data.users) {
+          const isCurrentUser = window.currentUserId === user.user_id;
+          const status = user.status || 'active';
+          const row = body.insertRow();
+          adminCell(row, user.username);
+          adminCell(row, user.email);
+          adminCell(row, user.full_name || '–');
+          const statusCell = adminCell(row, '');
+          const badge = document.createElement('span');
+          badge.className = `status-badge ${status === 'active' ? 'active' : 'disabled'}`;
+          badge.textContent = status;
+          statusCell.appendChild(badge);
+          adminCell(row, user.is_admin ? '✓' : '–');
+          adminCell(row, user.is_public ? '✓' : '–');
+          const actions = adminCell(row, '');
+
+          if (isCurrentUser) {
+            const span = document.createElement('span');
+            span.className = 'text-muted';
+            span.textContent = 'Current User';
+            actions.appendChild(span);
+            continue;
+          }
+          if (status === 'active') adminButton(actions, 'Disable', () => disableUser(user.user_id));
+          else adminButton(actions, 'Enable', () => enableUser(user.user_id));
+          if (user.is_admin) {
+            adminButton(actions, 'Remove Admin', () => demoteUser(user.user_id, user.username));
+          } else {
+            adminButton(actions, 'Make Admin', () => promoteUser(user.user_id, user.username));
+          }
+          if (user.is_public) {
+            adminButton(actions, 'Make Private', () =>
+              setUserVisibility(user.user_id, user.username, false)
+            );
+          } else {
+            adminButton(actions, 'Make Public', () =>
+              setUserVisibility(user.user_id, user.username, true)
+            );
+          }
+          adminButton(actions, 'Delete', () => deleteUser(user.user_id, user.username), 'btn-danger');
+        }
+        usersList.replaceChildren(table);
       } catch (error) {
-        document.getElementById('usersList').innerHTML =
-          `<p class="error">Error loading users: ${error.message}</p>`;
+        adminMessage(usersList, `Error loading users: ${error.message}`, 'error');
       }
     }
 
@@ -513,15 +542,15 @@
               statusDiv.innerHTML = '';
             }, 1500);
           } else {
-            statusDiv.innerHTML = `<p class="error">Failed: ${data.message}</p>`;
+            statusDiv.innerHTML = `<p class="error">Failed: ${escapeHtml(data.message)}</p>`;
             if (data.errors) {
               data.errors.forEach((err) => {
-                statusDiv.innerHTML += `<p class="error">• ${err}</p>`;
+                statusDiv.innerHTML += `<p class="error">• ${escapeHtml(err)}</p>`;
               });
             }
           }
         } catch (error) {
-          statusDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+          statusDiv.innerHTML = `<p class="error">Error: ${escapeHtml(error.message)}</p>`;
         }
       });
     }
@@ -696,7 +725,7 @@
 
       let html = `<p class="success">${done} share(s) ${action}ed.</p>`;
       if (failures.length > 0) {
-        html += `<p class="error">${failures.length} failed; first: ${failures[0]}</p>`;
+        html += `<p class="error">${failures.length} failed; first: ${escapeHtml(failures[0])}</p>`;
       }
       statusDiv.innerHTML = html;
       loadPendingShares();
@@ -751,17 +780,18 @@
               .filter(([, n]) => n > 0)
               .map(([t, n]) => `${t}: ${n}`)
               .join(', ');
-            let html = `<p class="success">Import complete. ${counts || 'No rows imported.'}</p>`;
+            // Warnings can quote the backup file (usernames, column names): text only.
+            let html = `<p class="success">Import complete. ${escapeHtml(counts || 'No rows imported.')}</p>`;
             if (data.results.warnings && data.results.warnings.length > 0) {
-              html += `<p class="error">${data.results.warnings.length} warning(s); first: ${data.results.warnings[0]}</p>`;
+              html += `<p class="error">${data.results.warnings.length} warning(s); first: ${escapeHtml(data.results.warnings[0])}</p>`;
             }
             statusDiv.innerHTML = html;
             loadAdminUsersList();
           } else {
-            statusDiv.innerHTML = `<p class="error">Import failed: ${data.message}</p>`;
+            statusDiv.innerHTML = `<p class="error">Import failed: ${escapeHtml(data.message)}</p>`;
           }
         } catch (error) {
-          statusDiv.innerHTML = `<p class="error">Import error: ${error.message}</p>`;
+          statusDiv.innerHTML = `<p class="error">Import error: ${escapeHtml(error.message)}</p>`;
         }
       });
     }
@@ -827,14 +857,14 @@
             });
             const data = await response.json();
             if (response.ok) {
-              statusDiv.innerHTML = `<p class="success">${data.message}</p>`;
+              statusDiv.innerHTML = `<p class="success">${escapeHtml(data.message)}</p>`;
             } else {
               visibilityToggle.checked = !visibilityToggle.checked;
-              statusDiv.innerHTML = `<p class="error">${data.message}</p>`;
+              statusDiv.innerHTML = `<p class="error">${escapeHtml(data.message)}</p>`;
             }
           } catch (error) {
             visibilityToggle.checked = !visibilityToggle.checked;
-            statusDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            statusDiv.innerHTML = `<p class="error">Error: ${escapeHtml(error.message)}</p>`;
           }
         });
       }

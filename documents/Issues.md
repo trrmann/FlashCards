@@ -161,6 +161,18 @@ Follow-ups:
 
 ## resolved
 
+- **Security: stored XSS against admins on the Profile page (2026-11-05).**
+  - The admin user list built its table as an HTML string from usernames, emails and full names, and put usernames
+    into `onclick` attributes. Anyone could register with a full name like `<img src=x onerror=…>` and run code in an
+    admin's browser when the admin opened their Profile page.
+  - The import result also showed backup-file text (usernames, column names) as HTML.
+  - Found while planning phase 3f. The list is now built with DOM methods and text only, with real click handlers.
+    Every other status message on the page is escaped.
+
+  **Resolved:** `npm run test:admin-page` 5/5 in headless Chrome: an attacker registers with script in their name; the
+  admin's page doesn't run it, shows it as text, and the row's buttons work. Against the old page the same test fails
+  (the script ran).
+
 - **Security: the `/api/iam` pass-through forwarded any path (2026-11-05).** In remote identity mode FlashCards
   forwarded every `/api/iam/*` request to the IAM service, and the IAM client adds FlashCards' application credentials
   to every call. So any signed-in user's browser could reach app-only endpoints: acknowledging deletion notices
