@@ -43,6 +43,7 @@ FLASHCARDS_TESTS=(
     test:deletion:remote
     test:own-login
     test:admin-page
+    test:admin-page:remote
 )
 
 LOG_DIR="${PROJECT_ROOT}/.deployment"

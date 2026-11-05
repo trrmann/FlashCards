@@ -1,4 +1,4 @@
-<%- include('partials/header', { activePage: 'profile' }) %>
+<%- include('partials/header', { activePage: 'profile', iamUi: typeof isAdmin !== 'undefined' && isAdmin }) %>
 <main>
   <div class="content-split">
     <div class="intro-block">
@@ -113,63 +113,13 @@
           <h3>Admin: User Management</h3>
           <p class="section-intro">Manage all users in the system</p>
 
-          <!-- Create New User Form -->
-          <div class="form-section">
-            <h4 class="form-section-title">Create New User</h4>
-            <form id="createUserForm" autocomplete="off">
-              <div class="form-group">
-                <label for="newUsername">Username</label>
-                <input id="newUsername" name="username" type="text" autocomplete="off" required />
-                <small>3-50 characters, letters/numbers/underscore/hyphen only</small>
-              </div>
-
-              <div class="form-group">
-                <label for="newEmail">Email</label>
-                <input id="newEmail" name="email" type="email" autocomplete="off" required />
-              </div>
-
-              <div class="form-group">
-                <label for="newFullName">Full Name (optional)</label>
-                <input id="newFullName" name="fullName" type="text" />
-              </div>
-
-              <div class="form-group">
-                <label for="newUserPassword">Password</label>
-                <input id="newUserPassword" name="password" type="password" autocomplete="new-password" required />
-                <small>Password requirements:</small>
-                <ul>
-                  <li>At least 8 characters</li>
-                  <li>At least one uppercase letter (A-Z)</li>
-                  <li>At least one lowercase letter (a-z)</li>
-                  <li>At least one number (0-9)</li>
-                  <li>At least one special character (!@#$%^&*)</li>
-                </ul>
-              </div>
-
-              <div class="form-group">
-                <label for="confirmNewUserPassword">Confirm Password</label>
-                <input id="confirmNewUserPassword" name="confirmPassword" type="password" autocomplete="new-password" required />
-              </div>
-
-              <div class="form-group">
-                <label>
-                  <input id="newUserIsPublic" name="isPublic" type="checkbox" />
-                  List in the share directory (public user)
-                </label>
-              </div>
-
-              <button type="submit" id="createUserBtn">Create User</button>
-            </form>
-            <div id="createUserStatus"></div>
-          </div>
-
-          <!-- Users List -->
-          <div class="form-section">
-            <h4 class="form-section-title">Current Users</h4>
-            <div id="usersList">
-              <p class="text-muted">Loading users...</p>
-            </div>
-          </div>
+          <%# The IAM's shared user-admin screen (phase 3f), styled with FlashCards' own classes;
+              /js/pages/profile-admin.js adds FlashCards' storage-limit and reset-stats buttons. %>
+          <iam-user-admin
+            api-base="/api/iam"
+            current-user-id="<%= typeof currentUserId !== 'undefined' ? currentUserId : '' %>"
+            data-iam-classes='{"section":"form-section","section-title":"form-section-title","field":"form-group","table":"admin-users-table","button-danger":"btn-danger","status-active":"status-badge active","status-disabled":"status-badge disabled","muted":"text-muted","message-success":"success","message-error":"error"}'
+          ></iam-user-admin>
 
           <!-- Backup / Restore -->
           <div class="form-section">
@@ -404,288 +354,6 @@
       }
     });
 
-    // Load admin users list. User data goes in as text (textContent), never as HTML: a name
-    // like <img onerror=…> must not run in the admin's browser.
-    function adminCell(row, text) {
-      const cell = document.createElement('td');
-      cell.textContent = text;
-      row.appendChild(cell);
-      return cell;
-    }
-
-    function adminButton(cell, label, onClick, className) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.textContent = label;
-      if (className) button.className = className;
-      button.addEventListener('click', onClick);
-      cell.appendChild(button);
-    }
-
-    function adminMessage(container, text, className) {
-      const p = document.createElement('p');
-      p.className = className;
-      p.textContent = text;
-      container.replaceChildren(p);
-    }
-
-    async function loadAdminUsersList() {
-      const adminSection = document.querySelector('.admin-section');
-      if (!adminSection) return; // Not admin
-      const usersList = document.getElementById('usersList');
-
-      try {
-        const response = await fetch('/api/admin/users', {
-          credentials: 'include',
-        });
-        const data = await response.json();
-        if (data.status !== 'success') {
-          adminMessage(usersList, `Failed to load users: ${data.message}`, 'error');
-          return;
-        }
-
-        const table = document.createElement('table');
-        table.className = 'admin-users-table';
-        const headRow = table.createTHead().insertRow();
-        for (const title of ['Username', 'Email', 'Full Name', 'Status', 'Admin', 'Public', 'Actions']) {
-          const th = document.createElement('th');
-          th.textContent = title;
-          headRow.appendChild(th);
-        }
-        const body = table.createTBody();
-
-        for (const user of data.users) {
-          const isCurrentUser = window.currentUserId === user.user_id;
-          const status = user.status || 'active';
-          const row = body.insertRow();
-          adminCell(row, user.username);
-          adminCell(row, user.email);
-          adminCell(row, user.full_name || '–');
-          const statusCell = adminCell(row, '');
-          const badge = document.createElement('span');
-          badge.className = `status-badge ${status === 'active' ? 'active' : 'disabled'}`;
-          badge.textContent = status;
-          statusCell.appendChild(badge);
-          adminCell(row, user.is_admin ? '✓' : '–');
-          adminCell(row, user.is_public ? '✓' : '–');
-          const actions = adminCell(row, '');
-
-          if (isCurrentUser) {
-            const span = document.createElement('span');
-            span.className = 'text-muted';
-            span.textContent = 'Current User';
-            actions.appendChild(span);
-            continue;
-          }
-          if (status === 'active') adminButton(actions, 'Disable', () => disableUser(user.user_id));
-          else adminButton(actions, 'Enable', () => enableUser(user.user_id));
-          if (user.is_admin) {
-            adminButton(actions, 'Remove Admin', () => demoteUser(user.user_id, user.username));
-          } else {
-            adminButton(actions, 'Make Admin', () => promoteUser(user.user_id, user.username));
-          }
-          if (user.is_public) {
-            adminButton(actions, 'Make Private', () =>
-              setUserVisibility(user.user_id, user.username, false)
-            );
-          } else {
-            adminButton(actions, 'Make Public', () =>
-              setUserVisibility(user.user_id, user.username, true)
-            );
-          }
-          adminButton(actions, 'Delete', () => deleteUser(user.user_id, user.username), 'btn-danger');
-        }
-        usersList.replaceChildren(table);
-      } catch (error) {
-        adminMessage(usersList, `Error loading users: ${error.message}`, 'error');
-      }
-    }
-
-    // Create new user handler
-    if (document.getElementById('createUserForm')) {
-      document.getElementById('createUserForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const username = document.getElementById('newUsername').value;
-        const email = document.getElementById('newEmail').value;
-        const fullName = document.getElementById('newFullName').value || null;
-        const password = document.getElementById('newUserPassword').value;
-        const confirmPassword = document.getElementById('confirmNewUserPassword').value;
-        const isPublic = document.getElementById('newUserIsPublic').checked;
-        const statusDiv = document.getElementById('createUserStatus');
-
-        // Validate passwords match
-        if (password !== confirmPassword) {
-          statusDiv.innerHTML = '<p class="error">Passwords do not match</p>';
-          return;
-        }
-
-        try {
-          const response = await fetch('/api/admin/users', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-            body: JSON.stringify({ username, email, fullName, password, isPublic }),
-          });
-
-          const data = await response.json();
-
-          if (response.ok) {
-            statusDiv.innerHTML = '<p class="success">User created successfully!</p>';
-            // Clear the form
-            document.getElementById('createUserForm').reset();
-            // Reload users list
-            setTimeout(() => {
-              loadAdminUsersList();
-              statusDiv.innerHTML = '';
-            }, 1500);
-          } else {
-            statusDiv.innerHTML = `<p class="error">Failed: ${escapeHtml(data.message)}</p>`;
-            if (data.errors) {
-              data.errors.forEach((err) => {
-                statusDiv.innerHTML += `<p class="error">• ${escapeHtml(err)}</p>`;
-              });
-            }
-          }
-        } catch (error) {
-          statusDiv.innerHTML = `<p class="error">Error: ${escapeHtml(error.message)}</p>`;
-        }
-      });
-    }
-
-    // Admin actions
-    async function disableUser(userId) {
-      if (!confirm('Are you sure you want to disable this user?')) return;
-
-      try {
-        const response = await fetch(`/api/admin/users/${userId}/disable`, {
-          method: 'POST',
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          alert('User disabled successfully');
-          loadAdminUsersList();
-        } else {
-          alert(`Failed: ${data.message}`);
-        }
-      } catch (error) {
-        alert(`Error: ${error.message}`);
-      }
-    }
-
-    async function enableUser(userId) {
-      if (!confirm('Are you sure you want to enable this user?')) return;
-
-      try {
-        const response = await fetch(`/api/admin/users/${userId}/enable`, {
-          method: 'POST',
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          alert('User enabled successfully');
-          loadAdminUsersList();
-        } else {
-          alert(`Failed: ${data.message}`);
-        }
-      } catch (error) {
-        alert(`Error: ${error.message}`);
-      }
-    }
-
-    async function deleteUser(userId, username) {
-      if (!confirm(`Are you sure you want to DELETE user "${username}"? This action cannot be undone.`)) return;
-
-      try {
-        const response = await fetch(`/api/admin/users/${userId}`, {
-          method: 'DELETE',
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          alert('User deleted successfully');
-          loadAdminUsersList();
-        } else {
-          alert(`Failed: ${data.message}`);
-        }
-      } catch (error) {
-        alert(`Error: ${error.message}`);
-      }
-    }
-
-    async function promoteUser(userId, username) {
-      if (!confirm(`Make "${username}" a system admin?`)) return;
-
-      try {
-        const response = await fetch(`/api/admin/users/${userId}/promote`, {
-          method: 'POST',
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          alert(data.message);
-          loadAdminUsersList();
-        } else {
-          alert(`Failed: ${data.message}`);
-        }
-      } catch (error) {
-        alert(`Error: ${error.message}`);
-      }
-    }
-
-    async function demoteUser(userId, username) {
-      if (!confirm(`Remove system admin from "${username}"?`)) return;
-
-      try {
-        const response = await fetch(`/api/admin/users/${userId}/demote`, {
-          method: 'POST',
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          alert(data.message);
-          loadAdminUsersList();
-        } else {
-          alert(`Failed: ${data.message}`);
-        }
-      } catch (error) {
-        alert(`Error: ${error.message}`);
-      }
-    }
-
-    async function setUserVisibility(userId, username, isPublic) {
-      const action = isPublic ? 'public (listed in the share directory)' : 'private';
-      if (!confirm(`Make "${username}" ${action}?`)) return;
-
-      try {
-        const response = await fetch(`/api/admin/users/${userId}/visibility`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ isPublic }),
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          alert(data.message);
-          loadAdminUsersList();
-        } else {
-          alert(`Failed: ${data.message}`);
-        }
-      } catch (error) {
-        alert(`Error: ${error.message}`);
-      }
-    }
-
     async function resolveSelectedPendingShares(action) {
       const ids = [...document.querySelectorAll('.pending-select:checked')].map(
         (box) => box.dataset.shareId
@@ -786,7 +454,7 @@
               html += `<p class="error">${data.results.warnings.length} warning(s); first: ${escapeHtml(data.results.warnings[0])}</p>`;
             }
             statusDiv.innerHTML = html;
-            loadAdminUsersList();
+            document.querySelector('iam-user-admin')?.refresh();
           } else {
             statusDiv.innerHTML = `<p class="error">Import failed: ${escapeHtml(data.message)}</p>`;
           }
@@ -825,7 +493,6 @@
       loadProfile();
       loadStorageUsage();
       loadPendingShares();
-      loadAdminUsersList();
 
       const selectAllPending = document.getElementById('select-all-pending');
       if (selectAllPending) {
@@ -870,5 +537,9 @@
       }
     });
   </script>
+  <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+    <script type="module" src="/iam-ui/iam-ui.js"></script>
+    <script src="/js/pages/profile-admin.js"></script>
+  <% } %>
 </main>
 <%- include('partials/footer') %>

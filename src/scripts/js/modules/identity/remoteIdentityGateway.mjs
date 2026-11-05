@@ -52,11 +52,13 @@ export class RemoteIdentityGateway extends IdentityGateway {
 
   /**
    * The /api/iam paths a browser may reach: the organizations API (organizations, groups,
-   * application access, platform admins). The IAM client adds FlashCards' application
+   * application access, platform admins) and user administration (/admin/users; the IAM checks
+   * the user administers FlashCards). The IAM client adds FlashCards' application
    * credentials to every call, so forwarding anything else would let any signed-in user use
    * app-only endpoints (for example acknowledging deletion notices, /events/ack).
    */
-  static BROWSER_PATHS = /^\/(organizations|groups|applications|platform-admins)(\/|\?|$)/;
+  static BROWSER_PATHS =
+    /^\/(organizations|groups|applications|platform-admins|admin\/users)(\/|\?|$)/;
   static SUMMARY_BATCH = 1000;
 
   /**

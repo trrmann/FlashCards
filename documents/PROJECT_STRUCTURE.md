@@ -17,7 +17,7 @@ and answers. Data is stored in PostgreSQL on Render.
 
 ## Directory structure
 
-FlashCards depends on two shared packages, installed from GitHub (platform-db `v0.2.5`, iam-service `v0.1.19`) (Render builds with `src/scripts/sh/render-build.sh`): **platform-db** (`PostgresDatabase`, `LocalDatabaseTest`, the shared `local-db.sh`) and **iam-service** (`IdentityManagementDatabase`, `userAuthService`, `validationService`, `organizationService`, `OrganizationRouter`, the IAM service and `IamClient`). Their code and SQL are no longer in this repository.
+FlashCards depends on two shared packages, installed from GitHub (platform-db `v0.2.5`, iam-service `v0.1.23`) (Render builds with `src/scripts/sh/render-build.sh`): **platform-db** (`PostgresDatabase`, `LocalDatabaseTest`, the shared `local-db.sh`) and **iam-service** (`IdentityManagementDatabase`, `userAuthService`, `validationService`, `organizationService`, `OrganizationRouter`, the IAM service and `IamClient`). Their code and SQL are no longer in this repository.
 
 ```text
 FlashCards/
@@ -36,7 +36,7 @@ FlashCards/
 │   │   └── pages/                # Per-page styles: entries, home, login, logout, organizations, practice, profile, quiz
 │   └── js/
 │       ├── navigation-tracker.js  # Posts page visits to /api/navigation/track
-│       └── pages/organizations-page.js  # OrganizationsPage class (no inline page script)
+│       └── pages/profile-admin.js  # OrganizationsPage class (no inline page script)
 └── src/
     ├── data/test.db              # Unused leftover (the app uses PostgreSQL only)
     ├── views/                    # EJS pages (each with an inline <script> for its behavior)
@@ -100,7 +100,7 @@ FlashCards/
 | `/quiz`          | `quiz.ejs`          | Filtered quiz builder, quiz taking, history                                                                                                                                                             |
 | `/login`         | `login.ejs`         | Login and registration; first-user setup when the database has no users                                                                                                                                 |
 | `/profile`       | `profile.ejs`       | Profile, password, share-directory visibility, pending shares; admin user management and Backup & Restore                                                                                               |
-| `/organizations` | `organizations.ejs` | Organizations, members, groups, group members, and group roles (behavior in `public/js/pages/organizations-page.js`)                                                                                    |
+| `/organizations` | `organizations.ejs` | Organizations, members, groups, group members, and group roles (behavior in `public/js/pages/profile-admin.js`)                                                                                         |
 | `/logout`        | `logout.ejs`        | Logout confirmation                                                                                                                                                                                     |
 
 ## npm scripts

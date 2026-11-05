@@ -10,6 +10,8 @@ import {
   iamBackupService,
   userEventService,
 } from 'iam-service/services';
+import express from 'express';
+import { UserAdminRouter } from 'iam-service/routes';
 import { IdentityGateway, IdentityError } from './identityGateway.mjs';
 import { IamRouter } from '../routes/iamRouter.mjs';
 
@@ -176,8 +178,21 @@ export class LocalIdentityGateway extends IdentityGateway {
 
   // ----- Organizations, groups, platform admins, app access (/api/iam) -----
 
+  /**
+   * /api/iam in-process: user administration (the shared <iam-user-admin> screen) and the
+   * organizations API, with FlashCards' session as the sign-in.
+   */
   organizationRouter() {
-    return new IamRouter().router;
+    const router = express.Router();
+    router.use(
+      new UserAdminRouter({
+        authenticate: (req, res, next) => IamRouter.requireSession(req, res, next),
+        actorOf: (req) => req.session.userId,
+        appKey: this.appKey,
+      }).router
+    );
+    router.use(new IamRouter().router);
+    return router;
   }
 }
 

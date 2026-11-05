@@ -55,3 +55,14 @@
 .storage-over-note {
   margin-top: 6px;
 }
+
+/* Admin user list (the IAM's shared screen): compact action buttons, a few per line. */
+.admin-users-table .iam-actions {
+  min-width: 15rem;
+}
+
+.admin-users-table .iam-actions button {
+  min-height: auto;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.85rem;
+}
