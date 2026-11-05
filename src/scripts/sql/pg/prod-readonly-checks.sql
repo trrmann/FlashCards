@@ -6,7 +6,6 @@ WHERE c.relkind = 'r' AND n.nspname IN ('public', 'iam', 'flashcards')
 ORDER BY 1, 2;
 
 SELECT 'iam.users' AS source, count(*) FROM iam.users
-UNION ALL SELECT 'iam.session', count(*) FROM iam.session
 UNION ALL SELECT 'flashcards.flashcards', count(*) FROM flashcards.flashcards
 UNION ALL SELECT 'flashcards.media', count(*) FROM flashcards.media
 UNION ALL SELECT 'flashcards.quizzes', count(*) FROM flashcards.quizzes
@@ -78,3 +77,11 @@ FROM iam.applications a ORDER BY app_key;
 -- Usernames / emails that differ only in letter case (counts only, no names).
 SELECT (SELECT count(*) FROM (SELECT lower(username) FROM iam.users GROUP BY 1 HAVING count(*) > 1) d) AS username_case_duplicates,
        (SELECT count(*) FROM (SELECT lower(email) FROM iam.users GROUP BY 1 HAVING count(*) > 1) d) AS email_case_duplicates;
+
+-- Phase 3d: foreign keys from FlashCards to iam.users (0 once released) and pending IAM notices.
+SELECT (SELECT count(*) FROM pg_constraint con
+          JOIN pg_class cl ON cl.oid = con.conrelid
+          JOIN pg_namespace n ON n.oid = cl.relnamespace
+        WHERE con.contype = 'f' AND n.nspname = 'flashcards'
+          AND con.confrelid = 'iam.users'::regclass) AS flashcards_fks_to_users,
+       (SELECT count(*) FROM iam.user_events) AS pending_user_events;

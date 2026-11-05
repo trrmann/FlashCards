@@ -57,6 +57,7 @@ export class SchemaCleanupTest extends LocalTestCase {
       'move_alice@example.test',
       'Move#2026x'
     );
+    await this.database.query(q.move_recreate_old_iam_data);
     await this.database.query(q.move_set_iam_user_settings, [user.user_id, 4096, '/quiz']);
     await this.database.query(q.move_insert_iam_session, ['live-session', '1 day']);
     await this.database.query(q.move_insert_iam_session, ['expired-session', '-1 day']);

@@ -52,6 +52,17 @@ SELECT to_regclass('public.' || $1) IS NOT NULL AS exists;
 
 -- SchemaCleanupTest, phase 3c moves: a database from before user_settings and flashcards.session.
 
+-- Query: move_recreate_old_iam_data
+-- What the identity schema held before phase 3c (dropped since iam-service v0.1.19).
+DO $recreate_old_iam_data$
+BEGIN
+  ALTER TABLE iam.users
+    ADD COLUMN IF NOT EXISTS last_page_visited VARCHAR(255) DEFAULT '/' NOT NULL,
+    ADD COLUMN IF NOT EXISTS storage_max_bytes BIGINT NOT NULL DEFAULT 26214400;
+  CREATE TABLE IF NOT EXISTS iam.session (sid VARCHAR NOT NULL PRIMARY KEY, sess JSON NOT NULL, expire TIMESTAMP NOT NULL);
+END
+$recreate_old_iam_data$;
+
 -- Query: move_set_iam_user_settings
 UPDATE iam.users SET storage_max_bytes = $2, last_page_visited = $3 WHERE user_id = $1;
 
