@@ -6,7 +6,6 @@ WHERE c.relkind = 'r' AND n.nspname IN ('public', 'iam', 'flashcards')
 ORDER BY 1, 2;
 
 SELECT 'iam.users' AS source, count(*) FROM iam.users
-UNION ALL SELECT 'iam.session', count(*) FROM iam.session
 UNION ALL SELECT 'flashcards.flashcards', count(*) FROM flashcards.flashcards
 UNION ALL SELECT 'flashcards.media', count(*) FROM flashcards.media
 UNION ALL SELECT 'flashcards.quizzes', count(*) FROM flashcards.quizzes

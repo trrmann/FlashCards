@@ -76,17 +76,16 @@ session                       (flashcards.session: express-session store)
 
 ### `users`
 
-| Column                                        | Type         | Notes                                                                                                  |
-| --------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------ |
-| `user_id`                                     | UUID PK      | `gen_random_uuid()`                                                                                    |
-| `username`                                    | VARCHAR(255) | UNIQUE, NOT NULL. App rule: 3–50 chars, `[A-Za-z0-9_-]`                                                |
-| `email`                                       | VARCHAR(255) | UNIQUE, NOT NULL                                                                                       |
-| `password_hash`                               | VARCHAR(255) | bcrypt                                                                                                 |
-| `full_name`                                   | VARCHAR(255) |                                                                                                        |
-| `status`                                      | VARCHAR(50)  | `active` (default) or `disabled`. Disabled users cannot log in                                         |
-| `is_public`                                   | BOOLEAN      | Listed in the share directory (default false)                                                          |
-| `storage_max_bytes`, `last_page_visited`      |              | No longer used by FlashCards (moved to `flashcards.user_settings`, phase 3c); dropped from `iam` later |
-| `last_visited_at`, `created_at`, `updated_at` | TIMESTAMP    |                                                                                                        |
+| Column                     | Type         | Notes                                                          |
+| -------------------------- | ------------ | -------------------------------------------------------------- |
+| `user_id`                  | UUID PK      | `gen_random_uuid()`                                            |
+| `username`                 | VARCHAR(255) | UNIQUE, NOT NULL. App rule: 3–50 chars, `[A-Za-z0-9_-]`        |
+| `email`                    | VARCHAR(255) | UNIQUE, NOT NULL                                               |
+| `password_hash`            | VARCHAR(255) | bcrypt                                                         |
+| `full_name`                | VARCHAR(255) |                                                                |
+| `status`                   | VARCHAR(50)  | `active` (default) or `disabled`. Disabled users cannot log in |
+| `is_public`                | BOOLEAN      | Listed in the share directory (default false)                  |
+| `created_at`, `updated_at` | TIMESTAMP    |                                                                |
 
 ### `applications`, `application_users`
 
@@ -128,11 +127,6 @@ Every role a user holds, `direct` or through a `group`, with its `app_key`. All 
 On the first start after phase 2, the schema file converts the old global `admin`/`user` roles into FlashCards roles,
 grants `platform_admin` to the existing FlashCards admins (only while nobody holds it yet), and enrolls every
 existing user in FlashCards (only while the app has no members). Later starts change nothing.
-
-### `session` (in `iam`)
-
-The old `connect-pg-simple` store. FlashCards uses `flashcards.session` since phase 3c (below); this table is no longer
-written and will be dropped from `iam` later.
 
 ---
 
