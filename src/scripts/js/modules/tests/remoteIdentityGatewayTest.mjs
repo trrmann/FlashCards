@@ -183,6 +183,58 @@ export class RemoteIdentityGatewayTest {
     this.check('an organization change drops cached admin flags', client.count('me') === 2);
   }
 
+  /** Only the organizations API passes through; app-only endpoints never reach the service. */
+  async checkPassThroughAllowlist() {
+    console.log('\nWhat the browser may reach through /api/iam');
+    const { client, gateway } = this.gateway();
+    client.behaviour.callRaw = async () => ({ status: 200, body: { status: 'success' } });
+    const req = this.constructor.request({ userId: 'u1', iamTokens: { access_token: 'a' } });
+    const answer = async (method, url) => {
+      const res = {
+        status(code) {
+          this.code = code;
+          return this;
+        },
+        json() {
+          return this;
+        },
+      };
+      await gateway.passThrough({ ...req, method, url, body: {} }, res);
+      return res.code;
+    };
+    const blocked = [
+      ['POST', '/events/ack'],
+      ['GET', '/events'],
+      ['POST', '/users/register'],
+      ['GET', '/users/count'],
+      ['GET', '/users/lookup?username=x'],
+      ['GET', '/admin/backup'],
+      ['PUT', '/me/password'],
+      ['GET', '/organizationsX'],
+    ];
+    const codes = [];
+    for (const [method, url] of blocked) codes.push(await answer(method, url));
+    this.check(
+      'app-only and other paths are refused (404) and never reach the service',
+      codes.every((code) => code === 404) && client.count('callRaw') === 0,
+      codes.join(',')
+    );
+    const allowed = [
+      ['GET', '/organizations'],
+      ['GET', '/organizations/1/members?x=1'],
+      ['POST', '/groups/2/roles'],
+      ['PUT', '/applications/flashcards/users/3'],
+      ['POST', '/platform-admins/4'],
+    ];
+    const ok = [];
+    for (const [method, url] of allowed) ok.push(await answer(method, url));
+    this.check(
+      'the organizations API passes through',
+      ok.every((code) => code === 200) && client.count('callRaw') === allowed.length,
+      ok.join(',')
+    );
+  }
+
   async checkErrors() {
     console.log('\nErrors');
     const { client, gateway } = this.gateway();
@@ -210,6 +262,7 @@ export class RemoteIdentityGatewayTest {
     await this.checkRefresh();
     this.checkLegacySession();
     await this.checkCaching();
+    await this.checkPassThroughAllowlist();
     await this.checkErrors();
     console.log(`\n${this.passed}/${this.passed + this.failed} checks passed`);
     return this.failed === 0;

@@ -161,6 +161,13 @@ Follow-ups:
 
 ## resolved
 
+- **Security: the `/api/iam` pass-through forwarded any path (2026-11-05).** In remote identity mode FlashCards
+  forwarded every `/api/iam/*` request to the IAM service, and the IAM client adds FlashCards' application credentials
+  to every call. So any signed-in user's browser could reach app-only endpoints: acknowledging deletion notices
+  (`/events/ack`, which could leave a deleted user's data behind), registration, look-ups and user counts. Found while
+  planning phase 3f. Only the organizations API passes through now (`/organizations`, `/groups`, `/applications`,
+  `/platform-admins`); anything else gets 404 without reaching the service. **Resolved:** `test:identity` 15/15 (8
+  app-only paths refused and never sent; 5 organization paths pass), `test:iam:remote` 79/79.
 - **Backups without a password prompt (owner request, 2026-11-04/05).** The owner meant the login prompt: an assistant
   couldn't take a backup before a release. `backup-login.sh` checks the FlashCards admin login and stores it in the
   GNOME keyring (`secret-tool`; encrypted with the desktop login, never in a file, on screen or in chat).
