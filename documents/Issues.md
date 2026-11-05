@@ -161,6 +161,23 @@ Follow-ups:
 
 ## resolved
 
+- **Phase 3d step 5: FlashCards runs on its own database login (2026-11-04).**
+  - With the IAM service (`IAM_URL` set), start-up no longer connects to or bootstraps the `iam` schema.
+  - FlashCards' own bootstrap needs nothing from it.
+  - `/api/system/database-status` counts users through the gateway.
+  - A read-only start checks only FlashCards' table (and `iam.users` only with the IAM in-process).
+  - The log names the database login.
+
+  So FlashCards can run as `flashcards_svc`, which has no rights on `iam`.
+
+  **Resolved:**
+  - `test:own-login` 11/11. It runs the real `server.js` as a separate process on a login made by iam-service's
+    provisioner, with identity over HTTP. The server starts without touching the IAM schema; sign-up, cards, backup
+    download and restore, user deletion and the status page work; the login can't read `iam.users` (42501).
+  - All other suites unchanged.
+
+  Owner step left: switch FlashCards' Render login (iam-service RENDER_SETUP.md, step 6).
+
 - **Phase 3d step 4: no foreign keys to the IAM's users; deletion notices remove a user's data (2026-11-04).**
   - Owner decision. The 15 `REFERENCES iam.users … ON DELETE CASCADE` are gone from the schema file, and the
     bootstrap drops existing ones (found through the catalog, no `iam` rights needed).

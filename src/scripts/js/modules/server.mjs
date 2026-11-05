@@ -55,7 +55,9 @@ export class Server {
   static STARTUP_RETRY_MS = 5000;
   static RETRY_AFTER_SECONDS = 5;
   /** Tables a read-only server needs to find, since it cannot create them. */
-  static REQUIRED_TABLES = ['iam.users', 'flashcards.flashcards'];
+  static REQUIRED_TABLES = ['flashcards.flashcards'];
+  /** …and, when the IAM runs in-process, its table too. */
+  static REQUIRED_IAM_TABLES = ['iam.users'];
 
   /**
    * Resolve the listening port for an environment.
@@ -122,8 +124,8 @@ export class Server {
     );
     console.log(`   Session Store: PostgreSQL (connect-pg-simple)`);
     console.log(`   Identity: ${this.identity.mode}`);
-    const { host, database, readOnly } = this.identityDatabase.config;
-    console.log(`   Database: ${host}/${database}${readOnly ? ' (READ-ONLY)' : ''}`);
+    const { host, database, readOnly, user } = this.database.config;
+    console.log(`   Database: ${host}/${database} as ${user}${readOnly ? ' (READ-ONLY)' : ''}`);
     console.log('═══════════════════════════════════════════════════════════');
   }
 
@@ -343,26 +345,35 @@ export class Server {
   }
 
   /**
-   * Connect to the database and bootstrap the idempotent schemas:
-   * IAM first (identity tables the app schema references), then the app.
+   * Connect to the database and bootstrap the idempotent schemas. With the IAM in-process its
+   * schema is bootstrapped first; with the IAM service (phase 3d) FlashCards neither touches nor
+   * needs the iam schema, so it can run on its own login (flashcards_svc), which has no rights
+   * there.
    */
   async initializeDatabase() {
-    await this.identityDatabase.waitForConnection(this.connectOptions);
+    const inProcessIam = this.identity.runsInProcess;
+    if (inProcessIam) await this.identityDatabase.waitForConnection(this.connectOptions);
     await this.database.waitForConnection(this.connectOptions);
-    if (this.identityDatabase.config.readOnly) {
-      await this.verifySchemaPresent();
+    if (this.database.config.readOnly) {
+      await this.verifySchemaPresent(inProcessIam);
       return;
     }
-    await this.identityDatabase.initializeSchema();
+    if (inProcessIam) await this.identityDatabase.initializeSchema();
     await this.database.initializeSchema();
   }
 
   /**
    * Read-only start: the schema can't be bootstrapped, so check that it is already there.
    */
-  async verifySchemaPresent() {
-    for (const table of this.constructor.REQUIRED_TABLES) {
-      if (!(await this.identityDatabase.tableExists(table))) {
+  async verifySchemaPresent(inProcessIam) {
+    const checks = [
+      ...this.constructor.REQUIRED_TABLES.map((table) => [this.database, table]),
+      ...(inProcessIam
+        ? this.constructor.REQUIRED_IAM_TABLES.map((table) => [this.identityDatabase, table])
+        : []),
+    ];
+    for (const [db, table] of checks) {
+      if (!(await db.tableExists(table))) {
         throw new Error(`Read-only database is missing ${table}; it cannot be created read-only`);
       }
     }

@@ -30,6 +30,7 @@ export class LocalTestCase extends LocalDatabaseTest {
     await this.database.query(queries.drop_flashcards_schema);
     await this.database.query(queries.drop_public_schema);
     await this.database.query(queries.create_public_schema);
+    await this.database.query(queries.grant_public_schema_usage);
     await this.identityDatabase.initializeSchema();
     await this.database.initializeSchema();
   }

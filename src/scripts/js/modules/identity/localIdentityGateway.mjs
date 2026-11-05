@@ -31,6 +31,10 @@ export class LocalIdentityGateway extends IdentityGateway {
     return 'local';
   }
 
+  get runsInProcess() {
+    return true;
+  }
+
   // ----- Sign-in -----
 
   /** @returns {Promise<{user_id, username, email, full_name}>} */

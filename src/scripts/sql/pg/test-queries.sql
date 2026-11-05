@@ -13,6 +13,10 @@ DROP SCHEMA IF EXISTS public CASCADE;
 -- Query: create_public_schema
 CREATE SCHEMA public;
 
+-- Query: grant_public_schema_usage
+-- As in a standard database (initdb's public schema): every login may use it, none may create in it.
+GRANT USAGE ON SCHEMA public TO PUBLIC;
+
 -- Query: count_users
 -- StartupTest: proves a read-only server wrote nothing.
 SELECT COUNT(*)::int AS count FROM iam.users;
@@ -88,3 +92,25 @@ ALTER TABLE flashcards.lessons ADD CONSTRAINT lessons_user_id_fkey
 -- Query: add_legacy_share_foreign_key
 ALTER TABLE flashcards.flashcard_shares ADD CONSTRAINT flashcard_shares_owner_id_fkey
   FOREIGN KEY (owner_id) REFERENCES iam.users(user_id) ON DELETE CASCADE;
+
+-- OwnLoginTest (phase 3d step 5): FlashCards running on its own database login.
+
+-- Query: own_login_set_registry
+UPDATE iam.applications SET db_role = $1, db_schema = 'flashcards' WHERE app_key = 'flashcards';
+
+-- Query: own_login_drop_test_role
+DO $drop_own_login$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fctest_flashcards_svc') THEN
+    EXECUTE 'GRANT fctest_flashcards_svc TO ' || quote_ident(current_user) || ' WITH INHERIT TRUE, SET TRUE';
+    DROP OWNED BY fctest_flashcards_svc;
+    DROP ROLE fctest_flashcards_svc;
+  END IF;
+END
+$drop_own_login$;
+
+-- Query: own_login_read_iam_users
+SELECT count(*) FROM iam.users;
+
+-- Query: own_login_user_card_count
+SELECT count(*)::int AS count FROM flashcards.flashcards WHERE user_id = $1;

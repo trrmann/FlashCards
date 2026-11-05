@@ -70,6 +70,14 @@ export class IdentityGateway {
     return IdentityGateway.APP_KEY;
   }
 
+  /**
+   * True when the IAM runs in this process (its schema is then FlashCards' to bootstrap and
+   * check); false when it is the IAM service, which owns its schema (phase 3d).
+   */
+  get runsInProcess() {
+    return false;
+  }
+
   /** 'local' or 'remote' (for the start-up log). */
   get mode() {
     throw new Error(`${this.constructor.name} must define mode`);

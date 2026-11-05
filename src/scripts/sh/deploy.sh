@@ -354,7 +354,7 @@ run_local_db_tests() {
         error_exit "Local scratch database unavailable. Set it up once with: local-db.sh init"
     fi
     local test_name
-    for test_name in test:roundtrip test:roundtrip:remote test:iam test:iam:remote test:identity test:deletion test:deletion:remote test:startup test:cleanup; do
+    for test_name in test:roundtrip test:roundtrip:remote test:iam test:iam:remote test:identity test:deletion test:deletion:remote test:own-login test:startup test:cleanup; do
         if npm run "${test_name}" >> "${LOG_FILE}" 2>&1; then
             log SUCCESS "${test_name} passed"
         else

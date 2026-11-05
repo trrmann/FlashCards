@@ -5,7 +5,6 @@
 
 import express from 'express';
 import { BaseRouter } from './baseRouter.mjs';
-import { identityManagementDb } from 'iam-service/db';
 import { IdentityGateway } from '../identity/identityGateway.mjs';
 import { AuthRouter } from './authRouter.mjs';
 import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
@@ -113,7 +112,6 @@ class SystemRouter extends BaseRouter {
       try {
         // Each table is counted through the adapter of the domain that owns it.
         const tables = [
-          ['users', identityManagementDb],
           ['flashcards', flashCardsDb],
           ['leitner_boxes', flashCardsDb],
           ['quizzes', flashCardsDb],
@@ -141,6 +139,15 @@ class SystemRouter extends BaseRouter {
             };
             allTablesExist = false;
           }
+        }
+
+        // Users belong to the IAM: counted through the identity gateway, not read directly.
+        try {
+          const count = await BaseRouter.identity(req).countUsers({ fresh: true });
+          tableStatus.users = { exists: true, rowCount: count };
+        } catch {
+          tableStatus.users = { exists: false, rowCount: 0 };
+          allTablesExist = false;
         }
 
         return res.status(200).json({
