@@ -110,6 +110,11 @@ export class Server {
     this.registerApiRoutes();
   }
 
+  /** The deployed commit, short form (Render's RENDER_GIT_COMMIT), or null when not on Render. */
+  static deployedVersion(env = process.env) {
+    return env.RENDER_GIT_COMMIT ? String(env.RENDER_GIT_COMMIT).slice(0, 7) : null;
+  }
+
   get isProduction() {
     return this.env === 'production';
   }
@@ -338,9 +343,13 @@ export class Server {
     app.use('/api/iam', this.identity.organizationRouter());
 
     // Health check endpoint
+    // `version`: the deployed commit (Render sets RENDER_GIT_COMMIT), so release.sh can tell when
+    // a new version is live.
     app.get('/api/health', async (req, res) => {
       const health = await this.database.healthCheck();
-      res.status(health.status === 'healthy' ? 200 : 503).json(health);
+      res
+        .status(health.status === 'healthy' ? 200 : 503)
+        .json({ ...health, version: Server.deployedVersion() });
     });
   }
 

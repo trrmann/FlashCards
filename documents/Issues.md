@@ -161,6 +161,14 @@ Follow-ups:
 
 ## resolved
 
+- **Releases with every check enforced: `release.sh` (owner request, 2026-11-05).** So that an assistant can release
+  without asking each time, and only through the checks. In order: a production backup; a local merge into `main` with
+  `npm run verify` and every test suite (both identity modes) on that exact merge, undone on any failure; the push;
+  then a wait for `/api/health` to report the pushed commit (new `version` field, from `RENDER_GIT_COMMIT`), and the
+  read-only production numbers before and after. `release.sh iam-service` does the same for the IAM service.
+  **Verified:** it refused a dirty tree and a missing branch; a branch with a deliberate lint error was stopped at
+  verify after the backup, its local merge undone, and `main` and GitHub unchanged. The "before" numbers were captured
+  (7 users, 137 cards). The first real releases use it.
 - **Security: stored XSS against admins on the Profile page (2026-11-05).**
   - The admin user list built its table as an HTML string from usernames, emails and full names, and put usernames
     into `onclick` attributes. Anyone could register with a full name like `<img src=x onerror=…>` and run code in an
