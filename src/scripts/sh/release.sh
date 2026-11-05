@@ -21,7 +21,7 @@
 #   release.sh heros-companion
 #       Pushes heros-companion's main (already committed, ahead of origin) after
 #       its format/lint check, every test suite and a production backup
-#       (heros-companion's backup.sh, stored login; skipped while production is
+#       (heros-companion's heros-backup.sh, stored login; skipped while production is
 #       older than PORT_PLAN H3 and has no Heros data); waits for its /api/health
 #       to report the new commit; checks sign-in answers through the IAM (401 for
 #       an unknown account).
@@ -229,8 +229,8 @@ backup_heros() {
         return
     fi
     [ "${code}" = "401" ] || fail "Heros backup endpoint answered ${code}, expected 401 signed out"
-    "${HEROS_ROOT}/src/scripts/sh/backup.sh" "${url}" < /dev/null 2>&1 | tee -a "${LOG_FILE}"
-    [ "${PIPESTATUS[0]}" -eq 0 ] || fail "Heros backup failed (store the login once: heros-companion/src/scripts/sh/backup-login.sh)"
+    "${HEROS_ROOT}/src/scripts/sh/heros-backup.sh" "${url}" < /dev/null 2>&1 | tee -a "${LOG_FILE}"
+    [ "${PIPESTATUS[0]}" -eq 0 ] || fail "Heros backup failed (store the login once: heros-companion/src/scripts/sh/heros-backup-login.sh)"
 }
 
 release_heros_companion() {
