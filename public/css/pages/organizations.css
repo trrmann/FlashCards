@@ -72,8 +72,8 @@ main.organizations-page {
   cursor: pointer;
 }
 
-.org-list button.selected,
-.group-list .group-select.selected {
+.org-list button[aria-pressed='true'],
+.group-list .group-select[aria-pressed='true'] {
   background: #eff6ff;
   border-color: #2563eb;
 }

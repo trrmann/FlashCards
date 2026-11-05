@@ -161,6 +161,23 @@ Follow-ups:
 
 ## resolved
 
+- **Phase 3f: the IAM's shared screens in FlashCards (2026-11-05).**
+  - The Organizations page and the Profile page's user administration are now iam-service's `<iam-organizations>` and
+    `<iam-user-admin>`, served from the installed package at `/iam-ui`, with FlashCards' own classes mapped in
+    (`data-iam-classes`).
+  - `/js/pages/profile-admin.js` adds FlashCards' "Storage limit" and "Reset stats" to each user row through the
+    `iam-user-row` hook. Both routes existed before but had no buttons.
+  - In-process, `/api/iam` also mounts iam-service's `UserAdminRouter`; with the IAM service, `/admin/users` joins the
+    pass-through allowlist.
+  - Deleting a user from the screen removes their FlashCards data at once.
+  - The old page script (387 lines) and the admin functions in `profile.ejs` are gone.
+
+  **Resolved:**
+  - `test:admin-page` and `test:admin-page:remote` 10/10 each, in headless Chrome: script in a name doesn't run;
+    FlashCards' buttons appear and Storage limit works; Disable; delete removes the data; FlashCards' classes on both
+    pages; an organization and a member created.
+  - Every other suite unchanged; screenshots checked (three layout fixes made in iam-service v0.1.23).
+
 - **Releases with every check enforced: `release.sh` (owner request, 2026-11-05).** So that an assistant can release
   without asking each time, and only through the checks. In order: a production backup; a local merge into `main` with
   `npm run verify` and every test suite (both identity modes) on that exact merge, undone on any failure; the push;

@@ -8,6 +8,7 @@
     <!-- <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png"> -->
     <link rel="stylesheet" href="/css/styles.css" />
     <link rel="stylesheet" href="/css/app.css" />
+    <% if (locals.iamUi) { %><link rel="stylesheet" href="/iam-ui/iam-ui.css" /><% } %>
     <link rel="stylesheet" href="/css/pages/<%= locals.activePage || 'home' %>.css" />
   </head>
   <body>

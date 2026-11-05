@@ -54,6 +54,10 @@ export class Server {
   /** Pause between start-up rounds after the database wait gives up or a bootstrap fails. */
   static STARTUP_RETRY_MS = 5000;
   static RETRY_AFTER_SECONDS = 5;
+  /** The IAM's shared screens (phase 3f), served from the installed iam-service package. */
+  static iamUiDirectory = path.dirname(
+    fileURLToPath(import.meta.resolve('iam-service/ui/iam-ui.js'))
+  );
   /** Tables a read-only server needs to find, since it cannot create them. */
   static REQUIRED_TABLES = ['flashcards.flashcards'];
   /** …and, when the IAM runs in-process, its table too. */
@@ -185,6 +189,7 @@ export class Server {
     this.app.use(express.json({ limit: '50mb' }));
 
     this.app.use(express.static(path.join(this.constructor.projectRoot, 'public')));
+    this.app.use('/iam-ui', express.static(this.constructor.iamUiDirectory));
 
     // EJS templating
     this.app.set('view engine', 'ejs');
@@ -340,6 +345,18 @@ export class Server {
     app.use('/api/admin', adminRouter);
 
     // IAM: organizations, groups, group roles, platform admins, app access
+    // A user deleted from the shared user-admin screen: handle the IAM's notice now (their
+    // FlashCards data goes), not at the next 10-minute pull.
+    app.delete('/api/iam/admin/users/:userId', (req, res, next) => {
+      res.on('finish', () => {
+        if (res.statusCode === 200) {
+          this.userEvents
+            .pull()
+            .catch((error) => console.error('User data clean-up deferred:', error.message));
+        }
+      });
+      next();
+    });
     app.use('/api/iam', this.identity.organizationRouter());
 
     // Health check endpoint
