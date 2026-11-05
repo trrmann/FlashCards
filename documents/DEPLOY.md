@@ -15,6 +15,7 @@ One-command deployments to dev, preview, prod, or all environments.
 ```bash
 release.sh flashcards <branch> ["merge message"]   # FlashCards: Render deploys from main
 release.sh iam-service                            # iam-service's main (already committed)
+release.sh heros-companion                        # heros-companion's main (already committed)
 ```
 
 `release.sh flashcards <branch>`:
@@ -29,10 +30,15 @@ release.sh iam-service                            # iam-service's main (already 
 `release.sh iam-service` does the same for iam-service: backup, its full test suite, push, then waits for
 `/v1/health` to report the commit and checks that a FlashCards login still answers.
 
+`release.sh heros-companion` runs heros-companion's verify and full test suite, pushes its main, waits for its
+`/api/health` to report the commit, and checks that its sign-in answers through the IAM (401 for an unknown account).
+No backup yet: Heros keeps no data until its port step H3. Its URL comes from `HEROS_PROD_URL`, else `RENDER_URL` in
+heros-companion's git-ignored `.env`.
+
 Every run is logged to `.deployment/release-<time>.log`. A release takes about 15 minutes (mostly tests).
 
 **Letting an assistant release without asking each time:** allow only these commands in `.claude/settings.local.json`:
-`"Bash(release.sh flashcards:*)"` and `"Bash(release.sh iam-service)"`. Remove any `"Bash(git push origin main)"`
+`"Bash(release.sh flashcards:*)"`, `"Bash(release.sh iam-service)"` and `"Bash(release.sh heros-companion)"`. Remove any `"Bash(git push origin main)"`
 rules, so releases can only go through the checks.
 
 ## Quick Start

@@ -18,6 +18,12 @@
 #       Pushes iam-service's main (already committed, ahead of origin) after a
 #       production backup and its full test suite; waits for the IAM service's
 #       /v1/health to report the new commit; checks FlashCards still answers.
+#   release.sh heros-companion
+#       Pushes heros-companion's main (already committed, ahead of origin) after
+#       its format/lint check and every test suite; waits for its /api/health to
+#       report the new commit; checks sign-in answers through the IAM (401 for an
+#       unknown account). No backup yet: Heros keeps no data until PORT_PLAN H3.
+#       Its URL: HEROS_PROD_URL, else RENDER_URL in heros-companion/.env.
 #
 # A failure stops the release at that step; nothing after it runs. Logs:
 # .deployment/release-<time>.log
@@ -30,6 +36,7 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 PROJECTS_DIR="$(dirname "${PROJECT_ROOT}")"
 IAM_ROOT="${PROJECTS_DIR}/iam-service"
 IAM_PROD_URL="${IAM_PROD_URL:-https://iam-service-9zsf.onrender.com}"
+HEROS_ROOT="${PROJECTS_DIR}/heros-companion"
 LIVE_WAIT_SECONDS="${LIVE_WAIT_SECONDS:-600}"
 FLASHCARDS_TESTS=(
     test:identity
@@ -195,11 +202,54 @@ release_iam_service() {
     step "Released iam-service as ${commit:0:7}"
 }
 
+heros_url() {
+    if [ -n "${HEROS_PROD_URL:-}" ]; then
+        echo "${HEROS_PROD_URL}"
+    else
+        grep '^RENDER_URL=' "${HEROS_ROOT}/.env" 2> /dev/null | cut -d= -f2- || true
+    fi
+}
+
+release_heros_companion() {
+    [ -d "${HEROS_ROOT}/.git" ] || fail "heros-companion not found at ${HEROS_ROOT}"
+    local url
+    url="$(heros_url)"
+    [ -n "${url}" ] || fail "no Heros URL: set RENDER_URL in ${HEROS_ROOT}/.env"
+    require_clean "${HEROS_ROOT}"
+    [ "$(git -C "${HEROS_ROOT}" branch --show-current)" = "main" ] || fail "heros-companion is not on main"
+    git -C "${HEROS_ROOT}" fetch -q origin
+    [ -n "$(git -C "${HEROS_ROOT}" log --oneline origin/main..main)" ] || fail "heros-companion has nothing to release"
+
+    step "heros-companion: format, lint and every test suite"
+    (cd "${HEROS_ROOT}" && npm run -s verify) >> "${LOG_FILE}" 2>&1 || fail "heros-companion verify failed"
+    require_clean "${HEROS_ROOT}"
+    (cd "${HEROS_ROOT}" && npm test) >> "${LOG_FILE}" 2>&1 || fail "heros-companion tests failed (see ${LOG_FILE})"
+    grep -E 'passed' "${LOG_FILE}" | tail -2
+
+    step "Push heros-companion main"
+    git -C "${HEROS_ROOT}" push -q origin main
+    local commit
+    commit="$(git -C "${HEROS_ROOT}" rev-parse HEAD)"
+    echo "pushed ${commit:0:7}" | tee -a "${LOG_FILE}"
+
+    step "Waiting for Heros Companion to run ${commit:0:7}"
+    wait_until_live "${url}/api/health" "${commit}"
+
+    step "Heros sign-in answers through the IAM service"
+    local code
+    code="$(curl -s -o /dev/null -m 120 -w '%{http_code}' -X POST -H 'Content-Type: application/json' \
+        -d '{"username":"release_check_nobody","password":"Wrong#2026x"}' "${url}/api/auth/login")"
+    [ "${code}" = "401" ] || fail "Heros login check answered ${code}, expected 401"
+    echo "login check: 401 as expected" | tee -a "${LOG_FILE}"
+    step "Released heros-companion as ${commit:0:7}"
+}
+
 case "${1:-}" in
     flashcards) release_flashcards "${2:-}" "${3:-}" ;;
     iam-service) release_iam_service ;;
+    heros-companion) release_heros_companion ;;
     *)
-        sed -n '4,25p' "$0" | sed 's/^# \{0,1\}//'
+        sed -n '4,32p' "$0" | sed 's/^# \{0,1\}//'
         exit 2
         ;;
 esac
