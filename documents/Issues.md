@@ -161,6 +161,10 @@ Follow-ups:
 
 ## resolved
 
+- **Identity schema clean-up released (2026-11-05).** iam-service v0.1.19 dropped `iam.session` and FlashCards' old
+  `iam.users` columns in production. **Verified** with `prod-readonly-check.sh`: 0 old columns, no `iam.session`; data
+  unchanged (7 users, 137 cards, 7 user settings); FlashCards on `flashcards_svc`, IAM on `iam_svc`; both healthy;
+  login answered.
 - **Phase 3d complete: FlashCards on its own database login in production (2026-11-05).** Owner set FlashCards'
   Render `DB_PG_USER` to `flashcards_svc` (iam-service RENDER_SETUP.md step 6). **Verified** with
   `prod-readonly-check.sh`:
