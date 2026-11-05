@@ -7,6 +7,8 @@
  * bootstrapping and writes nothing. Local scratch database only.
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
 import { TcpRelay, PostgresDatabase } from 'platform-db';
 import { IdentityManagementDatabase } from 'iam-service/db';
 import { LocalTestCase } from './localTestCase.mjs';
@@ -181,6 +183,40 @@ export class StartupTest extends LocalTestCase {
     this.check('backup work is background', BackupService.WORK.priority === 'background');
   }
 
+  /**
+   * The shared packages installed here are the versions their dependents ask for. npm keeps a
+   * nested git dependency's old version in package-lock.json when a dependency's tag changes
+   * (2026-11-05: iam-service asked for request-queue v0.1.6, the lock still installed v0.1.4, and
+   * Render installs from the lock).
+   */
+  checkSharedPackageVersions() {
+    console.log('\nShared package versions');
+    const root = path.resolve(Server.projectRoot, 'node_modules');
+    const read = (name) =>
+      JSON.parse(fs.readFileSync(path.join(root, name, 'package.json'), 'utf8'));
+    const wanted = [];
+    for (const dependent of ['.', 'iam-service', 'request-queue']) {
+      const manifest =
+        dependent === '.'
+          ? JSON.parse(fs.readFileSync(path.join(Server.projectRoot, 'package.json'), 'utf8'))
+          : read(dependent);
+      for (const [name, spec] of Object.entries(manifest.dependencies || {})) {
+        const tag = /#v(\d+\.\d+\.\d+)$/.exec(spec);
+        if (tag) wanted.push([dependent === '.' ? 'FlashCards' : dependent, name, tag[1]]);
+      }
+    }
+    const mismatches = wanted
+      .filter(([, name, version]) => read(name).version !== version)
+      .map(
+        ([by, name, version]) => `${by} wants ${name} ${version}, installed ${read(name).version}`
+      );
+    this.check(
+      'every shared package is installed at the version its dependents ask for',
+      wanted.length >= 4 && mismatches.length === 0,
+      mismatches.join('; ')
+    );
+  }
+
   async run() {
     this.assertLocalTarget();
     console.log('Start-up test (local scratch database)\n');
@@ -189,6 +225,7 @@ export class StartupTest extends LocalTestCase {
     this.checkDatabaseTargetGuard();
     await this.checkReadOnlyServer();
     this.checkSchedulingClasses();
+    this.checkSharedPackageVersions();
     return this.summary();
   }
 }

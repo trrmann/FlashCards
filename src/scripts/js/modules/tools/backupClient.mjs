@@ -3,6 +3,10 @@
  * over HTTP, as an admin, to download the two-file backup (data JSON + media ZIP)
  * or to restore one. Restore also performs the whole new-database recovery: when
  * the target has no users, it creates the admin through initial setup first.
+ *
+ * On Render's free plan FlashCards and the IAM service sleep when idle, and waking takes up to a
+ * minute. A 503 ("starting", or the IAM service not answering yet) is therefore retried a few
+ * times, with a message, instead of failing at once.
  */
 
 import fs from 'node:fs';
@@ -11,6 +15,9 @@ import path from 'node:path';
 
 export class BackupClient {
   static BACKUP_ROOT = path.join(os.homedir(), 'FlashCardsBackups');
+  /** 503 answers retried while the services wake, and the pause between tries. */
+  static WAKE_RETRIES = 3;
+  static WAKE_PAUSE_MS = 10000;
 
   constructor(baseUrl) {
     this.baseUrl = String(baseUrl || '').replace(/\/+$/, '');
@@ -21,9 +28,23 @@ export class BackupClient {
   }
 
   /**
-   * Send a request with the session cookie; remember any cookie the server sets.
+   * Send a request with the session cookie; remember any cookie the server sets. A 503 is
+   * retried WAKE_RETRIES times, WAKE_PAUSE_MS apart, while the services wake.
    */
-  async request(apiPath, { method = 'GET', json } = {}) {
+  async request(apiPath, options = {}) {
+    for (let attempt = 0; ; attempt += 1) {
+      const response = await this.send(apiPath, options);
+      if (response.status !== 503 || attempt >= this.constructor.WAKE_RETRIES) return response;
+      console.log(
+        `FlashCards or the IAM service is still waking (free plan); trying again in ${
+          this.constructor.WAKE_PAUSE_MS / 1000
+        } s…`
+      );
+      await new Promise((resolve) => setTimeout(resolve, this.constructor.WAKE_PAUSE_MS));
+    }
+  }
+
+  async send(apiPath, { method = 'GET', json } = {}) {
     const headers = {};
     if (this.cookie) headers.Cookie = this.cookie;
     if (json !== undefined) headers['Content-Type'] = 'application/json';
@@ -72,6 +93,7 @@ export class BackupClient {
    * @returns {Promise<boolean>} true when initial setup created the admin
    */
   async ensureAdminSession(credentials) {
+    console.log('Signing in (if the services were asleep, this can take up to a minute)…');
     const status = await this.setupStatus();
     if (status.needsSetup) {
       if (!credentials.email) {

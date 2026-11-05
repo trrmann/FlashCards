@@ -161,6 +161,22 @@ Follow-ups:
 
 ## resolved
 
+- **Login failed with 503 after the IAM service slept; `backup.sh` looked stuck (2026-11-05).**
+  - The IAM client sent one request at a time and cut each try at 15 s. A login held while Render woke the service was
+    resent while everything else waited behind it.
+  - Now 4 workers, 30 s per try and up to 120 s of waiting (iam-service v0.1.17, request-queue v0.1.6).
+  - `backup.sh` / `restore.sh` say the services may take a minute to wake, and retry a 503 three times, 10 s apart.
+  - **Also found:** `package-lock.json` kept request-queue 0.1.4 after iam-service asked for newer versions. npm doesn't
+    move a nested git dependency, and Render installs from the lock, so production never had last release's
+    per-request timeout. The lock is corrected, and `test:startup` now checks that every shared package is installed
+    at the version its dependents ask for. That check found one more drift (request-queue on platform-db 0.2.4), now
+    aligned (request-queue v0.1.7, iam-service v0.1.18).
+
+  **Resolved:**
+  - `test:startup` 17/17;
+  - request-queue `npm test` 32/32 (one worker makes a fast request wait behind a slow one; several don't);
+  - all other suites unchanged.
+
 - **Phase 3d step 5: FlashCards runs on its own database login (2026-11-04).**
   - With the IAM service (`IAM_URL` set), start-up no longer connects to or bootstraps the `iam` schema.
   - FlashCards' own bootstrap needs nothing from it.
