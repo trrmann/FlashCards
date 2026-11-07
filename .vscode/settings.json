@@ -5,5 +5,14 @@
     },
     "terminal.integrated.env.osx": {
         "PATH": "${workspaceFolder}/src/scripts/sh:${env:PATH}"
-    }
+    },
+    // Project-local terminal: loads ~/.bashrc, then FlashCards' scripts and the deploy alias.
+    // See .vscode/terminal-rc.sh (these used to be global in ~/.bashrc).
+    "terminal.integrated.profiles.linux": {
+        "FlashCards bash": {
+            "path": "bash",
+            "args": ["--rcfile", "${workspaceFolder}/.vscode/terminal-rc.sh"]
+        }
+    },
+    "terminal.integrated.defaultProfile.linux": "FlashCards bash"
 }

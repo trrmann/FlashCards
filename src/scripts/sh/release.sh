@@ -103,7 +103,7 @@ wait_until_live() {
 
 backup_production() {
     step "Production backup"
-    backup.sh "$(prod_url)" 2>&1 | tee -a "${LOG_FILE}"
+    "${SCRIPT_DIR}/backup.sh" "$(prod_url)" 2>&1 | tee -a "${LOG_FILE}"
     [ "${PIPESTATUS[0]}" -eq 0 ] || fail "backup failed"
 }
 
