@@ -535,6 +535,10 @@ Resolved on 2026-11-03 (round 4):
   `*-queries.sql` files become per-table folders and models, start-up uses the registry, `BackupService` takes its
   tables from it. Order across services: iam-service, heros-companion, then FlashCards. Record the old files and
   their removal in a new `documents/MIGRATION.md`.
+- **Adopt the IAM's MFA when updating iam-service (2026-11-11).** The sign-in answer can now be `mfa_required` /
+  `mfa_enrollment_required`: send the user to `<iam-mfa-sign-in>`, mount `webIdentity.mfaSignInRouter`, and add
+  `<iam-mfa>` to the profile (iam-service `documents/SHARED_UI_DESIGN.md` "MFA screens"). Domain and organization
+  admins must use MFA from the IAM release on.
 - **When updating the iam-service dependency** (its next release): `identityManagementDb.initializeSchema()` and
   `IamBackupService.TABLES` are gone; use `IamTables.for(db).provision()` and `IamTables.backupTables()` from
   `iam-service/db` (iam-service `documents/MIGRATION.md` L11).
