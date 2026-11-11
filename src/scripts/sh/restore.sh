@@ -11,14 +11,12 @@
 # users, then FlashCards' data. If the second fails, the users stay restored; run
 # this again to complete it (a rerun changes nothing that is right).
 #
-# The token: FLASHCARDS_BACKUP_TOKEN, else asked for (a restore changes the target,
-# so the token stored for backup.sh is not used without asking).
-#
-# A new, empty database (for example after the monthly Render reset) has no service
-# account yet: this script first creates the first admin through initial setup (use
-# the backup's admin username so the accounts merge), then shows the command that
-# issues a token on the new database, and asks for it. After the restore the old
-# stored token works again (tokens are part of the backup).
+# The token: as backup.sh (backup-token-lib.sh). For production the script provides its
+# own, also for a new, empty database (for example after the monthly Render reset): it
+# first creates the first admin through initial setup (use the backup's admin username so
+# the accounts merge), then issues a token on that database with the database admin login
+# in .env (point .env at the new database first). Elsewhere: the stored token, or asked.
+# After the restore the backup's own tokens are back as well.
 # Set FLASHCARDS_ASSUME_YES=1 to skip the confirmation.
 ################################################################################
 
@@ -31,7 +29,7 @@ base_url="${1:-}"
 json_file="${2:-}"
 zip_file="${3:-}"
 if [ -z "${base_url}" ] || [ -z "${json_file}" ]; then
-    sed -n '3,22p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '3,21p' "$0" | sed 's/^# \{0,1\}//'
     exit 1
 fi
 json_file="$(readlink -f "${json_file}")"
@@ -60,18 +58,11 @@ if [[ "${status}" == *'"needsSetup":true'* ]]; then
     export FLASHCARDS_ADMIN_USER FLASHCARDS_ADMIN_PASSWORD FLASHCARDS_ADMIN_EMAIL FLASHCARDS_ADMIN_NAME
     node src/scripts/js/modules/tools/backup-cli.mjs setup "${base_url}"
     unset FLASHCARDS_ADMIN_PASSWORD
-    cat << EOT
-
-Now issue a backup token on the new database (database admin login; prints the token once):
-    npx iam-service-account --env-file <that database's .env> setup-backup flashcards --as ${FLASHCARDS_ADMIN_USER}
-
-EOT
+    # The stored token belongs to the old database: get one for this one.
     unset FLASHCARDS_BACKUP_TOKEN
 fi
 
-if [ -z "${FLASHCARDS_BACKUP_TOKEN:-}" ]; then
-    read -r -s -p "Backup app token for ${base_url} (iamsa_…): " FLASHCARDS_BACKUP_TOKEN
-    echo
-fi
-export FLASHCARDS_BACKUP_TOKEN
+# shellcheck source=backup-token-lib.sh
+source "${SCRIPT_DIR}/backup-token-lib.sh"
+ensure_backup_token "${base_url}" || exit 1
 exec node src/scripts/js/modules/tools/backup-cli.mjs restore "${base_url}" "${json_file}" ${zip_file:+"${zip_file}"}

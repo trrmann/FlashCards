@@ -16,7 +16,7 @@ import { userAuthService, ServiceAccountService } from 'iam-service/services';
 import { Server } from '../server.mjs';
 import { LocalTestCase } from './localTestCase.mjs';
 import { LocalIdentityGateway, RemoteIdentityGateway } from '../identity/index.mjs';
-import { BackupClient } from '../tools/backupClient.mjs';
+import { BackupClient, BackupCli } from '../tools/backupClient.mjs';
 import { UserDataService } from '../auth/userDataService.mjs';
 
 export class BackupTokenTest extends LocalTestCase {
@@ -72,6 +72,13 @@ export class BackupTokenTest extends LocalTestCase {
     await services.grant(rootId, exportOnly.service_id, 'backup.export');
     this.exportOnlyToken = (await services.issueToken(rootId, exportOnly.service_id)).token;
     this.herosToken = (await services.setUpBackup(rootId, 'heros-companion')).token.token;
+    this.shortToken = (
+      await services.issueToken(rootId, exportOnly.service_id, { days: 10 })
+    ).token;
+    const nearExpiry = await services.accounts.findByName('flashcards', 'backup');
+    this.renewToken = (
+      await services.issueToken(rootId, nearExpiry.service_id, { days: 20 })
+    ).token;
   }
 
   async status(apiPath, token) {
@@ -129,7 +136,7 @@ export class BackupTokenTest extends LocalTestCase {
       this.check(
         'the identity part carries the service accounts (the token survives a rebuild)',
         backup.identity.data.service_accounts?.length === 3 &&
-          backup.identity.data.service_tokens?.length === 3
+          backup.identity.data.service_tokens?.length === 5
       );
       const results = await client.restore(result.json, result.zip);
       this.check(
@@ -167,6 +174,28 @@ export class BackupTokenTest extends LocalTestCase {
     );
   }
 
+  /** backup.sh asks `token-state`: ok, renew (within 30 days) or invalid; an outage is an error, not "invalid". */
+  async checkTokenState() {
+    console.log('\nToken state (backup.sh decides whether to get its own token)');
+    const state = (token) =>
+      new BackupCli({ FLASHCARDS_BACKUP_TOKEN: token ?? '' }).tokenState(this.baseUrl);
+    this.check('the backup token: ok', (await state(this.backupToken)) === 'ok');
+    this.check('expiring within 30 days: renew', (await state(this.renewToken)) === 'renew');
+    this.check('no token: invalid', (await state(null)) === 'invalid');
+    this.check(
+      'unknown, or without identity.backup.export: invalid',
+      (await state(`iamsa_00000000_${'x'.repeat(43)}`)) === 'invalid' &&
+        (await state(this.shortToken)) === 'invalid'
+    );
+    const down = await BackupTokenTest.errorOf(() =>
+      new BackupCli({ FLASHCARDS_BACKUP_TOKEN: this.backupToken }).tokenState('http://127.0.0.1:9')
+    );
+    this.check(
+      'the server not answering is an error (never a reason to replace the token)',
+      Boolean(down)
+    );
+  }
+
   async run() {
     this.assertLocalTarget();
     console.log(
@@ -190,6 +219,7 @@ export class BackupTokenTest extends LocalTestCase {
     try {
       await this.checkRefusals();
       await this.checkBackupAndRestore();
+      await this.checkTokenState();
     } finally {
       await new Promise((resolve) => server.httpServer.close(resolve));
       await this.identity.stop();

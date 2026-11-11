@@ -153,7 +153,9 @@ export class BackupClient {
  */
 export class BackupCli {
   static USAGE =
-    'usage: backup-cli.mjs download <url> [dir] | restore <url> <json> [zip] | check <url> | setup <url>';
+    'usage: backup-cli.mjs download <url> [dir] | restore <url> <json> [zip] | check <url> | setup <url> | token-state <url>';
+  /** A token this close to expiry is renewed by backup.sh (iam-service: renewal due 30 days ahead). */
+  static RENEWAL_DAYS = 30;
 
   constructor(env = process.env) {
     this.token = env.FLASHCARDS_BACKUP_TOKEN || null;
@@ -199,6 +201,26 @@ export class BackupCli {
     }
   }
 
+  /**
+   * For backup.sh: one word on stdout. `ok`; `renew` (expires within 30 days); `invalid` (none, unknown, expired,
+   * revoked, or without the backup rights). Anything else (the services not answering) is an error, so a token is
+   * never replaced because of an outage.
+   */
+  async tokenState(baseUrl) {
+    if (!this.token) return 'invalid';
+    let access;
+    try {
+      access = await new BackupClient(baseUrl, this.token).access();
+    } catch (error) {
+      if (/ failed \((401|403)\)/.test(error.message)) return 'invalid';
+      throw error;
+    }
+    const allowed = access.allowed || {};
+    if (!allowed['backup.export'] || !allowed['identity.backup.export']) return 'invalid';
+    const expiresAt = new Date(access.principal?.expires_at ?? 0).getTime();
+    return expiresAt - Date.now() <= BackupCli.RENEWAL_DAYS * 86400000 ? 'renew' : 'ok';
+  }
+
   async restore(baseUrl, jsonFile, zipFile) {
     if (!jsonFile) throw new Error('usage: restore <url> <backup.json> [media.zip]');
     const client = this.client(baseUrl);
@@ -239,6 +261,7 @@ export class BackupCli {
       else if (command === 'restore') await this.restore(args[0], args[1], args[2]);
       else if (command === 'check') await this.check(args[0]);
       else if (command === 'setup') await this.setup(args[0]);
+      else if (command === 'token-state') console.log(await this.tokenState(args[0]));
       else throw new Error(BackupCli.USAGE);
       return 0;
     } catch (error) {

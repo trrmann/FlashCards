@@ -7,7 +7,7 @@
 # Usage:
 #   release.sh flashcards <branch> ["merge message"]
 #       1. clean working tree; <branch> exists
-#       2. production backup (backup.sh, the stored backup app token: a service account, no person or MFA)
+#       2. production backup (backup.sh as the backup service account; it gets and renews its own app token)
 #       3. merge <branch> into main locally (--no-ff), then on that exact result:
 #          npm run verify (must change nothing) and every test suite, in-process
 #          and over HTTP. On any failure the local merge is undone; nothing is pushed

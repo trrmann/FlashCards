@@ -322,25 +322,20 @@ Render free-tier databases are reset monthly (see `DB_PG_EXPIRE`). The procedure
 
    `deploy.sh -prod` also does this before every release. The Profile page's Backup & Restore downloads the same two files.
 
-   **No person, no prompt:** backups run as the **backup service account** with an **app token** (no password, no
-   MFA; iam-service `documents/MIGRATION.md` L12). Once, as a domain admin, issue the token from iam-service:
-
-   ```bash
-   npm run service-account -- --env-file ../FlashCards/.env setup-backup flashcards --as <your username>
-   ```
-
-   then run `backup-token.sh` and paste it. It checks the token, stores it in the GNOME keyring (encrypted with your
-   desktop login, never in a file or on screen) and removes the admin password the old `backup-login.sh` kept. From
-   then on `backup.sh` uses it, so an assistant or `release.sh` can take the backup. `backup-token.sh --forget` removes
-   it. The token lasts 1 year: renew it in its last 30 days (`iam-service-account renewals` lists them; `token`, then
-   `revoke-token` the old one) and store the new one. `restore.sh` always asks for the token, because a restore
-   changes production.
+   **No person, no prompt, no token to copy:** backups run as the **backup service account** with an **app token**
+   (no password, no MFA; iam-service `documents/MIGRATION.md` L12), and for production `backup.sh` provides its own
+   token (`backup-token-lib.sh`). It checks the token stored in the GNOME keyring with production; when there is none,
+   it is not valid, or it expires within 30 days, it issues a new one with iam-service's `iam-service-account
+setup-backup flashcards --replace` and the database admin login in `.env`, checks it, stores it (encrypted with your
+   desktop login, never in a file or on screen) and revokes the account's older tokens. So an assistant or
+   `release.sh` can take the backup, and the yearly renewal happens by itself. For any other server, store a token with
+   `backup-token.sh` (or it is asked for); `backup-token.sh --forget` removes a stored one.
 
 2. Point the Render web service at the new database (`DB_PG_*`, `DB_PG_EXPIRE`) and let it start. The schemas
    bootstrap automatically.
 3. **Restore.** On an empty database it first creates the admin through initial setup (use the backup's admin
-   username), shows the `iam-service-account setup-backup` command that issues a token on the new database, and asks for
-   that token; then it imports:
+   username), then gets a token for the new database the same way `backup.sh` does (point `.env`'s `DB_PG_*` at the new
+   database first); then it imports:
 
    ```bash
    restore.sh https://<app>.onrender.com ~/FlashCardsBackups/<folder>/flashcards-backup.json \
