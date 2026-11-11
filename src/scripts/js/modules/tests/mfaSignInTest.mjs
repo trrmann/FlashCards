@@ -101,10 +101,37 @@ export class MfaSignInTest extends LocalTestCase {
       'the right code signs in to FlashCards',
       right.status === 200 && (await session.get('/api/auth/current')).status === 200
     );
+    this.rootSession = session;
     const stale = await new ApiSession(this.baseUrl).post('/api/auth/mfa/verify', {
       code: '123456',
     });
     this.check('without a pending sign-in, /api/auth/mfa answers 401', stale.status === 401);
+  }
+
+  async checkDomainSwitch() {
+    console.log('\nThe domain MFA switch on the admin section');
+    const session = this.rootSession;
+    const html = await this.page(session, '/profile');
+    this.check('the domain admin sees <iam-mfa-settings>', html.includes('<iam-mfa-settings'));
+    const off = await session.put('/api/iam/mfa-settings', {
+      active: false,
+      password: MfaSignInTest.PASSWORD,
+    });
+    this.check(
+      'switches MFA off through /api/iam (with the password)',
+      off.status === 200 && off.body.mfa?.active === false
+    );
+    const next = new ApiSession(this.baseUrl);
+    const login = await next.post('/api/auth/login', {
+      username: 'mfa_fc_root',
+      password: MfaSignInTest.PASSWORD,
+    });
+    this.check(
+      'while off, the admin signs in without a code',
+      login.status === 200 && !String(login.body.redirectTo || '').startsWith('/mfa')
+    );
+    const on = await session.put('/api/iam/mfa-settings', { active: true });
+    this.check('and switches it back on', on.status === 200 && on.body.mfa?.active === true);
   }
 
   async checkPlainUser() {
@@ -129,6 +156,7 @@ export class MfaSignInTest extends LocalTestCase {
     );
     const html = await this.page(session, '/profile');
     this.check('the profile page shows the IAM MFA screen', html.includes('<iam-mfa'));
+    this.check('but not the domain switch', !html.includes('<iam-mfa-settings'));
   }
 
   async run() {
@@ -163,6 +191,7 @@ export class MfaSignInTest extends LocalTestCase {
     try {
       await this.checkAdminEnrols();
       await this.checkAdminVerifies();
+      await this.checkDomainSwitch();
       await this.checkPlainUser();
     } finally {
       await new Promise((resolve) => server.httpServer.close(resolve));

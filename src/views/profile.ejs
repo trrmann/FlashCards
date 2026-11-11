@@ -131,6 +131,16 @@
             data-iam-classes='{"section":"form-section","section-title":"form-section-title","field":"form-group","table":"admin-users-table","button-danger":"btn-danger","status-active":"status-badge active","status-disabled":"status-badge disabled","muted":"text-muted","message-success":"success","message-error":"error"}'
           ></iam-user-admin>
 
+          <% if (typeof mfaSwitch !== 'undefined' && mfaSwitch) { %>
+            <%# Domain admins: MFA on or off for the whole domain (the IAM's shared screen). %>
+            <div class="form-section">
+              <iam-mfa-settings
+                api-base="/api/iam"
+                data-iam-classes='{"section-title":"form-section-title","field":"form-group","button-primary":"btn-primary","button-danger":"btn-danger","muted":"text-muted","message-success":"success","message-error":"error"}'
+              ></iam-mfa-settings>
+            </div>
+          <% } %>
+
           <!-- Backup / Restore -->
           <div class="form-section">
             <h4 class="form-section-title">Backup &amp; Restore</h4>

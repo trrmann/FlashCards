@@ -57,8 +57,8 @@ export class RemoteIdentityGateway extends IdentityGateway {
    * credentials to every call, so forwarding anything else would let any signed-in user use
    * app-only endpoints (for example acknowledging deletion notices, /events/ack).
    */
-  static BROWSER_PATHS =
-    /^\/(organizations|groups|applications|platform-admins|admin\/users|me\/mfa|mfa-policies)(\/|\?|$)/;
+  /** The /api/iam paths a browser may reach: the IAM's own list (WebIdentity), so new screens work without a copy. */
+  static BROWSER_PATHS = WebIdentity.BROWSER_PATHS;
   static SUMMARY_BATCH = 1000;
 
   /**

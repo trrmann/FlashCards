@@ -61,6 +61,7 @@ export class BackupRoundTripTest extends LocalTestCase {
     'service_accounts',
     'service_account_rights',
     'service_tokens',
+    'domain_settings',
   ];
   /** Not backed up: FlashCards' sessions, and the IAM's transient tables (its own list, so new ones follow). */
   static TRANSIENT_TABLES = ['session', ...IamTables.TRANSIENT];
@@ -217,6 +218,8 @@ export class BackupRoundTripTest extends LocalTestCase {
     });
     const enrollment = await mfa.startEnrollment(alice.user_id, 'flashcards');
     await mfa.confirmEnrollment(alice.user_id, Totp.code(enrollment.secret, Totp.stepAt()));
+    // The domain switch (iam-service v0.3): recorded, then back on (the default), so the row is in the backup.
+    await mfa.setActive(admin.user_id, { active: true });
     await mfa.setPolicy(admin.user_id, {
       scopeType: 'application',
       appKey: 'flashcards',

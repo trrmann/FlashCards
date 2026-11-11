@@ -555,7 +555,12 @@ Resolved on 2026-11-03 (round 4):
   database; the export log records `service_account` (user_id null; never an orphan). Tests: `test:backup-token` and
   `:remote` 13/13 each, round trips 202/202. **Release order:** iam-service v0.3.0 first, then this branch (its
   release backup still runs main's password `backup.sh`, which works while IAM_MFA_KEY is renamed), then
-  `setup-backup` on production + `backup-token.sh`, then the key goes back.
+  `setup-backup` on production + `backup-token.sh`.
+- **The domain MFA switch on the admin section (2026-11-11, same branch).** Domain admins see `<iam-mfa-settings>`
+  (IAM service only) and switch MFA on or off for the whole domain, instead of renaming IAM_MFA_KEY on Render. The
+  /api/iam pass-through now uses the IAM's own browser-path list (`WebIdentity.BROWSER_PATHS`) instead of a copy.
+  `test:mfa` 18/18, round trips 207/207. Owner: switched off in production once iam-service v0.3.0 is live, until
+  this branch is released and backups run on app tokens.
 - **Old backup formats (owner, 2026-11-11).** § 0.7.5 now says restore accepts earlier formats only until the
   kept backups are converted. Convert any kept pre-4.0 backups (import locally, export again), then remove the
   old-format code, including the `legacyAppKey` passed to the IAM import; record it in `MIGRATION.md`.
