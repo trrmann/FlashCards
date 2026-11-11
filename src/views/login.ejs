@@ -80,9 +80,10 @@
           const data = await response.json();
 
           if (response.ok) {
-            statusDiv.innerHTML = '<p class="success">Account created! Redirecting to your profile...</p>';
+            statusDiv.innerHTML = '<p class="success">Account created! Redirecting...</p>';
             setTimeout(() => {
-              window.location.href = '/profile';
+              // The first account is a domain admin: with MFA on, the server sends it to set MFA up.
+              window.location.href = data.redirectTo || '/profile';
             }, 2000);
           } else {
             // The message, then each failed rule (e.g. password requirements), as text.

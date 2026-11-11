@@ -12,6 +12,7 @@
  * send as is (IdentityGateway.respond). Methods that act as the signed-in user take `req`.
  */
 
+import express from 'express';
 import { IamError } from 'iam-service/services';
 import { IamClientError, QueueTimeoutError } from 'iam-service/client';
 
@@ -90,6 +91,19 @@ export class IdentityGateway {
   /** Express middleware run on every request after the session (default: nothing). */
   sessionMiddleware() {
     return (req, res, next) => next();
+  }
+
+  /**
+   * The second step of a sign-in when the IAM asks for MFA (mounted at /api/auth/mfa). Only the IAM service
+   * has MFA (the remote gateway); in-process mode never asks for it, so this answers 404.
+   * @param {{ onSignedIn: (req: object, user: object) => Promise<void> }} _options
+   */
+  mfaSignInRouter(_options) {
+    const router = express.Router();
+    router.use((req, res) =>
+      res.status(404).json({ status: 'error', message: 'MFA needs the IAM service (IAM_URL)' })
+    );
+    return router;
   }
 }
 

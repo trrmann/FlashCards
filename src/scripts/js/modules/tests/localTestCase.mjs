@@ -6,7 +6,7 @@
  */
 
 import { LocalDatabaseTest } from 'platform-db';
-import { identityManagementDb } from 'iam-service/db';
+import { identityManagementDb, IamTables } from 'iam-service/db';
 import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
 
 export class LocalTestCase extends LocalDatabaseTest {
@@ -31,7 +31,9 @@ export class LocalTestCase extends LocalDatabaseTest {
     await this.database.query(queries.drop_public_schema);
     await this.database.query(queries.create_public_schema);
     await this.database.query(queries.grant_public_schema_usage);
-    await this.identityDatabase.initializeSchema();
+    const iamTables = IamTables.for(this.identityDatabase);
+    iamTables.reset();
+    await iamTables.provision();
     await this.database.initializeSchema();
   }
 }

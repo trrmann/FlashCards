@@ -161,6 +161,14 @@ Follow-ups:
 
 ## resolved
 
+- **MFA through the IAM, and iam-service v0.2.1 (2026-11-11).** The sign-in answers `redirectTo: /mfa?mode=verify`
+  or `enroll` when the IAM asks for MFA; `/mfa` shows `<iam-mfa-sign-in>`, `/api/auth/mfa` is the gateway's
+  `mfaSignInRouter` (it starts the FlashCards session at the end), and the profile has `<iam-mfa>`. Registration
+  follows the same redirect (the first user is a domain admin). The removed iam-service names are migrated
+  (`IamTables.for(db).provision()`, `IamTables.backupTables()`; the round-trip test reads tables through platform-db
+  v0.3.1's `listSchemaTables` and `TableBackup.selectAll`). Dependencies: iam-service v0.2.1, platform-db v0.3.1,
+  request-queue v0.1.8. New suite `npm run test:mfa` (13 checks); every other suite passes.
+
 - **Phase 3f: the IAM's shared screens in FlashCards (2026-11-05).**
   - The Organizations page and the Profile page's user administration are now iam-service's `<iam-organizations>` and
     `<iam-user-admin>`, served from the installed package at `/iam-ui`, with FlashCards' own classes mapped in
@@ -535,13 +543,15 @@ Resolved on 2026-11-03 (round 4):
   `*-queries.sql` files become per-table folders and models, start-up uses the registry, `BackupService` takes its
   tables from it. Order across services: iam-service, heros-companion, then FlashCards. Record the old files and
   their removal in a new `documents/MIGRATION.md`.
-- **Adopt the IAM's MFA when updating iam-service (2026-11-11).** The sign-in answer can now be `mfa_required` /
-  `mfa_enrollment_required`: send the user to `<iam-mfa-sign-in>`, mount `webIdentity.mfaSignInRouter`, and add
-  `<iam-mfa>` to the profile (iam-service `documents/SHARED_UI_DESIGN.md` "MFA screens"). Domain and organization
-  admins must use MFA from the IAM release on.
-- **When updating the iam-service dependency** (its next release): `identityManagementDb.initializeSchema()` and
-  `IamBackupService.TABLES` are gone; use `IamTables.for(db).provision()` and `IamTables.backupTables()` from
-  `iam-service/db` (iam-service `documents/MIGRATION.md` L11).
+- **Release blocked by MFA on production (2026-11-11).** IAM_MFA_KEY is set on Render, so the production IAM
+  now requires MFA for domain admins, but production FlashCards is still on the pre-MFA code and answers 500 to the
+  admin's sign-in. `release.sh` starts with `backup.sh`, which signs in as that admin, so every release stops at the
+  backup step, including the one that fixes it. Unblock (owner): remove IAM_MFA_KEY on Render for the release,
+  then set it back (the same value, kept in KeePassXC).
+- **The backup client cannot pass MFA.** `scripts/js/modules/tools/backupClient.mjs` signs in with the password
+  only; once the admin has MFA it gets `mfa_required`. Owner to choose: ask for the code when run interactively
+  (recommended now), or a service principal with a backup right (with the IAM's application rights). Keeping the
+  TOTP secret in the keyring is not recommended: it turns the second factor into a second password.
 - **Old backup formats (owner, 2026-11-11).** § 0.7.5 now says restore accepts earlier formats only until the
   kept backups are converted. Convert any kept pre-4.0 backups (import locally, export again), then remove the
   old-format code, including the `legacyAppKey` passed to the IAM import; record it in `MIGRATION.md`.

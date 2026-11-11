@@ -35,7 +35,8 @@
     "test:deletion:remote": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/user-deletion-remote-test.mjs",
     "test:own-login": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/own-login-test.mjs",
     "test:admin-page": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/admin-page-test.mjs",
-    "test:admin-page:remote": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/admin-page-remote-test.mjs"
+    "test:admin-page:remote": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/admin-page-remote-test.mjs",
+    "test:mfa": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/mfa-sign-in-test.mjs"
   },
   "dependencies": {
     "adm-zip": "^0.6.1",
@@ -45,10 +46,10 @@
     "ejs": "^7.0.2",
     "express": "^5.3.0",
     "express-session": "^1.19.0",
-    "iam-service": "git+https://github.com/trrmann/iam-service.git#v0.1.23",
+    "iam-service": "git+https://github.com/trrmann/iam-service.git#v0.2.1",
     "node-fetch": "^3.3.2",
     "pg": "^8.23.1",
-    "platform-db": "git+https://github.com/trrmann/platform-db.git#v0.2.5"
+    "platform-db": "git+https://github.com/trrmann/platform-db.git#v0.3.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

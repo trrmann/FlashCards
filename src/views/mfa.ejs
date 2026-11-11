@@ -1,0 +1,15 @@
+<%- include('partials/header', { activePage: 'login', iamUi: true }) %>
+<main class="login-page">
+  <h1>Two-factor authentication</h1>
+  <%# The IAM's shared MFA screen: a code (verify), or setting MFA up when it is required (enroll).
+      It calls /api/auth/mfa (the identity gateway's mfaSignInRouter) and then goes to /home. %>
+  <iam-mfa-sign-in
+    api-base="/api/auth/mfa"
+    mode="<%= mode %>"
+    next="/home"
+    data-iam-classes='{"section":"form-section","section-title":"form-section-title","field":"form-group","button-primary":"btn-primary","button":"btn-secondary","muted":"text-muted","message-success":"success","message-error":"error"}'
+  ></iam-mfa-sign-in>
+  <p><a href="/login">Back to sign in</a></p>
+</main>
+<script type="module" src="/iam-ui/iam-ui.js"></script>
+<%- include('partials/footer') %>

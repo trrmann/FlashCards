@@ -19,7 +19,7 @@
  */
 
 import { TableBackup } from 'platform-db';
-import { IamBackupService } from 'iam-service/services';
+import { IamTables } from 'iam-service/db';
 import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
 import { mediaArchiveService } from './mediaArchiveService.mjs';
 import { LocalIdentityGateway } from '../identity/localIdentityGateway.mjs';
@@ -57,7 +57,7 @@ class BackupService {
   ];
 
   /** The identity tables, as older single-set files hold them (owned by the IAM). */
-  static identityTables = IamBackupService.TABLES;
+  static identityTables = IamTables.backupTables();
 
   /** Columns of FlashCards' tables that hold a user id. */
   static userReferenceColumns = ['user_id', 'created_by', 'owner_id', 'recipient_id', 'updated_by'];
@@ -128,14 +128,7 @@ class BackupService {
 
   /** The media half of a backup: a ZIP of every media item (media/<media_id>.<ext>). */
   async exportMediaArchive() {
-    const { rows } = await this.database.query(
-      TableBackup.queries.select_all_rows_template.replace(
-        '{{table}}',
-        this.tables.qualified('media')
-      ),
-      [],
-      BackupService.WORK
-    );
+    const rows = await this.tables.selectAll('media', BackupService.WORK);
     return mediaArchiveService.buildArchive(rows);
   }
 
@@ -197,14 +190,7 @@ class BackupService {
       });
     }
     const available = new Set((data.media || []).map((row) => row.media_id));
-    const { rows } = await this.database.query(
-      TableBackup.queries.select_all_rows_template.replace(
-        '{{table}}',
-        this.tables.qualified('media')
-      ),
-      [],
-      BackupService.WORK
-    );
+    const rows = await this.tables.selectAll('media', BackupService.WORK);
     for (const row of rows) available.add(row.media_id);
     const scrub = (row, column) => {
       if (row[column] && !available.has(row[column])) {

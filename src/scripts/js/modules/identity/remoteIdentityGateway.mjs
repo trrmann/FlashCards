@@ -14,7 +14,7 @@
  */
 
 import express from 'express';
-import { IamClient, IamClientError } from 'iam-service/client';
+import { IamClient, IamClientError, WebIdentity } from 'iam-service/client';
 import { IdentityGateway, IdentityError } from './identityGateway.mjs';
 
 /** A small time-limited cache. */
@@ -58,7 +58,7 @@ export class RemoteIdentityGateway extends IdentityGateway {
    * app-only endpoints (for example acknowledging deletion notices, /events/ack).
    */
   static BROWSER_PATHS =
-    /^\/(organizations|groups|applications|platform-admins|admin\/users)(\/|\?|$)/;
+    /^\/(organizations|groups|applications|platform-admins|admin\/users|me\/mfa|mfa-policies)(\/|\?|$)/;
   static SUMMARY_BATCH = 1000;
 
   /**
@@ -71,6 +71,9 @@ export class RemoteIdentityGateway extends IdentityGateway {
   constructor({ baseUrl, appKey = IdentityGateway.APP_KEY, clientSecret, client } = {}) {
     super();
     this.client = client || new IamClient({ baseUrl, appKey, clientSecret });
+    // iam-service's WebIdentity (extracted from this gateway) does sign-in and MFA on the same client and the
+    // same session keys (iamTokens, iamMfa), so FlashCards keeps no copy of that logic.
+    this.web = new WebIdentity({ client: this.client, appKey });
     this.baseUrl = baseUrl;
     this.me = new ExpiringCache(this.constructor.CACHE_TTL_MS);
     this.display = new ExpiringCache(this.constructor.CACHE_TTL_MS);
@@ -108,6 +111,7 @@ export class RemoteIdentityGateway extends IdentityGateway {
     delete req.session.userId;
     delete req.session.username;
     delete req.session.iamTokens;
+    delete req.session.iamMfa;
   }
 
   /**
@@ -148,11 +152,24 @@ export class RemoteIdentityGateway extends IdentityGateway {
 
   // ----- Sign-in -----
 
+  /**
+   * Password sign-in: the user, or `{ mfa_required }` / `{ mfa_enrollment_required }` when the IAM asks for MFA
+   * (the MFA token stays in the session; mfaSignInRouter finishes the sign-in).
+   */
   async login(req, username, password) {
-    const { tokens, user } = await this.client.login(username, password);
-    req.session.iamTokens = tokens;
-    this.forget(user.user_id);
-    return user;
+    const answer = await this.web.login(req, username, password);
+    if (answer.user_id) this.forget(answer.user_id);
+    return answer;
+  }
+
+  /** The second step of a sign-in (iam-service's WebIdentity.mfaSignInRouter). */
+  mfaSignInRouter({ onSignedIn }) {
+    return this.web.mfaSignInRouter({
+      onSignedIn: async (req, user) => {
+        this.forget(user.user_id);
+        await onSignedIn(req, user);
+      },
+    });
   }
 
   async logout(req) {

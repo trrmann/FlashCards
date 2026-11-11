@@ -16,6 +16,9 @@ import crypto from 'node:crypto';
 import { TableBackup } from 'platform-db';
 import { LocalTestCase } from './localTestCase.mjs';
 import { userAuthService, organizationService, IamBackupService } from 'iam-service/services';
+import { IamTables } from 'iam-service/db';
+import { MfaService } from 'iam-service/services';
+import { MfaKey, Totp } from 'iam-service/mfa';
 import { tokenPolicyService, IamServer, ApplicationCredentials } from 'iam-service/server';
 import { LocalIdentityGateway, RemoteIdentityGateway } from '../identity/index.mjs';
 import { entriesService } from '../auth/entriesService.mjs';
@@ -49,13 +52,14 @@ export class BackupRoundTripTest extends LocalTestCase {
     'group_members',
     'group_roles',
     'token_policies',
+    // MFA (iam-service v0.2): no backup from before format 3.0 can hold these.
+    'user_mfa',
+    'user_recovery_codes',
+    'mfa_key_check',
+    'mfa_admin_policies',
   ];
-  static TRANSIENT_TABLES = [
-    'session',
-    'access_tokens',
-    'user_events',
-    'application_event_cursors',
-  ];
+  /** Not backed up: FlashCards' sessions, and the IAM's transient tables (its own list, so new ones follow). */
+  static TRANSIENT_TABLES = ['session', ...IamTables.TRANSIENT];
 
   constructor({ remoteIam = false, ...options } = {}) {
     super(options);
@@ -201,6 +205,19 @@ export class BackupRoundTripTest extends LocalTestCase {
       appKey: 'flashcards',
       roleName: 'user',
     });
+
+    // MFA (iam-service v0.2): Alice turns it on (secret, recovery codes, the key's fingerprint), and the domain
+    // admin sets FlashCards' application-admin MFA setting.
+    const mfa = new MfaService(this.identityDatabase, {
+      key: new MfaKey({ key: crypto.randomBytes(MfaKey.KEY_BYTES).toString('base64') }),
+    });
+    const enrollment = await mfa.startEnrollment(alice.user_id, 'flashcards');
+    await mfa.confirmEnrollment(alice.user_id, Totp.code(enrollment.secret, Totp.stepAt()));
+    await mfa.setPolicy(admin.user_id, {
+      scopeType: 'application',
+      appKey: 'flashcards',
+      required: true,
+    });
     // Token lifetime policies: references to an application, a group, and a user.
     await tokenPolicyService.set(admin.user_id, {
       scopeType: 'application',
@@ -235,8 +252,7 @@ export class BackupRoundTripTest extends LocalTestCase {
   async databaseTables() {
     const tables = [];
     for (const db of [this.identityDatabase, this.database]) {
-      const result = await db.query(db.constructor.introspectionQueries.list_schema_tables);
-      tables.push(...result.rows.map((row) => row.table_name));
+      tables.push(...(await db.listSchemaTables()));
     }
     return tables.filter((table) => !this.constructor.TRANSIENT_TABLES.includes(table));
   }
@@ -247,11 +263,13 @@ export class BackupRoundTripTest extends LocalTestCase {
   async snapshot() {
     const data = {};
     for (const table of await this.databaseTables()) {
-      const db = IamBackupService.TABLES.includes(table) ? this.identityDatabase : this.database;
-      const result = await db.query(
-        TableBackup.queries.select_all_rows_template.replace('{{table}}', table)
-      );
-      data[table] = result.rows;
+      const db = IamTables.backupTables().includes(table) ? this.identityDatabase : this.database;
+      const reader = new TableBackup({
+        database: db,
+        schema: db.constructor.SCHEMA,
+        tables: [table],
+      });
+      data[table] = await reader.selectAll(table);
     }
     return { data };
   }
@@ -368,7 +386,7 @@ export class BackupRoundTripTest extends LocalTestCase {
     console.log('1. Fresh database + synthetic data');
     await this.resetDatabase();
     const { admin } = await this.seed();
-    const backedUp = [...IamBackupService.TABLES, ...BackupService.appTables];
+    const backedUp = [...IamTables.backupTables(), ...BackupService.appTables];
     for (const table of await this.databaseTables()) {
       this.check(
         `backup covers table ${table}`,

@@ -1,4 +1,4 @@
-<%- include('partials/header', { activePage: 'profile', iamUi: typeof isAdmin !== 'undefined' && isAdmin }) %>
+<%- include('partials/header', { activePage: 'profile', iamUi: typeof currentUserId !== 'undefined' && !!currentUserId }) %>
 <main>
   <div class="content-split">
     <div class="intro-block">
@@ -106,6 +106,16 @@
         </div>
         <div id="pendingSharesStatus"></div>
       </section>
+
+      <% if (typeof currentUserId !== 'undefined' && currentUserId) { %>
+        <!-- Two-factor authentication: the IAM's shared screen (through /api/iam) -->
+        <section class="profile-section">
+          <iam-mfa
+            api-base="/api/iam"
+            data-iam-classes='{"section-title":"form-section-title","field":"form-group","button-primary":"btn-primary","button":"btn-secondary","button-danger":"btn-danger","muted":"text-muted","message-success":"success","message-error":"error"}'
+          ></iam-mfa>
+        </section>
+      <% } %>
 
       <!-- Admin Section (only visible to admins) -->
       <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
@@ -537,8 +547,10 @@
       }
     });
   </script>
-  <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+  <% if (typeof currentUserId !== 'undefined' && currentUserId) { %>
     <script type="module" src="/iam-ui/iam-ui.js"></script>
+  <% } %>
+  <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
     <script src="/js/pages/profile-admin.js"></script>
   <% } %>
 </main>

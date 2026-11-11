@@ -18,13 +18,31 @@ class AuthRouter extends BaseRouter {
     });
   }
 
-  /** Sign in through the gateway (it may keep tokens in the session) and start the session. */
+  /**
+   * Sign in through the gateway (it may keep tokens in the session) and start the session. When the IAM asks
+   * for MFA the session is not started yet: the answer is `{ mfa: 'verify' | 'enroll' }` and the browser goes on
+   * to /mfa, where the second step (the gateway's mfaSignInRouter → startSession) finishes it.
+   */
   static async signIn(req, username, password) {
-    const user = await BaseRouter.identity(req).login(req, username, password);
+    const answer = await BaseRouter.identity(req).login(req, username, password);
+    if (answer.mfa_required || answer.mfa_enrollment_required) {
+      await AuthRouter.saveSession(req);
+      return { mfa: answer.mfa_required ? 'verify' : 'enroll' };
+    }
+    await AuthRouter.startSession(req, answer);
+    return answer;
+  }
+
+  /** Start FlashCards' session for a signed-in user (password sign-in, or the end of MFA). */
+  static async startSession(req, user) {
     req.session.userId = user.user_id;
     req.session.username = user.username;
     await AuthRouter.saveSession(req);
-    return user;
+  }
+
+  /** Where the browser goes for the MFA step. */
+  static mfaPage(step) {
+    return `/mfa?mode=${step === 'enroll' ? 'enroll' : 'verify'}`;
   }
 
   registerRoutes() {
@@ -54,11 +72,13 @@ class AuthRouter extends BaseRouter {
           password,
           full_name: fullName || null,
         });
-        await AuthRouter.signIn(req, username, password);
+        const signedIn = await AuthRouter.signIn(req, username, password);
 
         return res.status(201).json({
           status: 'success',
           message: 'User registered successfully' + (isFirstUser ? ' as system admin' : ''),
+          // The install's first user is a domain admin: with MFA on, they set it up next.
+          ...(signedIn.mfa ? { redirectTo: AuthRouter.mfaPage(signedIn.mfa) } : {}),
           user: {
             user_id: user.user_id,
             username: user.username,
@@ -88,6 +108,13 @@ class AuthRouter extends BaseRouter {
         }
 
         const user = await AuthRouter.signIn(req, username, password);
+        if (user.mfa) {
+          return res.status(200).json({
+            status: 'success',
+            message: 'Enter your two-factor code',
+            redirectTo: AuthRouter.mfaPage(user.mfa),
+          });
+        }
         const lastPage = await userSettingsService.getLastPageVisited(user.user_id);
 
         return res.status(200).json({

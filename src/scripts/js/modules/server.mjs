@@ -30,13 +30,13 @@ import pgSession from 'connect-pg-simple';
 
 import { appSiteData } from './appSiteData.mjs';
 import { flashCardsDb } from './db/flashCardsDatabase.mjs';
-import { identityManagementDb } from 'iam-service/db';
+import { identityManagementDb, IamTables } from 'iam-service/db';
 import { PostgresDatabase, DatabaseTargetGuard } from 'platform-db';
 import { createIdentityGateway } from './identity/index.mjs';
 import { entriesService } from './auth/entriesService.mjs';
 import { backupService } from './auth/backupService.mjs';
 import { UserEventConsumer } from './auth/userEventConsumer.mjs';
-import authRouter from './routes/authRouter.mjs';
+import authRouter, { AuthRouter } from './routes/authRouter.mjs';
 import usersRouter from './routes/usersRouter.mjs';
 import adminRouter from './routes/adminRouter.mjs';
 import systemRouter from './routes/systemRouter.mjs';
@@ -305,6 +305,12 @@ export class Server {
       });
     });
 
+    // MFA at sign-in: a code (mode=verify), or setting it up when it is required (mode=enroll).
+    app.get('/mfa', async (req, res) => {
+      siteData.setTitle('Two-factor authentication');
+      res.render('mfa', { siteData, mode: req.query.mode === 'enroll' ? 'enroll' : 'verify' });
+    });
+
     app.get('/organizations', async (req, res) => {
       siteData.setTitle('Organizations');
       res.render('organizations', { siteData });
@@ -323,6 +329,13 @@ export class Server {
     app.use('/api/system', systemRouter);
 
     // Authentication routes
+    // The second step of a sign-in when the IAM asks for MFA (<iam-mfa-sign-in> on /mfa).
+    app.use(
+      '/api/auth/mfa',
+      this.identity.mfaSignInRouter({
+        onSignedIn: (req, user) => AuthRouter.startSession(req, user),
+      })
+    );
     app.use('/api/auth', authRouter);
 
     // User routes
@@ -384,7 +397,7 @@ export class Server {
       await this.verifySchemaPresent(inProcessIam);
       return;
     }
-    if (inProcessIam) await this.identityDatabase.initializeSchema();
+    if (inProcessIam) await IamTables.for(this.identityDatabase).provision();
     await this.database.initializeSchema();
   }
 
