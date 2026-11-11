@@ -556,6 +556,13 @@ Resolved on 2026-11-03 (round 4):
   `:remote` 13/13 each, round trips 202/202. **Release order:** iam-service v0.3.0 first, then this branch (its
   release backup still runs main's password `backup.sh`, which works while IAM_MFA_KEY is renamed), then
   `setup-backup` on production + `backup-token.sh`.
+- **`backup.sh` provides its own token (owner, 2026-11-11; branch `backup-own-token`, iam-service v0.3.1).** For
+  production it checks the stored token (`backup-cli.mjs token-state`: ok / renew / invalid; an outage is an error,
+  never a reason to replace it) and, unless ok, issues one with `iam-service-account setup-backup flashcards --replace
+--print-token` (owner, database admin login in `.env`), checks it, stores it in the keyring and revokes the older
+  ones; `restore.sh` does the same for a new, empty database. Shared in `backup-token-lib.sh`. Tested: `test:backup-token`
+  and `:remote` 18/18 each, and both scripts end to end against the scratch database (first run gets a token, second
+  reuses it, the token never shown).
 - **The domain MFA switch on the admin section (2026-11-11, same branch).** Domain admins see `<iam-mfa-settings>`
   (IAM service only) and switch MFA on or off for the whole domain, instead of renaming IAM_MFA_KEY on Render. The
   /api/iam pass-through now uses the IAM's own browser-path list (`WebIdentity.BROWSER_PATHS`) instead of a copy.
