@@ -13,8 +13,17 @@ owner-mandated rules to section 0.
 
 ### 0.1 No inline SQL: all SQL comes from SQL scripts in `src/scripts/sql/`
 
-- Every SQL statement **must** live in a `.sql` file under `src/scripts/sql/pg/` and be loaded by
-  name (`-- Query: name` sections via `loadNamedSqlStatements`, or whole files via `loadSqlStatements`).
+- Every SQL statement **must** live in its **own** `.sql` file, in the folder of the table it belongs to:
+  `src/scripts/sql/pg/<table>/<verb><Table>.sql` (`users/createUsers.sql`, `users/findUsersById.sql`). The table's
+  model class loads it through platform-db's `TableModel` (owner decision, 2026-11-11: the CSE340 data-model method;
+  design and adoption guide in platform-db `documents/TABLE_MODELS.md`). SQL that belongs to no table (transactions,
+  locks, introspection) lives the same way in `src/scripts/sql/pg/<area>/`. The exception is a table's three
+  lifecycle scripts, `create<Table>.sql`, `upgrade<Table>.sql` and `defaultLoad<Table>.sql`, which may hold several
+  statements (a table and its indexes), run in order. Statements that are the same for every table (count, has
+  data, truncate, drop) are written once in `TableModel` and not repeated per table.
+- **Migrating:** `-- Query: name` sections in `*-queries.sql` files (`loadNamedSqlStatements`) and single schema
+  files (`initializeSchemaFromFile`) are the old layout. Existing ones move table by table (each repository's
+  `MIGRATION.md`); new SQL never goes into them.
 - JavaScript **must not** contain SQL text: no keywords, clauses, operators, conditions, column
   assignments, or transaction commands (`'BEGIN'`, `` `AND class = $2` ``, `` `${col} = EXCLUDED.${col}` ``
   are all violations). JS refers to queries by name and passes **values** as bound parameters.
@@ -153,7 +162,10 @@ database must never mean losing data. Every change must keep these guarantees:
 4. **Backups happen before the reset.** The app warns ahead of the expiry date (`DB_PG_EXPIRE`), and
    taking a fresh full backup is part of every production release and of the monthly routine.
    Backups are stored outside the repository, since they contain user data and password hashes.
-5. **Backup format is versioned.** Restore keeps accepting backups from earlier format versions.
+5. **Backup format is versioned.** Restore accepts earlier format versions **only until the backups kept in those
+   formats are converted** (imported into a local database and exported again); then the old-format code is
+   removed (owner decision, 2026-11-11). Each repository's `MIGRATION.md` lists the old formats still accepted and
+   the plan to drop them.
 
 ### 0.8 IAM is separate from every app and serves many apps
 
@@ -239,13 +251,14 @@ database must never mean losing data. Every change must keep these guarantees:
 
 ## 5. SQL and the database
 
-- See **0.1**: all SQL lives in `src/scripts/sql/pg/`. Named queries go in `*-queries.sql`
-  (`-- Query: name`, exactly one statement each) and are loaded into a `static queries` map.
+- See **0.1**: all SQL lives in per-table folders under `src/scripts/sql/pg/`, one statement per file, loaded by
+  the table's model (a `TableModel` subclass that declares `static tableName` and `static requires`).
 - **Always bind values as parameters** (`$1`, `$2`). User input never reaches a `{{slot}}`.
-- **Schema changes** are appended to the owning schema file (`iam-postgres-schema.sql` in iam-service for identity,
-  `flashcards-postgres-schema.sql` for app data) as idempotent statements (`IF NOT EXISTS`,
-  guarded `DO $name$ … $name$` blocks). A statement must come after everything it depends on,
-  because a fresh database runs the file top to bottom. There is no migration runner.
+- **Schema:** each table's `create<Table>.sql` describes the table **as it is now**. The service's
+  `TableRegistry` lists every model in foreign-key order and provisions them at start-up: it creates missing tables,
+  runs each table's `upgrade<Table>.sql`, and seeds empty tables from `defaultLoad<Table>.sql`. An upgrade
+  (idempotent: `IF NOT EXISTS`, guarded `DO $name$ … $name$` blocks) changes a live database to the new shape and is
+  **temporary**: it is listed in `MIGRATION.md` and deleted once every database it must reach has run it.
 - Identity tables belong to `IdentityManagementDatabase`, and app tables to `FlashCardsDatabase`.
   New tables that reference users must be considered for backup/import (`BackupService` table lists,
   user-id remapping columns).

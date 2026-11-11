@@ -529,6 +529,21 @@ Resolved on 2026-11-03 (round 4):
 
 ## open
 
+- **Move the data layer to platform-db table models (owner, 2026-11-11).** CODING_STANDARDS § 0.1 and § 5 now
+  require one model class per table and one SQL file per statement (the CSE340 method). Follow the adoption
+  guide in platform-db `documents/TABLE_MODELS.md` once platform-db v0.3.0 is out: `flashcards-postgres-schema.sql` (17 tables) and the eight
+  `*-queries.sql` files become per-table folders and models, start-up uses the registry, `BackupService` takes its
+  tables from it. Order across services: iam-service, heros-companion, then FlashCards. Record the old files and
+  their removal in a new `documents/MIGRATION.md`.
+- **When updating the iam-service dependency** (its next release): `identityManagementDb.initializeSchema()` and
+  `IamBackupService.TABLES` are gone; use `IamTables.for(db).provision()` and `IamTables.backupTables()` from
+  `iam-service/db` (iam-service `documents/MIGRATION.md` L11).
+- **Old backup formats (owner, 2026-11-11).** § 0.7.5 now says restore accepts earlier formats only until the
+  kept backups are converted. Convert any kept pre-4.0 backups (import locally, export again), then remove the
+  old-format code, including the `legacyAppKey` passed to the IAM import; record it in `MIGRATION.md`.
+- **Switch to the IAM service over HTTP (owner order, 2026-11-11):** after Heros Companion is complete, FlashCards
+  moves to `RemoteIdentityGateway` in production (`IAM_URL`), then `LocalIdentityGateway` and its in-process
+  tests are removed (iam-service `documents/MIGRATION.md` L3).
 - **Security: user data in public git history.** The committed `documents/flashcards-backup-2026-11-02.json`
   (users' emails + password hashes) is untracked now but still in history. Optionally purge history
   (`git filter-repo`), which rewrites every commit. The database password that was also in history is rotated (see
