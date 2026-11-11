@@ -93,12 +93,13 @@ class BackupService {
   // ----- Export -----
 
   /**
-   * A full backup as the acting user sees it: the identity part only for a platform admin.
-   * @param {object} actor - The request (its session identifies the admin)
+   * A full backup as the actor sees it: the identity part only for a platform admin, or a service account
+   * holding identity.backup.export.
+   * @param {object} actor - The request (its session identifies the admin; req.serviceAccount a service account)
    */
   async exportBackup(actor) {
-    const platformAdmin = await this.identity.isPlatformAdmin(actor);
-    const identity = platformAdmin ? await this.identity.exportIdentity(actor) : null;
+    const withIdentity = await this.identity.mayBackUpIdentity(actor, 'export');
+    const identity = withIdentity ? await this.identity.exportIdentity(actor) : null;
     const { schema, data } = await this.tables.exportTables();
 
     // Media data goes in the ZIP (exportMediaArchive), matched back by media id.
@@ -116,7 +117,12 @@ class BackupService {
       flashcards,
       metadata: {
         identityIncluded: Boolean(identity),
-        ...(identity ? {} : { identityOmitted: 'only platform administrators back up users' }),
+        ...(identity
+          ? {}
+          : {
+              identityOmitted:
+                'only platform administrators (or identity.backup.export) back up users',
+            }),
         totalUsers: identity?.data?.users?.length ?? 0,
         totalFlashcards: data.flashcards?.length ?? 0,
         totalQuizzes: data.quizzes?.length ?? 0,
@@ -255,14 +261,19 @@ class BackupService {
   /**
    * Log an import/export action
    */
-  async logImportExport(userId, action, recordCount, status = 'success', errorMessage = null) {
+  /**
+   * @param {object} actor - The request: its session user, or its service account (req.serviceAccount)
+   */
+  async logImportExport(actor, action, recordCount, status = 'success', errorMessage = null) {
+    const principal = actor.serviceAccount?.principal;
     // Map to the schema's CHECK-constrained values:
     // action must be 'IMPORT' or 'EXPORT'; status must be 'pending', 'completed', or 'failed'.
     const dbAction = action.toUpperCase();
     const dbStatus = status === 'success' ? 'completed' : status;
 
     await this.database.query(this.constructor.queries.insert_import_export_log, [
-      userId,
+      principal ? null : actor.session?.userId,
+      principal ? `${principal.app_key}/${principal.name}` : null,
       dbAction,
       recordCount,
       dbStatus,

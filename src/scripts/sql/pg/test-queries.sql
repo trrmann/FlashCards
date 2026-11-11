@@ -125,3 +125,8 @@ SELECT count(*) FROM iam.users;
 
 -- Query: own_login_user_card_count
 SELECT count(*)::int AS count FROM flashcards.flashcards WHERE user_id = $1;
+
+-- Query: select_service_import_export_logs
+-- Backups logged for the flashcards/backup service account (backup token test).
+SELECT user_id, service_account, action, status FROM import_export_logs
+WHERE service_account = 'flashcards/backup';

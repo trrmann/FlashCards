@@ -322,27 +322,37 @@ Render free-tier databases are reset monthly (see `DB_PG_EXPIRE`). The procedure
 
    `deploy.sh -prod` also does this before every release. The Profile page's Backup & Restore downloads the same two files.
 
-   **No password prompt:** run `backup-login.sh` once. It asks for your FlashCards admin login, checks that it works,
-   and stores it in the GNOME keyring (encrypted with your desktop login, never in a file or on screen). From then on
-   `backup.sh` signs in with it, so an assistant can take the backup before a release too. `backup-login.sh --forget`
-   removes it. `restore.sh` always asks, because a restore changes production.
+   **No person, no prompt:** backups run as the **backup service account** with an **app token** (no password, no
+   MFA; iam-service `documents/MIGRATION.md` L12). Once, as a domain admin, issue the token from iam-service:
+
+   ```bash
+   npm run service-account -- --env-file ../FlashCards/.env setup-backup flashcards --as <your username>
+   ```
+
+   then run `backup-token.sh` and paste it. It checks the token, stores it in the GNOME keyring (encrypted with your
+   desktop login, never in a file or on screen) and removes the admin password the old `backup-login.sh` kept. From
+   then on `backup.sh` uses it, so an assistant or `release.sh` can take the backup. `backup-token.sh --forget` removes
+   it. The token lasts 1 year: renew it in its last 30 days (`iam-service-account renewals` lists them; `token`, then
+   `revoke-token` the old one) and store the new one. `restore.sh` always asks for the token, because a restore
+   changes production.
 
 2. Point the Render web service at the new database (`DB_PG_*`, `DB_PG_EXPIRE`) and let it start. The schemas
    bootstrap automatically.
-3. **Restore in one command.** On an empty database it creates the admin through initial setup, then imports:
+3. **Restore.** On an empty database it first creates the admin through initial setup (use the backup's admin
+   username), shows the `iam-service-account setup-backup` command that issues a token on the new database, and asks for
+   that token; then it imports:
 
    ```bash
    restore.sh https://<app>.onrender.com ~/FlashCardsBackups/<folder>/flashcards-backup.json \
               ~/FlashCardsBackups/<folder>/flashcards-backup-media.zip
    ```
 
-   It prompts for the admin username/password (and email/name when the database is empty). Use the **same
-   admin username** as in the backup.
+   Tokens are part of the backup, so after the restore the token stored for `backup.sh` works again.
 
 The restore runs in two steps, each all-or-nothing: the users first, then FlashCards' data. If a row fails, that step
 changes nothing and the error names the table. If the second step fails, the users stay restored. Fix the cause and
-run `restore.sh` again; a second run changes nothing that is already right. Restoring users needs a platform admin
-(the first account of an install is one).
+run `restore.sh` again; a second run changes nothing that is already right. Restoring users needs the token's
+`identity.backup.import` right (`setup-backup` grants it).
 
 Backup users are matched to existing accounts by username (then email), so your new admin account
 is merged with its backed-up identity. Its cards, shares, and progress import under the new id.

@@ -56,5 +56,5 @@ UNION SELECT user_id FROM practice_history
 UNION SELECT user_id FROM session_card_attempts
 UNION SELECT user_id FROM quizzes
 UNION SELECT user_id FROM quiz_results
-UNION SELECT user_id FROM import_export_logs
+UNION SELECT user_id FROM import_export_logs WHERE user_id IS NOT NULL
 UNION SELECT user_id FROM user_settings;

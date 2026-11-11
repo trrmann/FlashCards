@@ -57,8 +57,8 @@ export class RemoteIdentityGateway extends IdentityGateway {
    * credentials to every call, so forwarding anything else would let any signed-in user use
    * app-only endpoints (for example acknowledging deletion notices, /events/ack).
    */
-  static BROWSER_PATHS =
-    /^\/(organizations|groups|applications|platform-admins|admin\/users|me\/mfa|mfa-policies)(\/|\?|$)/;
+  /** The /api/iam paths a browser may reach: the IAM's own list (WebIdentity), so new screens work without a copy. */
+  static BROWSER_PATHS = WebIdentity.BROWSER_PATHS;
   static SUMMARY_BATCH = 1000;
 
   /**
@@ -315,7 +315,12 @@ export class RemoteIdentityGateway extends IdentityGateway {
     return this.client.acknowledgeEvents(eventId);
   }
 
-  // ----- Identity backup (the service checks the user is a platform admin) -----
+  // ----- Identity backup (the service checks the user is a platform admin, or the app token's rights) -----
+
+  /** The IAM service checks the token for FlashCards. */
+  checkAppToken(req, rights) {
+    return this.web.checkAppToken(req, rights);
+  }
 
   async isPlatformAdmin(req) {
     if (!req.session?.userId || !req.session.iamTokens) return false;
@@ -324,14 +329,15 @@ export class RemoteIdentityGateway extends IdentityGateway {
   }
 
   async exportIdentity(req) {
+    if (req.serviceAccount) return this.web.exportIdentityAsService(req);
     return (await this.asUser(req, (token) => this.client.exportIdentity(token))).identity;
   }
 
   /** @returns {Promise<{imported, warnings, user_id_map}>} */
   async importIdentity(req, identity, options) {
-    const result = await this.asUser(req, (token) =>
-      this.client.importIdentity(token, identity, options)
-    );
+    const result = req.serviceAccount
+      ? await this.web.importIdentityAsService(req, identity, options)
+      : await this.asUser(req, (token) => this.client.importIdentity(token, identity, options));
     // A restore can change anyone's account and rights.
     this.me.clear();
     this.display.clear();

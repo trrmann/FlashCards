@@ -1,8 +1,15 @@
 /**
- * Backup client: talks to a running FlashCards server (local, preview, or Render)
- * over HTTP, as an admin, to download the two-file backup (data JSON + media ZIP)
- * or to restore one. Restore also performs the whole new-database recovery: when
- * the target has no users, it creates the admin through initial setup first.
+ * Backup client: talks to a running FlashCards server (local, preview, or Render) over HTTP to download the
+ * two-file backup (data JSON + media ZIP) or to restore one.
+ *
+ * It acts as a **service account** with an **app token** (`Authorization: Bearer iamsa_…`), never as a person:
+ * no password, no session, no MFA (owner decision 2026-11-11; iam-service MIGRATION.md L12). The token comes from
+ * `iam-service-account setup-backup flashcards` and holds backup.export / backup.import and
+ * identity.backup.export / .import.
+ *
+ * Restore into a new, empty database: the target has no service account yet, so `setup` first creates the
+ * install's first admin through initial setup (a person must own the install); the owner then issues a token
+ * with `iam-service-account` and restores with it (restore.sh walks through this).
  *
  * On Render's free plan FlashCards and the IAM service sleep when idle, and waking takes up to a
  * minute. A 503 ("starting", or the IAM service not answering yet) is therefore retried a few
@@ -18,18 +25,26 @@ export class BackupClient {
   /** 503 answers retried while the services wake, and the pause between tries. */
   static WAKE_RETRIES = 3;
   static WAKE_PAUSE_MS = 10000;
+  static TOKEN_PREFIX = 'iamsa_';
 
-  constructor(baseUrl) {
+  /**
+   * @param {string} baseUrl
+   * @param {string|null} [token] - The backup service account's app token (not needed for setupStatus/initialSetup)
+   */
+  constructor(baseUrl, token = null) {
     this.baseUrl = String(baseUrl || '').replace(/\/+$/, '');
     if (!/^https?:\/\//.test(this.baseUrl)) {
       throw new Error(`A base URL like https://<app>.onrender.com is required (got "${baseUrl}")`);
     }
-    this.cookie = null;
+    if (token !== null && !String(token).startsWith(BackupClient.TOKEN_PREFIX)) {
+      throw new Error('That is not an app token (iamsa_…); issue one with iam-service-account');
+    }
+    this.token = token;
   }
 
   /**
-   * Send a request with the session cookie; remember any cookie the server sets. A 503 is
-   * retried WAKE_RETRIES times, WAKE_PAUSE_MS apart, while the services wake.
+   * Send a request with the app token. A 503 is retried WAKE_RETRIES times, WAKE_PAUSE_MS apart, while the
+   * services wake.
    */
   async request(apiPath, options = {}) {
     for (let attempt = 0; ; attempt += 1) {
@@ -44,21 +59,15 @@ export class BackupClient {
     }
   }
 
-  async send(apiPath, { method = 'GET', json } = {}) {
+  send(apiPath, { method = 'GET', json } = {}) {
     const headers = {};
-    if (this.cookie) headers.Cookie = this.cookie;
+    if (this.token) headers.Authorization = `Bearer ${this.token}`;
     if (json !== undefined) headers['Content-Type'] = 'application/json';
-
-    const response = await fetch(`${this.baseUrl}${apiPath}`, {
+    return fetch(`${this.baseUrl}${apiPath}`, {
       method,
       headers,
       body: json === undefined ? undefined : JSON.stringify(json),
     });
-
-    const setCookie = response.headers.getSetCookie?.() || [];
-    const session = setCookie.find((value) => value.startsWith('connect.sid='));
-    if (session) this.cookie = session.split(';')[0];
-    return response;
   }
 
   async requestJson(apiPath, options) {
@@ -77,10 +86,7 @@ export class BackupClient {
     return this.requestJson('/api/system/setup-status');
   }
 
-  async login(username, password) {
-    await this.requestJson('/api/auth/login', { method: 'POST', json: { username, password } });
-  }
-
+  /** Create the first admin of an empty install (nothing is signed in afterwards). */
   async initialSetup({ username, email, password, fullName }) {
     await this.requestJson('/api/system/initial-setup', {
       method: 'POST',
@@ -88,27 +94,17 @@ export class BackupClient {
     });
   }
 
-  /**
-   * Sign in as admin, or create the admin first when the database is empty.
-   * @returns {Promise<boolean>} true when initial setup created the admin
-   */
-  async ensureAdminSession(credentials) {
-    console.log('Signing in (if the services were asleep, this can take up to a minute)…');
-    const status = await this.setupStatus();
-    if (status.needsSetup) {
-      if (!credentials.email) {
-        throw new Error('The target has no users: an admin email is required for initial setup');
-      }
-      await this.initialSetup(credentials);
-      return true;
-    }
-    await this.login(credentials.username, credentials.password);
-    return false;
+  /** The token's service account and backup rights: `{ principal, allowed }`. */
+  async access() {
+    return this.requestJson('/api/admin/backup/access');
   }
 
   async downloadFile(apiPath, targetFile) {
     const response = await this.request(apiPath);
-    if (!response.ok) throw new Error(`GET ${apiPath} failed (${response.status})`);
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(`GET ${apiPath} failed (${response.status}) ${body.message || ''}`.trim());
+    }
     fs.writeFileSync(targetFile, Buffer.from(await response.arrayBuffer()), { mode: 0o600 });
     return targetFile;
   }
@@ -150,14 +146,18 @@ export class BackupClient {
 }
 
 /**
- * Command-line front end: `download <url> [dir]`, `restore <url> <json> [zip]`, `check <url>`.
- * Credentials come from the environment (the shell wrappers prompt for them):
- * FLASHCARDS_ADMIN_USER, FLASHCARDS_ADMIN_PASSWORD, and, for an empty target,
- * FLASHCARDS_ADMIN_EMAIL and FLASHCARDS_ADMIN_NAME.
+ * Command-line front end: `download <url> [dir]`, `restore <url> <json> [zip]`, `check <url>`, `setup <url>`.
+ * The app token comes from FLASHCARDS_BACKUP_TOKEN (backup.sh reads it from the keyring, where backup-token.sh
+ * stored it). `setup` (empty target only) takes FLASHCARDS_ADMIN_USER, _PASSWORD, _EMAIL and _NAME for the first
+ * admin.
  */
 export class BackupCli {
+  static USAGE =
+    'usage: backup-cli.mjs download <url> [dir] | restore <url> <json> [zip] | check <url> | setup <url>';
+
   constructor(env = process.env) {
-    this.credentials = {
+    this.token = env.FLASHCARDS_BACKUP_TOKEN || null;
+    this.admin = {
       username: env.FLASHCARDS_ADMIN_USER,
       password: env.FLASHCARDS_ADMIN_PASSWORD,
       email: env.FLASHCARDS_ADMIN_EMAIL || null,
@@ -165,39 +165,69 @@ export class BackupCli {
     };
   }
 
-  requireCredentials() {
-    if (!this.credentials.username || !this.credentials.password) {
-      throw new Error('FLASHCARDS_ADMIN_USER and FLASHCARDS_ADMIN_PASSWORD are required');
+  client(baseUrl) {
+    if (!this.token) {
+      throw new Error('FLASHCARDS_BACKUP_TOKEN is required (store one with backup-token.sh)');
     }
+    return new BackupClient(baseUrl, this.token);
   }
 
   async download(baseUrl, dir) {
-    const client = new BackupClient(baseUrl);
-    console.log('Signing in (if the services were asleep, this can take up to a minute)…');
-    await client.login(this.credentials.username, this.credentials.password);
+    const client = this.client(baseUrl);
+    console.log('Downloading (if the services were asleep, this can take up to a minute)…');
     const result = await client.download(dir || undefined);
     console.log(`Backup saved to ${result.dir}`);
     console.log(
       `  users ${result.metadata.totalUsers ?? '?'}, flashcards ${result.metadata.totalFlashcards ?? '?'}, media ${result.metadata.totalMedia ?? '?'}`
     );
+    if (!result.metadata.identityIncluded) {
+      console.log('  warning: no users in this backup (the token lacks identity.backup.export)');
+    }
   }
 
-  /** Sign in only: checks a login before backup-login.sh stores it. */
+  /** Checks a token before backup-token.sh stores it: its account and which backup rights it holds. */
   async check(baseUrl) {
-    const client = new BackupClient(baseUrl);
-    await client.login(this.credentials.username, this.credentials.password);
-    console.log(`Login works for ${baseUrl}`);
+    const { principal, allowed } = await this.client(baseUrl).access();
+    const held = Object.entries(allowed || {})
+      .filter(([, yes]) => yes)
+      .map(([right]) => right);
+    console.log(
+      `Token works for ${baseUrl}: ${principal.app_key}/${principal.name} (${held.join(', ')})`
+    );
+    if (principal.expires_at) {
+      console.log(`  expires ${new Date(principal.expires_at).toISOString()}`);
+    }
   }
 
   async restore(baseUrl, jsonFile, zipFile) {
     if (!jsonFile) throw new Error('usage: restore <url> <backup.json> [media.zip]');
-    const client = new BackupClient(baseUrl);
-    const createdAdmin = await client.ensureAdminSession(this.credentials);
-    if (createdAdmin) console.log(`Empty database: created admin ${this.credentials.username}`);
+    const client = this.client(baseUrl);
+    if ((await client.setupStatus()).needsSetup) {
+      throw new Error(
+        'The target is empty: run restore.sh, which creates the first admin and then asks for a new token'
+      );
+    }
     const results = await client.restore(jsonFile, zipFile);
     const total = Object.values(results.imported).reduce((sum, count) => sum + count, 0);
     console.log(`Restored ${total} row(s) into ${baseUrl}`);
     for (const warning of results.warnings) console.log(`  warning: ${warning}`);
+  }
+
+  /** Empty target only: create the install's first admin (the backup's admin, so the accounts merge). */
+  async setup(baseUrl) {
+    const client = new BackupClient(baseUrl);
+    if (!(await client.setupStatus()).needsSetup) {
+      console.log(`${baseUrl} already has users; nothing to set up`);
+      return;
+    }
+    const { username, password, email } = this.admin;
+    if (!username || !password || !email) {
+      throw new Error(
+        'FLASHCARDS_ADMIN_USER, FLASHCARDS_ADMIN_PASSWORD and FLASHCARDS_ADMIN_EMAIL are required'
+      );
+    }
+    await client.initialSetup(this.admin);
+    console.log(`Empty database: created the first admin ${username}`);
   }
 
   /**
@@ -205,14 +235,11 @@ export class BackupCli {
    */
   async run([command, ...args]) {
     try {
-      this.requireCredentials();
       if (command === 'download') await this.download(args[0], args[1]);
       else if (command === 'restore') await this.restore(args[0], args[1], args[2]);
       else if (command === 'check') await this.check(args[0]);
-      else
-        throw new Error(
-          'usage: backup-cli.mjs download <url> [dir] | restore <url> <json> [zip] | check <url>'
-        );
+      else if (command === 'setup') await this.setup(args[0]);
+      else throw new Error(BackupCli.USAGE);
       return 0;
     } catch (error) {
       console.error(`backup: ${error.message}`);

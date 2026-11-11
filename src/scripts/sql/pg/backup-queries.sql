@@ -1,8 +1,8 @@
 -- Backup log. The table export and import themselves use platform-db's TableBackup.
 
 -- Query: insert_import_export_log
-INSERT INTO import_export_logs (user_id, action, cards_processed, status, error_message)
-VALUES ($1, $2, $3, $4, $5);
+INSERT INTO import_export_logs (user_id, service_account, action, cards_processed, status, error_message)
+VALUES ($1, $2, $3, $4, $5, $6);
 
 -- Query: select_import_export_history
 SELECT * FROM import_export_logs

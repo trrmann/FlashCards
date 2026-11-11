@@ -7,7 +7,7 @@
 # Usage:
 #   release.sh flashcards <branch> ["merge message"]
 #       1. clean working tree; <branch> exists
-#       2. production backup (backup.sh, stored login)
+#       2. production backup (backup.sh, the stored backup app token: a service account, no person or MFA)
 #       3. merge <branch> into main locally (--no-ff), then on that exact result:
 #          npm run verify (must change nothing) and every test suite, in-process
 #          and over HTTP. On any failure the local merge is undone; nothing is pushed
@@ -53,6 +53,9 @@ FLASHCARDS_TESTS=(
     test:own-login
     test:admin-page
     test:admin-page:remote
+    test:mfa
+    test:backup-token
+    test:backup-token:remote
 )
 
 LOG_DIR="${PROJECT_ROOT}/.deployment"

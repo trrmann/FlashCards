@@ -298,10 +298,16 @@ export class Server {
 
     app.get('/profile', async (req, res) => {
       siteData.setTitle('Profile');
+      // The domain MFA switch is for domain admins, and only the IAM service has MFA.
+      const mfaSwitch =
+        !this.identity.runsInProcess &&
+        Boolean(req.session.userId) &&
+        (await this.identity.isPlatformAdmin(req).catch(() => false));
       res.render('profile', {
         siteData,
         isAdmin: res.locals.isAdmin || false,
         currentUserId: req.session.userId,
+        mfaSwitch,
       });
     });
 

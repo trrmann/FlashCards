@@ -50,6 +50,33 @@ export class BaseRouter {
   }
 
   /**
+   * Middleware factory for the backup routes: an app token holding `right` (a service account, iam-service
+   * MIGRATION.md L12; req.serviceAccount = { principal, allowed }, with the matching identity.backup.* right
+   * checked too), else a signed-in administrator, as before. A backup job never signs in as a person.
+   * @param {'backup.export'|'backup.import'} right
+   */
+  requireAdminOrRight(right) {
+    return async (req, res, next) => {
+      if (!IdentityGateway.appTokenOf(req)) {
+        return this.requireAuth(req, res, () => this.requireAdmin(req, res, next));
+      }
+      try {
+        const identityRight = right.replace(/^backup\./, 'identity.backup.');
+        const checked = await BaseRouter.identity(req).checkAppToken(req, [right, identityRight]);
+        if (!checked.allowed[right]) {
+          return res
+            .status(403)
+            .json({ status: 'error', message: `The service account does not hold ${right}` });
+        }
+        req.serviceAccount = checked;
+        return next();
+      } catch (error) {
+        return IdentityGateway.respond(res, error, 'App token check failed');
+      }
+    };
+  }
+
+  /**
    * Middleware: require the session user to be an administrator.
    */
   async requireAdmin(req, res, next) {

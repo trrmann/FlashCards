@@ -21,7 +21,8 @@ release.sh heros-companion                        # heros-companion's main (alre
 `release.sh flashcards <branch>`:
 
 1. Stops on uncommitted changes or a missing branch.
-2. Takes a production backup (`backup.sh` with the login stored by `backup-login.sh`).
+2. Takes a production backup (`backup.sh` with the app token stored by `backup-token.sh`: the backup service account,
+   never a person, so no MFA).
 3. Merges the branch into `main` locally and runs `npm run verify` (must change nothing) and every test suite, in-process
    and over HTTP, on that exact merge. On any failure the local merge is undone and nothing is pushed.
 4. Pushes `main`, waits until `/api/health` reports the pushed commit (`version`, from Render's `RENDER_GIT_COMMIT`), and
