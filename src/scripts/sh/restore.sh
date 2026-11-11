@@ -6,15 +6,20 @@
 # Usage: restore.sh <base-url> <backup.json> [media.zip]
 #
 # Imports a backup made with backup.sh (or the Profile page) into the server at
-# <base-url>. If that database has no users yet (for example after the monthly
-# Render reset), it first creates the admin through initial setup, then imports.
-# Two steps, each all-or-nothing: users, then FlashCards' data. If the second fails, the
-# users stay restored; run this again to complete it (a rerun changes nothing that is right).
+# <base-url>, as the backup service account (an app token; never a person, so no
+# password and no MFA: iam-service MIGRATION.md L12). Two steps, each all-or-nothing:
+# users, then FlashCards' data. If the second fails, the users stay restored; run
+# this again to complete it (a rerun changes nothing that is right).
 #
-# Credentials: FLASHCARDS_ADMIN_USER / FLASHCARDS_ADMIN_PASSWORD, plus
-# FLASHCARDS_ADMIN_EMAIL / FLASHCARDS_ADMIN_NAME for an empty database; any that
-# are not set are prompted. Use the same admin username as in the backup so the
-# accounts are merged. Set FLASHCARDS_ASSUME_YES=1 to skip the confirmation.
+# The token: FLASHCARDS_BACKUP_TOKEN, else asked for (a restore changes the target,
+# so the token stored for backup.sh is not used without asking).
+#
+# A new, empty database (for example after the monthly Render reset) has no service
+# account yet: this script first creates the first admin through initial setup (use
+# the backup's admin username so the accounts merge), then shows the command that
+# issues a token on the new database, and asks for it. After the restore the old
+# stored token works again (tokens are part of the backup).
+# Set FLASHCARDS_ASSUME_YES=1 to skip the confirmation.
 ################################################################################
 
 set -euo pipefail
@@ -26,7 +31,7 @@ base_url="${1:-}"
 json_file="${2:-}"
 zip_file="${3:-}"
 if [ -z "${base_url}" ] || [ -z "${json_file}" ]; then
-    sed -n '3,18p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '3,22p' "$0" | sed 's/^# \{0,1\}//'
     exit 1
 fi
 json_file="$(readlink -f "${json_file}")"
@@ -43,28 +48,30 @@ if [ "${FLASHCARDS_ASSUME_YES:-}" != "1" ]; then
     [ "${answer}" = "y" ] || [ "${answer}" = "Y" ] || { echo "cancelled"; exit 1; }
 fi
 
-if [ -z "${FLASHCARDS_ADMIN_USER:-}" ]; then
+cd "${PROJECT_ROOT}"
+status="$(curl -s -m 120 "${base_url}/api/system/setup-status" || true)"
+if [[ "${status}" == *'"needsSetup":true'* ]]; then
+    echo "Empty database: create its first admin (use the backup's admin username so the accounts merge)."
     read -r -p "Admin username: " FLASHCARDS_ADMIN_USER
-fi
-if [ -z "${FLASHCARDS_ADMIN_PASSWORD:-}" ]; then
     read -r -s -p "Password: " FLASHCARDS_ADMIN_PASSWORD
     echo
-fi
-export FLASHCARDS_ADMIN_USER FLASHCARDS_ADMIN_PASSWORD
-export FLASHCARDS_ADMIN_EMAIL="${FLASHCARDS_ADMIN_EMAIL:-}"
-export FLASHCARDS_ADMIN_NAME="${FLASHCARDS_ADMIN_NAME:-}"
+    read -r -p "Admin email: " FLASHCARDS_ADMIN_EMAIL
+    read -r -p "Admin full name: " FLASHCARDS_ADMIN_NAME
+    export FLASHCARDS_ADMIN_USER FLASHCARDS_ADMIN_PASSWORD FLASHCARDS_ADMIN_EMAIL FLASHCARDS_ADMIN_NAME
+    node src/scripts/js/modules/tools/backup-cli.mjs setup "${base_url}"
+    unset FLASHCARDS_ADMIN_PASSWORD
+    cat << EOT
 
-cd "${PROJECT_ROOT}"
-# On an empty database the CLI reports that an email is needed; prompt and retry once.
-if ! node src/scripts/js/modules/tools/backup-cli.mjs restore "${base_url}" "${json_file}" ${zip_file:+"${zip_file}"}; then
-    if [ -z "${FLASHCARDS_ADMIN_EMAIL}" ]; then
-        status="$(curl -s "${base_url}/api/system/setup-status" || true)"
-        if [[ "${status}" == *'"needsSetup":true'* ]]; then
-            read -r -p "Empty database. Admin email for initial setup: " FLASHCARDS_ADMIN_EMAIL
-            read -r -p "Admin full name: " FLASHCARDS_ADMIN_NAME
-            export FLASHCARDS_ADMIN_EMAIL FLASHCARDS_ADMIN_NAME
-            exec node src/scripts/js/modules/tools/backup-cli.mjs restore "${base_url}" "${json_file}" ${zip_file:+"${zip_file}"}
-        fi
-    fi
-    exit 1
+Now issue a backup token on the new database (database admin login; prints the token once):
+    npx iam-service-account --env-file <that database's .env> setup-backup flashcards --as ${FLASHCARDS_ADMIN_USER}
+
+EOT
+    unset FLASHCARDS_BACKUP_TOKEN
 fi
+
+if [ -z "${FLASHCARDS_BACKUP_TOKEN:-}" ]; then
+    read -r -s -p "Backup app token for ${base_url} (iamsa_…): " FLASHCARDS_BACKUP_TOKEN
+    echo
+fi
+export FLASHCARDS_BACKUP_TOKEN
+exec node src/scripts/js/modules/tools/backup-cli.mjs restore "${base_url}" "${json_file}" ${zip_file:+"${zip_file}"}

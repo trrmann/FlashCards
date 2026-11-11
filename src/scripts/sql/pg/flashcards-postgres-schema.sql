@@ -314,6 +314,10 @@ CREATE TABLE IF NOT EXISTS import_export_logs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_import_export_logs_user_id ON import_export_logs(user_id, created_at DESC);
+-- Backups run by a service account (an app token, iam-service MIGRATION.md L12) have no user: the account is
+-- recorded as `<app>/<name>` instead, so it is never taken for an orphaned user.
+ALTER TABLE import_export_logs ALTER COLUMN user_id DROP NOT NULL;
+ALTER TABLE import_export_logs ADD COLUMN IF NOT EXISTS service_account VARCHAR(160);
 
 -- ---------------------------------------------------------------------------
 -- IAM phase 3c: FlashCards' own per-user data and sessions live in this schema,

@@ -14,7 +14,7 @@
 
 import express from 'express';
 import { IamError } from 'iam-service/services';
-import { IamClientError, QueueTimeoutError } from 'iam-service/client';
+import { IamClientError, QueueTimeoutError, WebIdentity } from 'iam-service/client';
 
 export class IdentityError extends Error {
   constructor(status, message, errors = undefined) {
@@ -91,6 +91,45 @@ export class IdentityGateway {
   /** Express middleware run on every request after the session (default: nothing). */
   sessionMiddleware() {
     return (req, res, next) => next();
+  }
+
+  // ----- App tokens: service accounts (backups; iam-service MIGRATION.md L12) -----
+
+  /** The request's app token (`Authorization: Bearer iamsa_…`), or null. */
+  static appTokenOf(req) {
+    return WebIdentity.appTokenOf(req);
+  }
+
+  /**
+   * Check the request's app token for `rights`: `{ principal, allowed }`, or null without an app token. A bad,
+   * expired, revoked or another application's token throws 401.
+   * @param {object} _req
+   * @param {string[]} _rights
+   */
+  async checkAppToken(_req, _rights) {
+    throw new Error(`${this.constructor.name} must define checkAppToken`);
+  }
+
+  /**
+   * Whether the request may back up ('export') or restore ('import') the identity part: a service account
+   * holding identity.backup.<direction> (checked into req.serviceAccount by the route), else a platform admin.
+   */
+  async mayBackUpIdentity(req, direction) {
+    if (req.serviceAccount) {
+      return req.serviceAccount.allowed?.[`identity.backup.${direction}`] === true;
+    }
+    return this.isPlatformAdmin(req);
+  }
+
+  async requireIdentityBackup(req, direction) {
+    if (!(await this.mayBackUpIdentity(req, direction))) {
+      throw new IdentityError(
+        403,
+        req.serviceAccount
+          ? `The service account does not hold identity.backup.${direction}`
+          : 'Platform administrator access required'
+      );
+    }
   }
 
   /**

@@ -17,7 +17,7 @@ import { TableBackup } from 'platform-db';
 import { LocalTestCase } from './localTestCase.mjs';
 import { userAuthService, organizationService, IamBackupService } from 'iam-service/services';
 import { IamTables } from 'iam-service/db';
-import { MfaService } from 'iam-service/services';
+import { MfaService, ServiceAccountService } from 'iam-service/services';
 import { MfaKey, Totp } from 'iam-service/mfa';
 import { tokenPolicyService, IamServer, ApplicationCredentials } from 'iam-service/server';
 import { LocalIdentityGateway, RemoteIdentityGateway } from '../identity/index.mjs';
@@ -57,6 +57,10 @@ export class BackupRoundTripTest extends LocalTestCase {
     'user_recovery_codes',
     'mfa_key_check',
     'mfa_admin_policies',
+    // Service accounts (iam-service v0.3): newer than every pre-3.0 backup.
+    'service_accounts',
+    'service_account_rights',
+    'service_tokens',
   ];
   /** Not backed up: FlashCards' sessions, and the IAM's transient tables (its own list, so new ones follow). */
   static TRANSIENT_TABLES = ['session', ...IamTables.TRANSIENT];
@@ -218,6 +222,8 @@ export class BackupRoundTripTest extends LocalTestCase {
       appKey: 'flashcards',
       required: true,
     });
+    // Service accounts (iam-service v0.3): FlashCards' backup account, its four rights and a token.
+    await new ServiceAccountService(this.identityDatabase).setUpBackup(admin.user_id, 'flashcards');
     // Token lifetime policies: references to an application, a group, and a user.
     await tokenPolicyService.set(admin.user_id, {
       scopeType: 'application',

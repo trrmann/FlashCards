@@ -36,7 +36,9 @@
     "test:own-login": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/own-login-test.mjs",
     "test:admin-page": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/admin-page-test.mjs",
     "test:admin-page:remote": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/admin-page-remote-test.mjs",
-    "test:mfa": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/mfa-sign-in-test.mjs"
+    "test:mfa": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/mfa-sign-in-test.mjs",
+    "test:backup-token": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/backup-token-test.mjs",
+    "test:backup-token:remote": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/backup-token-remote-test.mjs"
   },
   "dependencies": {
     "adm-zip": "^0.6.1",

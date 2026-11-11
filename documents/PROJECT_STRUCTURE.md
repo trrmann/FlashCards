@@ -76,7 +76,7 @@ FlashCards/
         │       └── iamApiTest.mjs           # /api/iam endpoint tests (local DB only)
         ├── sh/                           # Shell scripts: on PATH in the VS Code terminal (any dir)
         │   ├── backup.sh                 # Download a full backup (JSON + ZIP) from any environment
-        │   ├── backup-login.sh           # Store the admin login in the GNOME keyring for backup.sh (no prompt)
+        │   ├── backup-token.sh           # Store the backup app token in the GNOME keyring for backup.sh (no prompt)
         │   ├── release.sh                # Release to production with backup, every test and a live check enforced
         │   ├── deploy.sh                 # deploy.sh -dev | -preview | -prod | -all
         │   ├── local-db.sh               # Wrapper for platform-db's local-db.sh (LOCAL_DATABASE.md)

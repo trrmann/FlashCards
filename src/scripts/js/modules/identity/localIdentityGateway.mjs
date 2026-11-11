@@ -9,10 +9,11 @@ import {
   userAuthService,
   iamBackupService,
   userEventService,
+  serviceAccountService,
 } from 'iam-service/services';
 import express from 'express';
 import { UserAdminRouter } from 'iam-service/routes';
-import { IdentityGateway, IdentityError } from './identityGateway.mjs';
+import { IdentityGateway } from './identityGateway.mjs';
 import { IamRouter } from '../routes/iamRouter.mjs';
 
 export class LocalIdentityGateway extends IdentityGateway {
@@ -21,8 +22,10 @@ export class LocalIdentityGateway extends IdentityGateway {
     users = userAuthService,
     backups = iamBackupService,
     events = userEventService,
+    services = serviceAccountService,
   } = {}) {
     super();
+    this.services = services;
     this.accounts = accounts;
     this.users = users;
     this.backups = backups;
@@ -158,21 +161,21 @@ export class LocalIdentityGateway extends IdentityGateway {
       : Promise.resolve(false);
   }
 
-  async requirePlatformAdmin(req) {
-    if (!(await this.isPlatformAdmin(req))) {
-      throw new IdentityError(403, 'Platform administrator access required');
-    }
+  /** In-process: the IAM's ServiceAccountService checks the token for FlashCards. */
+  async checkAppToken(req, rights) {
+    const token = IdentityGateway.appTokenOf(req);
+    return token ? this.services.check(token, this.appKey, rights) : null;
   }
 
-  /** The identity part of a backup. */
+  /** The identity part of a backup (a platform admin, or a service account with identity.backup.export). */
   async exportIdentity(req) {
-    await this.requirePlatformAdmin(req);
+    await this.requireIdentityBackup(req, 'export');
     return this.backups.exportPart();
   }
 
   /** @returns {Promise<{imported, warnings, user_id_map}>} */
   async importIdentity(req, identity, options) {
-    await this.requirePlatformAdmin(req);
+    await this.requireIdentityBackup(req, 'import');
     return this.backups.importPart(identity, options);
   }
 

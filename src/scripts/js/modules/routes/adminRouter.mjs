@@ -224,7 +224,7 @@ class AdminRouter extends BaseRouter {
         const backup = await backupService.exportBackup(req);
 
         await backupService.logImportExport(
-          req.session.userId,
+          req,
           'export',
           backup.metadata.totalFlashcards +
             backup.metadata.totalQuizzes +
@@ -240,13 +240,7 @@ class AdminRouter extends BaseRouter {
       } catch (error) {
         console.error('Export error:', error.message);
 
-        await backupService.logImportExport(
-          req.session.userId,
-          'export',
-          0,
-          'failed',
-          error.message
-        );
+        await backupService.logImportExport(req, 'export', 0, 'failed', error.message);
 
         return res.status(500).json({
           status: 'error',
@@ -257,15 +251,28 @@ class AdminRouter extends BaseRouter {
     });
 
     /**
+     * GET /api/admin/backup/access
+     * Who the caller is for backups (backup-token.sh checks a token with it): `{ principal, allowed }` for an app
+     * token, `{ principal: null }` for a signed-in admin.
+     */
+    router.get('/backup/access', this.requireAdminOrRight('backup.export'), (req, res) =>
+      res.status(200).json({
+        status: 'success',
+        principal: req.serviceAccount?.principal ?? null,
+        allowed: req.serviceAccount?.allowed ?? null,
+      })
+    );
+
+    /**
      * GET /api/admin/backup/download
      * Download the complete dataset (identity + app data) as a JSON file
      */
-    router.get('/backup/download', requireAuth, requireAdmin, async (req, res) => {
+    router.get('/backup/download', this.requireAdminOrRight('backup.export'), async (req, res) => {
       try {
         const backup = await backupService.exportBackup(req);
 
         await backupService.logImportExport(
-          req.session.userId,
+          req,
           'export',
           backup.metadata.totalFlashcards +
             backup.metadata.totalQuizzes +
@@ -283,13 +290,7 @@ class AdminRouter extends BaseRouter {
       } catch (error) {
         console.error('Backup download error:', error.message);
 
-        await backupService.logImportExport(
-          req.session.userId,
-          'export',
-          0,
-          'failed',
-          error.message
-        );
+        await backupService.logImportExport(req, 'export', 0, 'failed', error.message);
 
         return res.status(500).json({
           status: 'error',
@@ -304,25 +305,29 @@ class AdminRouter extends BaseRouter {
      * Download the media half of the two-file backup: a ZIP of all media,
      * linked to the backup JSON by media id (media/<media_id>.<ext>).
      */
-    router.get('/backup/download-media', requireAuth, requireAdmin, async (req, res) => {
-      try {
-        const archive = await backupService.exportMediaArchive();
-        const stamp = new Date().toISOString().slice(0, 10);
-        res.setHeader('Content-Type', 'application/zip');
-        res.setHeader(
-          'Content-Disposition',
-          `attachment; filename="flashcards-backup-media-${stamp}.zip"`
-        );
-        return res.status(200).send(archive);
-      } catch (error) {
-        console.error('Backup media download error:', error.message);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to download media archive',
-          error: error.message,
-        });
+    router.get(
+      '/backup/download-media',
+      this.requireAdminOrRight('backup.export'),
+      async (req, res) => {
+        try {
+          const archive = await backupService.exportMediaArchive();
+          const stamp = new Date().toISOString().slice(0, 10);
+          res.setHeader('Content-Type', 'application/zip');
+          res.setHeader(
+            'Content-Disposition',
+            `attachment; filename="flashcards-backup-media-${stamp}.zip"`
+          );
+          return res.status(200).send(archive);
+        } catch (error) {
+          console.error('Backup media download error:', error.message);
+          return res.status(500).json({
+            status: 'error',
+            message: 'Failed to download media archive',
+            error: error.message,
+          });
+        }
       }
-    });
+    );
 
     /**
      * POST /api/admin/backup/import
@@ -331,8 +336,7 @@ class AdminRouter extends BaseRouter {
      */
     router.post(
       '/backup/import',
-      requireAuth,
-      requireAdmin,
+      this.requireAdminOrRight('backup.import'),
       express.json({ limit: '50mb' }),
       async (req, res) => {
         try {
@@ -346,12 +350,7 @@ class AdminRouter extends BaseRouter {
 
           const totalImported = Object.values(results.imported).reduce((a, b) => a + b, 0);
 
-          await backupService.logImportExport(
-            req.session.userId,
-            'import',
-            totalImported,
-            'success'
-          );
+          await backupService.logImportExport(req, 'import', totalImported, 'success');
 
           return res.status(200).json({
             status: 'success',
@@ -361,13 +360,7 @@ class AdminRouter extends BaseRouter {
         } catch (error) {
           console.error('Import error:', error.message);
 
-          await backupService.logImportExport(
-            req.session.userId,
-            'import',
-            0,
-            'failed',
-            error.message
-          );
+          await backupService.logImportExport(req, 'import', 0, 'failed', error.message);
 
           // 400 bad file, 403 users need a platform admin, 422 a bad row (that step rolled back)
           const answer = IdentityGateway.errorAnswer(error);
