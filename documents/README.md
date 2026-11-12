@@ -44,6 +44,8 @@ All project documentation lives in this folder. The root `README.md` only points
 
 - [ENVIRONMENTS.md](./ENVIRONMENTS.md): dev / preview / prod
 - [RENDER_ENVIRONMENT_VARIABLES.md](./RENDER_ENVIRONMENT_VARIABLES.md): every env var the code reads
+- [RENDER_ENV.md](./RENDER_ENV.md): check and manage Render service variables with the local CLI
+- [RENDER_ENV.md](./RENDER_ENV.md): check and manage Render service variables with the local CLI
 - [PORT_CONFIGURATION.md](./PORT_CONFIGURATION.md): 5000 / 4000 / 3000
 - [DEPLOY.md](./DEPLOY.md), [DEPLOY_QUICK_REFERENCE.md](./DEPLOY_QUICK_REFERENCE.md),
   [DEPLOY_AUTO_FORMAT.md](./DEPLOY_AUTO_FORMAT.md), [DEPLOY_ACCESSIBILITY.md](./DEPLOY_ACCESSIBILITY.md): `deploy.sh` and running any `src/scripts/sh` script from anywhere
