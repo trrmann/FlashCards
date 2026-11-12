@@ -64,6 +64,8 @@ export class BackupRoundTripTest extends LocalTestCase {
     'principal_rights',
     'service_tokens',
     'domain_settings',
+    // Sharing between organizations (iam-service v0.5).
+    'organization_partners',
   ];
   /** Not backed up: FlashCards' sessions, and the IAM's transient tables (its own list, so new ones follow). */
   static TRANSIENT_TABLES = ['session', ...IamTables.TRANSIENT];
@@ -217,6 +219,13 @@ export class BackupRoundTripTest extends LocalTestCase {
       ownerUsername: 'rt_alice',
     });
     await organizationService.addMember(alice.user_id, org.org_id, { username: 'rt_bob' });
+    // A partner organization (iam-service v0.5: organization_partners).
+    const partner = await organizationService.createOrganization(admin.user_id, {
+      name: 'Round Trip Partner',
+      slug: 'round-trip-partner',
+      ownerUsername: 'rt_alice',
+    });
+    await organizationService.addPartner(alice.user_id, org.org_id, partner.org_id);
     const group = await organizationService.createGroup(alice.user_id, org.org_id, {
       name: 'Study group',
       description: 'Round trip',

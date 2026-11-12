@@ -537,6 +537,10 @@ Resolved on 2026-11-03 (round 4):
 
 ## open
 
+- **Move to iam-service v0.5.0 (groups across organizations; branch `iam-v0.5.0`).** Prepared: the round trip seeds a
+  partner organization (`organization_partners`) and lists it among the tables older backups cannot hold. Every
+  suite passes against the local build. To do when v0.5.0 is tagged: pin it, rerun every suite, release.
+
 - **Move to iam-service v0.4.0 (application rights; branch `iam-v0.4.0`).** Prepared: the round trip seeds a right
   through `appRightsService` (the old `grantUserRight` and `user_rights` are gone, iam-service MIGRATION.md L14) and
   compares restored grants without their install-assigned id; the in-process gateway checks app tokens with the
