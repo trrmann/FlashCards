@@ -507,7 +507,7 @@ The separate IAM service (login, tokens, token-lifetime policies, and the same o
 Tables in the backup (format **3.0**):
 `users, applications, roles, rights, role_rights, user_roles, user_rights, application_users, organizations, organization_members, groups, group_members, group_roles` (IAM), then
 `lessons, media, flashcards, flashcard_options, flashcard_shares, public_card_removals, leitner_boxes, flashcard_leitner_progress, practice_history, session_card_attempts, difficulty_history, quizzes, quiz_questions, quiz_results, import_export_logs`.
-Only the transient `session` table is left out. Applications and roles are matched by natural key (app key; app + role name). Older format 2.0 backups still restore: their `admin`/`user` roles become FlashCards roles and every restored user is enrolled in FlashCards. `npm run test:roundtrip` proves that every other table survives a wipe and restore (see LOCAL_DATABASE.md).
+Only the transient `session` table is left out. Applications and roles are matched by natural key (app key; app + role name). Format 3.0 and later restore; format 2.0 (before applications) is refused (`400`; iam-service MIGRATION.md L7: no kept backup needs it). `npm run test:roundtrip` proves that every other table survives a wipe and restore (see LOCAL_DATABASE.md).
 
 > The backup JSON contains password hashes and every user's data. Treat it as a secret.
 

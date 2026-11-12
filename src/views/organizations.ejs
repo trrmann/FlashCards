@@ -6,8 +6,9 @@
     api-base="/api/iam"
     app-key="flashcards"
     signed-in="<%= isLoggedIn ? 'true' : 'false' %>"
+    current-user-id="<%= typeof currentUserId !== 'undefined' ? currentUserId : '' %>"
     login-href="/login"
-    data-iam-classes='{"layout":"org-layout","panel":"org-panel","form":"org-form","form-inline":"org-form org-form-inline","field":"form-group","button-primary":"btn-primary","button-secondary":"btn-secondary","button-danger":"btn-danger","org-list":"org-list","org-item-meta":"org-list-meta","group-list":"group-list","group-item":"group-select","group-detail":"group-detail","chip-list":"chip-list","chip":"chip","table":"org-table","member-name":"member-name","member-full-name":"member-full-name","muted":"text-muted","message":"org-status","message-success":"success","message-error":"error","visually-hidden":"visually-hidden"}'
+    data-iam-classes='{"layout":"org-layout","panel":"org-panel","form":"org-form","form-inline":"org-form org-form-inline","field":"form-group","button-primary":"btn-primary","button-secondary":"btn-secondary","button-danger":"btn-danger","org-list":"org-list","org-item-meta":"org-list-meta","group-list":"group-list","group-item":"group-select","group-detail":"group-detail","chip-list":"chip-list","chip":"chip","table":"org-table","member-name":"member-name","member-full-name":"member-full-name","muted":"text-muted","sharing-summary":"text-muted","group-effective":"text-muted","message":"org-status","message-success":"success","message-error":"error","visually-hidden":"visually-hidden"}'
   ></iam-organizations>
 </main>
 <script type="module" src="/iam-ui/iam-ui.js"></script>

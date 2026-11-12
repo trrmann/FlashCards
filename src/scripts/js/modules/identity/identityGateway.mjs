@@ -13,7 +13,7 @@
  */
 
 import express from 'express';
-import { IamError } from 'iam-service/services';
+import { DomainError } from 'iam-service/domain';
 import { IamClientError, QueueTimeoutError, WebIdentity } from 'iam-service/client';
 
 export class IdentityError extends Error {
@@ -35,7 +35,7 @@ export class IdentityGateway {
     if (error instanceof IdentityError) {
       return IdentityGateway.answer(error.status, error.message, error.errors);
     }
-    if (error instanceof IamError) {
+    if (error instanceof DomainError) {
       return IdentityGateway.answer(error.statusCode, error.message, error.errors);
     }
     if (error instanceof IamClientError) {

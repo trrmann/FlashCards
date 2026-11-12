@@ -319,7 +319,7 @@ export class Server {
 
     app.get('/organizations', async (req, res) => {
       siteData.setTitle('Organizations');
-      res.render('organizations', { siteData });
+      res.render('organizations', { siteData, currentUserId: req.session.userId || '' });
     });
 
     app.get('/logout', async (req, res) => {

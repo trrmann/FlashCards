@@ -161,6 +161,10 @@ Follow-ups:
 
 ## resolved
 
+- **2026-11-12: iam-service v0.9.0.** `IamError` → `DomainError` (`iam-service/domain`); the identity restore no longer
+  passes `legacyAppKey`; format 2.0 backups are refused (`400`; no kept backup is older than 3.0, iam-service
+  MIGRATION.md L7); the organizations page passes `current-user-id`, so a group's own admins see their controls.
+  Verified: `test:roundtrip` 221/221 and the release's full suite.
 - **MFA through the IAM, and iam-service v0.2.1 (2026-11-11).** The sign-in answers `redirectTo: /mfa?mode=verify`
   or `enroll` when the IAM asks for MFA; `/mfa` shows `<iam-mfa-sign-in>`, `/api/auth/mfa` is the gateway's
   `mfaSignInRouter` (it starts the FlashCards session at the end), and the profile has `<iam-mfa>`. Registration
