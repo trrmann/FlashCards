@@ -1,7 +1,7 @@
 /**
  * App-specific PostgreSQL adapter for the FlashCards application.
  * Owns the application tables (flashcards, lessons, practice, quizzes,
- * backups, and user_rights special assignments). Identity tables are owned
+ * backups). Identity tables, rights included, are owned
  * by IdentityManagementDatabase (iam-service), whose schema must be bootstrapped first.
  * Built on platform-db; SQL comes from this project's src/scripts/sql folder.
  */
