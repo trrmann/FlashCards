@@ -342,6 +342,13 @@ export class Server {
         onSignedIn: (req, user) => AuthRouter.startSession(req, user),
       })
     );
+    // Impersonation (iam-service phase 3e; <iam-impersonation>): the session acts as another user, then back.
+    app.use(
+      '/api/auth/impersonation',
+      this.identity.impersonationRouter({
+        onSwitch: (req, user) => AuthRouter.startSession(req, user),
+      })
+    );
     app.use('/api/auth', authRouter);
 
     // User routes

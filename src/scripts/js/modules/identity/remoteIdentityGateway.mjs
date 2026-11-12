@@ -162,6 +162,16 @@ export class RemoteIdentityGateway extends IdentityGateway {
     return answer;
   }
 
+  /** Impersonation's session side (iam-service's WebIdentity.impersonationRouter): the session switches users. */
+  impersonationRouter({ onSwitch }) {
+    return this.web.impersonationRouter({
+      onSwitch: async (req, user) => {
+        this.forget(user.user_id);
+        await onSwitch(req, user);
+      },
+    });
+  }
+
   /** The second step of a sign-in (iam-service's WebIdentity.mfaSignInRouter). */
   mfaSignInRouter({ onSignedIn }) {
     return this.web.mfaSignInRouter({

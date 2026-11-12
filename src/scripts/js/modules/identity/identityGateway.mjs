@@ -144,6 +144,21 @@ export class IdentityGateway {
     );
     return router;
   }
+
+  /**
+   * Impersonation's session side (mounted at /api/auth/impersonation; iam-service phase 3e). Only the IAM service
+   * impersonates (the remote gateway); in-process mode answers 404.
+   * @param {{ onSwitch: (req: object, user: object) => Promise<void> }} _options
+   */
+  impersonationRouter(_options) {
+    const router = express.Router();
+    router.use((req, res) =>
+      res
+        .status(404)
+        .json({ status: 'error', message: 'Impersonation needs the IAM service (IAM_URL)' })
+    );
+    return router;
+  }
 }
 
 export default IdentityGateway;
