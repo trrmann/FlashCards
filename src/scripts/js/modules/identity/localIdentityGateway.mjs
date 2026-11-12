@@ -174,9 +174,9 @@ export class LocalIdentityGateway extends IdentityGateway {
   }
 
   /** @returns {Promise<{imported, warnings, user_id_map}>} */
-  async importIdentity(req, identity, options) {
+  async importIdentity(req, identity) {
     await this.requireIdentityBackup(req, 'import');
-    return this.backups.importPart(identity, options);
+    return this.backups.importPart(identity);
   }
 
   // ----- Organizations, groups, platform admins, app access (/api/iam) -----

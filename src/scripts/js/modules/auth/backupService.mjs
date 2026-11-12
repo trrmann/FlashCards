@@ -153,6 +153,12 @@ class BackupService {
     }
     if (!backup.data || typeof backup.data !== 'object')
       throw BackupService.invalid('data is missing');
+    // Format 2.0 (before applications) is no longer restored: no kept backup needs it (iam-service MIGRATION.md L7).
+    if (!String(backup.version || '').startsWith('3.')) {
+      throw BackupService.invalid(
+        `format ${backup.version || 'unknown'} is no longer restored (3.0 or later)`
+      );
+    }
     const pick = (tables) =>
       Object.fromEntries(tables.filter((t) => backup.data[t]).map((t) => [t, backup.data[t]]));
     const identityData = pick(BackupService.identityTables);
@@ -223,9 +229,7 @@ class BackupService {
     // Step 1: users and everything identity, at the IAM.
     let userIdMap = new Map();
     if (identity) {
-      const step = await this.identity.importIdentity(actor, identity, {
-        legacyAppKey: 'flashcards',
-      });
+      const step = await this.identity.importIdentity(actor, identity);
       Object.assign(results.imported, step.imported);
       results.warnings.push(...step.warnings);
       userIdMap = new Map(Object.entries(step.user_id_map || {}));

@@ -334,10 +334,10 @@ export class RemoteIdentityGateway extends IdentityGateway {
   }
 
   /** @returns {Promise<{imported, warnings, user_id_map}>} */
-  async importIdentity(req, identity, options) {
+  async importIdentity(req, identity) {
     const result = req.serviceAccount
-      ? await this.web.importIdentityAsService(req, identity, options)
-      : await this.asUser(req, (token) => this.client.importIdentity(token, identity, options));
+      ? await this.web.importIdentityAsService(req, identity)
+      : await this.asUser(req, (token) => this.client.importIdentity(token, identity));
     // A restore can change anyone's account and rights.
     this.me.clear();
     this.display.clear();

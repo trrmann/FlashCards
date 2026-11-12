@@ -9,7 +9,7 @@
  * admin; with `remoteIam: true` (npm run test:roundtrip:remote) through the IAM service over
  * HTTP, started in the test. Also: the two-step restore (a failed second step keeps the first,
  * and running it again completes it), a FlashCards-only backup for a non-platform admin, and
- * older 3.1 and 2.0 files.
+ * an older 3.1 file; a 2.0 file is refused (iam-service MIGRATION.md L7).
  */
 
 import crypto from 'node:crypto';
@@ -516,7 +516,7 @@ export class BackupRoundTripTest extends LocalTestCase {
     console.log('\n7. A format 3.1 file (one data set, as made before phase 3d) restores');
     await this.checkFormat31(original, admin);
 
-    console.log('\n8. Legacy (format 2.0) backup restores into a wiped database');
+    console.log('\n8. A format 2.0 backup (before applications) is refused');
     await this.checkLegacyRestore(original, admin);
   }
 
@@ -582,50 +582,24 @@ export class BackupRoundTripTest extends LocalTestCase {
     return legacy;
   }
 
-  /**
-   * A format 2.0 backup must restore: its admin/user roles become FlashCards
-   * roles and every restored user can sign in to FlashCards.
-   */
+  /** Format 2.0 is no longer restored (no kept backup needs it): 400, and nothing changes. */
   async checkLegacyRestore(original, admin) {
-    const { recreated, actor } = await this.freshInstall(admin);
-    const result = await this.backups.importBackup(
-      actor,
-      this.toLegacyBackup(original.backup),
-      original.archive
-    );
-    this.check(
-      'legacy backup was upgraded',
-      result.warnings.some((w) => w.startsWith('Legacy backup'))
-    );
-    const users = (await this.snapshot()).data.users;
-    this.check(
-      'legacy restore: all users restored',
-      users.length === original.backup.identity.data.users.length
-    );
-    let allAccess = true;
-    for (const user of users) {
-      if (!(await userAuthService.hasAppAccess(user.user_id))) allAccess = false;
+    const { actor } = await this.freshInstall(admin);
+    const before = (await this.snapshot()).data.users.length;
+    let status = null;
+    try {
+      await this.backups.importBackup(
+        actor,
+        this.toLegacyBackup(original.backup),
+        original.archive
+      );
+    } catch (error) {
+      status = error.status ?? error.statusCode;
     }
-    this.check('legacy restore: every user has FlashCards access', allAccess);
-    const alice = users.find((user) => user.username === 'rt_alice');
-    const roles = await userAuthService.getUserRoles(alice.user_id);
     this.check(
-      'legacy restore: user role belongs to FlashCards',
-      roles.some((role) => role.role_name === 'user' && role.app_key === 'flashcards')
-    );
-    this.check(
-      'legacy restore: merged admin is still a platform admin',
-      admin.user_id !== recreated.user_id &&
-        (await userAuthService.isPlatformAdmin(recreated.user_id))
-    );
-    this.check(
-      "legacy restore: a user's storage limit (a users column before 3.1) is kept",
-      (await userSettingsService.getStorageLimit(alice.user_id)) === 1048576
-    );
-    const cards = (await this.snapshot()).data.flashcards;
-    this.check(
-      'legacy restore: flashcards restored',
-      cards.length === original.backup.flashcards.data.flashcards.length
+      'a 2.0 file is refused (400); nothing is restored',
+      status === 400 && (await this.snapshot()).data.users.length === before,
+      String(status)
     );
   }
 
