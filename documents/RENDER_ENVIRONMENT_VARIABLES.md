@@ -67,9 +67,14 @@ Platform-wide start-up order: iam-service `documents/PLATFORM_ACCESS_AND_STARTUP
 
 ## Variables used only by tooling
 
-| Variable     | Where                       | Purpose                                                         |
-| ------------ | --------------------------- | --------------------------------------------------------------- |
-| `RENDER_URL` | `.env`, read by `deploy.sh` | Production URL to health-check and open after `deploy.sh -prod` |
+| Variable         | Where                              | Purpose                                                                                                                 |
+| ---------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `RENDER_URL`     | `.env`, read by `deploy.sh`        | Production URL to health-check and open after `deploy.sh -prod`                                                         |
+| `RENDER_API_KEY` | local `.env`, read by `render:env` | Render API credential for listing, checking, setting, or removing service env vars; never add it to Render or commit it |
+
+Use the local Render API helper with `npm run render:env -- check`, `list`, `get --key KEY`, `set --key KEY --value VALUE`,
+or `remove --key KEY`. The wrapper loads `RENDER_API_KEY` from this project's ignored `.env`; the helper is
+self-contained in this repository. See [RENDER_ENV.md](./RENDER_ENV.md) for all commands.
 
 Informational keys that Render shows for a database (`DB_PG_EXTERNAL_URL`, `DB_PG_INTERNAL_URL`,
 `DB_PG_PSQL_COMMAND`, `DB_PG_VERSION`) can be kept in `.env` for psql/pgAdmin convenience. The code doesn't read them.
