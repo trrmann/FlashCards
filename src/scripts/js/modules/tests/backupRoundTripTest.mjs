@@ -83,6 +83,11 @@ export class BackupRoundTripTest extends LocalTestCase {
     'responsibilities',
     'responsibility_runs',
     'responsibility_bans',
+    // Passkeys (iam-service v0.10).
+    'user_passkeys',
+    'passkey_applications',
+    'passkey_grants',
+    'organization_applications',
   ];
   /** Not backed up: FlashCards' sessions, and the IAM's transient tables (its own list, so new ones follow). */
   static TRANSIENT_TABLES = ['session', ...IamTables.TRANSIENT];
@@ -254,6 +259,7 @@ export class BackupRoundTripTest extends LocalTestCase {
     });
     await responsibilities.runNow(admin.user_id, audit.responsibility_id);
     await responsibilities.setBan(admin.user_id, 'group-audit', null, true);
+    await this.seedPasskeys(admin, alice, org);
     const group = await organizationService.createGroup(alice.user_id, org.org_id, {
       name: 'Study group',
       description: 'Round trip',
@@ -450,6 +456,35 @@ export class BackupRoundTripTest extends LocalTestCase {
       await this.stopIdentity();
     }
     return this.summary();
+  }
+
+  /**
+   * Passkeys (iam-service v0.10): a domain grant, the organization's application list, and a cross-app passkey with
+   * its applications. Stored through the IAM's own table models: a real passkey needs a browser ceremony (proven in
+   * iam-service's test:passkeys-ui); the round trip only needs rows.
+   */
+  async seedPasskeys(admin, alice, org) {
+    const model = (table) =>
+      IamTables.for(this.identityDatabase)
+        .models()
+        .find((m) => m.constructor.tableName === table);
+    await model('passkey_grants').insert(alice.user_id, 'applications', null, admin.user_id);
+    await organizationService.addOrgApplication(alice.user_id, org.org_id, 'flashcards');
+    const apps = await model('applications').byKeys(['flashcards', 'heros-companion']);
+    const passkey = await model('user_passkeys').insert({
+      userId: alice.user_id,
+      credentialId: crypto.randomBytes(16).toString('base64url'),
+      publicKey: crypto.randomBytes(32).toString('base64url'),
+      counter: 3,
+      transports: ['internal'],
+      name: 'Round trip key',
+      kind: 'applications',
+      rpId: 'iam.example.test',
+    });
+    await model('passkey_applications').add(
+      passkey.passkey_id,
+      apps.map((app) => app.app_id)
+    );
   }
 
   async runChecks() {
