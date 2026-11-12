@@ -93,6 +93,8 @@ export class BackupRoundTripTest extends LocalTestCase {
     'invitations',
     'role_requests',
     'resource_grants',
+    // Configurable impersonation (iam-service v0.12).
+    'impersonation_delegations',
   ];
   /** Not backed up: FlashCards' sessions, and the IAM's transient tables (its own list, so new ones follow). */
   static TRANSIENT_TABLES = ['session', ...IamTables.TRANSIENT];
@@ -520,6 +522,13 @@ export class BackupRoundTripTest extends LocalTestCase {
       days: 7,
     });
     await model('role_requests').insert(alice.user_id, 'flashcards', ['admin'], 'Round trip');
+    // Alice (the organization's owner) may impersonate its members, no reason needed (iam-service v0.12).
+    await model('impersonation_delegations').upsert({
+      userId: alice.user_id,
+      orgId: org.org_id,
+      skipReason: true,
+      grantedBy: admin.user_id,
+    });
     await model('resource_grants').upsert({
       appKey: 'flashcards',
       userId: alice.user_id,

@@ -161,6 +161,10 @@ Follow-ups:
 
 ## resolved
 
+- **2026-11-12: iam-service v0.12.0.** The IAM's own address serves its management site. For FlashCards: the admin
+  page's user list now holds FlashCards' members only (an application's admins manage their own members; the IAM's
+  domain admins manage everyone on the site), and password rules come from the IAM (the domain admins' setting; the
+  defaults are the rules shown on the sign-up form).
 - **2026-11-12: iam-service v0.11.0 (phase 3e).** The profile shows the IAM's role requests (with invitation codes to
   redeem; admins also review) and impersonation (admins ask and begin; users approve; a banner while acting); the
   admin section shows invitations and the audit log. Registration accepts an invitation code. The session side of
