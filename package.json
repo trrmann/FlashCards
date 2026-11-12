@@ -48,7 +48,7 @@
     "ejs": "^7.0.2",
     "express": "^5.3.0",
     "express-session": "^1.19.0",
-    "iam-service": "git+https://github.com/trrmann/iam-service.git#v0.4.0",
+    "iam-service": "git+https://github.com/trrmann/iam-service.git#v0.6.0",
     "node-fetch": "^3.3.2",
     "pg": "^8.23.1",
     "platform-db": "git+https://github.com/trrmann/platform-db.git#v0.3.1"
