@@ -161,6 +161,9 @@ Follow-ups:
 
 ## resolved
 
+- **2026-11-12: iam-service v0.10.0 (passkeys).** FlashCards' identity gateway now starts through WebIdentity, which
+  registers FlashCards' web address with the IAM for passkeys (`RENDER_EXTERNAL_URL`); the sign-in and profile
+  screens offer passkeys from the shared components.
 - **2026-11-12: iam-service v0.9.0.** `IamError` → `DomainError` (`iam-service/domain`); the identity restore no longer
   passes `legacyAppKey`; format 2.0 backups are refused (`400`; no kept backup is older than 3.0, iam-service
   MIGRATION.md L7); the organizations page passes `current-user-id`, so a group's own admins see their controls.

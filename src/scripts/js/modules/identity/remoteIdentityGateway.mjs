@@ -84,12 +84,12 @@ export class RemoteIdentityGateway extends IdentityGateway {
     return `remote (${this.baseUrl ?? 'IAM service'})`;
   }
 
+  /**
+   * WebIdentity starts the client, wakes a sleeping IAM (not awaited) and registers FlashCards' web address for
+   * passkeys (APP_PUBLIC_URL, else Render's RENDER_EXTERNAL_URL; not awaited).
+   */
   async start() {
-    await this.client.start();
-    // Wake a sleeping service now, so its cold start overlaps ours. Not awaited.
-    this.client.health().catch((error) => {
-      console.warn(`IAM service not answering yet: ${error.message}`);
-    });
+    await this.web.start();
   }
 
   stop() {
