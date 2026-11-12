@@ -566,6 +566,11 @@ Resolved on 2026-11-03 (round 4):
   `*-queries.sql` files become per-table folders and models, start-up uses the registry, `BackupService` takes its
   tables from it. Order across services: iam-service, heros-companion, then FlashCards. Record the old files and
   their removal in a new `documents/MIGRATION.md`.
+- **MVC/controller design waits on CSE340 (owner, 2026-11-12).** Defer restructuring FlashCards' HTTP layer until
+  CSE340 completes and rolls out its controller method. Then compare with the shared contract in iam-service's
+  [DOMAIN_MODEL_DESIGN.md](https://github.com/trrmann/iam-service/blob/main/documents/DOMAIN_MODEL_DESIGN.md) §4.10
+  and [MIGRATION.md](https://github.com/trrmann/iam-service/blob/main/documents/MIGRATION.md) L10. FlashCards
+  follows Heros, as tracked in [iam-service Issues.md](https://github.com/trrmann/iam-service/blob/main/documents/Issues.md).
 - **Release blocked by MFA on production (2026-11-11).** IAM_MFA_KEY is set on Render, so the production IAM
   now requires MFA for domain admins, but production FlashCards is still on the pre-MFA code and answers 500 to the
   admin's sign-in. `release.sh` starts with `backup.sh`, which signs in as that admin, so every release stops at the
