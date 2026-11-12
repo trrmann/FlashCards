@@ -161,6 +161,11 @@ Follow-ups:
 
 ## resolved
 
+- **2026-11-12: iam-service v0.11.0 (phase 3e).** The profile shows the IAM's role requests (with invitation codes to
+  redeem; admins also review) and impersonation (admins ask and begin; users approve; a banner while acting); the
+  admin section shows invitations and the audit log. Registration accepts an invitation code. The session side of
+  impersonation is the gateway's `impersonationRouter` at `/api/auth/impersonation`. The round trip seeds the new
+  tables.
 - **2026-11-12: iam-service v0.10.1 (passkeys).** FlashCards' identity gateway now starts through WebIdentity, which
   registers FlashCards' web address with the IAM for passkeys (`RENDER_EXTERNAL_URL`); the sign-in and profile
   screens offer passkeys from the shared components.

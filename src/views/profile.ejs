@@ -115,6 +115,24 @@
             data-iam-classes='{"section-title":"form-section-title","field":"form-group","button-primary":"btn-primary","button":"btn-secondary","button-danger":"btn-danger","muted":"text-muted","message-success":"success","message-error":"error"}'
           ></iam-mfa>
         </section>
+
+        <%# iam-service phase 3e: the user's role requests and invitation codes, and impersonation (an admin asking to
+            act as them, or the banner while they act as someone). %>
+        <section class="profile-section">
+          <iam-impersonation
+            api-base="/api/iam"
+            <%= typeof isAdmin !== 'undefined' && isAdmin ? 'admin' : '' %>
+            data-iam-classes='{"section-title":"form-section-title","field":"form-group","form":"form-section","form-inline":"form-section","button-primary":"btn-primary","button-secondary":"btn-secondary","button-danger":"btn-danger","table":"admin-users-table","muted":"text-muted","message-success":"success","message-error":"error"}'
+          ></iam-impersonation>
+        </section>
+        <section class="profile-section">
+          <iam-role-requests
+            api-base="/api/iam"
+            app-key="flashcards"
+            <%= typeof isAdmin !== 'undefined' && isAdmin ? 'review' : '' %>
+            data-iam-classes='{"section-title":"form-section-title","field":"form-group","form":"form-section","form-inline":"form-section","button-primary":"btn-primary","button-secondary":"btn-secondary","button-danger":"btn-danger","table":"admin-users-table","muted":"text-muted","message-success":"success","message-error":"error"}'
+          ></iam-role-requests>
+        </section>
       <% } %>
 
       <!-- Admin Section (only visible to admins) -->
@@ -140,6 +158,22 @@
               ></iam-mfa-settings>
             </div>
           <% } %>
+
+          <%# iam-service phase 3e: invitations and the audit log (the IAM's screens; role requests to review are above). %>
+          <div class="form-section">
+            <iam-invitations
+              api-base="/api/iam"
+              app-key="flashcards"
+              data-iam-classes='{"section-title":"form-section-title","field":"form-group","form":"form-section","form-inline":"form-section","button-primary":"btn-primary","button-secondary":"btn-secondary","button-danger":"btn-danger","table":"admin-users-table","muted":"text-muted","message-success":"success","message-error":"error"}'
+            ></iam-invitations>
+          </div>
+          <div class="form-section">
+            <iam-audit-log
+              api-base="/api/iam"
+              app-key="flashcards"
+              data-iam-classes='{"section-title":"form-section-title","field":"form-group","form":"form-section","form-inline":"form-section","button-primary":"btn-primary","button-secondary":"btn-secondary","button-danger":"btn-danger","table":"admin-users-table","muted":"text-muted","message-success":"success","message-error":"error"}'
+            ></iam-audit-log>
+          </div>
 
           <!-- Backup / Restore -->
           <div class="form-section">

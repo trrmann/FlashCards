@@ -54,7 +54,7 @@ class AuthRouter extends BaseRouter {
      */
     router.post('/register', express.json(), async (req, res) => {
       try {
-        const { username, email, password, passwordConfirm, fullName } = req.body;
+        const { username, email, password, passwordConfirm, fullName, invitation } = req.body;
 
         if (!username || !email || !password || !passwordConfirm) {
           return res.status(400).json({
@@ -71,6 +71,8 @@ class AuthRouter extends BaseRouter {
           email,
           password,
           full_name: fullName || null,
+          // An invitation code (iam-service phase 3e): its roles, and joining when sign-ups are closed.
+          ...(invitation ? { invitation: String(invitation).trim() } : {}),
         });
         const signedIn = await AuthRouter.signIn(req, username, password);
 

@@ -88,6 +88,11 @@ export class BackupRoundTripTest extends LocalTestCase {
     'passkey_applications',
     'passkey_grants',
     'organization_applications',
+    // Phase 3e (iam-service v0.11).
+    'audit_log',
+    'invitations',
+    'role_requests',
+    'resource_grants',
   ];
   /** Not backed up: FlashCards' sessions, and the IAM's transient tables (its own list, so new ones follow). */
   static TRANSIENT_TABLES = ['session', ...IamTables.TRANSIENT];
@@ -260,6 +265,7 @@ export class BackupRoundTripTest extends LocalTestCase {
     await responsibilities.runNow(admin.user_id, audit.responsibility_id);
     await responsibilities.setBan(admin.user_id, 'group-audit', null, true);
     await this.seedPasskeys(admin, alice, org);
+    await this.seedPhase3e(admin, alice, org);
     const group = await organizationService.createGroup(alice.user_id, org.org_id, {
       name: 'Study group',
       description: 'Round trip',
@@ -485,6 +491,43 @@ export class BackupRoundTripTest extends LocalTestCase {
       passkey.passkey_id,
       apps.map((app) => app.app_id)
     );
+  }
+
+  /**
+   * Phase 3e (iam-service v0.11): an audit entry, an open invitation, a role request and a resource grant, stored
+   * through the IAM's own table models (their flows are tested in iam-service: test:phase3e).
+   */
+  async seedPhase3e(admin, alice, org) {
+    const model = (table) =>
+      IamTables.for(this.identityDatabase)
+        .models()
+        .find((m) => m.constructor.tableName === table);
+    await model('audit_log').insert({
+      actorId: admin.user_id,
+      appKey: 'flashcards',
+      action: 'round-trip.seed',
+      targetUserId: alice.user_id,
+      details: { note: 'Round trip', list: [1, 2] },
+    });
+    await model('invitations').insert({
+      tokenHash: crypto.randomBytes(32).toString('hex'),
+      appKey: 'flashcards',
+      roleNames: ['user'],
+      orgId: org.org_id,
+      orgRole: 'member',
+      note: 'Round trip',
+      createdBy: admin.user_id,
+      days: 7,
+    });
+    await model('role_requests').insert(alice.user_id, 'flashcards', ['admin'], 'Round trip');
+    await model('resource_grants').upsert({
+      appKey: 'flashcards',
+      userId: alice.user_id,
+      resourceType: 'deck',
+      resourceId: '*',
+      actions: ['read'],
+      grantedBy: admin.user_id,
+    });
   }
 
   async runChecks() {
