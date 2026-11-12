@@ -22,6 +22,7 @@ import {
   ServiceAccountService,
   appRightsService,
   DomainService,
+  ResponsibilityService,
 } from 'iam-service/services';
 import { MfaKey, Totp } from 'iam-service/mfa';
 import { tokenPolicyService, IamServer, ApplicationCredentials } from 'iam-service/server';
@@ -50,6 +51,11 @@ export class BackupRoundTripTest extends LocalTestCase {
   };
   /** Natural-key tables whose own id each install assigns afresh on restore (compared without it). */
   static INSTALL_ASSIGNED_IDS = { principal_rights: 'grant_id', domain: 'domain_id' };
+  /**
+   * Activity the round trip itself changes, compared without it: signing in to restore records a new sign-in time
+   * (iam-service v0.7: users.last_sign_in_at).
+   */
+  static ACTIVITY_COLUMNS = { users: ['last_sign_in_at'] };
   static LEGACY_ONLY_TABLES = [
     'applications',
     'application_users',
@@ -73,6 +79,10 @@ export class BackupRoundTripTest extends LocalTestCase {
     'organization_partners',
     // The domain row (iam-service v0.5): newer than every pre-3.0 backup.
     'domain',
+    // Responsibilities (iam-service v0.7).
+    'responsibilities',
+    'responsibility_runs',
+    'responsibility_bans',
   ];
   /** Not backed up: FlashCards' sessions, and the IAM's transient tables (its own list, so new ones follow). */
   static TRANSIENT_TABLES = ['session', ...IamTables.TRANSIENT];
@@ -235,6 +245,15 @@ export class BackupRoundTripTest extends LocalTestCase {
     await organizationService.addPartner(alice.user_id, org.org_id, partner.org_id);
     // The domain (iam-service v0.5): its row, primary admin and owning organization, as the IAM's start-up makes them.
     await new DomainService(this.identityDatabase).bootstrap();
+    // Responsibilities (iam-service v0.7): a weekly user audit, one run of it, and a ban on automating group audits.
+    const responsibilities = new ResponsibilityService(this.identityDatabase);
+    const audit = await responsibilities.create(admin.user_id, {
+      type: 'user-audit',
+      scopeType: 'domain',
+      schedule: { kind: 'every', every: 1, unit: 'weeks' },
+    });
+    await responsibilities.runNow(admin.user_id, audit.responsibility_id);
+    await responsibilities.setBan(admin.user_id, 'group-audit', null, true);
     const group = await organizationService.createGroup(alice.user_id, org.org_id, {
       name: 'Study group',
       description: 'Round trip',
@@ -331,10 +350,12 @@ export class BackupRoundTripTest extends LocalTestCase {
       );
     }
     const ownId = this.constructor.INSTALL_ASSIGNED_IDS[table];
+    const activity = this.constructor.ACTIVITY_COLUMNS[table] || [];
     return (snapshot.data[table] || [])
       .map((source) => {
         const row = { ...source };
         if (ownId) delete row[ownId];
+        for (const column of activity) delete row[column];
         return row;
       })
       .map((source) => this.normalizeRow(source, idToName, userIdMap))
