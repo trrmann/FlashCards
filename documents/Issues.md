@@ -549,6 +549,22 @@ Resolved on 2026-11-03 (round 4):
 
 ## open
 
+- **Design and enforce IAM rights for page/API components.** Inventory every page and API endpoint separately,
+  classify public versus protected components, assign stable FlashCards-scoped right keys, register rights and role
+  grants in IAM, and wire each page handler/API route to check its required right. Navigation visibility is not an
+  authorization check. Add tests for allowed and denied users, signed-out requests, and IAM failures.
+- **Create FlashCards app-admin responsibilities for rights governance** (depends on the rights design above).
+  Define who owns the right catalogue and role/user grants, reviews changes to protected components, and verifies
+  server-side checks. Decide assignees and review cadence, then create application-scope responsibility records in
+  IAM. Use the existing application-audit type if it covers this work; otherwise record the needed IAM type.
+  - [ ] Choose responsible app admins and review cadence.
+  - [ ] Create the IAM responsibility record(s) and verify they appear as due work with recorded runs.
+- **Design FlashCards app roles and map them to rights/responsibilities** (coordinate with the two tasks above).
+  Candidate roles include teachers, students, and school/class evaluators or visitors; these are examples, not a
+  fixed role list. Discover any additional roles from the workflows, distinguish the app-admin role from ordinary
+  roles, and register the approved app-scoped roles and their rights in IAM.
+  - [ ] Decide role names, enrollment/default-role behavior, and app-admin role.
+  - [ ] Map each role to rights and the responsibilities its admins must perform; test representative access.
 - **iam-service v0.7.1 (responsibilities; branch `iam-v0.7.0`).** The round trip seeds a responsibility with a run
   and a ban, lists the three tables among those older backups cannot hold, and compares users without
   `last_sign_in_at` (signing in to restore records a new time). Every suite passes on the tagged v0.7.1. To do:
