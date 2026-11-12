@@ -161,7 +161,7 @@ Follow-ups:
 
 ## resolved
 
-- **2026-11-12: iam-service v0.10.0 (passkeys).** FlashCards' identity gateway now starts through WebIdentity, which
+- **2026-11-12: iam-service v0.10.1 (passkeys).** FlashCards' identity gateway now starts through WebIdentity, which
   registers FlashCards' web address with the IAM for passkeys (`RENDER_EXTERNAL_URL`); the sign-in and profile
   screens offer passkeys from the shared components.
 - **2026-11-12: iam-service v0.9.0.** `IamError` → `DomainError` (`iam-service/domain`); the identity restore no longer
