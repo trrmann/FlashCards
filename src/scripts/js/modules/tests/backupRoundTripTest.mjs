@@ -17,7 +17,12 @@ import { TableBackup } from 'platform-db';
 import { LocalTestCase } from './localTestCase.mjs';
 import { userAuthService, organizationService, IamBackupService } from 'iam-service/services';
 import { IamTables } from 'iam-service/db';
-import { MfaService, ServiceAccountService, appRightsService } from 'iam-service/services';
+import {
+  MfaService,
+  ServiceAccountService,
+  appRightsService,
+  DomainService,
+} from 'iam-service/services';
 import { MfaKey, Totp } from 'iam-service/mfa';
 import { tokenPolicyService, IamServer, ApplicationCredentials } from 'iam-service/server';
 import { LocalIdentityGateway, RemoteIdentityGateway } from '../identity/index.mjs';
@@ -44,7 +49,7 @@ export class BackupRoundTripTest extends LocalTestCase {
     rights: ['right_id', 'right_key'],
   };
   /** Natural-key tables whose own id each install assigns afresh on restore (compared without it). */
-  static INSTALL_ASSIGNED_IDS = { principal_rights: 'grant_id' };
+  static INSTALL_ASSIGNED_IDS = { principal_rights: 'grant_id', domain: 'domain_id' };
   static LEGACY_ONLY_TABLES = [
     'applications',
     'application_users',
@@ -66,6 +71,8 @@ export class BackupRoundTripTest extends LocalTestCase {
     'domain_settings',
     // Sharing between organizations (iam-service v0.5).
     'organization_partners',
+    // The domain row (iam-service v0.5): newer than every pre-3.0 backup.
+    'domain',
   ];
   /** Not backed up: FlashCards' sessions, and the IAM's transient tables (its own list, so new ones follow). */
   static TRANSIENT_TABLES = ['session', ...IamTables.TRANSIENT];
@@ -226,6 +233,8 @@ export class BackupRoundTripTest extends LocalTestCase {
       ownerUsername: 'rt_alice',
     });
     await organizationService.addPartner(alice.user_id, org.org_id, partner.org_id);
+    // The domain (iam-service v0.5): its row, primary admin and owning organization, as the IAM's start-up makes them.
+    await new DomainService(this.identityDatabase).bootstrap();
     const group = await organizationService.createGroup(alice.user_id, org.org_id, {
       name: 'Study group',
       description: 'Round trip',
