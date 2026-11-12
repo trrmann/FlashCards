@@ -537,6 +537,13 @@ Resolved on 2026-11-03 (round 4):
 
 ## open
 
+- **Move to iam-service v0.4.0 (application rights; branch `iam-v0.4.0`).** Prepared: the round trip seeds a right
+  through `appRightsService` (the old `grantUserRight` and `user_rights` are gone, iam-service MIGRATION.md L14) and
+  compares restored grants without their install-assigned id; the in-process gateway checks app tokens with the
+  access check (L17); `logImportExport` in the test gets a request (it was given a user id, so it logged no user).
+  All suites pass against the local build. To do when v0.4.0 is tagged: pin it, rerun every suite, release. Then
+  the backup routes can use `webIdentity.requireRights('backup.export')`.
+
 - **Move the data layer to platform-db table models (owner, 2026-11-11).** CODING_STANDARDS § 0.1 and § 5 now
   require one model class per table and one SQL file per statement (the CSE340 method). Follow the adoption
   guide in platform-db `documents/TABLE_MODELS.md` once platform-db v0.3.0 is out: `flashcards-postgres-schema.sql` (17 tables) and the eight

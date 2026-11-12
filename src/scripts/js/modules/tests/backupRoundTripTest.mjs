@@ -17,7 +17,7 @@ import { TableBackup } from 'platform-db';
 import { LocalTestCase } from './localTestCase.mjs';
 import { userAuthService, organizationService, IamBackupService } from 'iam-service/services';
 import { IamTables } from 'iam-service/db';
-import { MfaService, ServiceAccountService } from 'iam-service/services';
+import { MfaService, ServiceAccountService, appRightsService } from 'iam-service/services';
 import { MfaKey, Totp } from 'iam-service/mfa';
 import { tokenPolicyService, IamServer, ApplicationCredentials } from 'iam-service/server';
 import { LocalIdentityGateway, RemoteIdentityGateway } from '../identity/index.mjs';
@@ -43,6 +43,8 @@ export class BackupRoundTripTest extends LocalTestCase {
     roles: ['role_id', 'role_name'],
     rights: ['right_id', 'right_key'],
   };
+  /** Natural-key tables whose own id each install assigns afresh on restore (compared without it). */
+  static INSTALL_ASSIGNED_IDS = { principal_rights: 'grant_id' };
   static LEGACY_ONLY_TABLES = [
     'applications',
     'application_users',
@@ -59,7 +61,7 @@ export class BackupRoundTripTest extends LocalTestCase {
     'mfa_admin_policies',
     // Service accounts (iam-service v0.3): newer than every pre-3.0 backup.
     'service_accounts',
-    'service_account_rights',
+    'principal_rights',
     'service_tokens',
     'domain_settings',
   ];
@@ -192,8 +194,22 @@ export class BackupRoundTripTest extends LocalTestCase {
 
     await userSettingsService.setStorageLimit(alice.user_id, 1048576);
     await userSettingsService.updateLastPageVisited(bob.user_id, '/practice');
-    await userAuthService.grantUserRight(alice.user_id, 'test.round_trip');
-    await this.backups.logImportExport(admin.user_id, 'export', 3, 'success');
+    // A right of FlashCards' own, granted to Alice by its admin (iam-service v0.4: principal_rights).
+    await appRightsService.registerRights('flashcards', [{ key: 'test.round_trip' }]);
+    await appRightsService.setRight(
+      { actorId: admin.user_id, viaAppKey: 'flashcards' },
+      'flashcards',
+      'user',
+      alice.user_id,
+      'test.round_trip',
+      true
+    );
+    await this.backups.logImportExport(
+      { session: { userId: admin.user_id } },
+      'export',
+      3,
+      'success'
+    );
 
     const org = await organizationService.createOrganization(admin.user_id, {
       name: 'Round Trip Org',
@@ -296,7 +312,13 @@ export class BackupRoundTripTest extends LocalTestCase {
         (snapshot.data[naturalTable] || []).map((row) => [row[idColumn], row[nameColumn]])
       );
     }
+    const ownId = this.constructor.INSTALL_ASSIGNED_IDS[table];
     return (snapshot.data[table] || [])
+      .map((source) => {
+        const row = { ...source };
+        if (ownId) delete row[ownId];
+        return row;
+      })
       .map((source) => this.normalizeRow(source, idToName, userIdMap))
       .map((row) => JSON.stringify(row, Object.keys(row).sort()))
       .sort();

@@ -9,7 +9,7 @@ import {
   userAuthService,
   iamBackupService,
   userEventService,
-  serviceAccountService,
+  appRightsService,
 } from 'iam-service/services';
 import express from 'express';
 import { UserAdminRouter } from 'iam-service/routes';
@@ -22,10 +22,10 @@ export class LocalIdentityGateway extends IdentityGateway {
     users = userAuthService,
     backups = iamBackupService,
     events = userEventService,
-    services = serviceAccountService,
+    rights = appRightsService,
   } = {}) {
     super();
-    this.services = services;
+    this.rights = rights;
     this.accounts = accounts;
     this.users = users;
     this.backups = backups;
@@ -161,10 +161,10 @@ export class LocalIdentityGateway extends IdentityGateway {
       : Promise.resolve(false);
   }
 
-  /** In-process: the IAM's ServiceAccountService checks the token for FlashCards. */
+  /** In-process: the IAM's access check, for FlashCards (iam-service MIGRATION.md L17). */
   async checkAppToken(req, rights) {
     const token = IdentityGateway.appTokenOf(req);
-    return token ? this.services.check(token, this.appKey, rights) : null;
+    return token ? this.rights.check(this.appKey, { token }, rights) : null;
   }
 
   /** The identity part of a backup (a platform admin, or a service account with identity.backup.export). */
