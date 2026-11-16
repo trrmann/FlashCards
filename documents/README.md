@@ -43,6 +43,7 @@ All project documentation lives in this folder. The root `README.md` only points
 ### Operations
 
 - [ENVIRONMENTS.md](./ENVIRONMENTS.md): dev / preview / prod
+- [PORT_ALLOCATION.md](./PORT_ALLOCATION.md): coordinated port assignments across the seven platform projects
 - [RENDER_ENVIRONMENT_VARIABLES.md](./RENDER_ENVIRONMENT_VARIABLES.md): every env var the code reads
 - [RENDER_ENV.md](./RENDER_ENV.md): check and manage Render service variables with the local CLI
 - [RENDER_ENV.md](./RENDER_ENV.md): check and manage Render service variables with the local CLI

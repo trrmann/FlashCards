@@ -1,6 +1,19 @@
 # issues
 
+> **Critical cross-project development gate:** Before Phase 1 starts, finish any active in-flight change. Then pause
+> unrelated development across all seven projects. Resume it only after this sequence passes final interoperability
+> checks: platform-db → request-queue → iam-service → FlashCards → Heros Companion → Wurm Tools web → Wurm Tools
+> helper. Only work required by this sequence or to clear its blockers may proceed during the gate.
+
 ## high pri
+
+### Critical Phase 4: adopt the coordinated port allocation
+
+**Blocked until Phase 3 (iam-service) passes its database and queue interoperability checks.** Implement FlashCards'
+row in [PORT_ALLOCATION.md](./PORT_ALLOCATION.md): development `2010`, preview `5010`, self-hosted production
+`8010`; bind Render production to its assigned `PORT`. Update server defaults, deploy scripts, tests, local IAM URLs
+(`2030`), and operational docs together. Verify `/api/health` and interoperability with the completed foundation
+before starting Heros. Do not set `PORT_PROD` on Render while it overrides the platform-assigned `PORT`.
 
 ### 1. Verify current production functionality (gate: do this before other changes)
 
