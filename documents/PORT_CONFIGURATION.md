@@ -1,46 +1,50 @@
-# Port Configuration Guide
+# Port Configuration Guide (Phase 4: Coordinated Allocation)
 
 ## Overview
 
-The FlashCards application uses **environment-specific ports** to allow running dev, preview, and production environments simultaneously on your local machine without port conflicts.
+The FlashCards application uses **coordinated port allocation** across a cross-project gate of seven services. All services adopt specific ports in sequence to enable seamless integration and testing. This document describes FlashCards' role in Phase 4 of the port adoption rollout.
 
-## Port Assignments
+**Reference:** See `/home/tmann/Documents/Projects/iam-service/documents/PORT_ALLOCATION.md` for the complete cross-project allocation and rollout sequence.
 
-| Environment     | Port | Command           | Use Case                                     |
-| --------------- | ---- | ----------------- | -------------------------------------------- |
-| **Development** | 5000 | `deploy -dev`     | Local development with live reload           |
-| **Preview**     | 4000 | `deploy -preview` | Testing before production with strict checks |
-| **Production**  | 3000 | `deploy -prod`    | Render cloud deployment                      |
+## Coordinated Port Allocations
+
+### Development (NODE_ENV=development)
+
+| Service         | Slot | Dev Port | Preview Port | Prod Port | Status    |
+| --------------- | ---- | -------- | ------------ | --------- | --------- |
+| Heros           | 00   | 2000     | 5000         | 8000      | Pending   |
+| **FlashCards**  | **10** | **2010** | **5010**     | **8010**  | **Phase 4** ✅ |
+| Wurm web       | 20   | 2020     | 5020         | 8020      | Pending   |
+| IAM service    | 30   | 2030     | 5030         | 8030      | Phase 3 ✅ |
+| Wurm helper    | 40   | 2040     | 5040         | 8040      | Pending   |
+| request-queue  | 50   | 2050     | 5050         | 8050      | Library   |
+| platform-db    | 60   | 2060     | 5060         | 8060      | Library   |
 
 ## Configuration
 
 ### Local Development (.env)
 
 ```env
-PORT_DEV=5000
-PORT_PREVIEW=4000
-PORT_PROD=3000
+# Coordinated port allocation (documents/PORT_ALLOCATION.md, Phase 4)
+PORT_DEV=2010
+PORT_PREVIEW=5010
 NODE_ENV=development
-```
 
-All three port variables are defined locally so you can understand the full configuration.
+# IAM service integration (Phase 3: coordinated ports)
+# Local development: points to IAM running on coordinated port 2030
+# Comment out or set to empty string for in-process IAM (default)
+IAM_URL=http://localhost:2030
+```
 
 ### Production (Render Environment Variables)
 
-**No changes needed!** ✅
+**Update Required:** Set `PORT=8010` in Render environment.
 
-Render already has:
+The application code handles this via backward compatibility:
 
-```
-NODE_ENV=production
-PORT=3000
-```
-
-The application code automatically handles this:
-
-- When `NODE_ENV=production`, it looks for `PORT_PROD` first
-- If `PORT_PROD` is not set (which it isn't in Render), it falls back to `PORT`
-- This ensures Render's existing `PORT=3000` variable continues to work
+- When `NODE_ENV=production`, it looks for `PORT_PROD` first (8010)
+- Falls back to `PORT` environment variable (Render's PORT)
+- Final fallback to hardcoded default (8010)
 
 ## How It Works
 
@@ -48,188 +52,156 @@ The application code automatically handles this:
 
 ```javascript
 const portMap = {
-  development: process.env.PORT_DEV || 5000, // Uses .env PORT_DEV
-  preview: process.env.PORT_PREVIEW || 4000, // Uses .env PORT_PREVIEW
-  production: process.env.PORT_PROD || process.env.PORT || 3000, // Backward compatible
+  development: process.env.PORT_DEV || 2010,  // Uses .env PORT_DEV (coordinated)
+  preview: process.env.PORT_PREVIEW || 5010,  // Uses .env PORT_PREVIEW (coordinated)
+  production: process.env.PORT_PROD || process.env.PORT || 8010,  // Backward compatible
 };
-const port = portMap[NODE_ENV] || 3000;
+const port = portMap[NODE_ENV] || 2010;  // DEFAULT_PORT is now 2010
 ```
 
 ### Environment Detection
 
-| Scenario      | NODE_ENV      | PORT Used | Source                   |
-| ------------- | ------------- | --------- | ------------------------ |
-| Local dev     | `development` | 5000      | `.env PORT_DEV`          |
-| Local preview | `preview`     | 4000      | `.env PORT_PREVIEW`      |
-| Render prod   | `production`  | 3000      | Render's `PORT` variable |
-| Fallback      | (any)         | 3000      | Hardcoded default        |
+| Scenario          | NODE_ENV      | Port Used | Source                   | Integration                |
+| ----------------- | ------------- | --------- | ------------------------ | -------------------------- |
+| Local dev         | `development` | 2010      | `.env PORT_DEV`          | iam-service on 2030        |
+| Local preview     | `preview`     | 5010      | `.env PORT_PREVIEW`      | iam-service on 5030        |
+| Render prod       | `production`  | 8010      | Render's `PORT` variable | iam-service on 8030        |
+| Fallback          | (any)         | 2010      | Hardcoded default        | In-process IAM or env var  |
+
+## IAM Integration
+
+FlashCards integrates with IAM service (Phase 3) via coordinated ports:
+
+```env
+# In .env, to enable remote IAM:
+IAM_URL=http://localhost:2030
+
+# To use in-process IAM (default, no env var):
+# Leave IAM_URL unset or empty
+```
+
+**Test Strategy:**
+- Tests use isolated IAM ports (5089, 5091, 5092, etc.) for parallel execution
+- Integration tests that require cross-service communication use coordinated ports
+- `npm test` runs with in-process IAM (default)
+- `npm run test:iam:remote` runs with remote IAM on coordinated port 2030
 
 ## Deployment Examples
 
-### Running All Three Locally
+### Running Development with IAM
 
 ```bash
-# Terminal 1: Development (port 5000)
-cd ~/Documents/Projects/FlashCards
-deploy.sh -dev
-# App runs on http://localhost:5000
+# Terminal 1: IAM service (must start first)
+cd ~/Documents/Projects/iam-service
+npm run dev
+# IAM runs on http://localhost:2030
 
-# Terminal 2: Preview (port 4000)
+# Terminal 2: FlashCards (waits for IAM health check)
 cd ~/Documents/Projects/FlashCards
-deploy.sh -preview
-# App runs on http://localhost:4000
-
-# Terminal 3: Testing Render behavior (port 3000)
-NODE_ENV=production npm run dev
-# App runs on http://localhost:3000
+npm run dev
+# FlashCards runs on http://localhost:2010
+# Communicates with IAM on http://localhost:2030
 ```
 
-### Switching Between Environments
+### Testing Cross-Service Communication
 
 ```bash
-# Stop the current environment (Ctrl+C in the terminal)
+# Terminal 1: IAM service on coordinated dev port
+cd ~/Documents/Projects/iam-service
+npm run dev
 
-# Deploy different environment
-deploy.sh -preview
+# Terminal 2: FlashCards on coordinated dev port with remote IAM
+cd ~/Documents/Projects/FlashCards
+IAM_URL=http://localhost:2030 npm run dev
 ```
 
-The deploy script automatically:
+### Production on Render
 
-1. Kills any process on the old port
-2. Sets the correct `NODE_ENV`
-3. Starts the server on the new port
+Render will automatically set `NODE_ENV=production` and use:
+- FlashCards on port 8010
+- IAM service on port 8030
+- Both services communicate via their public Render URLs
 
 ## Backward Compatibility
 
-✅ **Render deployment is unaffected**
+✅ **Render deployment is unaffected by port defaults**
 
 The production code maintains backward compatibility:
 
 ```javascript
-// Works with Render's existing PORT variable
-production: process.env.PORT_PROD || process.env.PORT || 3000;
+production: process.env.PORT_PROD || process.env.PORT || 8010;
 ```
 
-This means:
+This ensures:
+- ✅ If Render only has `PORT=3000` → App uses 3000 (old config)
+- ✅ If Render has `PORT=8010` → App uses 8010 (new coordinated)
+- ✅ If Render has `PORT_PROD=8010` → App uses 8010 (explicit preference)
+- ✅ If Render has neither → App defaults to 8010 (new default)
 
-- ✅ If Render only has `PORT=3000` → App uses 3000
-- ✅ If Render adds `PORT_PROD=3000` → App uses 3000
-- ✅ If Render removes both → App defaults to 3000
+**Action Required:** Update Render environment to `PORT=8010` for Phase 4+.
 
-**No Render environment variable changes required!**
+## Cross-Project Gate Status
 
-## Port Conflicts
+### Completed Phases
 
-If a port is already in use:
+- ✅ **Phase 1:** platform-db library (no ports)
+- ✅ **Phase 2:** request-queue library (no ports)
+- ✅ **Phase 3:** IAM service adoption (ports 2030/5030/8030)
+- ✅ **Phase 4:** FlashCards adoption (ports 2010/5010/8010) ← **THIS PHASE**
 
-```
-[WARN] Process already running on port 5000. Killing...
-```
+### Upcoming Phases
 
-The deploy script automatically kills the old process and starts the new one.
-
-If you want to run multiple instances:
-
-```bash
-# Change the port for this run
-PORT_DEV=5001 deploy.sh -dev
-```
+- ⏳ **Phase 5:** Heros service (ports 2000/5000/8000)
+- ⏳ **Phase 6:** Wurm web service (ports 2020/5020/8020)
+- ⏳ **Phase 7:** Wurm helper service (ports 2040/5040/8040)
 
 ## Testing
 
-Verify each environment is using the correct port:
+Verify each environment is using the correct port and connecting to IAM:
 
 ```bash
-# Development
-curl http://localhost:5000/api/health
+# Development (should connect to IAM on 2030)
+curl http://localhost:2010/api/health
 
-# Preview
-curl http://localhost:4000/api/health
+# Preview (should connect to IAM on 5030)
+curl http://localhost:5010/api/health
 
-# Production
-curl http://localhost:3000/api/health
+# Check IAM reachability
+curl http://localhost:2030/api/health
 ```
 
-All should return:
-
-```json
-{
-  "status": "healthy",
-  "database": "<db-name>"
-}
-```
-
-## Environment Variables Summary
-
-### What Changed
-
-| Variable            | Before         | After     | Reason                            |
-| ------------------- | -------------- | --------- | --------------------------------- |
-| `.env PORT`         | Hardcoded 5000 | Removed   | Replaced with PORT_DEV            |
-| `.env PORT_DEV`     | N/A            | Added     | Development environment           |
-| `.env PORT_PREVIEW` | N/A            | Added     | Preview environment               |
-| `.env PORT_PROD`    | N/A            | Added     | Production reference              |
-| Render `PORT`       | 3000           | Unchanged | Works with backward compatibility |
-
-### Environment Variables Table
-
-| Variable       | Local Dev   | Render Prod | Required     | Notes                    |
-| -------------- | ----------- | ----------- | ------------ | ------------------------ |
-| `PORT_DEV`     | ✅ 5000     | ❌          | No           | Local dev only           |
-| `PORT_PREVIEW` | ✅ 4000     | ❌          | No           | Local preview only       |
-| `PORT_PROD`    | ✅ 3000     | ❌          | No           | Optional, reference only |
-| `PORT`         | ❌          | ✅ 3000     | Yes (Render) | Set in Render dashboard  |
-| `NODE_ENV`     | development | production  | Yes          | Controls port selection  |
+All should return 200 with health status.
 
 ## FAQ
 
 ### Q: Do I need to update Render?
 
-**A:** No! The backward compatibility fallback ensures Render's existing `PORT=3000` continues to work.
+**A:** Yes, for Phase 4+. Set `PORT=8010` in Render environment. The backward compatibility fallback ensures `PORT=3000` still works for older deployments, but coordinated allocation requires `PORT=8010`.
 
-### Q: Can I run all three environments at once?
+### Q: Can I run FlashCards and IAM together locally?
 
-**A:** Yes! Each environment uses a different port:
+**A:** Yes! Start IAM first (runs on 2030), then FlashCards with `IAM_URL=http://localhost:2030`. FlashCards runs on 2010.
 
-- Dev on 5000
-- Preview on 4000
-- Prod on 3000
+### Q: Why do tests use different ports (5089, 5091, etc.)?
 
-You can run them in separate terminal windows simultaneously.
+**A:** Tests use isolated test ports for parallel execution without conflicts. This allows multiple test suites to run simultaneously on the same machine.
 
-### Q: What if a port is already in use?
+### Q: What if I want to use a different port for local development?
 
-**A:** The deploy script automatically kills the old process on that port before starting the new one.
-
-### Q: Can I use different ports?
-
-**A:** Yes! Override when deploying:
+**A:** Override when running:
 
 ```bash
-PORT_DEV=8000 deploy.sh -dev
+PORT_DEV=2111 npm run dev
 ```
 
-### Q: Why these specific ports?
+However, coordinated allocation requires 2010 for integration with other services.
 
-**A:**
+### Q: Is in-process IAM still supported?
 
-- 5000: Standard Node.js development port
-- 4000: Common preview/staging port
-- 3000: Render's configured production port
-
-## Future Enhancement: Render Port_PROD
-
-If you later want to use `PORT_PROD` in Render instead of the generic `PORT`:
-
-1. Go to Render dashboard
-2. Add: `PORT_PROD=3000`
-3. No code changes needed (backward compatible)
-4. Optionally remove `PORT` (not required)
-
-The application will automatically prefer `PORT_PROD` over `PORT`.
+**A:** Yes! If `IAM_URL` is not set, FlashCards uses the in-process IAM (LocalIdentityGateway). This is the default for `npm test`.
 
 ---
 
-**Last Updated:** 2026-10-29  
-**Status:** ✅ Implemented and Tested  
-**Breaking Changes:** None (fully backward compatible)
+**Last Updated:** 2026-11-16  
+**Phase 4 Status:** ✅ Coordinated port adoption complete  
+**Next Phase:** Phase 5 (Heros service)

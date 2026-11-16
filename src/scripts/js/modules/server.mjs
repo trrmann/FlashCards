@@ -49,7 +49,7 @@ export class Server {
   static filePath = fileURLToPath(import.meta.url);
   static directory = path.dirname(this.filePath);
   static projectRoot = path.resolve(this.directory, '../../../..');
-  static DEFAULT_PORT = 3000;
+  static DEFAULT_PORT = 2010;
   static SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24; // 24 hours
   /** Pause between start-up rounds after the database wait gives up or a bootstrap fails. */
   static STARTUP_RETRY_MS = 5000;
