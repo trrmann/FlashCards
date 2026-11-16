@@ -26,9 +26,9 @@ LOG_DIR="${PROJECT_ROOT}/.deployment"
 LOG_FILE="${LOG_DIR}/last-run.log"
 RENDER_WAIT_TIME=45  # seconds to wait for initial Render deployment (last deploy: 34.6s)
 RENDER_HEALTH_CHECKS=60  # max health check attempts (up to 2min if free tier is spinning up)
-PORT_DEV=5000
-PORT_PREVIEW=4000
-PORT_PROD=3000
+PORT_DEV=2010
+PORT_PREVIEW=5010
+PORT_PROD=8010
 DEV_DB_NAME=flashcards_dev_local   # dev/preview data; the test suites use flashcards_local
 
 # Color codes

@@ -9,7 +9,7 @@
 
 - **Where:** Your local machine
 - **Server:** Runs on localhost:5000
-- **Database:** Remote on Render
+- **Database:** Local `flashcards_dev_local` on the shared PostgreSQL cluster (`127.0.0.1:5433`)
 - **Code Location:** Local files only
 - **Access:** http://localhost:5000
 - **Use Case:** Active development, testing locally
@@ -19,7 +19,7 @@
 
 - **Where:** Your local machine
 - **Server:** Runs on localhost:4000 (`NODE_ENV=preview`, `PORT_PREVIEW`)
-- **Database:** Remote on Render
+- **Database:** Local `flashcards_dev_local`; `deploy.sh -preview --remote` uses production read-only
 - **Code Location:** Local files only
 - **Access:** http://localhost:4000
 - **Checks:** Prettier + ESLint must pass, then `npm run test:preview` (Lighthouse, HTML/CSS, memory, Web Vitals) must pass
@@ -105,41 +105,31 @@ Runs in order:
 
 ## Database Connection
 
-**All three environments use the same Render database:**
+**Database targets are separated by default:**
 
-One Render PostgreSQL database; all FlashCards tables live in its `public` schema
-(IAM tables and app tables, see DATABASE_SCHEMA.md). No per-application schema is used.
+Development and preview use `flashcards_dev_local` in the shared local PostgreSQL cluster at
+`127.0.0.1:5433`. Tests use the separate `flashcards_local` database. Local database scripts
+default `LOCAL_PG_PORT` to `5433` and pass it to the app as `DB_PG_PORT`.
 
-- Dev: Connects to Render DB from localhost
-- Preview: Connects to Render DB from localhost
-- Prod: Connects to Render DB from Render server
-
-All share same data, so testing changes affects all environments.
+Production uses the provider-managed Render database and its supplied `DB_PG_PORT` (currently
+`5432`). `deploy.sh -preview --remote` can connect to production from localhost, but forces
+read-only mode. No per-application schema is used.
 
 ---
 
 ## Environment Variables
 
-### Dev / Preview (.env file)
+### Local dev / preview
 
-```env
-DB_PG_EXTERNAL_HOSTNAME=<external host from Render>
-DB_PG_INTERNAL_HOSTNAME=<internal host from Render>
-DB_PG_PORT=5432
-DB_PG_DATABASE=<db name>
-DB_PG_USER=<db user>
-DB_PG_PASSWORD=<secret>
-DB_PG_EXPIRE=<YYYY-MM-DD, free tier only>
-PORT_DEV=5000
-PORT_PREVIEW=4000
-RENDER_URL=https://<app>.onrender.com
-```
-
-`NODE_ENV` is set by `deploy.sh` (`development` / `preview`); locally the external hostname is used.
+`deploy.sh -dev` and `deploy.sh -preview` inject local `DB_PG_*` settings from
+`src/scripts/sh/local-db.sh`. Keep Render database settings out of the local dev/preview path;
+the explicit `deploy.sh -preview --remote` mode reads them from `.env` and connects read-only.
 
 ### Prod (Render dashboard)
 
-Same variables, but managed in Render's environment settings:
+Set the connection values supplied by the database provider in Render's environment settings.
+Render currently uses port `5432`; use the supplied `DB_PG_PORT` rather than assigning a
+web-service port to PostgreSQL.
 
 ```text
 NODE_ENV=production

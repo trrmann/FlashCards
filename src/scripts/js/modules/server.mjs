@@ -66,12 +66,13 @@ export class Server {
   /**
    * Resolve the listening port for an environment.
    * For production (Render), supports both PORT_PROD and the legacy PORT variable.
+   * Coordinated allocation (PORT_ALLOCATION.md): dev 2010, preview 5010, prod 8010
    */
   static resolvePort(env) {
     const portMap = {
-      development: process.env.PORT_DEV || 5000,
-      preview: process.env.PORT_PREVIEW || 4000,
-      production: process.env.PORT_PROD || process.env.PORT || this.DEFAULT_PORT,
+      development: process.env.PORT_DEV || 2010,
+      preview: process.env.PORT_PREVIEW || 5010,
+      production: process.env.PORT_PROD || process.env.PORT || 8010,
     };
     return portMap[env] || this.DEFAULT_PORT;
   }
