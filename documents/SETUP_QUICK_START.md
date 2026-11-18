@@ -21,7 +21,8 @@ src/scripts/sh/local-db.sh init
 ```
 
 The shared cluster listens on `127.0.0.1:5433`. `deploy.sh -dev` and `deploy.sh -preview` use
-the local `flashcards_dev_local` database; tests use the separate `flashcards_local` database.
+separate local databases: `flashcards_dev_local` for dev and `flashcards_preview_local`
+for preview; tests use `flashcards_local`.
 See [LOCAL_DATABASE.md](./LOCAL_DATABASE.md) for refresh and database-management commands.
 
 ## 2. Configure application settings
@@ -33,8 +34,8 @@ settings are read from `.env` and the connection is forced read-only.
 
 ```env
 NODE_ENV=development
-PORT_DEV=5000
-PORT_PREVIEW=4000
+PORT_DEV=2010
+PORT_PREVIEW=5010
 SESSION_SECRET=<random hex>                   # optional locally, required on Render
 RENDER_URL=https://<your-app>.onrender.com
 ```
@@ -56,7 +57,7 @@ schema files (`src/scripts/sql/pg/*-postgres-schema.sql`). Watch the console for
 
 ## 4. Create the first user
 
-Open <http://localhost:5000/login>. With no users in the database, the page shows **First User Setup**.
+Open <http://localhost:2010/login>. With no users in the database, the page shows **First User Setup**.
 The account you create there gets the `admin` role.
 
 Restoring from an old database? See _Restoring a backup into a new database_ in
@@ -65,15 +66,15 @@ Restoring from an old database? See _Restoring a backup into a new database_ in
 ## 5. Verify
 
 ```bash
-curl http://localhost:5000/api/health                  # {"status":"healthy",...}
-curl http://localhost:5000/api/system/setup-status     # needsSetup true/false
-curl http://localhost:5000/api/system/database-status  # tables + row counts
+curl http://localhost:2010/api/health                  # {"status":"healthy",...}
+curl http://localhost:2010/api/system/setup-status     # needsSetup true/false
+curl http://localhost:2010/api/system/database-status  # tables + row counts
 ```
 
 ## 6. Quality checks
 
 ```bash
-npm run verify         # prettier --write + eslint
+npm run verify         # non-mutating Prettier check + ESLint
 deploy.sh -preview   # strict format/lint, server on :4000, Lighthouse/HTML/CSS/memory suite
 ```
 

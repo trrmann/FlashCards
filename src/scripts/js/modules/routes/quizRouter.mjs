@@ -130,9 +130,15 @@ class QuizRouter extends BaseRouter {
 
         // Get filter parameters
         const filters = {};
-        if (req.query.class) filters.class = req.query.class;
-        if (req.query.lesson) filters.lesson = req.query.lesson;
-        if (req.query.category) filters.category = req.query.category;
+        if (req.query.class) {
+          filters.class = req.query.class;
+        }
+        if (req.query.lesson) {
+          filters.lesson = req.query.lesson;
+        }
+        if (req.query.category) {
+          filters.category = req.query.category;
+        }
 
         // Fetch user's flashcards
         const filterConditions = [];

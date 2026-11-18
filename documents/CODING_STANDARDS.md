@@ -1,10 +1,14 @@
 # Coding Standards
 
+> **Shared baseline:** [Platform and Wurm Project Standards](https://github.com/trrmann/ai-skills/blob/main/standards/PLATFORM_PROJECT_STANDARDS.md).
+> This file is a project-specific supplement. The shared standard is authoritative
+> for common coding, layout, environment, and port rules.
+
 These are the binding standards for all changes to FlashCards, whether made by people or by AI
 assistants. **Section 0 contains the owner-mandated core standards. They override anything else in
 this document or in existing code.** Where the code currently breaks a standard, the violation is
-listed at the end so it gets fixed rather than copied. Tooling details (ESLint and Prettier
-configuration) are in [CODE_QUALITY.md](./CODE_QUALITY.md).
+listed at the end so it gets fixed rather than copied. Shared code-quality requirements are in the
+[global Code Quality Standard](https://github.com/trrmann/ai-skills/blob/main/standards/CODE_QUALITY.md).
 
 A change is not done until it meets every **must** below. More standards will be added. Append new
 owner-mandated rules to section 0.
@@ -95,43 +99,17 @@ overrides with `min-width` queries only. `max-width` queries are not allowed.
 
 ### 0.5 Environments and the deploy pipeline
 
-Run all three stages with `deploy.sh` (`src/scripts/sh/deploy.sh`). Each stage has one purpose:
-
-| Stage   | Command                         | Runs on                           | Purpose                   | What it does                                                                                                                        |
-| ------- | ------------------------------- | --------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Dev     | `deploy.sh -dev`                | Local server, `:5000`             | Development and debugging | Starts the current code. **No** formatting, linting, or tests. Only what is needed to run (prerequisites, `npm install` if missing) |
-| Preview | `deploy.sh -preview [--remote]` | Local server, `:4000`             | Full quality gate         | Starts the current code, then runs **all** of 0.6. Any failure stops the pipeline                                                   |
-| Prod    | `deploy.sh -prod`               | Render (auto-deploys from GitHub) | Release                   | Git commit and push to GitHub `main`. Render deploys automatically                                                                  |
-
-- **Render is the production destination and the final verification point.** Code is production-ready
-  only once it is deployed on Render and verified there (health, every page, read-only API checks).
-- Preview must pass before anything is deployed to production.
-- **Databases (owner decision, 2026-11-04):**
-
-  | Stage                  | Database                                                                    | Access                                                         |
-  | ---------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------- |
-  | Dev, preview           | Local `flashcards_dev_local`, refreshed from production with `pull-prod.sh` | Read/write                                                     |
-  | Preview `--remote`     | Production (Render)                                                         | **Read-only** (PostgreSQL refuses writes; no schema bootstrap) |
-  | Test suites (`test:*`) | Local `flashcards_local` (dropped and rebuilt by the tests)                 | Read/write                                                     |
-  | Prod                   | Production (Render)                                                         | Read/write                                                     |
-
-  Only Render writes to production. The server enforces this: in development and preview it refuses to start on a
-  writable remote database (override `DB_PG_ALLOW_REMOTE_WRITES=true` only for a deliberate owner action). Schema and
-  migration changes therefore reach production only through a release. See [LOCAL_DATABASE.md](./LOCAL_DATABASE.md).
+The authoritative dev, preview, preview-remote, production, and test-target rules
+are in the [shared environment contract](https://github.com/trrmann/ai-skills/blob/main/standards/PLATFORM_PROJECT_STANDARDS.md#environment-contract).
+FlashCards-specific current behavior and known isolation gaps are documented in
+[ENVIRONMENTS.md](./ENVIRONMENTS.md) and [LOCAL_DATABASE.md](./LOCAL_DATABASE.md).
 
 ### 0.6 Preview testing: every page, every API
 
-The preview stage must run all of the following against the preview server. **Every test covers
-every page** of the site, in the signed-out state and in the signed-in states (normal user and admin)
-where the page differs:
-
-| Area            | Chrome                                                       | Firefox equivalent                                       | W3C                                            |
-| --------------- | ------------------------------------------------------------ | -------------------------------------------------------- | ---------------------------------------------- |
-| Formatting/lint | Prettier + ESLint (`npm run verify`)                         | n/a                                                      | n/a                                            |
-| Audits          | Lighthouse (performance, accessibility, best practices, SEO) | Firefox accessibility audit (axe) and performance timing | n/a                                            |
-| Memory          | Heap / external memory per page                              | Firefox memory measurement per page                      | n/a                                            |
-| CSS             | In-browser CSS checks                                        | Firefox in-browser CSS checks                            | **W3C CSS Validator** on every stylesheet      |
-| HTML            | `html-validate`                                              | n/a                                                      | **W3C Nu HTML Checker** on every rendered page |
+Apply the shared checks in the [global Code Quality Standard](https://github.com/trrmann/ai-skills/blob/main/standards/CODE_QUALITY.md)
+to this browser-rendered application and its API. In preview, cover every rendered
+page at all five responsive tiers and in signed-out and applicable signed-in states
+(normal user and admin).
 
 **API tests:** every API endpoint is tested for every factor that can be tested: success
 responses and shapes, validation errors (`400`), authentication (`401`), authorization and ownership
@@ -160,7 +138,7 @@ database must never mean losing data. Every change must keep these guarantees:
 3. **Proven, not assumed.** An automated export → reset → import → compare round trip (row counts and
    content per table) is part of the preview tests (0.6).
 4. **Backups happen before the reset.** The app warns ahead of the expiry date (`DB_PG_EXPIRE`), and
-   taking a fresh full backup is part of every production release and of the monthly routine.
+   taking a fresh full backup is part of the monthly routine and the shared release contract.
    Backups are stored outside the repository, since they contain user data and password hashes.
 5. **Backup format is versioned.** Restore accepts earlier format versions **only until the backups kept in those
    formats are converted** (imported into a local database and exported again); then the old-format code is
@@ -189,12 +167,13 @@ database must never mean losing data. Every change must keep these guarantees:
    the requested work.
 3. **Test what you changed** and report how it was tested (a command, a simulation, or browser steps).
    Never claim something works without having run it.
-4. **Quality gate:** `npm run verify` (Prettier + ESLint) must pass with no errors, and
-   `deploy.sh -preview` (the full 0.6 suite) must pass before any production deploy.
+4. **Release and quality gates:** follow the [shared release contract](https://github.com/trrmann/ai-skills/blob/main/standards/PLATFORM_PROJECT_STANDARDS.md#release-contract-for-non-course-projects),
+   including this project's full 0.6 preview suite. Until published, use the
+   [local shared contract](/usr/local/share/ai-skills/standards/PLATFORM_PROJECT_STANDARDS.md#release-contract-for-non-course-projects).
 5. **Documentation in the same change.** Any change to a route, table or column, env var, script, or
    user-visible behavior updates the matching current-reference doc (see [README.md](./README.md)).
    Log resolved issues in `Issues.md` with a short **Resolved:** note that says how it was verified.
-6. **Commits and deploys:** commit, push, or run `deploy.sh -prod` only when asked. Commit messages
+6. **Commit messages:** follow the shared release contract. Commit messages
    have an imperative summary line (≤ 72 chars), a blank line, then a body that explains _why_ and
    _how it was verified_.
 7. **New code complies fully with section 0.** When you change a function that has a listed
@@ -217,8 +196,8 @@ database must never mean losing data. Every change must keep these guarantees:
 
 ## 3. JavaScript conventions
 
-- ES modules on the server (`import`/`export`), `const`/`let` (never `var`), `===`, braces on every
-  block, single quotes, semicolons, 2-space indent, 100-column lines. Prettier and ESLint enforce these.
+- ES modules on the server (`import`/`export`), `const`/`let` (never `var`), and `===`. Shared
+  formatting and lint rules are defined by the [global Code Quality Standard](https://github.com/trrmann/ai-skills/blob/main/standards/CODE_QUALITY.md).
 - **Server module pattern.** Each module defines one class and exports it in three ways:
 
   ```js

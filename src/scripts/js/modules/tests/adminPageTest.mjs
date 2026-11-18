@@ -148,7 +148,9 @@ export class AdminPageTest extends LocalTestCase {
     let gone = false;
     for (let i = 0; i < 20 && !gone; i += 1) {
       gone = !(await this.userIdsWithData()).has(victim.id);
-      if (!gone) await new Promise((resolve) => setTimeout(resolve, 250));
+      if (!gone) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
     }
     this.check('deleting a user removes their FlashCards data at once', gone);
     await page.close();
@@ -172,7 +174,9 @@ export class AdminPageTest extends LocalTestCase {
       page.evaluate(
         (i, entries) => {
           const form = document.querySelectorAll('iam-organizations form')[i];
-          for (const [name, value] of Object.entries(entries)) form.elements[name].value = value;
+          for (const [name, value] of Object.entries(entries)) {
+            form.elements[name].value = value;
+          }
           form.requestSubmit();
         },
         index,
@@ -196,7 +200,9 @@ export class AdminPageTest extends LocalTestCase {
 
   async startIdentity() {
     this.iamServer = null;
-    if (!this.remoteIam) return new LocalIdentityGateway();
+    if (!this.remoteIam) {
+      return new LocalIdentityGateway();
+    }
     const secret = crypto.randomBytes(32).toString('hex');
     this.iamServer = new IamServer({
       port: this.constructor.IAM_PORT,
@@ -231,7 +237,9 @@ export class AdminPageTest extends LocalTestCase {
       await new Promise((resolve) => server.httpServer.close(resolve));
       await server.userEvents.stop();
       await identity.stop();
-      if (this.iamServer) await this.iamServer.stop();
+      if (this.iamServer) {
+        await this.iamServer.stop();
+      }
     }
     return this.summary();
   }

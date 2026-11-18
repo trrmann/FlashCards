@@ -37,7 +37,7 @@ export class appSiteData {
     if (this.getName() === '') {
       return 'the ';
     } else {
-      return `' personal `;
+      return "' personal ";
     }
   }
 

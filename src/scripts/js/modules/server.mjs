@@ -18,8 +18,9 @@
  * checks that the schema is there.
  *
  * Identity (IAM phase 3c): every sign-in, account, directory, user-admin and organization call
- * goes through an identity gateway (app.locals.identity): in-process by default, or the IAM
- * service over HTTP when IAM_URL is set (createIdentityGateway).
+ * goes through an identity gateway (app.locals.identity). Local environments use their explicit
+ * IAM_DEV_URL / IAM_PREVIEW_URL; production uses IAM_URL. A production URL is never inherited
+ * by local development or preview.
  */
 
 import express from 'express';
@@ -65,16 +66,44 @@ export class Server {
 
   /**
    * Resolve the listening port for an environment.
-   * For production (Render), supports both PORT_PROD and the legacy PORT variable.
+   * Hosted production must honor the provider-assigned PORT; PORT_PROD is a fallback.
    * Coordinated allocation (PORT_ALLOCATION.md): dev 2010, preview 5010, prod 8010
    */
   static resolvePort(env) {
     const portMap = {
       development: process.env.PORT_DEV || 2010,
       preview: process.env.PORT_PREVIEW || 5010,
-      production: process.env.PORT_PROD || process.env.PORT || 8010,
+      production: process.env.PORT || process.env.PORT_PROD || 8010,
     };
     return portMap[env] || this.DEFAULT_PORT;
+  }
+
+  static createIdentity(env, processEnv = process.env) {
+    if (env === 'development' || env === 'preview') {
+      const suffix = env === 'development' ? 'DEV' : 'PREVIEW';
+      const baseUrl = processEnv[`IAM_${suffix}_URL`];
+      if (!baseUrl) {
+        return createIdentityGateway({ ...processEnv, IAM_URL: '' });
+      }
+      return createIdentityGateway({
+        ...processEnv,
+        IAM_URL: baseUrl,
+        IAM_CLIENT_SECRET:
+          processEnv[`IAM_${suffix}_CLIENT_SECRET`] || processEnv.IAM_CLIENT_SECRET,
+      });
+    }
+
+    if (env === 'production') {
+      return createIdentityGateway({
+        ...processEnv,
+        IAM_URL: processEnv.IAM_URL || processEnv.IAM_PROD_URL,
+      });
+    }
+
+    return createIdentityGateway({
+      ...processEnv,
+      IAM_URL: env === 'test' ? processEnv.IAM_TEST_URL || '' : '',
+    });
   }
 
   constructor({
@@ -84,7 +113,7 @@ export class Server {
     identityDatabase = identityManagementDb,
     connectOptions = {},
     startupRetryMs = Server.STARTUP_RETRY_MS,
-    identity = createIdentityGateway(process.env),
+    identity,
   } = {}) {
     this.env = env ?? (process.env.NODE_ENV?.toLocaleLowerCase() || 'production');
     this.port = port ?? this.constructor.resolvePort(this.env);
@@ -98,15 +127,15 @@ export class Server {
     this.ready = false;
     this.stopping = false;
     this.siteData = new appSiteData();
-    this.identity = identity;
+    this.identity = identity ?? this.constructor.createIdentity(this.env);
     // Card lists show owners' names, looked up through the same gateway.
-    entriesService.identityService = identity;
+    entriesService.identityService = this.identity;
     // Backups take the identity part through the same gateway (phase 3d).
-    backupService.identity = identity;
+    backupService.identity = this.identity;
     // The IAM's notices (a deleted user's data is removed; phase 3d).
-    this.userEvents = new UserEventConsumer({ identity });
+    this.userEvents = new UserEventConsumer({ identity: this.identity });
     this.app = express();
-    this.app.locals.identity = identity;
+    this.app.locals.identity = this.identity;
     this.app.locals.userEvents = this.userEvents;
 
     this.logStartupInfo();
@@ -126,13 +155,13 @@ export class Server {
 
   logStartupInfo() {
     console.log('═══════════════════════════════════════════════════════════');
-    console.log(`🚀 FlashCards Server Starting`);
+    console.log('🚀 FlashCards Server Starting');
     console.log(`   NODE_ENV: ${this.env}`);
     console.log(`   PORT: ${this.port}`);
     console.log(
       `   Cookie Security: ${this.isProduction ? 'SECURE (HTTPS only)' : 'INSECURE (HTTP)'}`
     );
-    console.log(`   Session Store: PostgreSQL (connect-pg-simple)`);
+    console.log('   Session Store: PostgreSQL (connect-pg-simple)');
     console.log(`   Identity: ${this.identity.mode}`);
     const { host, database, readOnly, user } = this.database.config;
     console.log(`   Database: ${host}/${database} as ${user}${readOnly ? ' (READ-ONLY)' : ''}`);
@@ -405,13 +434,30 @@ export class Server {
    */
   async initializeDatabase() {
     const inProcessIam = this.identity.runsInProcess;
-    if (inProcessIam) await this.identityDatabase.waitForConnection(this.connectOptions);
+    if (inProcessIam) {
+      await this.identityDatabase.waitForConnection(this.connectOptions);
+    }
     await this.database.waitForConnection(this.connectOptions);
+
+    // Ensure the connected role has USAGE on public schema (needed for platform-db introspection).
+    // The provisioner creates the app login with minimal permissions; subsequent queries
+    // like to_regclass() require USAGE on public to access pg_class. Apply to both databases
+    // since the provisioner checks tables on the IAM database and schema init on the app database.
+    for (const db of inProcessIam ? [this.identityDatabase, this.database] : [this.database]) {
+      try {
+        await db.query('GRANT USAGE ON SCHEMA public TO current_user');
+      } catch (error) {
+        console.warn('Unable to grant public schema usage:', error.message);
+      }
+    }
+
     if (this.database.config.readOnly) {
       await this.verifySchemaPresent(inProcessIam);
       return;
     }
-    if (inProcessIam) await IamTables.for(this.identityDatabase).provision();
+    if (inProcessIam) {
+      await IamTables.for(this.identityDatabase).provision();
+    }
     await this.database.initializeSchema();
   }
 
@@ -444,7 +490,9 @@ export class Server {
         this.ready = true;
         console.log('✅ FlashCards ready');
         // A read-only server writes nothing, so it leaves the IAM's notices for production.
-        if (!this.database.config.readOnly) this.userEvents.start();
+        if (!this.database.config.readOnly) {
+          this.userEvents.start();
+        }
         return;
       } catch (error) {
         console.error(

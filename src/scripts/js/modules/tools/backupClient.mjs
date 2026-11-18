@@ -49,7 +49,9 @@ export class BackupClient {
   async request(apiPath, options = {}) {
     for (let attempt = 0; ; attempt += 1) {
       const response = await this.send(apiPath, options);
-      if (response.status !== 503 || attempt >= this.constructor.WAKE_RETRIES) return response;
+      if (response.status !== 503 || attempt >= this.constructor.WAKE_RETRIES) {
+        return response;
+      }
       console.log(
         `FlashCards or the IAM service is still waking (free plan); trying again in ${
           this.constructor.WAKE_PAUSE_MS / 1000
@@ -61,8 +63,12 @@ export class BackupClient {
 
   send(apiPath, { method = 'GET', json } = {}) {
     const headers = {};
-    if (this.token) headers.Authorization = `Bearer ${this.token}`;
-    if (json !== undefined) headers['Content-Type'] = 'application/json';
+    if (this.token) {
+      headers.Authorization = `Bearer ${this.token}`;
+    }
+    if (json !== undefined) {
+      headers['Content-Type'] = 'application/json';
+    }
     return fetch(`${this.baseUrl}${apiPath}`, {
       method,
       headers,
@@ -132,7 +138,8 @@ export class BackupClient {
 
   /**
    * Import a backup (JSON plus optional media ZIP). Two steps on the server (users, then FlashCards'
-   * data), each all-or-nothing; if the second fails, running the restore again completes it.
+   * data), each all-or-nothing; if the second fails, resolve the error and retry. A merged IAM service account
+   * may have its destination-only token revoked, in which case a new token is needed before retrying.
    */
   async restore(jsonFile, zipFile = null) {
     const backup = JSON.parse(fs.readFileSync(jsonFile, 'utf8'));
@@ -207,22 +214,30 @@ export class BackupCli {
    * never replaced because of an outage.
    */
   async tokenState(baseUrl) {
-    if (!this.token) return 'invalid';
+    if (!this.token) {
+      return 'invalid';
+    }
     let access;
     try {
       access = await new BackupClient(baseUrl, this.token).access();
     } catch (error) {
-      if (/ failed \((401|403)\)/.test(error.message)) return 'invalid';
+      if (/ failed \((401|403)\)/.test(error.message)) {
+        return 'invalid';
+      }
       throw error;
     }
     const allowed = access.allowed || {};
-    if (!allowed['backup.export'] || !allowed['identity.backup.export']) return 'invalid';
+    if (!allowed['backup.export'] || !allowed['identity.backup.export']) {
+      return 'invalid';
+    }
     const expiresAt = new Date(access.principal?.expires_at ?? 0).getTime();
     return expiresAt - Date.now() <= BackupCli.RENEWAL_DAYS * 86400000 ? 'renew' : 'ok';
   }
 
   async restore(baseUrl, jsonFile, zipFile) {
-    if (!jsonFile) throw new Error('usage: restore <url> <backup.json> [media.zip]');
+    if (!jsonFile) {
+      throw new Error('usage: restore <url> <backup.json> [media.zip]');
+    }
     const client = this.client(baseUrl);
     if ((await client.setupStatus()).needsSetup) {
       throw new Error(
@@ -232,7 +247,9 @@ export class BackupCli {
     const results = await client.restore(jsonFile, zipFile);
     const total = Object.values(results.imported).reduce((sum, count) => sum + count, 0);
     console.log(`Restored ${total} row(s) into ${baseUrl}`);
-    for (const warning of results.warnings) console.log(`  warning: ${warning}`);
+    for (const warning of results.warnings) {
+      console.log(`  warning: ${warning}`);
+    }
   }
 
   /** Empty target only: create the install's first admin (the backup's admin, so the accounts merge). */
@@ -257,12 +274,19 @@ export class BackupCli {
    */
   async run([command, ...args]) {
     try {
-      if (command === 'download') await this.download(args[0], args[1]);
-      else if (command === 'restore') await this.restore(args[0], args[1], args[2]);
-      else if (command === 'check') await this.check(args[0]);
-      else if (command === 'setup') await this.setup(args[0]);
-      else if (command === 'token-state') console.log(await this.tokenState(args[0]));
-      else throw new Error(BackupCli.USAGE);
+      if (command === 'download') {
+        await this.download(args[0], args[1]);
+      } else if (command === 'restore') {
+        await this.restore(args[0], args[1], args[2]);
+      } else if (command === 'check') {
+        await this.check(args[0]);
+      } else if (command === 'setup') {
+        await this.setup(args[0]);
+      } else if (command === 'token-state') {
+        console.log(await this.tokenState(args[0]));
+      } else {
+        throw new Error(BackupCli.USAGE);
+      }
       return 0;
     } catch (error) {
       console.error(`backup: ${error.message}`);

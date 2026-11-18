@@ -56,14 +56,18 @@ export class IdentityGateway {
    */
   static respond(res, error, fallbackMessage) {
     const answer = IdentityGateway.errorAnswer(error);
-    if (answer) return res.status(answer.status).json(answer.body);
+    if (answer) {
+      return res.status(answer.status).json(answer.body);
+    }
     console.error(`${fallbackMessage}:`, error.message);
     return res.status(500).json({ status: 'error', message: fallbackMessage });
   }
 
   /** The signed-in user's id, or a 401 IdentityError. */
   static userIdOf(req) {
-    if (!req.session?.userId) throw new IdentityError(401, 'Not authenticated');
+    if (!req.session?.userId) {
+      throw new IdentityError(401, 'Not authenticated');
+    }
     return req.session.userId;
   }
 

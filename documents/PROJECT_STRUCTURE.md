@@ -76,7 +76,7 @@ FlashCards/
         │       └── iamApiTest.mjs           # /api/iam endpoint tests (local DB only)
         ├── sh/                           # Shell scripts: on PATH in the VS Code terminal (any dir)
         │   ├── backup.sh                 # Download a full backup (JSON + ZIP) from any environment
-        │   ├── backup-token.sh           # Store the backup app token in the GNOME keyring for backup.sh (no prompt)
+        │   ├── backup-token.sh           # Store the backup app token in the Secret Service keyring for backup.sh
         │   ├── release.sh                # Release to production with backup, every test and a live check enforced
         │   ├── deploy.sh                 # deploy.sh -dev | -preview | -prod | -all
         │   ├── local-db.sh               # Wrapper for platform-db's local-db.sh (LOCAL_DATABASE.md)
@@ -111,16 +111,17 @@ FlashCards/
 | `npm run dev`                     | `nodemon` → `node --env-file=.env server.js`                                    |
 | `npm run test:iam`                | IAM API tests on the local scratch DB (LOCAL_DATABASE.md)                       |
 | `npm run test:roundtrip`          | Backup wipe/restore proof on the local scratch DB (LOCAL_DATABASE.md)           |
-| `npm run test:preview`            | Preview quality suite against `TEST_BASE_URL` (default `http://localhost:5000`) |
+| `npm run test:preview`            | Preview quality suite against `TEST_BASE_URL` (default `http://localhost:5010`) |
 | `npm run format` / `format:check` | Prettier write / check                                                          |
 | `npm run lint` / `lint:fix`       | ESLint                                                                          |
-| `npm run verify`                  | format + lint                                                                   |
+| `npm run verify`                  | non-mutating format check + lint                                                |
 | `npm test`                        | Placeholder that exits 1 (no unit tests yet)                                    |
 
 ## Environment
 
 See [RENDER_ENVIRONMENT_VARIABLES.md](./RENDER_ENVIRONMENT_VARIABLES.md) for the variables the code reads.
-Ports: dev 5000, preview 4000, prod `PORT_PROD`/`PORT`/3000 ([PORT_CONFIGURATION.md](./PORT_CONFIGURATION.md)).
+Ports: dev `PORT_DEV` (2010), preview `PORT_PREVIEW` (5010), hosted production provider `PORT`
+([PORT_CONFIGURATION.md](./PORT_CONFIGURATION.md)).
 `NODE_ENV` defaults to `production` when unset.
 
 ## Where to read next

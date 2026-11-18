@@ -14,8 +14,9 @@ import { IdentityManagementDatabase } from 'iam-service/db';
 import { LocalTestCase } from './localTestCase.mjs';
 import { FlashCardsDatabase } from '../db/flashCardsDatabase.mjs';
 import { Server } from '../server.mjs';
-import { BackupService } from '../auth/backupService.mjs';
-import '../auth/entriesService.mjs';
+import { LocalIdentityGateway, RemoteIdentityGateway } from '../identity/index.mjs';
+import { BackupService, backupService } from '../auth/backupService.mjs';
+import { entriesService } from '../auth/entriesService.mjs';
 
 export class StartupTest extends LocalTestCase {
   /** Long enough for at least one full database wait round to give up and restart. */
@@ -56,7 +57,9 @@ export class StartupTest extends LocalTestCase {
   static async getWhenListening(url) {
     for (let i = 0; i < 30; i += 1) {
       const response = await fetch(url).catch(() => null);
-      if (response) return response;
+      if (response) {
+        return response;
+      }
       await this.sleep(100);
     }
     return null;
@@ -74,6 +77,7 @@ export class StartupTest extends LocalTestCase {
     const server = new Server({
       env: 'development',
       port,
+      identity: new LocalIdentityGateway(),
       ...this.relayedAdapters(dbPort),
       connectOptions: { maxWaitMs: 1500, baseDelayMs: 100, maxDelayMs: 300 },
       startupRetryMs: 200,
@@ -113,6 +117,7 @@ export class StartupTest extends LocalTestCase {
       new Server({
         env: 'development',
         port: 1,
+        identity: new LocalIdentityGateway(),
         database: new FlashCardsDatabase({
           ...this.database.config,
           host: 'dpg-example.virginia-postgres.render.com',
@@ -138,7 +143,13 @@ export class StartupTest extends LocalTestCase {
       ...readOnly,
     });
     const usersBefore = await this.identityDatabase.query(LocalTestCase.testQueries.count_users);
-    const server = new Server({ env: 'preview', port, database, identityDatabase });
+    const server = new Server({
+      env: 'preview',
+      port,
+      database,
+      identityDatabase,
+      identity: new LocalIdentityGateway(),
+    });
     try {
       await server.start();
       this.check('starts on a read-only database (bootstrap skipped)', server.ready);
@@ -183,6 +194,94 @@ export class StartupTest extends LocalTestCase {
     this.check('backup work is background', BackupService.WORK.priority === 'background');
   }
 
+  checkIdentityEnvironmentRouting() {
+    console.log('\nIdentity environment routing');
+    const productionUrl = 'https://iam-production.example';
+    const development = Server.createIdentity('development', {
+      IAM_URL: productionUrl,
+      IAM_DEV_URL: 'http://127.0.0.1:2030',
+      IAM_CLIENT_SECRET: 'test-secret',
+    });
+    const preview = Server.createIdentity('preview', {
+      IAM_URL: productionUrl,
+      IAM_PREVIEW_URL: 'http://127.0.0.1:5030',
+      IAM_CLIENT_SECRET: 'test-secret',
+    });
+    const fallback = Server.createIdentity('preview', { IAM_URL: productionUrl });
+    const test = Server.createIdentity('test', { IAM_URL: productionUrl });
+
+    this.check(
+      'dev and preview select their explicit IAM endpoints over IAM_URL',
+      development instanceof RemoteIdentityGateway &&
+        development.baseUrl === 'http://127.0.0.1:2030' &&
+        preview instanceof RemoteIdentityGateway &&
+        preview.baseUrl === 'http://127.0.0.1:5030'
+    );
+    this.check(
+      'missing local/test IAM endpoints never inherit production IAM_URL',
+      fallback instanceof LocalIdentityGateway && test instanceof LocalIdentityGateway
+    );
+  }
+
+  checkIdentityWiring() {
+    console.log('\nIdentity gateway wiring');
+    const oldEntries = entriesService.identityService;
+    const oldBackup = backupService.identity;
+    try {
+      for (const [label, identity] of [
+        ['constructed', undefined],
+        ['injected', new LocalIdentityGateway()],
+      ]) {
+        const server = new Server({
+          env: 'development',
+          database: this.database,
+          identityDatabase: this.identityDatabase,
+          identity,
+        });
+        this.check(
+          `${label} gateway reaches routes, backups, entries and event consumer`,
+          Boolean(server.identity) &&
+            (!identity || server.identity === identity) &&
+            server.app.locals.identity === server.identity &&
+            backupService.identity === server.identity &&
+            entriesService.identityService === server.identity &&
+            server.userEvents.identity === server.identity
+        );
+      }
+    } finally {
+      entriesService.identityService = oldEntries;
+      backupService.identity = oldBackup;
+    }
+  }
+
+  async checkSchemaGrantWarning() {
+    const messages = [];
+    const warn = console.warn;
+    const server = Object.create(Server.prototype);
+    server.identity = { runsInProcess: false };
+    server.database = {
+      config: { readOnly: true },
+      waitForConnection: async () => {},
+      query: async () => {
+        throw new Error('synthetic grant failure');
+      },
+    };
+    let checked = false;
+    server.verifySchemaPresent = async () => {
+      checked = true;
+    };
+    try {
+      console.warn = (...parts) => messages.push(parts.join(' '));
+      await server.initializeDatabase();
+    } finally {
+      console.warn = warn;
+    }
+    this.check(
+      'schema grant failure is reported while read-only schema verification continues',
+      checked && messages.some((message) => message.includes('synthetic grant failure'))
+    );
+  }
+
   /**
    * The shared packages installed here are the versions their dependents ask for. npm keeps a
    * nested git dependency's old version in package-lock.json when a dependency's tag changes
@@ -202,7 +301,9 @@ export class StartupTest extends LocalTestCase {
           : read(dependent);
       for (const [name, spec] of Object.entries(manifest.dependencies || {})) {
         const tag = /#v(\d+\.\d+\.\d+)$/.exec(spec);
-        if (tag) wanted.push([dependent === '.' ? 'FlashCards' : dependent, name, tag[1]]);
+        if (tag) {
+          wanted.push([dependent === '.' ? 'FlashCards' : dependent, name, tag[1]]);
+        }
       }
     }
     const mismatches = wanted
@@ -224,6 +325,9 @@ export class StartupTest extends LocalTestCase {
     await this.checkLateDatabase();
     this.checkDatabaseTargetGuard();
     await this.checkReadOnlyServer();
+    this.checkIdentityEnvironmentRouting();
+    this.checkIdentityWiring();
+    await this.checkSchemaGrantWarning();
     this.checkSchedulingClasses();
     this.checkSharedPackageVersions();
     return this.summary();

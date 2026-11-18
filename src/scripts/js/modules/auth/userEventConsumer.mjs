@@ -43,7 +43,9 @@ export class UserEventConsumer {
     let handled = 0;
     for (;;) {
       const events = await this.identity.pullEvents();
-      if (events.length === 0) return handled;
+      if (events.length === 0) {
+        return handled;
+      }
       for (const event of events) {
         if (this.constructor.HANDLED.has(event.event_type)) {
           const rows = await this.userData.deleteUserData(event.user_id);
@@ -69,7 +71,9 @@ export class UserEventConsumer {
   }
 
   async stop() {
-    if (this.timer) clearInterval(this.timer);
+    if (this.timer) {
+      clearInterval(this.timer);
+    }
     this.timer = null;
     await this.running?.catch(() => {});
   }

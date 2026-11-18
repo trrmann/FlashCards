@@ -43,6 +43,7 @@ HEROS_ROOT="${PROJECTS_DIR}/heros-companion"
 LIVE_WAIT_SECONDS="${LIVE_WAIT_SECONDS:-600}"
 FLASHCARDS_TESTS=(
     test:identity
+    test:entries-import
     test:startup
     test:cleanup
     test:roundtrip

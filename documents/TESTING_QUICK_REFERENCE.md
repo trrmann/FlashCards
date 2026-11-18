@@ -108,7 +108,7 @@ grep "WARN" .deployment/last-run.log
    - Server ready for manual testing
 
 4. **Manual Testing**
-   - Open http://localhost:5000
+   - Open http://localhost:5010
    - Test features
    - Check console/DevTools
 
@@ -161,6 +161,6 @@ Total time: **2-3 minutes**
 ## See Also
 
 - [TESTING_PREVIEW.md](./TESTING_PREVIEW.md) - Complete guide
-- [CODE_QUALITY.md](./CODE_QUALITY.md) - Linting & formatting
+- [Global Code Quality Standard](https://github.com/trrmann/ai-skills/blob/main/standards/CODE_QUALITY.md) - Shared quality requirements
 - [DEPLOY.md](./DEPLOY.md) - Deployment guide
 - `.deployment/last-run.log` - Test results log

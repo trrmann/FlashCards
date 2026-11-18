@@ -102,9 +102,15 @@ class EntriesRouter extends BaseRouter {
 
         // Extract filter parameters from query string
         const filters = {};
-        if (req.query.class) filters.class = req.query.class;
-        if (req.query.lesson) filters.lesson = req.query.lesson;
-        if (req.query.category) filters.category = req.query.category;
+        if (req.query.class) {
+          filters.class = req.query.class;
+        }
+        if (req.query.lesson) {
+          filters.lesson = req.query.lesson;
+        }
+        if (req.query.category) {
+          filters.category = req.query.category;
+        }
 
         // Use filtered query if filters provided, otherwise get all
         let flashcards;
@@ -133,9 +139,15 @@ class EntriesRouter extends BaseRouter {
      */
     this.collectExportSet = async (userId, query) => {
       const filters = {};
-      if (query.class) filters.class = query.class;
-      if (query.lesson) filters.lesson = query.lesson;
-      if (query.category) filters.category = query.category;
+      if (query.class) {
+        filters.class = query.class;
+      }
+      if (query.lesson) {
+        filters.lesson = query.lesson;
+      }
+      if (query.category) {
+        filters.category = query.category;
+      }
 
       const flashcards =
         Object.keys(filters).length > 0
@@ -148,10 +160,16 @@ class EntriesRouter extends BaseRouter {
 
       const mediaIds = new Set();
       for (const card of flashcards) {
-        if (card.question_media_id) mediaIds.add(card.question_media_id);
-        if (card.answer_media_id) mediaIds.add(card.answer_media_id);
+        if (card.question_media_id) {
+          mediaIds.add(card.question_media_id);
+        }
+        if (card.answer_media_id) {
+          mediaIds.add(card.answer_media_id);
+        }
         for (const option of optionsByCard.get(card.flashcard_id) || []) {
-          if (option.option_media_id) mediaIds.add(option.option_media_id);
+          if (option.option_media_id) {
+            mediaIds.add(option.option_media_id);
+          }
         }
       }
 
@@ -280,10 +298,14 @@ class EntriesRouter extends BaseRouter {
         // descriptor, resolving media ids against the uploaded archive.
         let skippedMedia = 0;
         const blockFrom = (form, mediaRef) => {
-          if (!form || form === 'text' || form === 'text_tts') return { form: form || 'text' };
+          if (!form || form === 'text' || form === 'text_tts') {
+            return { form: form || 'text' };
+          }
           const item = mediaRef ? archiveMedia.get(mediaRef) : null;
           if (!item) {
-            if (mediaRef) skippedMedia += 1;
+            if (mediaRef) {
+              skippedMedia += 1;
+            }
             return { form: 'text' };
           }
           return { form, media: item.dataUrl };
@@ -349,13 +371,14 @@ class EntriesRouter extends BaseRouter {
           try {
             const questionBlock = blockFrom(entry.question_form, entry.question_media);
             const answerBlock = blockFrom(entry.answer_form, entry.answer_media);
-            const options = Array.isArray(entry.options)
-              ? entry.options.map((option) => ({
-                  text: option.text,
-                  isCorrect: option.isCorrect,
-                  ...blockFrom(option.form, option.media),
-                }))
-              : undefined;
+            let options;
+            if (Array.isArray(entry.options)) {
+              options = entry.options.map((option) => ({
+                text: option.text,
+                isCorrect: option.isCorrect,
+                ...blockFrom(option.form, option.media),
+              }));
+            }
 
             // Check if a flashcard with the same question already exists
             const existingCard = entry.question

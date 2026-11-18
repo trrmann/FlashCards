@@ -6,8 +6,8 @@
 # Usage: deploy.sh -dev | -preview [--remote] | -prod | -all   (on PATH; any directory)
 #
 # Deploys to specified environment(s) with logging and browser testing.
-# Databases: dev and preview use the local dev database (flashcards_dev_local; refresh it
-# from production with pull-prod.sh). preview --remote opens production READ-ONLY.
+# Databases: dev and preview use separate local databases; preview --remote opens production
+# READ-ONLY. Refresh only the dev database from production with pull-prod.sh.
 # Only -prod (Render) writes to production.
 ################################################################################
 
@@ -29,7 +29,8 @@ RENDER_HEALTH_CHECKS=60  # max health check attempts (up to 2min if free tier is
 PORT_DEV=2010
 PORT_PREVIEW=5010
 PORT_PROD=8010
-DEV_DB_NAME=flashcards_dev_local   # dev/preview data; the test suites use flashcards_local
+DEV_DB_NAME=flashcards_dev_local
+PREVIEW_DB_NAME=flashcards_preview_local
 
 # Color codes
 RED='\033[0;31m'
@@ -103,16 +104,17 @@ USAGE:
 
 OPTIONS:
   -dev      Deploy to local development environment
-            • Starts server on localhost:5000
+            • Starts server on localhost:2010
             • Uses the LOCAL dev database (flashcards_dev_local, read/write)
             • Refresh it from production first with: pull-prod.sh
             • Auto-opens browser when ready
             • Logs to .deployment/last-run.log
 
   -preview  Deploy to local preview environment (full quality gate)
-            • Default: LOCAL dev database, read/write
-            • --remote: PRODUCTION database, READ-ONLY (PostgreSQL refuses every
-              write; no schema bootstrap; signed-out checks only)
+            • Starts server on localhost:5010
+            • Default: separate LOCAL preview database, read/write
+            • --remote: PRODUCTION database, READ-ONLY, and production IAM URL
+              from IAM_PROD_URL; run only non-mutating checks
             • Auto-opens browser when ready
 
   -prod     Deploy to production (Render)
@@ -149,7 +151,7 @@ LOGGING:
   Errors are captured and logged even if deployment continues
 
 TROUBLESHOOTING:
-  • Port 5000 in use? Script auto-kills existing process
+  • Ports 2010 and 5010: this script currently kills processes already using the selected port
   • Check .deployment/last-run.log for detailed error messages
   • Re-run the command to retry deployment
   • Use 'git status' to check if code is committed
@@ -311,24 +313,48 @@ run_comprehensive_tests() {
 ################################################################################
 
 use_local_database() {
-    # Dev/preview data lives in its own local database, apart from flashcards_local, which
-    # the test suites drop and rebuild. Exported settings win over .env (dotenv never
-    # overrides real environment variables).
+    local environment=${1:-development}
+    local database_name
+    case "${environment}" in
+        development) database_name="${DEV_DB_NAME}" ;;
+        preview) database_name="${PREVIEW_DB_NAME}" ;;
+        *) error_exit "Unknown local database environment: ${environment}" ;;
+    esac
+
+    # Keep both deploy environments apart from each other and flashcards_local, which tests drop.
+    # Exported settings win over .env (dotenv never overrides real environment variables).
     "${SCRIPT_DIR}/local-db.sh" start >> "${LOG_FILE}" 2>&1 \
         || error_exit "Local database cluster unavailable. Set it up once with: local-db.sh init"
-    LOCAL_DB_NAME="${DEV_DB_NAME}" "${SCRIPT_DIR}/local-db.sh" init >> "${LOG_FILE}" 2>&1 \
-        || error_exit "Could not create the local dev database ${DEV_DB_NAME}"
-    eval "$(LOCAL_DB_NAME="${DEV_DB_NAME}" "${SCRIPT_DIR}/local-db.sh" env)"
+    LOCAL_DB_NAME="${database_name}" "${SCRIPT_DIR}/local-db.sh" init >> "${LOG_FILE}" 2>&1 \
+        || error_exit "Could not create the local ${environment} database ${database_name}"
+    eval "$(LOCAL_DB_NAME="${database_name}" "${SCRIPT_DIR}/local-db.sh" env)"
     export DB_PG_READ_ONLY=false
-    log INFO "Database: LOCAL ${DB_PG_DATABASE} on ${DB_PG_EXTERNAL_HOSTNAME}:${DB_PG_PORT} (read/write)"
-    log INFO "Refresh it from production with: pull-prod.sh"
+    log INFO "Database: LOCAL ${environment} ${DB_PG_DATABASE} on ${DB_PG_EXTERNAL_HOSTNAME}:${DB_PG_PORT} (read/write)"
+    if [ "${environment}" = "development" ]; then
+        log INFO "Refresh the dev database from production with: pull-prod.sh"
+    fi
 }
 
 use_remote_read_only() {
-    # Production from .env, opened read-only: PostgreSQL refuses every write and the server
-    # skips the schema bootstrap.
+    # Explicitly target production dependencies. The database is read-only; preview checks must
+    # remain non-mutating because production HTTP APIs may still accept writes.
+    local remote_iam_url
+    if ! remote_iam_url="$(node --input-type=module -e '
+        import { readFileSync } from "node:fs";
+        import { parse } from "dotenv";
+        process.stdout.write(parse(readFileSync(".env")).IAM_PROD_URL ?? "");
+    ')"; then
+        error_exit "Could not read IAM_PROD_URL from .env"
+    fi
+    [ -n "${remote_iam_url}" ] || error_exit "--remote requires IAM_PROD_URL in .env"
+    [[ "${remote_iam_url}" == https://* ]] || error_exit "IAM_PROD_URL must be an HTTPS URL"
+    remote_iam_url="${remote_iam_url%/}"
+    if ! curl -sf --max-time 10 "${remote_iam_url}/v1/health" > /dev/null; then
+        error_exit "Production IAM service is not healthy at IAM_PROD_URL"
+    fi
+    export IAM_PREVIEW_URL="${remote_iam_url}"
     export DB_PG_READ_ONLY=true
-    log WARN "Database: PRODUCTION (from .env), READ-ONLY. Signing in is not possible in this mode."
+    log WARN "Database: PRODUCTION (from .env), READ-ONLY; IAM: PRODUCTION (${remote_iam_url})"
 }
 
 wait_until_healthy() {
@@ -355,7 +381,9 @@ run_local_db_tests() {
     fi
     local test_name
     for test_name in test:roundtrip test:roundtrip:remote test:iam test:iam:remote test:identity test:deletion test:deletion:remote test:own-login test:startup test:cleanup; do
-        if npm run "${test_name}" >> "${LOG_FILE}" 2>&1; then
+        if (
+            IAM_URL= IAM_DEV_URL= IAM_PREVIEW_URL= IAM_PROD_URL= npm run "${test_name}"
+        ) >> "${LOG_FILE}" 2>&1; then
             log SUCCESS "${test_name} passed"
         else
             error_exit "${test_name} failed. Check .deployment/last-run.log for details."
@@ -374,7 +402,7 @@ deploy_dev() {
     
     cd "${PROJECT_ROOT}"
     
-    use_local_database
+    use_local_database development
     log INFO "Starting development server on localhost:${PORT_DEV}..."
     
     # Kill any existing process on PORT_DEV
@@ -385,7 +413,7 @@ deploy_dev() {
     fi
     
     # Start server in background
-    NODE_ENV=development npm run dev >> "${LOG_FILE}" 2>&1 &
+    NODE_ENV=development PORT_DEV="${PORT_DEV}" npm run dev >> "${LOG_FILE}" 2>&1 &
     local pid=$!
     
     log INFO "Server PID: $pid"
@@ -415,7 +443,7 @@ deploy_preview() {
     if [ "${mode}" = "remote" ]; then
         use_remote_read_only
     else
-        use_local_database
+        use_local_database preview
     fi
     
     log INFO "Starting preview server on localhost:${PORT_PREVIEW}..."
@@ -428,7 +456,7 @@ deploy_preview() {
     fi
     
     # Start server in background
-    NODE_ENV=preview npm run dev >> "${LOG_FILE}" 2>&1 &
+    NODE_ENV=preview PORT_PREVIEW="${PORT_PREVIEW}" npm run dev >> "${LOG_FILE}" 2>&1 &
     local pid=$!
     
     log INFO "Server PID: $pid"
@@ -614,7 +642,7 @@ main() {
         echo ""
         echo "Options:"
         echo "  -dev       Deploy to development (local)"
-        echo "  -preview   Deploy to preview (local database; --remote: production read-only)"
+        echo "  -preview   Deploy to preview (local targets; --remote: production DB read-only and production IAM)"
         echo "  -prod      Deploy to production (Render, auto-deploy via GitHub)"
         echo "  -all       Deploy to all environments in sequence"
         echo ""

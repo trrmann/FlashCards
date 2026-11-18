@@ -23,7 +23,7 @@ import { IamTables } from 'iam-service/db';
 import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
 import { mediaArchiveService } from './mediaArchiveService.mjs';
 import { LocalIdentityGateway } from '../identity/localIdentityGateway.mjs';
-import { IdentityError } from '../identity/identityGateway.mjs';
+import { IdentityError, IdentityGateway } from '../identity/identityGateway.mjs';
 
 class BackupService {
   /** Scheduling class for backup work: it yields to users' requests (platform-db QueryScheduler). */
@@ -109,6 +109,11 @@ class BackupService {
       data: { ...data, media: mediaRows.map(({ data: _data, ...rest }) => rest) },
       mediaManifest: mediaArchiveService.buildManifest(mediaRows),
     };
+    const identityOmitted = {};
+    if (!identity) {
+      identityOmitted.identityOmitted =
+        'only platform administrators (or identity.backup.export) back up users';
+    }
 
     return {
       version: this.constructor.FORMAT_VERSION,
@@ -117,12 +122,7 @@ class BackupService {
       flashcards,
       metadata: {
         identityIncluded: Boolean(identity),
-        ...(identity
-          ? {}
-          : {
-              identityOmitted:
-                'only platform administrators (or identity.backup.export) back up users',
-            }),
+        ...identityOmitted,
         totalUsers: identity?.data?.users?.length ?? 0,
         totalFlashcards: data.flashcards?.length ?? 0,
         totalQuizzes: data.quizzes?.length ?? 0,
@@ -146,13 +146,18 @@ class BackupService {
    * @returns {{identity: object|null, flashcards: {data: object}}}
    */
   static parts(backup) {
-    if (!backup || typeof backup !== 'object') throw BackupService.invalid('not a backup');
+    if (!backup || typeof backup !== 'object') {
+      throw BackupService.invalid('not a backup');
+    }
     if (String(backup.version || '').startsWith('4.')) {
-      if (!backup.flashcards?.data) throw BackupService.invalid('the FlashCards part is missing');
+      if (!backup.flashcards?.data) {
+        throw BackupService.invalid('the FlashCards part is missing');
+      }
       return { identity: backup.identity ?? null, flashcards: { data: backup.flashcards.data } };
     }
-    if (!backup.data || typeof backup.data !== 'object')
+    if (!backup.data || typeof backup.data !== 'object') {
       throw BackupService.invalid('data is missing');
+    }
     // Format 2.0 (before applications) is no longer restored: no kept backup needs it (iam-service MIGRATION.md L7).
     if (!String(backup.version || '').startsWith('3.')) {
       throw BackupService.invalid(
@@ -172,7 +177,9 @@ class BackupService {
             : null;
         })
         .filter(Boolean);
-      if (settings.length) appData.user_settings = settings;
+      if (settings.length) {
+        appData.user_settings = settings;
+      }
     }
     return {
       identity: Object.keys(identityData).length ? { data: identityData } : null,
@@ -189,7 +196,9 @@ class BackupService {
     const archive = mediaArchive ? mediaArchiveService.parseArchive(mediaArchive) : new Map();
     if (Array.isArray(data.media)) {
       data.media = data.media.filter((row) => {
-        if (row.data) return true;
+        if (row.data) {
+          return true;
+        }
         const item = archive.get(row.media_id);
         if (item) {
           row.data = item.dataUrl;
@@ -203,7 +212,9 @@ class BackupService {
     }
     const available = new Set((data.media || []).map((row) => row.media_id));
     const rows = await this.tables.selectAll('media', BackupService.WORK);
-    for (const row of rows) available.add(row.media_id);
+    for (const row of rows) {
+      available.add(row.media_id);
+    }
     const scrub = (row, column) => {
       if (row[column] && !available.has(row[column])) {
         warnings.push(`Cleared ${column} ${row[column]}: media not available`);
@@ -214,7 +225,9 @@ class BackupService {
       scrub(row, 'question_media_id');
       scrub(row, 'answer_media_id');
     }
-    for (const row of data.flashcard_options || []) scrub(row, 'option_media_id');
+    for (const row of data.flashcard_options || []) {
+      scrub(row, 'option_media_id');
+    }
   }
 
   /**
@@ -228,31 +241,60 @@ class BackupService {
 
     // Step 1: users and everything identity, at the IAM.
     let userIdMap = new Map();
+    let revokedServiceTokens = 0;
     if (identity) {
       const step = await this.identity.importIdentity(actor, identity);
       Object.assign(results.imported, step.imported);
       results.warnings.push(...step.warnings);
       userIdMap = new Map(Object.entries(step.user_id_map || {}));
+      revokedServiceTokens = step.revoked_service_tokens ?? 0;
       results.steps.push('identity');
     }
 
     // Step 2: FlashCards' tables, with merged users' ids rewritten.
-    const data = structuredClone(flashcards.data);
-    await this.resolveMedia(data, mediaArchive, results.warnings);
-    TableBackup.remapColumns(data, this.constructor.userReferenceColumns, userIdMap);
     let step;
     try {
+      const data = structuredClone(flashcards.data);
+      await this.resolveMedia(data, mediaArchive, results.warnings);
+      TableBackup.remapColumns(data, this.constructor.userReferenceColumns, userIdMap);
       step = await this.database.withTransaction(async (client) => {
         const attempt = { imported: {}, warnings: [] };
         await this.tables.importTables(client, data, attempt);
         return attempt;
       }, BackupService.WORK);
     } catch (error) {
-      if (!error.message?.startsWith('Import aborted')) throw error;
+      if (!(error instanceof Error)) {
+        throw error;
+      }
+      const importAborted = error.message.startsWith('Import aborted');
+      if (!identity && !importAborted) {
+        throw error;
+      }
       const done = identity
         ? ' Users were restored (step 1); fix the file and run the restore again.'
         : '';
-      throw new IdentityError(422, `${error.message}. FlashCards' data was not changed.${done}`);
+      const tokenNotice = revokedServiceTokens
+        ? ' The restore token may have been revoked; issue a new token before retrying.'
+        : '';
+      if (importAborted) {
+        const failure = new IdentityError(
+          422,
+          `${error.message}. FlashCards' data was not changed.${done}${tokenNotice}`
+        );
+        failure.cause = error;
+        throw failure;
+      }
+      const answer = IdentityGateway.errorAnswer(error);
+      if (answer) {
+        const failure = new IdentityError(
+          answer.status,
+          `${error.message}.${done}${tokenNotice}`,
+          answer.body.errors
+        );
+        failure.cause = error;
+        throw failure;
+      }
+      throw new Error(`${error.message}.${done}${tokenNotice}`, { cause: error });
     }
     Object.assign(results.imported, step.imported);
     results.warnings.push(...step.warnings);
@@ -289,12 +331,10 @@ class BackupService {
    * Get import/export history
    */
   async getImportExportHistory(userId = null, limit = 100) {
-    const result = userId
-      ? await this.database.query(this.constructor.queries.select_import_export_history_for_user, [
-          userId,
-          limit,
-        ])
-      : await this.database.query(this.constructor.queries.select_import_export_history, [limit]);
+    const query = userId
+      ? this.constructor.queries.select_import_export_history_for_user
+      : this.constructor.queries.select_import_export_history;
+    const result = await this.database.query(query, userId ? [userId, limit] : [limit]);
     return result.rows;
   }
 }

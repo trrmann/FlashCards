@@ -32,7 +32,9 @@ class MediaArchiveService {
    */
   parseDataUrl(dataUrl) {
     const match = /^data:([^;,]+);base64,(.*)$/s.exec(String(dataUrl || ''));
-    if (!match) return null;
+    if (!match) {
+      return null;
+    }
     return { mime: match[1], buffer: Buffer.from(match[2], 'base64') };
   }
 
@@ -55,7 +57,9 @@ class MediaArchiveService {
   buildArchive(mediaRows) {
     const zip = new AdmZip();
     for (const row of mediaRows) {
-      if (!row || !row.media_id || !row.data) continue;
+      if (!row || !row.media_id || !row.data) {
+        continue;
+      }
       const parsed = this.parseDataUrl(row.data);
       const ext = this.extensionFor(row.data, row.kind);
       const content = parsed ? parsed.buffer : Buffer.from(String(row.data));
@@ -89,16 +93,22 @@ class MediaArchiveService {
     const zip = new AdmZip(buffer);
     const map = new Map();
     for (const entry of zip.getEntries()) {
-      if (entry.isDirectory) continue;
+      if (entry.isDirectory) {
+        continue;
+      }
       const name = entry.entryName.startsWith(this.constructor.ARCHIVE_DIR)
         ? entry.entryName.slice(this.constructor.ARCHIVE_DIR.length)
         : entry.entryName;
       const dot = name.lastIndexOf('.');
-      if (dot <= 0) continue;
+      if (dot <= 0) {
+        continue;
+      }
       const mediaId = name.slice(0, dot);
       const ext = name.slice(dot + 1).toLowerCase();
       const mime = this.constructor.EXTENSION_MIMES[ext];
-      if (!mime) continue;
+      if (!mime) {
+        continue;
+      }
       const data = zip.readFile(entry);
       map.set(mediaId, {
         kind: mime.startsWith('audio/') ? 'audio' : 'image',

@@ -1,11 +1,59 @@
 # issues
 
+> **Shared standards:** The authoritative cross-project coding rules and enterprise
+> infrastructure target are in [Platform and Wurm Project Standards](https://github.com/trrmann/ai-skills/blob/main/standards/PLATFORM_PROJECT_STANDARDS.md)
+> in `trrmann/ai-skills`. Until published, use the [local AI-skills workspace copy](/usr/local/share/ai-skills/standards/PLATFORM_PROJECT_STANDARDS.md).
+> This issue list tracks FlashCards work; it does not replace the shared standard.
+
 > **Critical cross-project development gate:** Before Phase 1 starts, finish any active in-flight change. Then pause
 > unrelated development across all seven projects. Resume it only after this sequence passes final interoperability
 > checks: platform-db → request-queue → iam-service → FlashCards → Heros Companion → Wurm Tools web → Wurm Tools
 > helper. Only work required by this sequence or to clear its blockers may proceed during the gate.
 
 ## high pri
+
+- [ ] **Post-beta recovery step:** After the first beta, complete this project's recovery assessment and applicable
+      verification under the [shared standard](/usr/local/share/ai-skills/standards/PLATFORM_PROJECT_STANDARDS.md#phased-implementation-plan-and-exit-criteria).
+      Reuse valid existing evidence and coordinate the recovery work recorded below.
+
+### Recovery changes pending release
+
+The local recovery changes remain unreleased. In isolated testing, the default identity gateway wiring was fixed
+and startup checks passed 21/21; backup round-trip checks passed 267/267 before the subsequent partial-failure
+improvement. Focused, database-free checks for that improvement passed 5/5. A synthetic restore and backup-token
+renewal also passed with a private KDE wallet before that improvement. A targeted isolated PostgreSQL two-step
+restore check passed 4/4 afterward; its revoked-token count was simulated. The actual desktop wallet and key
+recovery remain unverified.
+
+- FlashCards pins `iam-service` v0.12.0, including for its in-process identity gateway; this package does not
+  contain the unreleased IAM restore fix. A release must publish and select an approved IAM revision for local
+  mode as well as coordinate the separately hosted IAM, then verify the exact combined revisions.
+- On 2026-11-17, the owner approved remediation of 203 full-tree lint errors exposed by the in-flight config.
+  The existing style rules remain active; switch-case indentation now uses two spaces to agree with Prettier.
+  `npm run verify` passed, and the files changed afterward passed targeted lint and format checks. A schema-grant
+  failure is now reported instead of silently ignored. The cleanup affects many files and needs release-scope review.
+- `main` contains two unpushed Phase 4 commits and the worktree has unrelated changes. Production `deploy.sh`
+  formats files and uses `git add .`; it is not safe to use as a selective release. `release.sh` requires a
+  clean worktree, takes a production backup, uses the shared local database tests and may hard-reset a local
+  merge on failure. Do not run either against the current worktree. Prepare an independently reviewed release
+  scope and isolated test target; complete normal release gates and obtain explicit production approval.
+- Release scope: IAM needs the restore service, its two new SQL statements, regression tests and API guidance.
+  FlashCards needs its partial-restore warning, regression coverage and recovery guidance, plus an approved IAM
+  package revision. The default-gateway defect was introduced by the uncommitted environment-routing change;
+  include that change together with its wiring fix and tests, or exclude both from a recovery-only release.
+  Do not accidentally include the unpushed port commits or unrelated pending schema/deployment changes. A
+  candidate assembled from different revisions requires its own applicable checks; prior results cover the
+  tested working trees, not a different release candidate.
+- After IAM import, a malformed media ZIP previously failed before the existing table-import error handler and
+  did not warn that the restore token could have been revoked. The local fix reports the completed IAM step and
+  applicable token guidance for preparation failures as well, preserving the original failure and status.
+  Focused tests cover a malformed ZIP with and without identity, other errors, rollback reporting and success.
+- Focused checks also cover the affected backup metadata/history, schema-grant warning, and entry-import options;
+  `test:entries-import` is included in the FlashCards release checks.
+- After scope review, use an isolated clean release checkout and isolated test database. Establish a current,
+  restorable production backup and rollback/forward-recovery plan with owner approval; account for backup-token
+  renewal revoking older tokens. Verify the approved exact IAM and FlashCards revisions in preview, then obtain
+  explicit production approval and confirm deployed versions, health and interoperability. No release has occurred.
 
 ### Critical Phase 4: adopt the coordinated port allocation
 

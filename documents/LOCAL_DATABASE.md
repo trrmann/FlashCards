@@ -35,17 +35,20 @@ local-db.sh run CMD …   # run any command against the local DB (e.g. the round
 
 `serve` exports `DB_PG_*` (including `DB_PG_SSL=disable`) before starting nodemon. Real environment variables
 take precedence over `.env`, so the app talks only to the local database. Port 5001 lets it run alongside
-`deploy.sh -dev` (5000).
+`deploy.sh -dev` (2010).
 
 ## Databases in the local cluster
 
-| Database               | Used by                                   | Contents                                                                        |
-| ---------------------- | ----------------------------------------- | ------------------------------------------------------------------------------- |
-| `flashcards_dev_local` | `deploy.sh -dev`, `deploy.sh -preview`    | A copy of production (`pull-prod.sh`), or empty and bootstrapped on first start |
-| `flashcards_local`     | `npm run test:*`, `local-db.sh serve/run` | Test data; the tests drop and rebuild it                                        |
+| Database                   | Used by                                   | Contents                                                                        |
+| -------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------- |
+| `flashcards_dev_local`     | `deploy.sh -dev`                          | A copy of production (`pull-prod.sh`), or empty and bootstrapped on first start |
+| `flashcards_preview_local` | `deploy.sh -preview`                      | Independent local preview data, or empty and bootstrapped on first start        |
+| `flashcards_local`         | `npm run test:*`, `local-db.sh serve/run` | Test data; the tests drop and rebuild it                                        |
 
-`deploy.sh -dev`/`-preview` create `flashcards_dev_local` if it is missing and export its `DB_PG_*` settings, which win
-over `.env`. `deploy.sh -preview --remote` uses production from `.env` read-only instead (`DB_PG_READ_ONLY=true`).
+`deploy.sh -dev` and `-preview` create their respective databases if missing
+and export their `DB_PG_*` settings, which win over `.env`.
+`deploy.sh -preview --remote` uses production from `.env` read-only instead
+(`DB_PG_READ_ONLY=true`).
 
 ## Pulling production data
 

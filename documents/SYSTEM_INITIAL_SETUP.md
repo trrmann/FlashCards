@@ -158,11 +158,11 @@ Get status of all required database tables.
 
 ```bash
 # 1. Check setup status
-curl http://localhost:5000/api/system/setup-status
+curl http://localhost:2010/api/system/setup-status
 # Returns: needsSetup: true, userCount: 0
 
 # 2. Create first user via initial setup
-curl -X POST http://localhost:5000/api/system/initial-setup \
+curl -X POST http://localhost:2010/api/system/initial-setup \
   -H "Content-Type: application/json" \
   -d '{
     "username": "admin",
@@ -174,28 +174,28 @@ curl -X POST http://localhost:5000/api/system/initial-setup \
 # Returns: User created successfully, session established
 
 # 3. Future users use regular registration
-curl -X POST http://localhost:5000/api/auth/register ...
+curl -X POST http://localhost:2010/api/auth/register ...
 ```
 
 ### Scenario 2: Database Already Initialized
 
 ```bash
 # 1. Check setup status
-curl http://localhost:5000/api/system/setup-status
+curl http://localhost:2010/api/system/setup-status
 # Returns: needsSetup: false, userCount: 1
 
 # 2. Any attempt to use initial-setup fails
-curl -X POST http://localhost:5000/api/system/initial-setup ...
+curl -X POST http://localhost:2010/api/system/initial-setup ...
 # Returns: 403 Forbidden - System already initialized
 
 # 3. Use regular registration instead
-curl -X POST http://localhost:5000/api/auth/register ...
+curl -X POST http://localhost:2010/api/auth/register ...
 ```
 
 ### Scenario 3: Verify Database Health
 
 ```bash
-curl http://localhost:5000/api/system/database-status
+curl http://localhost:2010/api/system/database-status
 # Returns detailed table status
 # Can be used in CI/CD health checks
 ```
@@ -265,13 +265,13 @@ async function completeSetup(formData) {
 
 ```bash
 # 1. Check current setup status
-curl http://localhost:5000/api/system/setup-status
+curl http://localhost:2010/api/system/setup-status
 
 # 2. Check database health
-curl http://localhost:5000/api/system/database-status
+curl http://localhost:2010/api/system/database-status
 
 # 3. Try initial setup (will fail if users exist)
-curl -X POST http://localhost:5000/api/system/initial-setup \
+curl -X POST http://localhost:2010/api/system/initial-setup \
   -H "Content-Type: application/json" \
   -c cookies.txt \
   -d '{
@@ -322,13 +322,14 @@ Render free-tier databases are reset monthly (see `DB_PG_EXPIRE`). The procedure
 
    `deploy.sh -prod` also does this before every release. The Profile page's Backup & Restore downloads the same two files.
 
-   **No person, no prompt, no token to copy:** backups run as the **backup service account** with an **app token**
+   **No person and no token to copy after setup:** backups run as the **backup service account** with an **app token**
    (no password, no MFA; iam-service `documents/MIGRATION.md` L12), and for production `backup.sh` provides its own
-   token (`backup-token-lib.sh`). It checks the token stored in the GNOME keyring with production; when there is none,
+   token (`backup-token-lib.sh`). It checks the token stored in the Secret Service keyring with production; when there is none,
    it is not valid, or it expires within 30 days, it issues a new one with iam-service's `iam-service-account
-setup-backup flashcards --replace` and the database admin login in `.env`, checks it, stores it (encrypted with your
-   desktop login, never in a file or on screen) and revokes the account's older tokens. So an assistant or
-   `release.sh` can take the backup, and the yearly renewal happens by itself. For any other server, store a token with
+setup-backup flashcards --replace` and the database admin login in `.env`, checks it, stores it in the keyring and
+   revokes the account's older tokens. On KDE, `secret-tool` can use KDE Wallet; the wallet must be configured and
+   unlocked, which may require a prompt. An assistant or `release.sh` can then take the backup, and the yearly renewal
+   happens automatically. For any other server, store a token with
    `backup-token.sh` (or it is asked for); `backup-token.sh --forget` removes a stored one.
 
 2. Point the Render web service at the new database (`DB_PG_*`, `DB_PG_EXPIRE`) and let it start. The schemas
@@ -342,12 +343,19 @@ setup-backup flashcards --replace` and the database admin login in `.env`, check
               ~/FlashCardsBackups/<folder>/flashcards-backup-media.zip
    ```
 
-   Tokens are part of the backup, so after the restore the token stored for `backup.sh` works again.
+   **Pending release of the IAM restore fix:** when the new database's `backup` account has a different ID from the
+   backed-up account, its pre-existing tokens are revoked during the merge, including the temporary token just
+   stored by `restore.sh`. Backed-up tokens are restored, except ones already revoked on the destination. Issue a
+   replacement before another restore attempt. For production, the next `backup.sh` detects the invalid stored
+   token and issues a replacement; its `--replace` also revokes the restored account's other tokens. For another
+   server, issue and store a new token explicitly. Do not expect every previously stored token to remain valid.
 
 The restore runs in two steps, each all-or-nothing: the users first, then FlashCards' data. If a row fails, that step
 changes nothing and the error names the table. If the second step fails, the users stay restored. Fix the cause and
 run `restore.sh` again; a second run changes nothing that is already right. Restoring users needs the token's
-`identity.backup.import` right (`setup-backup` grants it).
+`identity.backup.import` right (`setup-backup` grants it). With the pending IAM fix, a partial failure after identity
+restore can also revoke the token used for the attempt; obtain a replacement before retrying. A merge is refused
+instead of granting restored tokens extra destination-only rights; an administrator must resolve that conflict.
 
 Backup users are matched to existing accounts by username (then email), so your new admin account
 is merged with its backed-up identity. Its cards, shares, and progress import under the new id.

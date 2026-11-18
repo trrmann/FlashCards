@@ -119,17 +119,23 @@ export class RemoteIdentityGateway extends IdentityGateway {
    */
   async asUser(req, call) {
     const tokens = req.session?.iamTokens;
-    if (!req.session?.userId || !tokens) throw new IdentityError(401, 'Not authenticated');
+    if (!req.session?.userId || !tokens) {
+      throw new IdentityError(401, 'Not authenticated');
+    }
     try {
       return await call(tokens.access_token);
     } catch (error) {
-      if (!(error instanceof IamClientError) || error.status !== 401) throw error;
+      if (!(error instanceof IamClientError) || error.status !== 401) {
+        throw error;
+      }
     }
     let refreshed;
     try {
       refreshed = (await this.client.refresh(tokens.refresh_token)).tokens;
     } catch (error) {
-      if (!(error instanceof IamClientError)) throw error;
+      if (!(error instanceof IamClientError)) {
+        throw error;
+      }
       this.constructor.signOut(req);
       throw new IdentityError(401, 'Session expired; please sign in again');
     }
@@ -141,7 +147,9 @@ export class RemoteIdentityGateway extends IdentityGateway {
   async meOf(req) {
     const userId = IdentityGateway.userIdOf(req);
     const cached = this.me.get(userId);
-    if (cached) return cached;
+    if (cached) {
+      return cached;
+    }
     return this.me.set(userId, await this.asUser(req, (token) => this.client.me(token)));
   }
 
@@ -158,7 +166,9 @@ export class RemoteIdentityGateway extends IdentityGateway {
    */
   async login(req, username, password) {
     const answer = await this.web.login(req, username, password);
-    if (answer.user_id) this.forget(answer.user_id);
+    if (answer.user_id) {
+      this.forget(answer.user_id);
+    }
     return answer;
   }
 
@@ -184,8 +194,12 @@ export class RemoteIdentityGateway extends IdentityGateway {
 
   async logout(req) {
     const token = req.session?.iamTokens?.access_token;
-    if (req.session?.userId) this.forget(req.session.userId);
-    if (token) await this.client.logout(token).catch(() => {});
+    if (req.session?.userId) {
+      this.forget(req.session.userId);
+    }
+    if (token) {
+      await this.client.logout(token).catch(() => {});
+    }
   }
 
   // ----- Application calls -----
@@ -205,7 +219,9 @@ export class RemoteIdentityGateway extends IdentityGateway {
    * only needs "any"); `fresh` asks the service for the real number.
    */
   async countUsers({ fresh = false } = {}) {
-    if (this.hasUsers && !fresh) return 1;
+    if (this.hasUsers && !fresh) {
+      return 1;
+    }
     const { count } = await this.client.countUsers();
     this.hasUsers = count > 0;
     return count;
@@ -215,7 +231,9 @@ export class RemoteIdentityGateway extends IdentityGateway {
     try {
       return (await this.client.lookupUser(String(username))).user;
     } catch (error) {
-      if (error instanceof IamClientError && error.status === 404) return null;
+      if (error instanceof IamClientError && error.status === 404) {
+        return null;
+      }
       throw error;
     }
   }
@@ -227,7 +245,9 @@ export class RemoteIdentityGateway extends IdentityGateway {
       const { users } = await this.client.userSummaries(
         ids.slice(i, i + this.constructor.SUMMARY_BATCH)
       );
-      for (const user of users) map.set(user.user_id, user);
+      for (const user of users) {
+        map.set(user.user_id, user);
+      }
     }
     return map;
   }
@@ -238,13 +258,19 @@ export class RemoteIdentityGateway extends IdentityGateway {
 
   async displayInfo(req) {
     const userId = req.session?.userId;
-    if (!userId || !req.session.iamTokens) return null;
+    if (!userId || !req.session.iamTokens) {
+      return null;
+    }
     const cached = this.display.get(userId);
-    if (cached !== undefined) return cached;
+    if (cached !== undefined) {
+      return cached;
+    }
     try {
       return this.display.set(userId, (await this.client.userDisplay(userId)).user);
     } catch (error) {
-      if (error instanceof IamClientError && error.status === 404) return null;
+      if (error instanceof IamClientError && error.status === 404) {
+        return null;
+      }
       throw error;
     }
   }
@@ -256,7 +282,9 @@ export class RemoteIdentityGateway extends IdentityGateway {
   }
 
   async isAdmin(req) {
-    if (!req.session?.userId || !req.session.iamTokens) return false;
+    if (!req.session?.userId || !req.session.iamTokens) {
+      return false;
+    }
     const { user } = await this.meOf(req);
     return Boolean(user?.is_admin || user?.is_platform_admin);
   }
@@ -333,13 +361,17 @@ export class RemoteIdentityGateway extends IdentityGateway {
   }
 
   async isPlatformAdmin(req) {
-    if (!req.session?.userId || !req.session.iamTokens) return false;
+    if (!req.session?.userId || !req.session.iamTokens) {
+      return false;
+    }
     const { user } = await this.meOf(req);
     return Boolean(user?.is_platform_admin);
   }
 
   async exportIdentity(req) {
-    if (req.serviceAccount) return this.web.exportIdentityAsService(req);
+    if (req.serviceAccount) {
+      return this.web.exportIdentityAsService(req);
+    }
     return (await this.asUser(req, (token) => this.client.exportIdentity(token))).identity;
   }
 
@@ -379,7 +411,9 @@ export class RemoteIdentityGateway extends IdentityGateway {
           token,
           ...(hasBody ? { body: req.body ?? {} } : {}),
         });
-        if (raw.status === 401) throw new IamClientError(401, raw.body?.message, raw.body);
+        if (raw.status === 401) {
+          throw new IamClientError(401, raw.body?.message, raw.body);
+        }
         return raw;
       });
       // Organization changes (group roles, platform admins, app access) can change anyone's

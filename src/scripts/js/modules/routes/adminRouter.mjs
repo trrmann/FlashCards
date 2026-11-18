@@ -364,7 +364,9 @@ class AdminRouter extends BaseRouter {
 
           // 400 bad file, 403 users need a platform admin, 422 a bad row (that step rolled back)
           const answer = IdentityGateway.errorAnswer(error);
-          if (answer) return res.status(answer.status).json(answer.body);
+          if (answer) {
+            return res.status(answer.status).json(answer.body);
+          }
           return res.status(500).json({
             status: 'error',
             message: 'Failed to import application data',

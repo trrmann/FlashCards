@@ -50,6 +50,23 @@ export class OwnLoginTest extends LocalTestCase {
         login.action === 'created' &&
         login.objectsHandedOver > 10
     );
+    // Grant public schema usage to the app login (needed for schema migration checks).
+    // The provisioner creates the role with minimal permissions; it needs USAGE on public
+    // to be able to query pg_class during schema bootstrap.
+    // The grant must be applied to BOTH the FlashCards database (for app tables) and the
+    // IAM database (for provisioner checks when the server starts).
+    for (const [dbName, db] of [
+      ['FlashCards', this.database],
+      ['IAM', this.identityDatabase],
+    ]) {
+      await db.query(`GRANT USAGE ON SCHEMA public TO "${this.constructor.ROLE}"`);
+      const result = await db.query(
+        "SELECT has_schema_privilege($1, 'public', 'USAGE') AS has_usage",
+        [this.constructor.ROLE]
+      );
+      console.log(`Grant verified on ${dbName} for ${this.constructor.ROLE}:`, result.rows[0]);
+    }
+
     return login.password;
   }
 
@@ -74,7 +91,9 @@ export class OwnLoginTest extends LocalTestCase {
     const deadline = Date.now() + 60000;
     while (Date.now() < deadline) {
       try {
-        if ((await fetch(`${this.baseUrl}/api/health`)).status === 200) return true;
+        if ((await fetch(`${this.baseUrl}/api/health`)).status === 200) {
+          return true;
+        }
       } catch {
         // not listening yet
       }
@@ -84,11 +103,15 @@ export class OwnLoginTest extends LocalTestCase {
   }
 
   async stopFlashCards() {
-    if (!this.child || this.child.exitCode !== null) return;
+    if (!this.child || this.child.exitCode !== null) {
+      return;
+    }
     const exited = new Promise((resolve) => this.child.once('exit', resolve));
     this.child.kill('SIGTERM');
     await Promise.race([exited, PostgresDatabase.sleep(5000)]);
-    if (this.child.exitCode === null) this.child.kill('SIGKILL');
+    if (this.child.exitCode === null) {
+      this.child.kill('SIGKILL');
+    }
   }
 
   async register(name) {
@@ -187,12 +210,18 @@ export class OwnLoginTest extends LocalTestCase {
       const password = await this.provisionLogin();
       const started = await this.startFlashCards(password, secret);
       this.check('the server starts on the app login', started);
-      if (!started) console.log(`--- server output ---\n${this.output.join('')}\n---`);
-      if (started) await this.checkApp(password);
+      if (!started) {
+        console.log(`--- server output ---\n${this.output.join('')}\n---`);
+      }
+      if (started) {
+        await this.checkApp(password);
+      }
     } finally {
       await this.stopFlashCards();
       await iamServer.stop();
-      for (const db of this.databases.slice(2)) await db.close();
+      for (const db of this.databases.slice(2)) {
+        await db.close();
+      }
       this.databases.splice(2);
       await this.identityDatabase.query(this.q.own_login_drop_test_role);
       await this.resetDatabase();

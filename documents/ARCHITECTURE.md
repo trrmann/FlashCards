@@ -38,7 +38,8 @@ PostgreSQL on Render (one database, public schema)
 `server.stop()` closes the HTTP server and both pools.
 
 - **Port**: `resolvePort(env)` gives development → `PORT_DEV` (2010), preview → `PORT_PREVIEW` (5010),
-  production → `PORT_PROD` → `PORT` → 8010. See [PORT_ALLOCATION.md](./PORT_ALLOCATION.md).
+  production → provider `PORT` → `PORT_PROD` fallback → 8010. See
+  [PORT_ALLOCATION.md](./PORT_ALLOCATION.md).
 - **Environment**: `NODE_ENV` (lower-cased); defaults to `production` when unset.
 - **Sessions**: `express-session` with `connect-pg-simple` on the IAM pool, table `session`.
   Secret is `SESSION_SECRET`, falling back to a hard-coded dev secret. Set it on Render.

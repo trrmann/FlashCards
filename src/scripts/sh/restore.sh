@@ -8,15 +8,16 @@
 # Imports a backup made with backup.sh (or the Profile page) into the server at
 # <base-url>, as the backup service account (an app token; never a person, so no
 # password and no MFA: iam-service MIGRATION.md L12). Two steps, each all-or-nothing:
-# users, then FlashCards' data. If the second fails, the users stay restored; run
-# this again to complete it (a rerun changes nothing that is right).
+# users, then FlashCards' data. If the second fails, the users stay restored; fix
+# the problem and run this again. A merged account may require a new token first.
 #
 # The token: as backup.sh (backup-token-lib.sh). For production the script provides its
 # own, also for a new, empty database (for example after the monthly Render reset): it
 # first creates the first admin through initial setup (use the backup's admin username so
 # the accounts merge), then issues a token on that database with the database admin login
 # in .env (point .env at the new database first). Elsewhere: the stored token, or asked.
-# After the restore the backup's own tokens are back as well.
+# After the restore the backup's own tokens are back as well. With the pending IAM
+# collision fix, the temporary target token is revoked when its account is merged.
 # Set FLASHCARDS_ASSUME_YES=1 to skip the confirmation.
 ################################################################################
 

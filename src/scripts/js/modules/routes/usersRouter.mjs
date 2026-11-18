@@ -22,7 +22,9 @@ class UsersRouter extends BaseRouter {
         const user = await BaseRouter.identity(req).currentUser(req);
         return res.status(200).json({ status: 'success', user });
       } catch (error) {
-        if (IdentityGateway.errorAnswer(error)?.status === 401) req.session.destroy(() => {});
+        if (IdentityGateway.errorAnswer(error)?.status === 401) {
+          req.session.destroy(() => {});
+        }
         return IdentityGateway.respond(res, error, 'Failed to retrieve profile');
       }
     });

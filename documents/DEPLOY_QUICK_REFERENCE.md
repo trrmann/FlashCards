@@ -23,22 +23,23 @@ deploy.sh -h
 
 ### `deploy.sh -dev`
 
-- ✅ Starts server on `http://localhost:5000`
-- ✅ Auto-kills any existing process on port 5000
+- ✅ Starts server on `http://localhost:2010`
+- ✅ Replaces any existing listener on port 2010
 - ✅ Opens browser automatically when ready
 - ✅ Logs all output to `.deployment/last-run.log`
-- ✅ Uses remote Render PostgreSQL database
+- ✅ Uses local `flashcards_dev_local`
 - ℹ️ **For:** Local development work
 
 ### `deploy.sh -preview`
 
 - ✅ **Runs code verification** (format + lint) - ABORTS if fails!
-- ✅ Starts server on `http://localhost:4000`
+- ✅ Starts server on `http://localhost:5010`
 - ✅ Runs `npm run test:preview` (Lighthouse, HTML/CSS, memory, Web Vitals) - ABORTS if fails!
 - ✅ Opens browser automatically when ready
-- ✅ Uses remote Render PostgreSQL database
+- ✅ Uses local `flashcards_preview_local`, separate from dev
+- ✅ `--remote` explicitly selects production DB read-only
 - ℹ️ **For:** Final local testing before production commit
-- 📋 **See:** [CODE_QUALITY.md](./CODE_QUALITY.md) for formatting/linting details
+- 📋 **See:** [Global Code Quality Standard](https://github.com/trrmann/ai-skills/blob/main/standards/CODE_QUALITY.md) for shared quality requirements
 
 ### `deploy.sh -prod`
 
@@ -120,7 +121,7 @@ When you run `deploy.sh -preview`:
 
 This ensures preview environment only runs quality code.
 
-📋 **Full Details:** See [CODE_QUALITY.md](./CODE_QUALITY.md)
+📋 **Shared Requirements:** See the [Global Code Quality Standard](https://github.com/trrmann/ai-skills/blob/main/standards/CODE_QUALITY.md)
 
 ## Understanding the Log
 
@@ -194,13 +195,13 @@ deploy.sh -dev   # or -preview, -prod, -all
 
 ## Environment Difference
 
-| Aspect       | Dev            | Preview        | Prod          |
-| ------------ | -------------- | -------------- | ------------- |
-| **Server**   | localhost:5000 | localhost:4000 | Render.com    |
-| **Database** | Render Remote  | Render Remote  | Render Remote |
-| **Purpose**  | Development    | Final Testing  | Live          |
-| **Code**     | Local          | Local          | Deployed      |
-| **Browser**  | Auto-opens     | Auto-opens     | Manual check  |
+| Aspect       | Dev            | Preview          | Prod          |
+| ------------ | -------------- | ---------------- | ------------- |
+| **Server**   | localhost:2010 | localhost:5010   | Render.com    |
+| **Database** | Local dev DB   | Local preview DB | Render Remote |
+| **Purpose**  | Development    | Final Testing    | Live          |
+| **Code**     | Local          | Local            | Deployed      |
+| **Browser**  | Auto-opens     | Auto-opens       | Auto-opens    |
 
 ## Git Status Before Production
 

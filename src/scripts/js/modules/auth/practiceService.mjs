@@ -24,7 +24,9 @@ class PracticeService {
    * @returns {string} SQL LIKE pattern or null if empty
    */
   getFilterPattern(filterValue) {
-    if (!filterValue || filterValue.trim() === '') return null;
+    if (!filterValue || filterValue.trim() === '') {
+      return null;
+    }
 
     const trimmed = filterValue.trim();
     // If ends with *, use it as wildcard pattern; otherwise exact match
@@ -45,8 +47,12 @@ class PracticeService {
    */
   getCardRepetitionsNeeded(boxNumber) {
     // Research-based optimal repetitions per box
-    if (boxNumber === 1) return 3; // Struggling cards need most reinforcement
-    if (boxNumber === 2) return 2; // Medium difficulty needs moderate reinforcement
+    if (boxNumber === 1) {
+      return 3;
+    } // Struggling cards need most reinforcement
+    if (boxNumber === 2) {
+      return 2;
+    } // Medium difficulty needs moderate reinforcement
     return 1; // Mastered cards need minimal reinforcement
   }
 
@@ -607,7 +613,7 @@ class PracticeService {
       );
       console.log(`[trackSessionAttempt] Success - recorded attempt ${currentAttemptNumber}`);
     } catch (error) {
-      console.error(`[trackSessionAttempt] Error:`, error.message);
+      console.error('[trackSessionAttempt] Error:', error.message);
       throw error;
     }
 
@@ -654,7 +660,7 @@ class PracticeService {
         `[practice_history] Success - recorded with id: ${historyResult.rows[0]?.id}, filter: class=${cardClass}, lesson=${cardLesson}, category=${cardCategory}`
       );
     } catch (error) {
-      console.error(`[practice_history] Error:`, error.message);
+      console.error('[practice_history] Error:', error.message);
       throw error;
     }
 
@@ -842,9 +848,15 @@ class PracticeService {
 
     const boxCounts = { box1: 0, box2: 0, box3: 0 };
     boxCountsResult.rows.forEach((row) => {
-      if (row.current_box === 1) boxCounts.box1 = parseInt(row.count);
-      if (row.current_box === 2) boxCounts.box2 = parseInt(row.count);
-      if (row.current_box === 3) boxCounts.box3 = parseInt(row.count);
+      if (row.current_box === 1) {
+        boxCounts.box1 = parseInt(row.count);
+      }
+      if (row.current_box === 2) {
+        boxCounts.box2 = parseInt(row.count);
+      }
+      if (row.current_box === 3) {
+        boxCounts.box3 = parseInt(row.count);
+      }
     });
 
     console.log(

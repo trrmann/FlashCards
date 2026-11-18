@@ -20,7 +20,9 @@ class FakeIamClient {
   async invoke(name, ...args) {
     this.calls.push(name);
     const behave = this.behaviour[name];
-    if (!behave) throw new Error(`unexpected call ${name}`);
+    if (!behave) {
+      throw new Error(`unexpected call ${name}`);
+    }
     return behave(...args);
   }
 
@@ -52,8 +54,11 @@ export class RemoteIdentityGatewayTest {
   }
 
   check(label, ok, detail = '') {
-    if (ok) this.passed += 1;
-    else this.failed += 1;
+    if (ok) {
+      this.passed += 1;
+    } else {
+      this.failed += 1;
+    }
     console.log(`  ${ok ? '✓' : '✗'} ${label}${ok || !detail ? '' : `: ${detail}`}`);
   }
 
@@ -83,7 +88,9 @@ export class RemoteIdentityGatewayTest {
       iamTokens: { access_token: 'old', refresh_token: 'r1' },
     });
     client.behaviour.me = async (token) => {
-      if (token === 'old') throw new IamClientError(401, 'expired');
+      if (token === 'old') {
+        throw new IamClientError(401, 'expired');
+      }
       return { user: { user_id: 'u1', is_admin: true } };
     };
     client.behaviour.refresh = async () => ({
@@ -213,7 +220,9 @@ export class RemoteIdentityGatewayTest {
       ['GET', '/organizationsX'],
     ];
     const codes = [];
-    for (const [method, url] of blocked) codes.push(await answer(method, url));
+    for (const [method, url] of blocked) {
+      codes.push(await answer(method, url));
+    }
     this.check(
       'app-only and other paths are refused (404) and never reach the service',
       codes.every((code) => code === 404) && client.count('callRaw') === 0,
@@ -227,7 +236,9 @@ export class RemoteIdentityGatewayTest {
       ['POST', '/platform-admins/4'],
     ];
     const ok = [];
-    for (const [method, url] of allowed) ok.push(await answer(method, url));
+    for (const [method, url] of allowed) {
+      ok.push(await answer(method, url));
+    }
     this.check(
       'the organizations API passes through',
       ok.every((code) => code === 200) && client.count('callRaw') === allowed.length,

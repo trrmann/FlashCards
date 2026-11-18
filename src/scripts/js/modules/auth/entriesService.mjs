@@ -104,7 +104,9 @@ class EntriesService {
     const lang = String(extras.lang || 'en-US').slice(0, 16);
     const answerLang = extras.answerLang ? String(extras.answerLang).slice(0, 16) : null;
 
-    if (Array.isArray(extras.options)) this.validateOptionForms(extras.options);
+    if (Array.isArray(extras.options)) {
+      this.validateOptionForms(extras.options);
+    }
 
     const [questionForm, questionMediaId] = await this.resolveBlock(userId, extras.questionBlock);
     const [answerForm, answerMediaId] = await this.resolveBlock(userId, extras.answerBlock);
@@ -179,14 +181,18 @@ class EntriesService {
       ]);
       order += 1;
     }
-    if (userId) await this.cleanupUnreferencedMedia(userId);
+    if (userId) {
+      await this.cleanupUnreferencedMedia(userId);
+    }
   }
 
   /**
    * Media rows (with data) for a set of ids owned by the user.
    */
   async getMediaByIds(userId, mediaIds) {
-    if (!mediaIds || mediaIds.length === 0) return [];
+    if (!mediaIds || mediaIds.length === 0) {
+      return [];
+    }
     const result = await this.database.query(this.constructor.queries.select_media_by_ids, [
       userId,
       mediaIds,
@@ -216,7 +222,9 @@ class EntriesService {
     ]);
     const map = new Map();
     for (const row of result.rows) {
-      if (!map.has(row.flashcard_id)) map.set(row.flashcard_id, []);
+      if (!map.has(row.flashcard_id)) {
+        map.set(row.flashcard_id, []);
+      }
       map.get(row.flashcard_id).push(row);
     }
     return map;
@@ -261,7 +269,9 @@ class EntriesService {
    * support, matching the header filter / practice semantics.
    */
   getFilterPattern(filterValue) {
-    if (!filterValue || String(filterValue).trim() === '') return null;
+    if (!filterValue || String(filterValue).trim() === '') {
+      return null;
+    }
     const trimmed = String(filterValue).trim();
     if (trimmed.endsWith('*')) {
       return trimmed.substring(0, trimmed.length - 1) + '%';
@@ -393,7 +403,9 @@ class EntriesService {
       userId,
     ]);
 
-    if (result.rowCount > 0) await this.cleanupUnreferencedMedia(userId);
+    if (result.rowCount > 0) {
+      await this.cleanupUnreferencedMedia(userId);
+    }
     return result.rowCount > 0;
   }
 

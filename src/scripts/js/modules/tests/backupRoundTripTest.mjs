@@ -26,7 +26,7 @@ import {
 } from 'iam-service/services';
 import { MfaKey, Totp } from 'iam-service/mfa';
 import { tokenPolicyService, IamServer, ApplicationCredentials } from 'iam-service/server';
-import { LocalIdentityGateway, RemoteIdentityGateway } from '../identity/index.mjs';
+import { IdentityError, LocalIdentityGateway, RemoteIdentityGateway } from '../identity/index.mjs';
 import { entriesService } from '../auth/entriesService.mjs';
 import { practiceService } from '../auth/practiceService.mjs';
 import { BackupService } from '../auth/backupService.mjs';
@@ -368,8 +368,12 @@ export class BackupRoundTripTest extends LocalTestCase {
     return (snapshot.data[table] || [])
       .map((source) => {
         const row = { ...source };
-        if (ownId) delete row[ownId];
-        for (const column of activity) delete row[column];
+        if (ownId) {
+          delete row[ownId];
+        }
+        for (const column of activity) {
+          delete row[column];
+        }
         return row;
       })
       .map((source) => this.normalizeRow(source, idToName, userIdMap))
@@ -380,10 +384,14 @@ export class BackupRoundTripTest extends LocalTestCase {
   normalizeRow(source, idToName, userIdMap) {
     const row = { ...source };
     for (const column of this.constructor.USER_REFERENCE_COLUMNS) {
-      if (row[column] && userIdMap.has(row[column])) row[column] = userIdMap.get(row[column]);
+      if (row[column] && userIdMap.has(row[column])) {
+        row[column] = userIdMap.get(row[column]);
+      }
     }
     for (const [column, names] of Object.entries(idToName)) {
-      if (row[column] !== undefined) row[column] = names.get(row[column]) ?? row[column];
+      if (row[column] !== undefined) {
+        row[column] = names.get(row[column]) ?? row[column];
+      }
     }
     return row;
   }
@@ -441,7 +449,9 @@ export class BackupRoundTripTest extends LocalTestCase {
 
   async stopIdentity() {
     await this.identity.stop();
-    if (this.iamServer) await this.iamServer.stop();
+    if (this.iamServer) {
+      await this.iamServer.stop();
+    }
   }
 
   /** Wipe the database, re-create the admin under a new id, and sign them in. */
@@ -553,7 +563,9 @@ export class BackupRoundTripTest extends LocalTestCase {
     }
     const before = await this.snapshot();
     for (const [table, rows] of Object.entries(before.data)) {
-      if (this.constructor.UNSEEDED_TABLES.includes(table)) continue;
+      if (this.constructor.UNSEEDED_TABLES.includes(table)) {
+        continue;
+      }
       this.check(`seeded ${table}`, rows.length > 0, 'no rows to prove the round trip with');
     }
     const original = await this.exportBoth(await this.actor('rt_admin'));
@@ -596,6 +608,9 @@ export class BackupRoundTripTest extends LocalTestCase {
 
     console.log('\n5. Two steps: the second fails, then running it again completes it');
     await this.checkTwoStepRerun(original, actor);
+    await this.checkMediaFailureAfterIdentity();
+    await this.checkSuccessfulRestorePreparation();
+    await this.checkExportMetadataAndHistory();
 
     console.log('\n6. Only platform admins back up and restore users');
     await this.checkPlatformAdminOnly(original);
@@ -650,7 +665,9 @@ export class BackupRoundTripTest extends LocalTestCase {
     const platformRoles = new Set(
       legacy.data.roles.filter((role) => role.app_id === null).map((role) => role.role_id)
     );
-    for (const table of this.constructor.LEGACY_ONLY_TABLES) delete legacy.data[table];
+    for (const table of this.constructor.LEGACY_ONLY_TABLES) {
+      delete legacy.data[table];
+    }
     legacy.data.roles = legacy.data.roles
       .filter((role) => !platformRoles.has(role.role_id))
       .map(({ app_id: _appId, ...role }) => role);
@@ -742,6 +759,7 @@ export class BackupRoundTripTest extends LocalTestCase {
     } catch (error) {
       rejection = error;
     }
+
     const users = (await this.snapshot()).data.users;
     this.check(
       'step 2 failed, step 1 stayed applied, and the message says to run it again',
@@ -752,7 +770,199 @@ export class BackupRoundTripTest extends LocalTestCase {
     );
     const rerun = await this.backups.importBackup(actor, renamed, original.archive);
     this.check('running the fixed file again completes both steps', rerun.steps.length === 2);
+
+    const identity = this.backups.identity;
+    const importIdentity = identity.importIdentity;
+    identity.importIdentity = async (...args) => ({
+      ...(await importIdentity.apply(identity, args)),
+      revoked_service_tokens: 1,
+    });
+    try {
+      let revokedRejection = null;
+      try {
+        await this.backups.importBackup(
+          actor,
+          this.constructor.withBrokenOption(renamed),
+          original.archive
+        );
+      } catch (error) {
+        revokedRejection = error;
+      }
+      this.check(
+        'a failed second step advises reissuing a revoked restore token',
+        revokedRejection?.status === 422 &&
+          /issue a new token before retrying/.test(revokedRejection.message)
+      );
+    } finally {
+      identity.importIdentity = importIdentity;
+    }
     await this.backups.importBackup(actor, structuredClone(original.backup), original.archive);
+  }
+
+  async checkMediaFailureAfterIdentity() {
+    let imported = false;
+    const service = new BackupService({
+      identity: {
+        importIdentity: async () => {
+          imported = true;
+          return { imported: {}, warnings: [], user_id_map: {}, revoked_service_tokens: 1 };
+        },
+      },
+    });
+    const backup = { version: '4.0', identity: { data: {} }, flashcards: { data: {} } };
+    let failure;
+    try {
+      await service.importBackup({}, backup, Buffer.from('not a zip'));
+    } catch (error) {
+      failure = error;
+    }
+    this.check(
+      'bad media after identity import reports the failure and possible token revocation',
+      imported &&
+        /zip/i.test(failure?.message || '') &&
+        /zip/i.test(failure?.cause?.message || '') &&
+        /users were restored/i.test(failure?.message || '') &&
+        /token may have been revoked/i.test(failure?.message || '')
+    );
+
+    delete backup.identity;
+    let noIdentityFailure;
+    try {
+      await service.importBackup({}, backup, Buffer.from('not a zip'));
+    } catch (error) {
+      noIdentityFailure = error;
+    }
+    this.check(
+      'bad media without identity does not claim that users were restored',
+      /zip/i.test(noIdentityFailure?.message || '') &&
+        !/users were restored|token may have been revoked/i.test(noIdentityFailure?.message || '')
+    );
+
+    backup.identity = { data: {} };
+    service.identity.importIdentity = async () => ({
+      imported: {},
+      warnings: [],
+      user_id_map: {},
+      revoked_service_tokens: 0,
+    });
+    const original = new IdentityError(403, 'Media access denied');
+    service.resolveMedia = async () => {
+      throw original;
+    };
+    let accessFailure;
+    try {
+      await service.importBackup({}, backup);
+    } catch (error) {
+      accessFailure = error;
+    }
+    this.check(
+      'other step-two errors retain their status and cause without an unsupported revocation warning',
+      accessFailure?.status === 403 &&
+        accessFailure.cause === original &&
+        /users were restored/i.test(accessFailure.message) &&
+        !/token may have been revoked/i.test(accessFailure.message)
+    );
+
+    service.resolveMedia = async () => {};
+    service.database = {
+      withTransaction: async () => {
+        throw new Error('Import aborted: invalid row');
+      },
+    };
+    let rowFailure;
+    try {
+      await service.importBackup({}, backup);
+    } catch (error) {
+      rowFailure = error;
+    }
+    this.check(
+      'failed table imports still report rollback and a 422 status',
+      rowFailure?.status === 422 &&
+        /data was not changed/i.test(rowFailure.message) &&
+        /users were restored/i.test(rowFailure.message)
+    );
+  }
+
+  async checkSuccessfulRestorePreparation() {
+    const calls = [];
+    const service = new BackupService({
+      identity: {
+        importIdentity: async () => {
+          calls.push('identity');
+          return {
+            imported: { users: 1 },
+            warnings: [],
+            user_id_map: { old: 'new' },
+            revoked_service_tokens: 0,
+          };
+        },
+      },
+    });
+    service.database = {
+      withTransaction: async (run) => {
+        calls.push('transaction');
+        return run({});
+      },
+    };
+    service.resolveMedia = async () => calls.push('media');
+    let restoredUser;
+    service.tables.importTables = async (_client, data, result) => {
+      restoredUser = data.flashcards[0].user_id;
+      result.imported.flashcards = 1;
+    };
+    const backup = {
+      version: '4.0',
+      identity: { data: {} },
+      flashcards: { data: { flashcards: [{ user_id: 'old' }] } },
+    };
+    const result = await service.importBackup({}, backup);
+    this.check(
+      'successful restore still orders preparation and maps user ids before importing',
+      calls.join(',') === 'identity,media,transaction' &&
+        restoredUser === 'new' &&
+        backup.flashcards.data.flashcards[0].user_id === 'old' &&
+        result.steps.join(',') === 'identity,flashcards' &&
+        result.imported.users === 1 &&
+        result.imported.flashcards === 1
+    );
+  }
+
+  async checkExportMetadataAndHistory() {
+    let includeIdentity = false;
+    const service = new BackupService({
+      identity: {
+        mayBackUpIdentity: async () => includeIdentity,
+        exportIdentity: async () => ({ data: { users: [{}] } }),
+      },
+    });
+    service.tables.exportTables = async () => ({ schema: 'flashcards', data: {} });
+    const withoutIdentity = await service.exportBackup({});
+    includeIdentity = true;
+    const withIdentity = await service.exportBackup({});
+    this.check(
+      'backup metadata explains omitted identity only when it is omitted',
+      !withoutIdentity.metadata.identityIncluded &&
+        Boolean(withoutIdentity.metadata.identityOmitted) &&
+        withIdentity.metadata.identityIncluded &&
+        !Object.hasOwn(withIdentity.metadata, 'identityOmitted')
+    );
+
+    const queries = [];
+    service.database = {
+      query: async (sql, params) => {
+        queries.push([sql, params]);
+        return { rows: [] };
+      },
+    };
+    await service.getImportExportHistory('user-1', 3);
+    await service.getImportExportHistory(null, 5);
+    this.check(
+      'import/export history retains its user-specific and global query parameters',
+      queries[0][0] === BackupService.queries.select_import_export_history_for_user &&
+        queries[0][1].join(',') === 'user-1,3' &&
+        queries[1][0] === BackupService.queries.select_import_export_history &&
+        queries[1][1].join(',') === '5'
+    );
   }
 
   /** A non-platform admin's backup has no identity part, and restoring users is refused. */

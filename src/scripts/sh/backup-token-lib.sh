@@ -8,7 +8,7 @@
 #
 #  - FLASHCARDS_BACKUP_TOKEN already set: used as given.
 #  - Production (<base-url> is RENDER_URL in .env): the script provides its own
-#    token. The stored one (GNOME keyring) is checked with production; when there
+#    token. The stored one (Secret Service keyring) is checked with production; when there
 #    is none, it is not valid, or it expires within 30 days, a new one is issued
 #    with iam-service-account and the database admin login in .env (setup-backup
 #    --replace: the account's other tokens are revoked), checked, and stored. The

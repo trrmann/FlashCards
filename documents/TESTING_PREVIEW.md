@@ -94,7 +94,7 @@ When you run `deploy.sh -preview`:
    ↓
 2. Lint code with ESLint
    ↓
-3. Start the preview server on localhost:4000 (`deploy.sh -preview` sets `TEST_BASE_URL=http://localhost:4000`; standalone runs default to `http://localhost:5000`)
+3. Start the preview server on localhost:5010 (`deploy.sh -preview` sets `TEST_BASE_URL=http://localhost:5010`; standalone runs default to the same URL)
    ↓
 4. Wait for server to be ready
    ↓

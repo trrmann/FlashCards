@@ -12,7 +12,7 @@ import { TestResults } from './testResults.mjs';
 
 export class PreviewTestSuite {
   static config = {
-    baseURL: process.env.TEST_BASE_URL || 'http://localhost:5000',
+    baseURL: process.env.TEST_BASE_URL || 'http://localhost:5010',
     timeout: 30000,
     retries: 2,
 
@@ -103,7 +103,9 @@ export class PreviewTestSuite {
    * Close browser
    */
   async closeBrowser() {
-    if (this.browser) await this.browser.close();
+    if (this.browser) {
+      await this.browser.close();
+    }
   }
 
   /**
@@ -231,7 +233,9 @@ export class PreviewTestSuite {
               const sheet = stylesheets[i];
               try {
                 const rules = sheet.cssRules;
-                if (!rules) continue;
+                if (!rules) {
+                  continue;
+                }
 
                 for (let j = 0; j < rules.length; j++) {
                   const rule = rules[j];

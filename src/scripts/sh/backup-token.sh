@@ -13,9 +13,10 @@
 # It lasts 1 year; renew it within the last 30 days (iam-service-account token …,
 # then revoke-token the old one) and store the new one here.
 #
-# The token goes into the GNOME keyring (secret-tool; encrypted with your desktop
-# login, unlocked while you are signed in), under service "flashcards-backup-token"
-# and the site's host. It is never written to a file or printed. Storing it also
+# The token goes into the Secret Service keyring (secret-tool; KDE Wallet on KDE),
+# under service "flashcards-backup-token" and the site's host. The wallet may
+# require unlocking; its encryption and unlock behavior depend on its setup.
+# The token is not printed or stored outside the keyring by this script. Storing it also
 # removes the admin password backup-login.sh used to keep (service "flashcards-backup").
 # The base URL defaults to RENDER_URL from .env (production).
 ################################################################################

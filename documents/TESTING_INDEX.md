@@ -190,14 +190,14 @@ npm run lint:fix      # Auto-fix issues
 ### Verify Script
 
 ```bash
-npm run verify        # Run format then lint check
+npm run verify        # Run the non-mutating format check, then lint
 ```
 
 **Equivalent to:**
 
-1. Format code
+1. Check formatting without rewriting files
 2. Check linting
-3. Report issues
+3. Report failures
 
 **Use before committing:** `npm run verify`
 
@@ -345,7 +345,7 @@ endpoints: [
 | ---------------------------- | -------------------------------- |
 | `TESTING_PREVIEW.md`         | Complete preview testing guide   |
 | `TESTING_QUICK_REFERENCE.md` | Quick reference for common tasks |
-| `CODE_QUALITY.md`            | Linting and formatting guide     |
+| Global Code Quality Standard | Shared code-quality requirements |
 | `TESTING_STRATEGY.md`        | High-level testing approach      |
 | `DEPLOY.md`                  | Deployment guide with all modes  |
 | `ENVIRONMENTS.md`            | Dev, preview, prod architecture  |
@@ -401,7 +401,7 @@ tail -100 .deployment/last-run.log
 deploy.sh -dev
 
 # 3. Open browser and inspect
-# http://localhost:5000
+# http://localhost:2010
 
 # 4. Check Chrome DevTools (F12)
 # - Console for errors
@@ -419,7 +419,7 @@ deploy.sh -preview
 grep "Lighthouse\|WARN\|Performance" .deployment/last-run.log
 
 # 2. Profile with Chrome DevTools
-# - Open http://localhost:5000
+# - Open http://localhost:2010 (development) or http://localhost:5010 (preview)
 # - Open DevTools (F12)
 # - Performance tab → Record
 
@@ -460,7 +460,7 @@ deploy.sh -preview
 - [TESTING_QUICK_REFERENCE.md](./TESTING_QUICK_REFERENCE.md) - Quick commands
 - [FIREFOX_TESTING.md](./FIREFOX_TESTING.md) - Firefox tools and options
 - [FIREFOX_TESTING_QUICK_SETUP.md](./FIREFOX_TESTING_QUICK_SETUP.md) - Firefox implementation guide
-- [CODE_QUALITY.md](./CODE_QUALITY.md) - Linting and formatting
+- [Global Code Quality Standard](https://github.com/trrmann/ai-skills/blob/main/standards/CODE_QUALITY.md) - Shared quality requirements
 - [DEPLOY.md](./DEPLOY.md) - Deployment guide
 - [TESTING_STRATEGY.md](./documents/TESTING_STRATEGY.md) - High-level strategy
 - `.deployment/last-run.log` - Latest test results

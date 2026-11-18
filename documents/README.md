@@ -6,6 +6,8 @@ Leitner practice system, multiple-choice quizzes, card sharing and public cards,
 It runs on Render.
 
 All project documentation lives in this folder. The root `README.md` only points here.
+Shared coding, environment, layout, and port rules are maintained in the
+[canonical platform and Wurm standards](https://github.com/trrmann/ai-skills/blob/main/standards/PLATFORM_PROJECT_STANDARDS.md).
 
 ## Start here
 
@@ -47,11 +49,11 @@ All project documentation lives in this folder. The root `README.md` only points
 - [RENDER_ENVIRONMENT_VARIABLES.md](./RENDER_ENVIRONMENT_VARIABLES.md): every env var the code reads
 - [RENDER_ENV.md](./RENDER_ENV.md): check and manage Render service variables with the local CLI
 - [RENDER_ENV.md](./RENDER_ENV.md): check and manage Render service variables with the local CLI
-- [PORT_CONFIGURATION.md](./PORT_CONFIGURATION.md): 5000 / 4000 / 3000
+- [PORT_CONFIGURATION.md](./PORT_CONFIGURATION.md): local and hosted port behavior
 - [DEPLOY.md](./DEPLOY.md), [DEPLOY_QUICK_REFERENCE.md](./DEPLOY_QUICK_REFERENCE.md),
   [DEPLOY_AUTO_FORMAT.md](./DEPLOY_AUTO_FORMAT.md), [DEPLOY_ACCESSIBILITY.md](./DEPLOY_ACCESSIBILITY.md): `deploy.sh` and running any `src/scripts/sh` script from anywhere
 - [CODING_STANDARDS.md](./CODING_STANDARDS.md): binding coding and workflow standards
-- [CODE_QUALITY.md](./CODE_QUALITY.md): ESLint + Prettier tooling
+- [Global Code Quality Standard](https://github.com/trrmann/ai-skills/blob/main/standards/CODE_QUALITY.md): shared ESLint + Prettier, browser, memory, and W3C requirements
 - [TESTING_INDEX.md](./TESTING_INDEX.md), [TESTING_PREVIEW.md](./TESTING_PREVIEW.md),
   [TESTING_QUICK_REFERENCE.md](./TESTING_QUICK_REFERENCE.md): the preview quality suite
 

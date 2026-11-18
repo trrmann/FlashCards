@@ -5,6 +5,22 @@
 -- are removed when the IAM's 'user.deleted' notice arrives (UserDataService).
 -- Created only when missing: CREATE SCHEMA IF NOT EXISTS checks the database-level CREATE right even
 -- when the schema exists, and FlashCards' own login (flashcards_svc, from iam-provision) doesn't have it.
+
+-- Ensure the current role (which may be an app login with minimal privileges) has USAGE on public schema.
+-- This is needed to query pg_class during the schema initialization steps below.
+-- (This is idempotent and fails silently if the role doesn't exist yet or if grants can't be applied.)
+DO $grant_public_schema_usage$
+DECLARE
+BEGIN
+  BEGIN
+    EXECUTE 'GRANT USAGE ON SCHEMA public TO ' || quote_ident(current_user);
+  EXCEPTION WHEN OTHERS THEN
+    -- May fail if role doesn't exist, or if already granted. Both are fine; schema init will handle permission issues.
+    NULL;
+  END;
+END
+$grant_public_schema_usage$;
+
 DO $create_flashcards_schema$
 BEGIN
   IF to_regnamespace('flashcards') IS NULL THEN
@@ -19,9 +35,22 @@ $create_flashcards_schema$;
 DO $move_flashcards_tables$
 DECLARE
   t TEXT;
+  public_table_oid OID;
+  flashcards_table_oid OID;
 BEGIN
   FOREACH t IN ARRAY ARRAY['lessons', 'media', 'flashcards', 'flashcard_options', 'public_card_removals', 'flashcard_shares', 'leitner_boxes', 'flashcard_leitner_progress', 'practice_history', 'session_card_attempts', 'difficulty_history', 'quizzes', 'quiz_questions', 'quiz_results', 'import_export_logs'] LOOP
-    IF to_regclass('public.' || t) IS NOT NULL AND to_regclass('flashcards.' || t) IS NULL THEN
+    BEGIN
+      public_table_oid := to_regclass('public.' || t);
+    EXCEPTION WHEN OTHERS THEN
+      -- Cannot access public schema (app login with minimal privileges)
+      public_table_oid := NULL;
+    END;
+    BEGIN
+      flashcards_table_oid := to_regclass('flashcards.' || t);
+    EXCEPTION WHEN OTHERS THEN
+      flashcards_table_oid := NULL;
+    END;
+    IF public_table_oid IS NOT NULL AND flashcards_table_oid IS NULL THEN
       EXECUTE format('ALTER TABLE public.%I SET SCHEMA flashcards', t);
     END IF;
   END LOOP;
@@ -37,9 +66,22 @@ DO $drop_public_flashcards_leftovers$
 DECLARE
   t TEXT;
   has_data BOOLEAN;
+  public_table_oid OID;
+  flashcards_table_oid OID;
 BEGIN
   FOREACH t IN ARRAY ARRAY['flashcard_options', 'flashcard_shares', 'public_card_removals', 'flashcard_leitner_progress', 'practice_history', 'session_card_attempts', 'difficulty_history', 'quiz_results', 'quiz_questions', 'quizzes', 'import_export_logs', 'leitner_boxes', 'media', 'flashcards', 'lessons'] LOOP
-    CONTINUE WHEN to_regclass('public.' || t) IS NULL OR to_regclass('flashcards.' || t) IS NULL;
+    BEGIN
+      public_table_oid := to_regclass('public.' || t);
+    EXCEPTION WHEN OTHERS THEN
+      -- Cannot access public schema (app login with minimal privileges)
+      public_table_oid := NULL;
+    END;
+    BEGIN
+      flashcards_table_oid := to_regclass('flashcards.' || t);
+    EXCEPTION WHEN OTHERS THEN
+      flashcards_table_oid := NULL;
+    END;
+    CONTINUE WHEN public_table_oid IS NULL OR flashcards_table_oid IS NULL;
     EXECUTE format('SELECT EXISTS (SELECT 1 FROM public.%I)', t) INTO has_data;
     CONTINUE WHEN has_data;
     CONTINUE WHEN EXISTS (
@@ -47,7 +89,7 @@ BEGIN
       FROM pg_constraint con
       JOIN pg_class cl ON cl.oid = con.conrelid
       JOIN pg_namespace cn ON cn.oid = cl.relnamespace
-      WHERE con.contype = 'f' AND con.confrelid = to_regclass('public.' || t) AND cn.nspname <> 'public'
+      WHERE con.contype = 'f' AND con.confrelid = public_table_oid AND cn.nspname <> 'public'
     );
     EXECUTE format('DROP TABLE public.%I CASCADE', t);
     RAISE NOTICE 'Dropped empty leftover table public.%', t;

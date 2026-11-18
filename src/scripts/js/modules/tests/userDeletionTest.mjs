@@ -175,7 +175,9 @@ export class UserDeletionTest extends LocalTestCase {
     const flaky = {
       deleteUserData: async (id) => {
         calls += 1;
-        if (calls === 1) throw new Error('database restarting');
+        if (calls === 1) {
+          throw new Error('database restarting');
+        }
         return userDataService.deleteUserData(id);
       },
     };
@@ -250,7 +252,9 @@ export class UserDeletionTest extends LocalTestCase {
       await this.checkOrphans();
     } finally {
       await this.identity.stop();
-      if (this.iamServer) await this.iamServer.stop();
+      if (this.iamServer) {
+        await this.iamServer.stop();
+      }
     }
     return this.summary();
   }

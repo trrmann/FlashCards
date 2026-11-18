@@ -223,7 +223,9 @@ export class BackupTokenTest extends LocalTestCase {
     } finally {
       await new Promise((resolve) => server.httpServer.close(resolve));
       await this.identity.stop();
-      if (this.iamServer) await this.iamServer.stop();
+      if (this.iamServer) {
+        await this.iamServer.stop();
+      }
     }
     return this.summary();
   }

@@ -29,8 +29,12 @@ export class ApiSession {
 
   async request(method, apiPath, json) {
     const headers = {};
-    if (this.cookie) headers.Cookie = this.cookie;
-    if (json !== undefined) headers['Content-Type'] = 'application/json';
+    if (this.cookie) {
+      headers.Cookie = this.cookie;
+    }
+    if (json !== undefined) {
+      headers['Content-Type'] = 'application/json';
+    }
     const response = await fetch(`${this.baseUrl}${apiPath}`, {
       method,
       headers,
@@ -39,7 +43,9 @@ export class ApiSession {
     const session = (response.headers.getSetCookie?.() || []).find((value) =>
       value.startsWith('connect.sid=')
     );
-    if (session) this.cookie = session.split(';')[0];
+    if (session) {
+      this.cookie = session.split(';')[0];
+    }
     const body = await response.json().catch(() => ({}));
     return { status: response.status, body };
   }
@@ -453,7 +459,9 @@ export class IamApiTest extends LocalTestCase {
     } finally {
       await new Promise((resolve) => server.httpServer.close(resolve));
       await identity.stop();
-      if (iamServer) await iamServer.stop();
+      if (iamServer) {
+        await iamServer.stop();
+      }
     }
     return this.summary();
   }

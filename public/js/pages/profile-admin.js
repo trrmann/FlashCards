@@ -35,7 +35,9 @@ class ProfileAdminControls {
 
   async setStorageLimit(user) {
     const answer = window.prompt(`Storage limit for ${user.username}, in MB:`, '25');
-    if (answer === null) return;
+    if (answer === null) {
+      return;
+    }
     const megabytes = Number(answer);
     if (!Number.isFinite(megabytes) || megabytes < 0) {
       this.report('Enter a number of MB (0 or more)', 'error');
@@ -84,7 +86,9 @@ class ProfileAdminControls {
   start() {
     this.doc.addEventListener('iam-user-row', (event) => {
       const { user, actions } = event.detail;
-      if (actions.querySelector('.iam-muted')) return; // the admin's own row has no actions
+      if (actions.querySelector('.iam-muted')) {
+        return;
+      } // the admin's own row has no actions
       actions.append(
         this.button('Storage limit', () => this.setStorageLimit(user)),
         this.button('Reset stats', () => this.resetStats(user))

@@ -5,6 +5,11 @@ import prettierPlugin from 'eslint-plugin-prettier';
 
 export default [
   {
+    ignores: ['node_modules/**', 'dist/**', '.git/**', '.deployment/**', '.env', '.env.local'],
+  },
+  js.configs.recommended,
+  prettier,
+  {
     files: ['**/*.js', '**/*.mjs'],
     languageOptions: {
       ecmaVersion: 2024,
@@ -20,8 +25,17 @@ export default [
       curly: ['error', 'all'],
       quotes: ['error', 'single', { avoidEscape: true }],
       semi: ['error', 'always'],
-      indent: ['error', 2],
-      'comma-dangle': ['error', 'es5'],
+      indent: ['error', 2, { SwitchCase: 1 }],
+      'comma-dangle': [
+        'error',
+        {
+          arrays: 'always-multiline',
+          objects: 'always-multiline',
+          imports: 'always-multiline',
+          exports: 'always-multiline',
+          functions: 'never',
+        },
+      ],
       'object-curly-spacing': ['error', 'always'],
       'array-bracket-spacing': ['error', 'never'],
       'arrow-spacing': 'error',
@@ -47,9 +61,4 @@ export default [
       'prettier/prettier': 'error',
     },
   },
-  {
-    ignores: ['node_modules/**', 'dist/**', '.git/**', '.deployment/**', '.env', '.env.local'],
-  },
-  js.configs.recommended,
-  prettier,
 ];

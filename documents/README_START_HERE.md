@@ -166,7 +166,7 @@ Follow the 10-phase roadmap, starting with Phase 2 (Authentication)
 - [TESTING_INDEX.md](./TESTING_INDEX.md) - Complete testing guide index
 - [TESTING_PREVIEW.md](./TESTING_PREVIEW.md) - Preview environment testing
 - [TESTING_QUICK_REFERENCE.md](./TESTING_QUICK_REFERENCE.md) - Quick testing commands
-- [CODE_QUALITY.md](./CODE_QUALITY.md) - Linting and formatting
+- [Global Code Quality Standard](https://github.com/trrmann/ai-skills/blob/main/standards/CODE_QUALITY.md) - Shared quality requirements
 - [DEPLOY.md](./DEPLOY.md) - Deployment guide (dev/preview/prod)
 - [DEPLOY_QUICK_REFERENCE.md](./DEPLOY_QUICK_REFERENCE.md) - Deployment one-liners
 

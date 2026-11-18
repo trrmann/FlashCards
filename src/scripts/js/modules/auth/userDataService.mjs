@@ -65,7 +65,9 @@ export class UserDataService {
     const ids = (await this.database.query(this.constructor.queries.user_ids_with_data)).rows.map(
       (row) => row.user_id
     );
-    if (ids.length === 0) return { orphans: [], users: 0 };
+    if (ids.length === 0) {
+      return { orphans: [], users: 0 };
+    }
     const known = await identity.getUserSummaries(ids);
     return { orphans: ids.filter((id) => !known.has(id)), users: ids.length };
   }
@@ -87,7 +89,9 @@ export class UserDataService {
       throw error;
     }
     let removedRows = 0;
-    for (const id of found.orphans) removedRows += await this.deleteUserData(id);
+    for (const id of found.orphans) {
+      removedRows += await this.deleteUserData(id);
+    }
     return { ...found, removedRows };
   }
 }

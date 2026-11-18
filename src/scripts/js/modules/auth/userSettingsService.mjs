@@ -52,7 +52,9 @@ export class UserSettingsService {
       ]);
       return result.rows[0];
     } catch (error) {
-      if (error.code === this.constructor.FOREIGN_KEY_VIOLATION) return null;
+      if (error.code === this.constructor.FOREIGN_KEY_VIOLATION) {
+        return null;
+      }
       throw error;
     }
   }

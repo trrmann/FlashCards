@@ -6,11 +6,11 @@ When a route changes, update this file in the same commit.
 
 ## Base URLs
 
-| Environment | URL                                        | Port source                   |
-| ----------- | ------------------------------------------ | ----------------------------- |
-| Development | `http://localhost:2010`                    | `PORT_DEV (default 2010)     |
-| Preview     | `http://localhost:5010`                    | `PORT_PREVIEW (default 5010) |
-| Production  | value of `RENDER_URL` (Render web service) | `PORT_PROD → PORT → 8010   |
+| Environment | URL                                        | Port source                       |
+| ----------- | ------------------------------------------ | --------------------------------- |
+| Development | `http://localhost:2010`                    | `PORT_DEV` (default `2010`)       |
+| Preview     | `http://localhost:5010`                    | `PORT_PREVIEW` (default `5010`)   |
+| Production  | value of `RENDER_URL` (Render web service) | Render's provider-supplied `PORT` |
 
 ## Authentication model
 

@@ -11,8 +11,12 @@ import { RemoteIdentityGateway } from './remoteIdentityGateway.mjs';
  * @param {object} [env=process.env]
  */
 export function createIdentityGateway(env = process.env) {
-  if (!env.IAM_URL) return new LocalIdentityGateway();
-  if (!env.IAM_CLIENT_SECRET) throw new Error('IAM_URL is set but IAM_CLIENT_SECRET is not');
+  if (!env.IAM_URL) {
+    return new LocalIdentityGateway();
+  }
+  if (!env.IAM_CLIENT_SECRET) {
+    throw new Error('IAM_URL is set but IAM_CLIENT_SECRET is not');
+  }
   return new RemoteIdentityGateway({
     baseUrl: env.IAM_URL,
     appKey: env.IAM_CLIENT_ID || IdentityGateway.APP_KEY,

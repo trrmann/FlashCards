@@ -20,9 +20,13 @@ export class TestResults {
       timestamp: new Date().toISOString(),
     });
 
-    if (status === 'PASS') this.passed++;
-    else if (status === 'FAIL') this.failed++;
-    else if (status === 'WARN') this.warnings++;
+    if (status === 'PASS') {
+      this.passed++;
+    } else if (status === 'FAIL') {
+      this.failed++;
+    } else if (status === 'WARN') {
+      this.warnings++;
+    }
   }
 
   getSummary() {
@@ -61,7 +65,9 @@ export class TestResults {
         .filter((t) => t.status === 'FAIL')
         .forEach((t) => {
           output += `  • ${t.name}\n`;
-          if (t.details) output += `    ${t.details}\n`;
+          if (t.details) {
+            output += `    ${t.details}\n`;
+          }
         });
     }
 
@@ -71,7 +77,9 @@ export class TestResults {
         .filter((t) => t.status === 'WARN')
         .forEach((t) => {
           output += `  • ${t.name}\n`;
-          if (t.details) output += `    ${t.details}\n`;
+          if (t.details) {
+            output += `    ${t.details}\n`;
+          }
         });
     }
 
