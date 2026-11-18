@@ -1,5 +1,10 @@
 # Coding Standards
 
+> **Global coding rules are binding (owner, 2026-11-18).** Follow the
+> [global Coding rules](https://github.com/trrmann/ai-skills/blob/main/standards/PLATFORM_PROJECT_STANDARDS.md#coding-rules), including **Object-oriented design and domain objects**: every entity is fully
+> object-oriented with complete encapsulation, and all business rules live in the domain objects. This file adds
+> only project-specific detail; where it differs from the global rules, the global rules win.
+
 > **Shared baseline:** [Platform and Wurm Project Standards](https://github.com/trrmann/ai-skills/blob/main/standards/PLATFORM_PROJECT_STANDARDS.md).
 > This file is a project-specific supplement. The shared standard is authoritative
 > for common coding, layout, environment, and port rules.
@@ -361,3 +366,7 @@ None. The audit found 0 `style=` attributes, `<style>` blocks, or `.style` uses 
 - `entriesRouter` registers `GET /shared-by-me` after `GET /:flashcardId` (unreachable).
 - Some routes return raw `error.message` to the client in `500` responses.
 - `practiceService` has debug `console.log` calls on every request.
+
+### Object-oriented design (global rules, 2026-11-18 review)
+
+- No domain layer: business rules live in the services (for example the entries and quiz services). Add domain entities (card, quiz, progress) that hold the rules, used by models, services, controllers and pages.
