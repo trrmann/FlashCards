@@ -222,6 +222,13 @@ Follow-ups:
 
 ## resolved
 
+- **Render build: the platform build token and Node 24 (task-278, 2026-11-19).** Render's `GITHUB_TOKEN` is now
+  the same fine-grained build token iam-service, master-data and request-queue use (it reads platform-db,
+  platform-framework and request-queue too, which the next iam-service pin needs), set with iam-service's
+  `npm run core-setup -- apps` (copied in memory, never printed); the Build Command already runs
+  `render-build.sh`. `.node-version` pins Node 24, so Render does not pick an untested newer Node. **Verified:** the
+  release's Render build and deploy.
+
 - **2026-11-12: iam-service v0.12.0.** The IAM's own address serves its management site. For FlashCards: the admin
   page's user list now holds FlashCards' members only (an application's admins manage their own members; the IAM's
   domain admins manage everyone on the site), and password rules come from the IAM (the domain admins' setting; the
