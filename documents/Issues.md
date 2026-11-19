@@ -222,6 +222,14 @@ Follow-ups:
 
 ## resolved
 
+- **The newest shared packages; test:own-login on development's IAM settings (2026-11-19).** iam-service v0.12.0 →
+  v0.16.1 and platform-db v0.3.1 → v0.10.2 (with platform-framework v0.7.0 and request-queue v0.5.3: one copy of each,
+  as `test:startup` checks). `test:own-login` failed since the coordinated-port change (e77f027): development reads
+  IAM's address from `IAM_DEV_URL` / `IAM_DEV_CLIENT_SECRET` only, but the test still passed `IAM_URL`, so the server
+  fell back to local identity and tried to create IAM's tables in `public` ("permission denied for schema public").
+  The test now passes the development settings; its `GRANT USAGE ON SCHEMA public` workaround (d561d4f) was not
+  needed and is removed. **Verified:** verify plus all 16 release suites on the scratch cluster.
+
 - **Render build: the platform build token and Node 24 (task-278, 2026-11-19).** Render's `GITHUB_TOKEN` is now
   the same fine-grained build token iam-service, master-data and request-queue use (it reads platform-db,
   platform-framework and request-queue too, which the next iam-service pin needs), set with iam-service's

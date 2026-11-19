@@ -50,23 +50,6 @@ export class OwnLoginTest extends LocalTestCase {
         login.action === 'created' &&
         login.objectsHandedOver > 10
     );
-    // Grant public schema usage to the app login (needed for schema migration checks).
-    // The provisioner creates the role with minimal permissions; it needs USAGE on public
-    // to be able to query pg_class during schema bootstrap.
-    // The grant must be applied to BOTH the FlashCards database (for app tables) and the
-    // IAM database (for provisioner checks when the server starts).
-    for (const [dbName, db] of [
-      ['FlashCards', this.database],
-      ['IAM', this.identityDatabase],
-    ]) {
-      await db.query(`GRANT USAGE ON SCHEMA public TO "${this.constructor.ROLE}"`);
-      const result = await db.query(
-        "SELECT has_schema_privilege($1, 'public', 'USAGE') AS has_usage",
-        [this.constructor.ROLE]
-      );
-      console.log(`Grant verified on ${dbName} for ${this.constructor.ROLE}:`, result.rows[0]);
-    }
-
     return login.password;
   }
 
@@ -80,8 +63,10 @@ export class OwnLoginTest extends LocalTestCase {
         PORT_DEV: String(this.constructor.PORT),
         DB_PG_USER: this.constructor.ROLE,
         DB_PG_PASSWORD: password,
-        IAM_URL: `http://127.0.0.1:${this.constructor.IAM_PORT}`,
-        IAM_CLIENT_SECRET: secret,
+        // Development reads IAM's address from IAM_DEV_URL only (a production IAM_URL is never inherited).
+        IAM_URL: '',
+        IAM_DEV_URL: `http://127.0.0.1:${this.constructor.IAM_PORT}`,
+        IAM_DEV_CLIENT_SECRET: secret,
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
