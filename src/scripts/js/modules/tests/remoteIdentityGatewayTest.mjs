@@ -10,16 +10,16 @@ import { IamClientError, QueueTimeoutError } from 'iam-service/client';
 import { RemoteIdentityGateway } from '../identity/remoteIdentityGateway.mjs';
 import { IdentityGateway, IdentityError } from '../identity/identityGateway.mjs';
 
-/** Records calls; each method's behaviour is set per check. */
+/** Records calls; each method's behavior is set per check. */
 class FakeIamClient {
   constructor() {
     this.calls = [];
-    this.behaviour = {};
+    this.behavior = {};
   }
 
   async invoke(name, ...args) {
     this.calls.push(name);
-    const behave = this.behaviour[name];
+    const behave = this.behavior[name];
     if (!behave) {
       throw new Error(`unexpected call ${name}`);
     }
@@ -87,13 +87,13 @@ export class RemoteIdentityGatewayTest {
       userId: 'u1',
       iamTokens: { access_token: 'old', refresh_token: 'r1' },
     });
-    client.behaviour.me = async (token) => {
+    client.behavior.me = async (token) => {
       if (token === 'old') {
         throw new IamClientError(401, 'expired');
       }
       return { user: { user_id: 'u1', is_admin: true } };
     };
-    client.behaviour.refresh = async () => ({
+    client.behavior.refresh = async () => ({
       tokens: { access_token: 'new', refresh_token: 'r2' },
     });
     const user = await gateway.currentUser(req);
@@ -112,10 +112,10 @@ export class RemoteIdentityGatewayTest {
       username: 'alice',
       iamTokens: { access_token: 'old', refresh_token: 'used' },
     });
-    failing.client.behaviour.me = async () => {
+    failing.client.behavior.me = async () => {
       throw new IamClientError(401, 'expired');
     };
-    failing.client.behaviour.refresh = async () => {
+    failing.client.behavior.refresh = async () => {
       throw new IamClientError(401, 'refresh token reused');
     };
     const error = await this.constructor.errorOf(failing.gateway.currentUser(signedIn));
@@ -128,7 +128,7 @@ export class RemoteIdentityGatewayTest {
     );
 
     const other = this.gateway();
-    other.client.behaviour.me = async () => {
+    other.client.behavior.me = async () => {
       throw new IamClientError(403, 'forbidden');
     };
     const forbidden = await this.constructor.errorOf(
@@ -160,7 +160,7 @@ export class RemoteIdentityGatewayTest {
     console.log('\nCaching');
     const { client, gateway } = this.gateway();
     const req = this.constructor.request({ userId: 'u1', iamTokens: { access_token: 'a' } });
-    client.behaviour.me = async () => ({ user: { user_id: 'u1', is_admin: true } });
+    client.behavior.me = async () => ({ user: { user_id: 'u1', is_admin: true } });
     const first = await gateway.isAdmin(req);
     const second = await gateway.isAdmin(req);
     this.check(
@@ -172,7 +172,7 @@ export class RemoteIdentityGatewayTest {
       (await gateway.isAdmin(this.constructor.request({}))) === false && client.count('me') === 1
     );
 
-    client.behaviour.callRaw = async () => ({ status: 201, body: { status: 'success' } });
+    client.behavior.callRaw = async () => ({ status: 201, body: { status: 'success' } });
     const res = {
       status(code) {
         this.code = code;
@@ -194,7 +194,7 @@ export class RemoteIdentityGatewayTest {
   async checkPassThroughAllowlist() {
     console.log('\nWhat the browser may reach through /api/iam');
     const { client, gateway } = this.gateway();
-    client.behaviour.callRaw = async () => ({ status: 200, body: { status: 'success' } });
+    client.behavior.callRaw = async () => ({ status: 200, body: { status: 'success' } });
     const req = this.constructor.request({ userId: 'u1', iamTokens: { access_token: 'a' } });
     const answer = async (method, url) => {
       const res = {
@@ -249,7 +249,7 @@ export class RemoteIdentityGatewayTest {
   async checkErrors() {
     console.log('\nErrors');
     const { client, gateway } = this.gateway();
-    client.behaviour.lookupUser = async () => {
+    client.behavior.lookupUser = async () => {
       throw new IamClientError(404, 'User not found');
     };
     this.check('look-up of an unknown user → null', (await gateway.lookupUser('nobody')) === null);

@@ -44,7 +44,7 @@ fi
 
 if [ "${FLASHCARDS_ASSUME_YES:-}" != "1" ]; then
     read -r -p "Restore ${json_file##*/} into ${base_url}? Existing records are overwritten by the backup. [y/N] " answer
-    [ "${answer}" = "y" ] || [ "${answer}" = "Y" ] || { echo "cancelled"; exit 1; }
+    [ "${answer}" = "y" ] || [ "${answer}" = "Y" ] || { echo "canceled"; exit 1; }
 fi
 
 cd "${PROJECT_ROOT}"

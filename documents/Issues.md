@@ -460,9 +460,9 @@ Follow-ups:
   acts as owner with read/write on all 31 tables; after the switch, only the new login is connected; `/api/health`
   healthy; data unchanged (7 users, 137 cards, 5 media, 8 quizzes, 20 sessions). The old password no longer logs in.
 
-- **Queued, throttled and prioritised database work (2026-11-04, owner request).**
+- **Queued, throttled and prioritized database work (2026-11-04, owner request).**
   - Every query now runs through platform-db `v0.2.1`'s `QueryScheduler`: concurrency = pool size, waiting limits per
-    class, ageing, retry through short outages, transactions retried as a whole.
+    class, aging, retry through short outages, transactions retried as a whole.
   - IAM checks are `critical` (iam-service `v0.1.5`).
   - FlashCards' import/export log queries and all backup and restore work are `background` (`BackupService.WORK`), so
     a large backup yields to people studying.
@@ -619,7 +619,7 @@ Resolved on 2026-11-03 (round 4):
   grants in IAM, and wire each page handler/API route to check its required right. Navigation visibility is not an
   authorization check. Add tests for allowed and denied users, signed-out requests, and IAM failures.
 - **Create FlashCards app-admin responsibilities for rights governance** (depends on the rights design above).
-  Define who owns the right catalogue and role/user grants, reviews changes to protected components, and verifies
+  Define who owns the right catalog and role/user grants, reviews changes to protected components, and verifies
   server-side checks. Decide assignees and review cadence, then create application-scope responsibility records in
   IAM. Use the existing application-audit type if it covers this work; otherwise record the needed IAM type.
   - [ ] Choose responsible app admins and review cadence.

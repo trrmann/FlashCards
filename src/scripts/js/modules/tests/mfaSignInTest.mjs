@@ -1,7 +1,7 @@
 /**
  * MFA sign-in test (local scratch database): FlashCards with the IAM service over HTTP, the service with an MFA
  * key (iam-service v0.2). A domain admin's password sign-in is sent to /mfa?mode=enroll (no session yet), the page
- * shows <iam-mfa-sign-in>, enrolment through /api/auth/mfa finishes the sign-in; the next sign-in goes to
+ * shows <iam-mfa-sign-in>, enrollment through /api/auth/mfa finishes the sign-in; the next sign-in goes to
  * /mfa?mode=verify, a wrong code is refused and the right one signs in; a plain user signs in without MFA and reads
  * their MFA status through /api/iam (the <iam-mfa> profile screen's calls).
  */
@@ -54,12 +54,12 @@ export class MfaSignInTest extends LocalTestCase {
     );
     const html = await this.page(session, '/mfa?mode=enroll');
     this.check(
-      'the /mfa page shows the IAM screen in enrolment mode',
+      'the /mfa page shows the IAM screen in enrollment mode',
       html.includes('<iam-mfa-sign-in') && html.includes('mode="enroll"')
     );
     const start = await session.post('/api/auth/mfa/enroll/start');
     this.check(
-      'enrolment starts: a QR code and the key to type',
+      'enrollment starts: a QR code and the key to type',
       start.status === 200 && start.body.enrollment?.qr_svg?.startsWith('<svg')
     );
     const secret = start.body.enrollment.secret;

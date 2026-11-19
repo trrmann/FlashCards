@@ -34,7 +34,7 @@ echo "This REPLACES the local database ${DEV_DB_NAME} with a copy of PRODUCTION 
 echo "Production is only read. ${DEV_DB_NAME} is dropped and recreated before the restore."
 if [ "${assume_yes}" != true ]; then
     read -r -p "Continue? [y/N] " answer
-    [[ "${answer}" =~ ^[Yy]$ ]] || { echo "Cancelled; nothing changed."; exit 1; }
+    [[ "${answer}" =~ ^[Yy]$ ]] || { echo "Canceled; nothing changed."; exit 1; }
 fi
 
 "${SCRIPT_DIR}/local-db.sh" start
