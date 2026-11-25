@@ -481,6 +481,13 @@ deploy_prod() {
     log INFO "=========================================="
     
     cd "${PROJECT_ROOT}"
+
+    # Task-305: refuse to release while Render lacks a required variable (checked before the backup and the push).
+    log INFO "Checking the required Render environment variables..."
+    if ! npm run render:env -- check >> "${LOG_FILE}" 2>&1; then
+        error_exit "Render is missing required environment variables; nothing was deployed. Run: npm run render:env -- check"
+    fi
+    log SUCCESS "Required Render environment variables are present"
     
     # Load RENDER_URL from .env
     local render_url=""

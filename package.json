@@ -27,6 +27,7 @@
     "lint:fix": "eslint . --ext .js,.mjs --fix",
     "verify": "npm run format:check && npm run lint",
     "test:startup": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/startup-test.mjs",
+    "test:deploy-gate": "node --test src/scripts/js/modules/tests/deployGateTest.mjs",
     "test:entries-import": "node --test src/scripts/js/modules/tests/entriesImportTest.mjs",
     "test:cleanup": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/schema-cleanup-test.mjs",
     "test:iam:remote": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/iam-api-remote-test.mjs",
