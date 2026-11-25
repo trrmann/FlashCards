@@ -40,9 +40,8 @@
     "test:mfa": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/mfa-sign-in-test.mjs",
     "test:backup-token": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/backup-token-test.mjs",
     "test:backup-token:remote": "src/scripts/sh/local-db.sh run node src/scripts/js/modules/tests/backup-token-remote-test.mjs",
-    "render:env": "bash src/scripts/sh/render-env.sh",
-    "render:setup": "bash src/scripts/sh/render-setup.sh",
-    "test:render-env": "node --test src/scripts/js/modules/tests/renderEnvTest.mjs"
+    "render:env": "render-env",
+    "render:setup": "render-env"
   },
   "dependencies": {
     "adm-zip": "^0.6.1",
@@ -68,6 +67,22 @@
     "lighthouse": "^13.6.0",
     "nodemon": "^3.1.14",
     "prettier": "^3.9.10",
-    "puppeteer": "^25.16.0"
+    "puppeteer": "^25.16.0",
+    "server-service-management": "github:trrmann/server-service-management#v0.2.0"
+  },
+  "renderEnv": {
+    "service": "FlashCards",
+    "requiredKeys": [
+      "NODE_ENV",
+      "SESSION_SECRET",
+      "DB_PG_INTERNAL_HOSTNAME",
+      "DB_PG_PORT",
+      "DB_PG_DATABASE",
+      "DB_PG_USER",
+      "DB_PG_PASSWORD",
+      "IAM_URL",
+      "IAM_CLIENT_SECRET",
+      "GITHUB_TOKEN"
+    ]
   }
 }
