@@ -463,7 +463,7 @@ export class BackupRoundTripTest extends LocalTestCase {
 
   /**
    * Passkeys (iam-service v0.10): a domain grant, the organization's application list, and a cross-app passkey with
-   * its applications. Stored through the IAM's own table models: a real passkey needs a browser ceremony (proven in
+   * its applications. Stored through the IAM's own table models (a `Passkey` object, iam-service MIGRATION.md L31): a real passkey needs a browser ceremony (proven in
    * iam-service's test:passkeys-ui); the round trip only needs rows.
    */
   async seedPasskeys(admin, alice, org, aliceToken) {
@@ -471,18 +471,22 @@ export class BackupRoundTripTest extends LocalTestCase {
     await model('passkey_grants').insert(alice.user_id, 'applications', null, admin.user_id);
     await this.api(aliceToken, 'PUT', `/organizations/${org.org_id}/applications/flashcards`);
     const apps = await model('applications').byKeys(['flashcards', 'heros-companion']);
-    const passkey = await model('user_passkeys').insert({
-      userId: alice.user_id,
-      credentialId: crypto.randomBytes(16).toString('base64url'),
-      publicKey: crypto.randomBytes(32).toString('base64url'),
-      counter: 3,
-      transports: ['internal'],
-      name: 'Round trip key',
-      kind: 'applications',
-      rpId: 'iam.example.test',
-    });
+    const passkeys = model('user_passkeys');
+    const Passkey = passkeys.constructor.ENTITY;
+    const passkey = await passkeys.insert(
+      Passkey.create({
+        userId: alice.user_id,
+        credentialId: crypto.randomBytes(16).toString('base64url'),
+        publicKey: crypto.randomBytes(32).toString('base64url'),
+        counter: 3,
+        transports: ['internal'],
+        name: 'Round trip key',
+        kind: 'applications',
+        rpId: 'iam.example.test',
+      })
+    );
     await model('passkey_applications').add(
-      passkey.passkey_id,
+      passkey.id,
       apps.map((app) => app.app_id)
     );
   }
