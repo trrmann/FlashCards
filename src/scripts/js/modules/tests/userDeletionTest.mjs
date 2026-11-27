@@ -7,14 +7,10 @@
  * users' progress on their cards) and nothing of anyone else's; it is acknowledged; handling it
  * again changes nothing; a failed handling is retried; the orphan check finds data of an unknown
  * user, removes it, and refuses (removing nothing) when the IAM seems to have lost many users.
- * With `remoteIam: true` (npm run test:deletion:remote) through the IAM service over HTTP.
+ * Identity is the IAM service over HTTP (LocalTestCase.startIam).
  */
 
-import crypto from 'node:crypto';
-import { userAuthService } from 'iam-service/services';
-import { IamServer, ApplicationCredentials } from 'iam-service/server';
 import { LocalTestCase } from './localTestCase.mjs';
-import { LocalIdentityGateway, RemoteIdentityGateway } from '../identity/index.mjs';
 import { entriesService } from '../auth/entriesService.mjs';
 import { practiceService } from '../auth/practiceService.mjs';
 import { userSettingsService } from '../auth/userSettingsService.mjs';
@@ -28,33 +24,9 @@ export class UserDeletionTest extends LocalTestCase {
   static PNG =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
-  constructor({ remoteIam = false, ...options } = {}) {
+  constructor(options = {}) {
     super(options);
-    this.remoteIam = remoteIam;
     this.quiet = { log: () => {}, warn: () => {} };
-  }
-
-  async startIdentity() {
-    this.iamServer = null;
-    if (!this.remoteIam) {
-      this.identity = new LocalIdentityGateway();
-      return;
-    }
-    const secret = crypto.randomBytes(32).toString('hex');
-    this.iamServer = new IamServer({
-      port: this.constructor.IAM_PORT,
-      routerOptions: {
-        credentials: new ApplicationCredentials({
-          [ApplicationCredentials.envName('flashcards')]: secret,
-        }),
-      },
-    });
-    await this.iamServer.start();
-    this.identity = new RemoteIdentityGateway({
-      baseUrl: `http://127.0.0.1:${this.constructor.IAM_PORT}`,
-      clientSecret: secret,
-    });
-    await this.identity.start();
   }
 
   async actor(username) {
@@ -73,10 +45,8 @@ export class UserDeletionTest extends LocalTestCase {
   }
 
   async seed() {
-    const make = (name) =>
-      userAuthService.createUser(name, `${name}@example.test`, this.constructor.PASSWORD, name);
+    const make = (name) => this.registerUser(name);
     const admin = await make('del_admin');
-    await userAuthService.makeFirstAdmin(admin.user_id);
     const alice = await make('del_alice');
     const bob = await make('del_bob');
 
@@ -240,21 +210,16 @@ export class UserDeletionTest extends LocalTestCase {
 
   async run() {
     this.assertLocalTarget();
-    console.log(
-      `User deletion test (local scratch database; identity ${this.remoteIam ? 'over HTTP' : 'in-process'})\n`
-    );
+    console.log('User deletion test (local scratch database; identity over HTTP)\n');
     await this.resetDatabase();
-    await this.startIdentity();
+    await this.startIam();
     try {
       const people = await this.seed();
       await this.checkDeletion(people);
       await this.checkRetry(people);
       await this.checkOrphans();
     } finally {
-      await this.identity.stop();
-      if (this.iamServer) {
-        await this.iamServer.stop();
-      }
+      await this.stopIam();
     }
     return this.summary();
   }

@@ -1,14 +1,10 @@
 /**
  * Identity gateway: the one way FlashCards reaches identity (sign-in, accounts, the
- * directory, user administration, organizations). Two implementations with the same methods:
+ * directory, user administration, organizations). The implementation is RemoteIdentityGateway: the IAM
+ * service over HTTP (IamClient) at IAM_URL, with IAM_CLIENT_SECRET (IAM_CLIENT_ID default 'flashcards'); see
+ * createIdentityGateway. The in-process LocalIdentityGateway was removed (iam-service MIGRATION.md L3).
  *
- *  - LocalIdentityGateway: the IAM runs in-process (iam-service's UserAccountService on the
- *    shared database). The default.
- *  - RemoteIdentityGateway: the IAM service over HTTP (IamClient), chosen when IAM_URL is set
- *    (with IAM_CLIENT_SECRET, and IAM_CLIENT_ID default 'flashcards'); see createIdentityGateway.
- *
- * Both enforce the same rules (UserAccountService runs behind both) and fail the same way:
- * an error with `status` and `body` ({ status: 'error', message, errors? }) that a route can
+ * Failures are an error with `status` and `body` ({ status: 'error', message, errors? }) that a route can
  * send as is (IdentityGateway.respond). Methods that act as the signed-in user take `req`.
  */
 
@@ -75,14 +71,6 @@ export class IdentityGateway {
     return IdentityGateway.APP_KEY;
   }
 
-  /**
-   * True when the IAM runs in this process (its schema is then FlashCards' to bootstrap and
-   * check); false when it is the IAM service, which owns its schema (phase 3d).
-   */
-  get runsInProcess() {
-    return false;
-  }
-
   /** 'local' or 'remote' (for the start-up log). */
   get mode() {
     throw new Error(`${this.constructor.name} must define mode`);
@@ -138,7 +126,7 @@ export class IdentityGateway {
 
   /**
    * The second step of a sign-in when the IAM asks for MFA (mounted at /api/auth/mfa). Only the IAM service
-   * has MFA (the remote gateway); in-process mode never asks for it, so this answers 404.
+   * has MFA (the remote gateway overrides this); the base answers 404.
    * @param {{ onSignedIn: (req: object, user: object) => Promise<void> }} _options
    */
   mfaSignInRouter(_options) {
@@ -151,7 +139,7 @@ export class IdentityGateway {
 
   /**
    * Impersonation's session side (mounted at /api/auth/impersonation; iam-service phase 3e). Only the IAM service
-   * impersonates (the remote gateway); in-process mode answers 404.
+   * impersonates (the remote gateway overrides this); the base answers 404.
    * @param {{ onSwitch: (req: object, user: object) => Promise<void> }} _options
    */
   impersonationRouter(_options) {

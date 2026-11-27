@@ -6,8 +6,9 @@
  * database (local-db.sh); it refuses any other target because it drops the public schema.
  *
  * Format 4.0 (phase 3d): the identity part goes through the identity gateway, as the signed-in
- * admin; with `remoteIam: true` (npm run test:roundtrip:remote) through the IAM service over
- * HTTP, started in the test. Also: the two-step restore (a failed second step keeps the first,
+ * admin, through the IAM service over HTTP (started in the test; LocalTestCase.startIam). The IAM data is
+ * seeded through its API, except rows whose flows need a browser or the MFA key (stored through the IAM's
+ * table models; those flows are tested in iam-service). Also: the two-step restore (a failed second step keeps the first,
  * and running it again completes it), a FlashCards-only backup for a non-platform admin, and
  * an older 3.1 file; a 2.0 file is refused (iam-service MIGRATION.md L7).
  */
@@ -15,18 +16,9 @@
 import crypto from 'node:crypto';
 import { TableBackup } from 'platform-db';
 import { LocalTestCase } from './localTestCase.mjs';
-import { userAuthService, organizationService, IamBackupService } from 'iam-service/services';
 import { IamTables } from 'iam-service/db';
-import {
-  MfaService,
-  ServiceAccountService,
-  appRightsService,
-  DomainService,
-  ResponsibilityService,
-} from 'iam-service/services';
-import { MfaKey, Totp } from 'iam-service/mfa';
-import { tokenPolicyService, IamServer, ApplicationCredentials } from 'iam-service/server';
-import { IdentityError, LocalIdentityGateway, RemoteIdentityGateway } from '../identity/index.mjs';
+import { Totp } from 'iam-service/mfa';
+import { IdentityError } from '../identity/index.mjs';
 import { entriesService } from '../auth/entriesService.mjs';
 import { practiceService } from '../auth/practiceService.mjs';
 import { BackupService } from '../auth/backupService.mjs';
@@ -40,8 +32,29 @@ export class BackupRoundTripTest extends LocalTestCase {
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
   static AUDIO =
     'data:audio/webm;base64,GkXfo0AgQoaBAUL3gQFC8oEEQvOBCEKCQAR3ZWJtQoeBAkKFgQIYU4BnAQAAAAAAAA==';
+  /**
+   * Columns of identity tables that hold a user id (iam-service IamBackupService.USER_REFERENCE_COLUMNS, which
+   * applications cannot import; a column missing here makes the comparison fail, so drift shows).
+   */
+  static IAM_USER_REFERENCE_COLUMNS = [
+    'user_id',
+    'created_by',
+    'updated_by',
+    'primary_admin_id',
+    'assignee_id',
+    'automation_granted_by',
+    'performed_by',
+    'reviewed_by',
+    'granted_by',
+    'added_by',
+    'actor_id',
+    'impersonator_id',
+    'target_user_id',
+    'redeemed_by',
+    'revoked_by',
+  ];
   static USER_REFERENCE_COLUMNS = [
-    ...new Set([...BackupService.userReferenceColumns, ...IamBackupService.USER_REFERENCE_COLUMNS]),
+    ...new Set([...BackupService.userReferenceColumns, ...this.IAM_USER_REFERENCE_COLUMNS]),
   ];
   static IAM_PORT = 5095;
   static NATURAL_KEYS = {
@@ -99,11 +112,6 @@ export class BackupRoundTripTest extends LocalTestCase {
   /** Not backed up: FlashCards' sessions, and the IAM's transient tables (its own list, so new ones follow). */
   static TRANSIENT_TABLES = ['session', ...IamTables.TRANSIENT];
 
-  constructor({ remoteIam = false, ...options } = {}) {
-    super(options);
-    this.remoteIam = remoteIam;
-  }
-
   /** The signed-in admin (or user) as the backup sees them: a request with a session. */
   async actor(username) {
     const req = { session: {} };
@@ -114,15 +122,33 @@ export class BackupRoundTripTest extends LocalTestCase {
   }
   static UNSEEDED_TABLES = ['rights', 'role_rights', 'lessons', 'leitner_boxes'];
 
+  /** Register through the IAM API; the first account registered is the platform admin, as initial setup does. */
+  async register(username, fullName, isPublic = false) {
+    return (
+      await this.iam.register({
+        username,
+        email: `${username}@example.test`,
+        password: this.constructor.PASSWORD,
+        full_name: fullName,
+        is_public: isPublic,
+      })
+    ).user;
+  }
+
   async createAdmin(username) {
-    const admin = await userAuthService.createUser(
-      username,
-      `${username}@example.test`,
-      this.constructor.PASSWORD,
-      'Round Trip Admin'
-    );
-    await userAuthService.makeFirstAdmin(admin.user_id); // as initial setup does
-    return admin;
+    return this.register(username, 'Round Trip Admin');
+  }
+
+  /** A call to the IAM API as the holder of `token`. */
+  api(token, method, apiPath, body = undefined) {
+    return this.iam.call(method, apiPath, { token, body });
+  }
+
+  /** One of the IAM's table models (for rows whose flows this test cannot drive). */
+  iamModel(table) {
+    return IamTables.for(this.identityDatabase)
+      .models()
+      .find((m) => m.constructor.tableName === table);
   }
 
   /**
@@ -130,19 +156,8 @@ export class BackupRoundTripTest extends LocalTestCase {
    */
   async seed() {
     const admin = await this.createAdmin('rt_admin');
-    const alice = await userAuthService.createUser(
-      'rt_alice',
-      'rt_alice@example.test',
-      this.constructor.PASSWORD,
-      'Alice'
-    );
-    const bob = await userAuthService.createUser(
-      'rt_bob',
-      'rt_bob@example.test',
-      this.constructor.PASSWORD,
-      'Bob',
-      true
-    );
+    const alice = await this.register('rt_alice', 'Alice');
+    const bob = await this.register('rt_bob', 'Bob', true);
 
     const textCard = await entriesService.createFlashcard(
       alice.user_id,
@@ -225,16 +240,11 @@ export class BackupRoundTripTest extends LocalTestCase {
 
     await userSettingsService.setStorageLimit(alice.user_id, 1048576);
     await userSettingsService.updateLastPageVisited(bob.user_id, '/practice');
+    let adminToken = await this.iamToken('rt_admin');
+    let aliceToken = await this.iamToken('rt_alice');
     // A right of FlashCards' own, granted to Alice by its admin (iam-service v0.4: principal_rights).
-    await appRightsService.registerRights('flashcards', [{ key: 'test.round_trip' }]);
-    await appRightsService.setRight(
-      { actorId: admin.user_id, viaAppKey: 'flashcards' },
-      'flashcards',
-      'user',
-      alice.user_id,
-      'test.round_trip',
-      true
-    );
+    await this.iam.registerRights([{ key: 'test.round_trip' }]);
+    await this.iam.setPrincipalRight(adminToken, 'user', alice.user_id, 'test.round_trip', true);
     await this.backups.logImportExport(
       { session: { userId: admin.user_id } },
       'export',
@@ -242,74 +252,71 @@ export class BackupRoundTripTest extends LocalTestCase {
       'success'
     );
 
-    const org = await organizationService.createOrganization(admin.user_id, {
+    const { organization: org } = await this.api(adminToken, 'POST', '/organizations', {
       name: 'Round Trip Org',
       slug: 'round-trip-org',
       ownerUsername: 'rt_alice',
     });
-    await organizationService.addMember(alice.user_id, org.org_id, { username: 'rt_bob' });
+    await this.api(aliceToken, 'POST', `/organizations/${org.org_id}/members`, {
+      username: 'rt_bob',
+    });
     // A partner organization (iam-service v0.5: organization_partners).
-    const partner = await organizationService.createOrganization(admin.user_id, {
+    const { organization: partner } = await this.api(adminToken, 'POST', '/organizations', {
       name: 'Round Trip Partner',
       slug: 'round-trip-partner',
       ownerUsername: 'rt_alice',
     });
-    await organizationService.addPartner(alice.user_id, org.org_id, partner.org_id);
-    // The domain (iam-service v0.5): its row, primary admin and owning organization, as the IAM's start-up makes them.
-    await new DomainService(this.identityDatabase).bootstrap();
+    await this.api(aliceToken, 'PUT', `/organizations/${org.org_id}/partners/${partner.org_id}`);
+    // The domain (iam-service v0.5): its row, primary admin and owning organization, as the IAM's start-up makes
+    // them (a restart; its tokens end with it, so both sign in again).
+    await this.restartIam();
+    adminToken = await this.iamToken('rt_admin');
+    aliceToken = await this.iamToken('rt_alice');
     // Responsibilities (iam-service v0.7): a weekly user audit, one run of it, and a ban on automating group audits.
-    const responsibilities = new ResponsibilityService(this.identityDatabase);
-    const audit = await responsibilities.create(admin.user_id, {
+    const { responsibility: audit } = await this.api(adminToken, 'POST', '/responsibilities', {
       type: 'user-audit',
       scopeType: 'domain',
       schedule: { kind: 'every', every: 1, unit: 'weeks' },
     });
-    await responsibilities.runNow(admin.user_id, audit.responsibility_id);
-    await responsibilities.setBan(admin.user_id, 'group-audit', null, true);
-    await this.seedPasskeys(admin, alice, org);
+    await this.api(adminToken, 'POST', `/responsibilities/${audit.responsibility_id}/run`);
+    await this.api(adminToken, 'PUT', '/responsibilities/bans/group-audit');
+    await this.seedPasskeys(admin, alice, org, aliceToken);
     await this.seedPhase3e(admin, alice, org);
-    const group = await organizationService.createGroup(alice.user_id, org.org_id, {
+    const { group } = await this.api(aliceToken, 'POST', `/organizations/${org.org_id}/groups`, {
       name: 'Study group',
       description: 'Round trip',
     });
-    await organizationService.addGroupMember(alice.user_id, group.group_id, { username: 'rt_bob' });
-    await organizationService.grantGroupRole(admin.user_id, group.group_id, {
+    await this.api(aliceToken, 'POST', `/groups/${group.group_id}/members`, { username: 'rt_bob' });
+    await this.api(adminToken, 'POST', `/groups/${group.group_id}/roles`, {
       appKey: 'flashcards',
       roleName: 'user',
     });
 
-    // MFA (iam-service v0.2): Alice turns it on (secret, recovery codes, the key's fingerprint), and the domain
-    // admin sets FlashCards' application-admin MFA setting.
-    const mfa = new MfaService(this.identityDatabase, {
-      key: new MfaKey({ key: crypto.randomBytes(MfaKey.KEY_BYTES).toString('base64') }),
-    });
-    const enrollment = await mfa.startEnrollment(alice.user_id, 'flashcards');
-    await mfa.confirmEnrollment(alice.user_id, Totp.code(enrollment.secret, Totp.stepAt()));
-    // The domain switch (iam-service v0.3): recorded, then back on (the default), so the row is in the backup.
-    await mfa.setActive(admin.user_id, { active: true });
-    await mfa.setPolicy(admin.user_id, {
+    // MFA (iam-service v0.2): Alice's enrolment rows, then the domain switch (recorded, back on: the default) and
+    // FlashCards' application-admin MFA setting (iam-service v0.3).
+    await this.seedMfa(alice);
+    await this.iam.setMfaActive(adminToken, { active: true, password: this.constructor.PASSWORD });
+    await this.iam.setMfaPolicy(adminToken, {
       scopeType: 'application',
       appKey: 'flashcards',
       required: true,
     });
     // Service accounts (iam-service v0.3): FlashCards' backup account, its four rights and a token.
-    await new ServiceAccountService(this.identityDatabase).setUpBackup(admin.user_id, 'flashcards');
+    const backupId = await this.serviceAccount(
+      adminToken,
+      'flashcards',
+      'backup',
+      this.constructor.BACKUP_RIGHTS
+    );
+    await this.appToken(adminToken, backupId);
     // Token lifetime policies: references to an application, a group, and a user.
-    await tokenPolicyService.set(admin.user_id, {
-      scopeType: 'application',
-      appKey: 'flashcards',
-      accessTtlSeconds: 1800,
-    });
-    await tokenPolicyService.set(admin.user_id, {
-      scopeType: 'group',
-      scopeId: group.group_id,
-      refreshTtlSeconds: 604800,
-    });
-    await tokenPolicyService.set(admin.user_id, {
-      scopeType: 'user',
-      scopeId: alice.user_id,
-      accessTtlSeconds: 900,
-    });
+    for (const policy of [
+      { scopeType: 'application', appKey: 'flashcards', accessTtlSeconds: 1800 },
+      { scopeType: 'group', scopeId: group.group_id, refreshTtlSeconds: 604800 },
+      { scopeType: 'user', scopeId: alice.user_id, accessTtlSeconds: 900 },
+    ]) {
+      await this.api(adminToken, 'PUT', '/token-policies', policy);
+    }
 
     return { admin, cards: [textCard, imageCard, audioCard] };
   }
@@ -423,35 +430,15 @@ export class BackupRoundTripTest extends LocalTestCase {
   }
 
   /** The gateway and backup service for this run: in-process, or the IAM service over HTTP. */
+  /** The IAM service and the gateway and backup service through it. */
   async startIdentity() {
-    this.iamServer = null;
-    if (!this.remoteIam) {
-      this.identity = new LocalIdentityGateway();
-    } else {
-      const secret = crypto.randomBytes(32).toString('hex');
-      this.iamServer = new IamServer({
-        port: this.constructor.IAM_PORT,
-        routerOptions: {
-          credentials: new ApplicationCredentials({
-            [ApplicationCredentials.envName('flashcards')]: secret,
-          }),
-        },
-      });
-      await this.iamServer.start();
-      this.identity = new RemoteIdentityGateway({
-        baseUrl: `http://127.0.0.1:${this.constructor.IAM_PORT}`,
-        clientSecret: secret,
-      });
-      await this.identity.start();
-    }
+    await this.startIam();
     this.backups = new BackupService({ identity: this.identity });
   }
 
-  async stopIdentity() {
-    await this.identity.stop();
-    if (this.iamServer) {
-      await this.iamServer.stop();
-    }
+  async restartIam() {
+    await this.stopIam();
+    await this.startIdentity();
   }
 
   /** Wipe the database, re-create the admin under a new id, and sign them in. */
@@ -464,14 +451,12 @@ export class BackupRoundTripTest extends LocalTestCase {
 
   async run() {
     this.assertLocalTarget();
-    console.log(
-      `Backup round-trip test (local scratch database; identity ${this.remoteIam ? 'over HTTP' : 'in-process'})\n`
-    );
+    console.log('Backup round-trip test (local scratch database; identity over HTTP)\n');
     await this.startIdentity();
     try {
       await this.runChecks();
     } finally {
-      await this.stopIdentity();
+      await this.stopIam();
     }
     return this.summary();
   }
@@ -481,13 +466,10 @@ export class BackupRoundTripTest extends LocalTestCase {
    * its applications. Stored through the IAM's own table models: a real passkey needs a browser ceremony (proven in
    * iam-service's test:passkeys-ui); the round trip only needs rows.
    */
-  async seedPasskeys(admin, alice, org) {
-    const model = (table) =>
-      IamTables.for(this.identityDatabase)
-        .models()
-        .find((m) => m.constructor.tableName === table);
+  async seedPasskeys(admin, alice, org, aliceToken) {
+    const model = (table) => this.iamModel(table);
     await model('passkey_grants').insert(alice.user_id, 'applications', null, admin.user_id);
-    await organizationService.addOrgApplication(alice.user_id, org.org_id, 'flashcards');
+    await this.api(aliceToken, 'PUT', `/organizations/${org.org_id}/applications/flashcards`);
     const apps = await model('applications').byKeys(['flashcards', 'heros-companion']);
     const passkey = await model('user_passkeys').insert({
       userId: alice.user_id,
@@ -509,11 +491,28 @@ export class BackupRoundTripTest extends LocalTestCase {
    * Phase 3e (iam-service v0.11): an audit entry, an open invitation, a role request and a resource grant, stored
    * through the IAM's own table models (their flows are tested in iam-service: test:phase3e).
    */
+  /**
+   * Alice's MFA rows: an enabled secret, recovery codes and the key's fingerprint. Turning MFA on needs the service's
+   * MFA key, and with one every domain admin's sign-in asks for a code, so the rows are stored through the IAM's table
+   * models (the flow is tested in iam-service: test:mfa, and here in test:mfa).
+   */
+  async seedMfa(alice) {
+    const random = (bytes) => crypto.randomBytes(bytes).toString('hex');
+    await this.iamModel('user_mfa').setPending(
+      alice.user_id,
+      random(48),
+      new Date(Date.now() + 10 * 60 * 1000)
+    );
+    await this.iamModel('user_mfa').enable(alice.user_id, Totp.stepAt());
+    await this.iamModel('user_recovery_codes').replace(
+      alice.user_id,
+      Array.from({ length: 10 }, () => random(32))
+    );
+    await this.iamModel('mfa_key_check').recordIfMissing(random(32));
+  }
+
   async seedPhase3e(admin, alice, org) {
-    const model = (table) =>
-      IamTables.for(this.identityDatabase)
-        .models()
-        .find((m) => m.constructor.tableName === table);
+    const model = (table) => this.iamModel(table);
     await model('audit_log').insert({
       actorId: admin.user_id,
       appKey: 'flashcards',

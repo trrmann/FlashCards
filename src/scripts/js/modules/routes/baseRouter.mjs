@@ -42,7 +42,7 @@ export class BaseRouter {
   }
 
   /**
-   * The identity gateway the server runs with (in-process or the IAM service).
+   * The identity gateway the server runs with (the IAM service).
    * @returns {import('../identity/identityGateway.mjs').IdentityGateway}
    */
   static identity(req) {

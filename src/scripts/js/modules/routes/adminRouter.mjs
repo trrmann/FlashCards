@@ -18,7 +18,7 @@ class AdminRouter extends BaseRouter {
     const requireAdmin = this.requireAdmin;
 
     /**
-     * User administration through the identity gateway (in-process IAM or the IAM service).
+     * User administration through the identity gateway (the IAM service).
      * The gateway validates, refuses an admin disabling, deleting or demoting themselves, and
      * (remote) checks again that the caller administers FlashCards.
      */

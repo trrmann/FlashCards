@@ -4,23 +4,24 @@
  * giving up, and serve normally once the database comes up. The database "comes up"
  * when a TCP relay to the local scratch database starts. Also: development and preview
  * servers refuse a writable remote database, and a read-only server starts without
- * bootstrapping and writes nothing. Local scratch database only.
+ * bootstrapping and writes nothing. Local scratch database only; identity is the IAM service over HTTP
+ * (LocalTestCase.startIam).
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { TcpRelay, PostgresDatabase } from 'platform-db';
-import { IdentityManagementDatabase } from 'iam-service/db';
 import { LocalTestCase } from './localTestCase.mjs';
 import { FlashCardsDatabase } from '../db/flashCardsDatabase.mjs';
 import { Server } from '../server.mjs';
-import { LocalIdentityGateway, RemoteIdentityGateway } from '../identity/index.mjs';
+import { RemoteIdentityGateway } from '../identity/index.mjs';
 import { BackupService, backupService } from '../auth/backupService.mjs';
 import { entriesService } from '../auth/entriesService.mjs';
 
 export class StartupTest extends LocalTestCase {
   /** Long enough for at least one full database wait round to give up and restart. */
   static DATABASE_LATE_MS = 2500;
+  static IAM_PORT = 5097;
 
   /**
    * Adapters that reach the database through the relay on `port` (closed by Server.stop()).
@@ -29,10 +30,6 @@ export class StartupTest extends LocalTestCase {
     const overrides = { port, connectionTimeoutMillis: 500 };
     return {
       database: new FlashCardsDatabase({ ...this.database.config, ...overrides }),
-      identityDatabase: new IdentityManagementDatabase({
-        ...this.identityDatabase.config,
-        ...overrides,
-      }),
     };
   }
 
@@ -77,7 +74,7 @@ export class StartupTest extends LocalTestCase {
     const server = new Server({
       env: 'development',
       port,
-      identity: new LocalIdentityGateway(),
+      identity: this.gateway(),
       ...this.relayedAdapters(dbPort),
       connectOptions: { maxWaitMs: 1500, baseDelayMs: 100, maxDelayMs: 300 },
       startupRetryMs: 200,
@@ -117,7 +114,7 @@ export class StartupTest extends LocalTestCase {
       new Server({
         env: 'development',
         port: 1,
-        identity: new LocalIdentityGateway(),
+        identity: this.gateway(),
         database: new FlashCardsDatabase({
           ...this.database.config,
           host: 'dpg-example.virginia-postgres.render.com',
@@ -136,41 +133,25 @@ export class StartupTest extends LocalTestCase {
     console.log('\nRead-only server');
     const port = await TcpRelay.freePort();
     const base = `http://127.0.0.1:${port}`;
-    const readOnly = { readOnly: true };
-    const database = new FlashCardsDatabase({ ...this.database.config, ...readOnly });
-    const identityDatabase = new IdentityManagementDatabase({
-      ...this.identityDatabase.config,
-      ...readOnly,
-    });
-    const usersBefore = await this.identityDatabase.query(LocalTestCase.testQueries.count_users);
-    const server = new Server({
-      env: 'preview',
-      port,
-      database,
-      identityDatabase,
-      identity: new LocalIdentityGateway(),
-    });
+    const database = new FlashCardsDatabase({ ...this.database.config, readOnly: true });
+    await this.registerUser('ro_reader');
+    const q = LocalTestCase.testQueries;
+    const sessionsBefore = (await this.database.query(q.count_sessions)).rows[0].count;
+    const server = new Server({ env: 'preview', port, database, identity: this.gateway() });
     try {
       await server.start();
       this.check('starts on a read-only database (bootstrap skipped)', server.ready);
       this.check('/api/health answers 200', (await fetch(`${base}/api/health`)).status === 200);
       this.check('/login page answers 200', (await fetch(`${base}/login`)).status === 200);
-      const register = await fetch(`${base}/api/auth/register`, {
+      // Signing in saves a FlashCards session, which a read-only database refuses.
+      const login = await fetch(`${base}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: 'ro_should_fail',
-          email: 'ro_should_fail@example.test',
-          password: 'ReadOnly#2026x',
-          fullName: 'Read Only',
-        }),
+        body: JSON.stringify({ username: 'ro_reader', password: this.constructor.PASSWORD }),
       });
-      this.check('a write request fails', register.status >= 400, String(register.status));
-      const usersAfter = await this.identityDatabase.query(LocalTestCase.testQueries.count_users);
-      this.check(
-        '… and nothing was written',
-        usersAfter.rows[0].count === usersBefore.rows[0].count
-      );
+      this.check('a write request fails', login.status >= 400, String(login.status));
+      const sessionsAfter = (await this.database.query(q.count_sessions)).rows[0].count;
+      this.check('… and nothing was written', sessionsAfter === sessionsBefore);
     } finally {
       await server.stop();
     }
@@ -207,8 +188,16 @@ export class StartupTest extends LocalTestCase {
       IAM_PREVIEW_URL: 'http://127.0.0.1:5030',
       IAM_CLIENT_SECRET: 'test-secret',
     });
-    const fallback = Server.createIdentity('preview', { IAM_URL: productionUrl });
-    const test = Server.createIdentity('test', { IAM_URL: productionUrl });
+    const fallback = Server.createIdentity('preview', {
+      IAM_URL: productionUrl,
+      IAM_CLIENT_SECRET: 'test-secret',
+    });
+    let testError = null;
+    try {
+      Server.createIdentity('test', { IAM_URL: productionUrl, IAM_CLIENT_SECRET: 'test-secret' });
+    } catch (error) {
+      testError = error;
+    }
 
     this.check(
       'dev and preview select their explicit IAM endpoints over IAM_URL',
@@ -219,7 +208,9 @@ export class StartupTest extends LocalTestCase {
     );
     this.check(
       'missing local/test IAM endpoints never inherit production IAM_URL',
-      fallback instanceof LocalIdentityGateway && test instanceof LocalIdentityGateway
+      fallback.baseUrl === Server.LOCAL_IAM_URLS.preview &&
+        /IAM_TEST_URL is not set/.test(testError?.message || ''),
+      `${fallback.baseUrl}; ${testError?.message}`
     );
   }
 
@@ -227,17 +218,15 @@ export class StartupTest extends LocalTestCase {
     console.log('\nIdentity gateway wiring');
     const oldEntries = entriesService.identityService;
     const oldBackup = backupService.identity;
+    // A constructed gateway reads its secret from the environment (IAM_DEV_CLIENT_SECRET in development).
+    const oldSecret = process.env.IAM_DEV_CLIENT_SECRET;
+    process.env.IAM_DEV_CLIENT_SECRET ??= 'test-secret';
     try {
       for (const [label, identity] of [
         ['constructed', undefined],
-        ['injected', new LocalIdentityGateway()],
+        ['injected', this.gateway()],
       ]) {
-        const server = new Server({
-          env: 'development',
-          database: this.database,
-          identityDatabase: this.identityDatabase,
-          identity,
-        });
+        const server = new Server({ env: 'development', database: this.database, identity });
         this.check(
           `${label} gateway reaches routes, backups, entries and event consumer`,
           Boolean(server.identity) &&
@@ -251,6 +240,9 @@ export class StartupTest extends LocalTestCase {
     } finally {
       entriesService.identityService = oldEntries;
       backupService.identity = oldBackup;
+      if (oldSecret === undefined) {
+        delete process.env.IAM_DEV_CLIENT_SECRET;
+      }
     }
   }
 
@@ -258,7 +250,6 @@ export class StartupTest extends LocalTestCase {
     const messages = [];
     const warn = console.warn;
     const server = Object.create(Server.prototype);
-    server.identity = { runsInProcess: false };
     server.database = {
       config: { readOnly: true },
       waitForConnection: async () => {},
@@ -322,14 +313,19 @@ export class StartupTest extends LocalTestCase {
     this.assertLocalTarget();
     console.log('Start-up test (local scratch database)\n');
     await this.resetDatabase();
-    await this.checkLateDatabase();
-    this.checkDatabaseTargetGuard();
-    await this.checkReadOnlyServer();
-    this.checkIdentityEnvironmentRouting();
-    this.checkIdentityWiring();
-    await this.checkSchemaGrantWarning();
-    this.checkSchedulingClasses();
-    this.checkSharedPackageVersions();
+    await this.startIam();
+    try {
+      await this.checkLateDatabase();
+      this.checkDatabaseTargetGuard();
+      await this.checkReadOnlyServer();
+      this.checkIdentityEnvironmentRouting();
+      this.checkIdentityWiring();
+      await this.checkSchemaGrantWarning();
+      this.checkSchedulingClasses();
+      this.checkSharedPackageVersions();
+    } finally {
+      await this.stopIam();
+    }
     return this.summary();
   }
 }

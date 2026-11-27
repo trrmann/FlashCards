@@ -222,6 +222,17 @@ Follow-ups:
 
 ## resolved
 
+- **Identity only over HTTP; the in-process IAM is gone (2026-11-26, iam-service MIGRATION.md L3 step 2).**
+  Production has used `RemoteIdentityGateway` since 2026-11-04. Now `LocalIdentityGateway`, `iamRouter.mjs` and every
+  import of `iam-service/services` and `iam-service/routes` are removed; the server no longer creates or checks IAM's
+  tables. Every environment needs an IAM address: production `IAM_URL` (or `IAM_PROD_URL`), otherwise
+  `IAM_<DEV|PREVIEW|TEST>_URL`, with dev and preview falling back to `http://127.0.0.1:2030` / `:5030`; the client
+  secret is `IAM_<suffix>_CLIENT_SECRET` (or `IAM_CLIENT_SECRET`). The tests start an IAM service themselves
+  (`LocalTestCase.startIam`) and seed through its API, so the five `:remote` duplicates are gone. **Verified:** verify;
+  `test:roundtrip` 274/274, `test:iam` 79/79, `test:deletion` 14/14, `test:admin-page` 10/10, `test:own-login` 11/11,
+  `test:identity` 15/15, `test:startup` 22/22, `test:cleanup` 10/10, `test:mfa` 18/18, `test:backup-token` 18/18,
+  `test:entries-import` and `test:deploy-gate` pass, on the scratch cluster.
+
 - **The newest shared packages; test:own-login on development's IAM settings (2026-11-19).** iam-service v0.12.0 →
   v0.16.1 and platform-db v0.3.1 → v0.10.2 (with platform-framework v0.7.0 and request-queue v0.5.3: one copy of each,
   as `test:startup` checks). `test:own-login` failed since the coordinated-port change (e77f027): development reads
@@ -695,9 +706,6 @@ Resolved on 2026-11-03 (round 4):
 - **Old backup formats (owner, 2026-11-11).** § 0.7.5 now says restore accepts earlier formats only until the
   kept backups are converted. Convert any kept pre-4.0 backups (import locally, export again), then remove the
   old-format code, including the `legacyAppKey` passed to the IAM import; record it in `MIGRATION.md`.
-- **Switch to the IAM service over HTTP (owner order, 2026-11-11):** after Heros Companion is complete, FlashCards
-  moves to `RemoteIdentityGateway` in production (`IAM_URL`), then `LocalIdentityGateway` and its in-process
-  tests are removed (iam-service `documents/MIGRATION.md` L3).
 - **Security: user data in public git history.** The committed `documents/flashcards-backup-2026-11-02.json`
   (users' emails + password hashes) is untracked now but still in history. Optionally purge history
   (`git filter-repo`), which rewrites every commit. The database password that was also in history is rotated (see

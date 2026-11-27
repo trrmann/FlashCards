@@ -55,13 +55,12 @@ FlashCards/
         │   │   └── backupService.mjs    mediaArchiveService.mjs   # (IAM services: iam-service package)
         │   ├── identity/         # Identity gateway (IAM phase 3c): one way to reach identity
         │   │   ├── identityGateway.mjs        # base: error answers, helpers
-        │   │   ├── localIdentityGateway.mjs   # in-process IAM (default)
-        │   │   ├── remoteIdentityGateway.mjs  # the IAM service over HTTP (IAM_URL set)
+        │   │   ├── remoteIdentityGateway.mjs  # the IAM service over HTTP (the only gateway)
         │   │   └── index.mjs                  # createIdentityGateway(env)
         │   ├── routes/           # class XRouter extends BaseRouter
         │   │   ├── baseRouter.mjs
         │   │   ├── systemRouter.mjs  authRouter.mjs  usersRouter.mjs  navigationRouter.mjs
-        │   │   └── entriesRouter.mjs  practiceRouter.mjs  quizRouter.mjs  adminRouter.mjs  iamRouter.mjs (iam-service OrganizationRouter + session)
+        │   │   └── entriesRouter.mjs  practiceRouter.mjs  quizRouter.mjs  adminRouter.mjs
         │   ├── tools/
         │   │   ├── backupClient.mjs        # BackupClient / BackupCli (HTTP backup + restore)
         │   │   └── backup-cli.mjs          # Entry used by backup.sh / restore.sh

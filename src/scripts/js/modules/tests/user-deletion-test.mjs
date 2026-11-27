@@ -1,8 +1,7 @@
 /**
- * User deletion test entry point (npm run test:deletion).
- * All behavior lives in the class-based UserDeletionTest module.
+ * User deletion test entry point (npm run test:deletion), identity over HTTP.
  */
 
-import { UserDeletionTest } from './userDeletionTest.mjs';
+import { userDeletionTest } from './userDeletionTest.mjs';
 
-process.exitCode = (await new UserDeletionTest({ remoteIam: false }).execute()) ? 0 : 1;
+process.exitCode = (await userDeletionTest.execute()) ? 0 : 1;

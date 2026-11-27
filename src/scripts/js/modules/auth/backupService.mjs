@@ -22,7 +22,6 @@ import { TableBackup } from 'platform-db';
 import { IamTables } from 'iam-service/db';
 import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
 import { mediaArchiveService } from './mediaArchiveService.mjs';
-import { LocalIdentityGateway } from '../identity/localIdentityGateway.mjs';
 import { IdentityError, IdentityGateway } from '../identity/identityGateway.mjs';
 
 class BackupService {
@@ -78,7 +77,8 @@ class BackupService {
    * @param {object} [options.database] - FlashCards' adapter
    * @param {object} [options.identity] - The identity gateway (the server sets its own)
    */
-  constructor({ database = flashCardsDb, identity = new LocalIdentityGateway() } = {}) {
+  /** `identity`: the identity gateway; the Server sets it on the shared instance. */
+  constructor({ database = flashCardsDb, identity = null } = {}) {
     this.database = database;
     this.identity = identity;
     this.tables = new TableBackup({

@@ -4,7 +4,6 @@
  */
 
 import { flashCardsDb } from '../db/flashCardsDatabase.mjs';
-import { userAuthService } from 'iam-service/services';
 
 class EntriesService {
   static queries = flashCardsDb.constructor.loadNamedSqlStatements(
@@ -12,7 +11,8 @@ class EntriesService {
     flashCardsDb.constructor.sqlRoot
   );
 
-  constructor(database = flashCardsDb, identityService = userAuthService) {
+  /** `identityService`: the identity gateway (owners' names); the Server sets it on the shared instance. */
+  constructor(database = flashCardsDb, identityService = null) {
     this.database = database;
     this.identityService = identityService;
   }

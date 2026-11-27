@@ -18,6 +18,13 @@ settings from the local database helper. Local code selects IAM using the
 environment-specific `IAM_DEV_URL` or `IAM_PREVIEW_URL`; it does not inherit
 `IAM_URL` or `IAM_PROD_URL` from production configuration.
 
+FlashCards always signs users in through the IAM service over HTTP; there is no
+in-process identity. Development and preview fall back to the local IAM service
+at `http://127.0.0.1:2030` and `http://127.0.0.1:5030` when their URL is unset,
+so start iam-service first and set `IAM_DEV_CLIENT_SECRET` (or
+`IAM_PREVIEW_CLIENT_SECRET`). Tests start their own IAM service on the scratch
+database.
+
 For an explicitly remote preview, the script reads production connection
 settings from the local ignored `.env` and enables PostgreSQL read-only mode.
 Remote-preview checks must remain non-mutating; database read-only mode does not

@@ -3,19 +3,15 @@
  * (iam-service MIGRATION.md L12). The real BackupClient against a running FlashCards server: the token's access,
  * download with users, an export-only token (no users, no restore), restore, the log entry naming the account
  * (never taken for an orphaned user), and refusals (no token, a bad token, another application's token, an app
- * token on a non-backup admin route). With `remoteIam: true` (npm run test:backup-token:remote) through the IAM
- * service over HTTP.
+ * token on a non-backup admin route). Identity, accounts and tokens go through the IAM service over HTTP
+ * (LocalTestCase.startIam).
  */
 
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { IamServer, ApplicationCredentials } from 'iam-service/server';
-import { userAuthService, ServiceAccountService } from 'iam-service/services';
 import { Server } from '../server.mjs';
 import { LocalTestCase } from './localTestCase.mjs';
-import { LocalIdentityGateway, RemoteIdentityGateway } from '../identity/index.mjs';
 import { BackupClient, BackupCli } from '../tools/backupClient.mjs';
 import { UserDataService } from '../auth/userDataService.mjs';
 
@@ -24,9 +20,8 @@ export class BackupTokenTest extends LocalTestCase {
   static PORT = 5090;
   static IAM_PORT = 5091;
 
-  constructor({ remoteIam = false, ...options } = {}) {
+  constructor(options = {}) {
     super(options);
-    this.remoteIam = remoteIam;
     this.baseUrl = `http://127.0.0.1:${BackupTokenTest.PORT}`;
   }
 
@@ -39,46 +34,19 @@ export class BackupTokenTest extends LocalTestCase {
     }
   }
 
-  async startIdentity() {
-    this.iamServer = null;
-    if (!this.remoteIam) {
-      this.identity = new LocalIdentityGateway();
-      return;
-    }
-    const secret = crypto.randomBytes(32).toString('hex');
-    this.iamServer = new IamServer({
-      port: BackupTokenTest.IAM_PORT,
-      routerOptions: {
-        credentials: new ApplicationCredentials({
-          [ApplicationCredentials.envName('flashcards')]: secret,
-        }),
-      },
-    });
-    await this.iamServer.start();
-    this.identity = new RemoteIdentityGateway({
-      baseUrl: `http://127.0.0.1:${BackupTokenTest.IAM_PORT}`,
-      clientSecret: secret,
-    });
-  }
-
   /** The tokens: the full backup account, an export-only one, and a Heros Companion one. */
-  async issueTokens(rootId) {
-    const services = new ServiceAccountService(this.identityDatabase);
-    this.backupToken = (await services.setUpBackup(rootId, 'flashcards')).token.token;
-    const exportOnly = await services.create(rootId, {
-      app_key: 'flashcards',
-      name: 'export-only',
-    });
-    await services.grant(rootId, exportOnly.service_id, 'backup.export');
-    this.exportOnlyToken = (await services.issueToken(rootId, exportOnly.service_id)).token;
-    this.herosToken = (await services.setUpBackup(rootId, 'heros-companion')).token.token;
-    this.shortToken = (
-      await services.issueToken(rootId, exportOnly.service_id, { days: 10 })
-    ).token;
-    const nearExpiry = await services.accounts.findByName('flashcards', 'backup');
-    this.renewToken = (
-      await services.issueToken(rootId, nearExpiry.service_id, { days: 20 })
-    ).token;
+  async issueTokens(rootToken) {
+    const rights = LocalTestCase.BACKUP_RIGHTS;
+    const backup = await this.serviceAccount(rootToken, 'flashcards', 'backup', rights);
+    this.backupToken = await this.appToken(rootToken, backup, { scopes: rights });
+    const exportOnly = await this.serviceAccount(rootToken, 'flashcards', 'export-only', [
+      'backup.export',
+    ]);
+    this.exportOnlyToken = await this.appToken(rootToken, exportOnly);
+    const heros = await this.serviceAccount(rootToken, 'heros-companion', 'backup', rights);
+    this.herosToken = await this.appToken(rootToken, heros, { scopes: rights });
+    this.shortToken = await this.appToken(rootToken, exportOnly, { days: 10 });
+    this.renewToken = await this.appToken(rootToken, backup, { days: 20 });
   }
 
   async status(apiPath, token) {
@@ -198,18 +166,13 @@ export class BackupTokenTest extends LocalTestCase {
 
   async run() {
     this.assertLocalTarget();
-    console.log(
-      `Backup token test (local scratch database; identity ${this.remoteIam ? 'over HTTP' : 'in-process'})\n`
-    );
+    console.log('Backup token test (local scratch database; identity over HTTP)\n');
     await this.resetDatabase();
-    const make = (name) =>
-      userAuthService.createUser(name, `${name}@example.test`, BackupTokenTest.PASSWORD);
-    const root = await make('bt_root');
-    await userAuthService.makeFirstAdmin(root.user_id);
-    await make('bt_plain');
-    await this.issueTokens(root.user_id);
+    await this.startIam();
+    await this.registerUser('bt_root');
+    await this.registerUser('bt_plain');
+    await this.issueTokens(await this.iamToken('bt_root'));
 
-    await this.startIdentity();
     const server = new Server({
       env: 'development',
       port: BackupTokenTest.PORT,
@@ -222,10 +185,7 @@ export class BackupTokenTest extends LocalTestCase {
       await this.checkTokenState();
     } finally {
       await new Promise((resolve) => server.httpServer.close(resolve));
-      await this.identity.stop();
-      if (this.iamServer) {
-        await this.iamServer.stop();
-      }
+      await this.stopIam();
     }
     return this.summary();
   }

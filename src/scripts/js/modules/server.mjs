@@ -31,7 +31,6 @@ import pgSession from 'connect-pg-simple';
 
 import { appSiteData } from './appSiteData.mjs';
 import { flashCardsDb } from './db/flashCardsDatabase.mjs';
-import { identityManagementDb, IamTables } from 'iam-service/db';
 import { PostgresDatabase, DatabaseTargetGuard } from 'platform-db';
 import { createIdentityGateway } from './identity/index.mjs';
 import { entriesService } from './auth/entriesService.mjs';
@@ -61,8 +60,11 @@ export class Server {
   );
   /** Tables a read-only server needs to find, since it cannot create them. */
   static REQUIRED_TABLES = ['flashcards.flashcards'];
-  /** …and, when the IAM runs in-process, its table too. */
-  static REQUIRED_IAM_TABLES = ['iam.users'];
+  /** The IAM service on this machine (PORT_ALLOCATION.md) when IAM_DEV_URL / IAM_PREVIEW_URL is not set. */
+  static LOCAL_IAM_URLS = {
+    development: 'http://127.0.0.1:2030',
+    preview: 'http://127.0.0.1:5030',
+  };
 
   /**
    * Resolve the listening port for an environment.
@@ -78,31 +80,27 @@ export class Server {
     return portMap[env] || this.DEFAULT_PORT;
   }
 
+  /**
+   * The identity gateway for an environment: production uses IAM_URL (or IAM_PROD_URL); development and preview
+   * their own IAM_DEV_URL / IAM_PREVIEW_URL, else the local IAM service, and never a production IAM_URL; test
+   * IAM_TEST_URL. FlashCards has no in-process IAM (iam-service MIGRATION.md L3), so a missing address is an error.
+   */
   static createIdentity(env, processEnv = process.env) {
-    if (env === 'development' || env === 'preview') {
-      const suffix = env === 'development' ? 'DEV' : 'PREVIEW';
-      const baseUrl = processEnv[`IAM_${suffix}_URL`];
-      if (!baseUrl) {
-        return createIdentityGateway({ ...processEnv, IAM_URL: '' });
-      }
-      return createIdentityGateway({
-        ...processEnv,
-        IAM_URL: baseUrl,
-        IAM_CLIENT_SECRET:
-          processEnv[`IAM_${suffix}_CLIENT_SECRET`] || processEnv.IAM_CLIENT_SECRET,
-      });
+    const suffix = { development: 'DEV', preview: 'PREVIEW', test: 'TEST' }[env];
+    const baseUrl =
+      env === 'production'
+        ? processEnv.IAM_URL || processEnv.IAM_PROD_URL
+        : (suffix && processEnv[`IAM_${suffix}_URL`]) || this.LOCAL_IAM_URLS[env];
+    if (!baseUrl) {
+      const variable =
+        env === 'production' ? 'IAM_URL' : `IAM_${suffix ?? String(env).toUpperCase()}_URL`;
+      throw new Error(`${variable} is not set; FlashCards signs users in through the IAM service`);
     }
-
-    if (env === 'production') {
-      return createIdentityGateway({
-        ...processEnv,
-        IAM_URL: processEnv.IAM_URL || processEnv.IAM_PROD_URL,
-      });
-    }
-
     return createIdentityGateway({
       ...processEnv,
-      IAM_URL: env === 'test' ? processEnv.IAM_TEST_URL || '' : '',
+      IAM_URL: baseUrl,
+      IAM_CLIENT_SECRET:
+        (suffix && processEnv[`IAM_${suffix}_CLIENT_SECRET`]) || processEnv.IAM_CLIENT_SECRET,
     });
   }
 
@@ -110,7 +108,6 @@ export class Server {
     env,
     port,
     database = flashCardsDb,
-    identityDatabase = identityManagementDb,
     connectOptions = {},
     startupRetryMs = Server.STARTUP_RETRY_MS,
     identity,
@@ -118,9 +115,7 @@ export class Server {
     this.env = env ?? (process.env.NODE_ENV?.toLocaleLowerCase() || 'production');
     this.port = port ?? this.constructor.resolvePort(this.env);
     this.database = database;
-    this.identityDatabase = identityDatabase;
     // Before anything can touch the database (the session store is created below).
-    DatabaseTargetGuard.assert(this.env, identityDatabase.config);
     DatabaseTargetGuard.assert(this.env, database.config);
     this.connectOptions = connectOptions;
     this.startupRetryMs = startupRetryMs;
@@ -328,9 +323,8 @@ export class Server {
 
     app.get('/profile', async (req, res) => {
       siteData.setTitle('Profile');
-      // The domain MFA switch is for domain admins, and only the IAM service has MFA.
+      // The domain MFA switch is for domain admins.
       const mfaSwitch =
-        !this.identity.runsInProcess &&
         Boolean(req.session.userId) &&
         (await this.identity.isPlatformAdmin(req).catch(() => false));
       res.render('profile', {
@@ -427,36 +421,23 @@ export class Server {
   }
 
   /**
-   * Connect to the database and bootstrap the idempotent schemas. With the IAM in-process its
-   * schema is bootstrapped first; with the IAM service (phase 3d) FlashCards neither touches nor
-   * needs the iam schema, so it can run on its own login (flashcards_svc), which has no rights
-   * there.
+   * Connect to the database and bootstrap FlashCards' idempotent schema. The IAM service owns the iam schema
+   * (phase 3d), so FlashCards neither touches nor needs it and runs on its own login (flashcards_svc).
    */
   async initializeDatabase() {
-    const inProcessIam = this.identity.runsInProcess;
-    if (inProcessIam) {
-      await this.identityDatabase.waitForConnection(this.connectOptions);
-    }
     await this.database.waitForConnection(this.connectOptions);
 
-    // Ensure the connected role has USAGE on public schema (needed for platform-db introspection).
-    // The provisioner creates the app login with minimal permissions; subsequent queries
-    // like to_regclass() require USAGE on public to access pg_class. Apply to both databases
-    // since the provisioner checks tables on the IAM database and schema init on the app database.
-    for (const db of inProcessIam ? [this.identityDatabase, this.database] : [this.database]) {
-      try {
-        await db.query('GRANT USAGE ON SCHEMA public TO current_user');
-      } catch (error) {
-        console.warn('Unable to grant public schema usage:', error.message);
-      }
+    // Ensure the connected role has USAGE on public schema (needed for platform-db introspection):
+    // the provisioner creates the app login with minimal permissions, and to_regclass() needs it.
+    try {
+      await this.database.query('GRANT USAGE ON SCHEMA public TO current_user');
+    } catch (error) {
+      console.warn('Unable to grant public schema usage:', error.message);
     }
 
     if (this.database.config.readOnly) {
-      await this.verifySchemaPresent(inProcessIam);
+      await this.verifySchemaPresent();
       return;
-    }
-    if (inProcessIam) {
-      await IamTables.for(this.identityDatabase).provision();
     }
     await this.database.initializeSchema();
   }
@@ -464,15 +445,9 @@ export class Server {
   /**
    * Read-only start: the schema can't be bootstrapped, so check that it is already there.
    */
-  async verifySchemaPresent(inProcessIam) {
-    const checks = [
-      ...this.constructor.REQUIRED_TABLES.map((table) => [this.database, table]),
-      ...(inProcessIam
-        ? this.constructor.REQUIRED_IAM_TABLES.map((table) => [this.identityDatabase, table])
-        : []),
-    ];
-    for (const [db, table] of checks) {
-      if (!(await db.tableExists(table))) {
+  async verifySchemaPresent() {
+    for (const table of this.constructor.REQUIRED_TABLES) {
+      if (!(await this.database.tableExists(table))) {
         throw new Error(`Read-only database is missing ${table}; it cannot be created read-only`);
       }
     }
@@ -534,10 +509,7 @@ export class Server {
     await this.userEvents.stop();
     await this.identity.stop();
     await this.database.close();
-    await this.identityDatabase.close();
   }
 }
 
-export const server = new Server();
-
-export default server;
+export default Server;

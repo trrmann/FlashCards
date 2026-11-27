@@ -1,5 +1,5 @@
 /**
- * IAM API test entry point (npm run test:iam).
+ * IAM API test entry point (npm run test:iam): FlashCards' /api/iam with identity over HTTP.
  * All behavior lives in the class-based IamApiTest module.
  */
 

@@ -9,8 +9,8 @@
 #       1. clean working tree; <branch> exists
 #       2. production backup (backup.sh as the backup service account; it gets and renews its own app token)
 #       3. merge <branch> into main locally (--no-ff), then on that exact result:
-#          npm run verify (must change nothing) and every test suite, in-process
-#          and over HTTP. On any failure the local merge is undone; nothing is pushed
+#          npm run verify (must change nothing) and every test suite (identity over HTTP).
+#          On any failure the local merge is undone; nothing is pushed
 #       4. push main: Render deploys
 #       5. wait until /api/health reports the new commit, then the read-only
 #          production check, compared with the numbers before
@@ -47,17 +47,12 @@ FLASHCARDS_TESTS=(
     test:startup
     test:cleanup
     test:roundtrip
-    test:roundtrip:remote
     test:iam
-    test:iam:remote
     test:deletion
-    test:deletion:remote
     test:own-login
     test:admin-page
-    test:admin-page:remote
     test:mfa
     test:backup-token
-    test:backup-token:remote
 )
 
 LOG_DIR="${PROJECT_ROOT}/.deployment"

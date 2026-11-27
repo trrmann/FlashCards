@@ -6,8 +6,7 @@
  * - Calls as the user send the access token. On a 401 the pair is refreshed once
  *   (the service rotates it) and the call repeated; if the refresh fails the user is
  *   signed out of FlashCards.
- * - A session from in-process mode (a user id but no tokens) is signed out, once,
- *   when the gateway is switched on.
+ * - A session with a user id but no tokens (it cannot call the service) is signed out.
  * - Admin flags and header display info are cached per user for CACHE_TTL_MS, so a
  *   page view doesn't call the service every time. A role change shows within that time.
  * - On start it wakes the service (free plan: it sleeps when idle) without waiting.
@@ -96,7 +95,7 @@ export class RemoteIdentityGateway extends IdentityGateway {
     return this.client.stop();
   }
 
-  /** Sign out a session left from in-process mode (user id, no tokens). */
+  /** Sign out a session with a user id but no tokens. */
   sessionMiddleware() {
     return (req, res, next) => {
       if (req.session?.userId && !req.session.iamTokens) {

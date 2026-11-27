@@ -7,17 +7,13 @@
  * own "Storage limit" and "Reset stats" buttons appear in each row (the iam-user-row hook) and
  * work; Disable works; deleting a user removes their FlashCards data at once (the IAM's notice).
  * Organizations: FlashCards' classes are applied; an organization and a member are added.
- * With `remoteIam: true` (npm run test:admin-page:remote) through the IAM service over HTTP.
- * Local scratch database only.
+ * Identity is the IAM service over HTTP (LocalTestCase.startIam). Local scratch database only.
  */
 
-import crypto from 'node:crypto';
 import puppeteer from 'puppeteer';
-import { IamServer, ApplicationCredentials } from 'iam-service/server';
 import { Server } from '../server.mjs';
 import { LocalTestCase } from './localTestCase.mjs';
 import { ApiSession } from './iamApiTest.mjs';
-import { LocalIdentityGateway, RemoteIdentityGateway } from '../identity/index.mjs';
 import { userSettingsService } from '../auth/userSettingsService.mjs';
 import { UserDataService } from '../auth/userDataService.mjs';
 
@@ -27,9 +23,8 @@ export class AdminPageTest extends LocalTestCase {
   static PASSWORD = 'AdminPage#2026x';
   static ATTACK = '<img src=x onerror="window.__xss = (window.__xss || 0) + 1">';
 
-  constructor({ remoteIam = false, ...options } = {}) {
+  constructor(options = {}) {
     super(options);
-    this.remoteIam = remoteIam;
     this.baseUrl = `http://127.0.0.1:${this.constructor.PORT}`;
   }
 
@@ -198,34 +193,11 @@ export class AdminPageTest extends LocalTestCase {
     await page.close();
   }
 
-  async startIdentity() {
-    this.iamServer = null;
-    if (!this.remoteIam) {
-      return new LocalIdentityGateway();
-    }
-    const secret = crypto.randomBytes(32).toString('hex');
-    this.iamServer = new IamServer({
-      port: this.constructor.IAM_PORT,
-      routerOptions: {
-        credentials: new ApplicationCredentials({
-          [ApplicationCredentials.envName('flashcards')]: secret,
-        }),
-      },
-    });
-    await this.iamServer.start();
-    return new RemoteIdentityGateway({
-      baseUrl: `http://127.0.0.1:${this.constructor.IAM_PORT}`,
-      clientSecret: secret,
-    });
-  }
-
   async run() {
     this.assertLocalTarget();
-    console.log(
-      `Admin pages test (headless Chrome; identity ${this.remoteIam ? 'over HTTP' : 'in-process'})\n`
-    );
+    console.log('Admin pages test (headless Chrome; identity over HTTP)\n');
     await this.resetDatabase();
-    const identity = await this.startIdentity();
+    const identity = await this.startIam();
     const server = new Server({ env: 'development', port: this.constructor.PORT, identity });
     await server.start();
     const browser = await puppeteer.launch({ headless: true });
@@ -236,10 +208,7 @@ export class AdminPageTest extends LocalTestCase {
       await browser.close();
       await new Promise((resolve) => server.httpServer.close(resolve));
       await server.userEvents.stop();
-      await identity.stop();
-      if (this.iamServer) {
-        await this.iamServer.stop();
-      }
+      await this.stopIam();
     }
     return this.summary();
   }

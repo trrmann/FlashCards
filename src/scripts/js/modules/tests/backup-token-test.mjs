@@ -5,4 +5,4 @@
 
 import { BackupTokenTest } from './backupTokenTest.mjs';
 
-process.exitCode = (await new BackupTokenTest({ remoteIam: false }).execute()) ? 0 : 1;
+process.exitCode = (await new BackupTokenTest().execute()) ? 0 : 1;

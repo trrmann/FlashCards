@@ -7,13 +7,10 @@
  */
 
 import crypto from 'node:crypto';
-import { IamServer, ApplicationCredentials } from 'iam-service/server';
-import { userAuthService, MfaService } from 'iam-service/services';
 import { MfaKey, Totp } from 'iam-service/mfa';
 import { Server } from '../server.mjs';
 import { LocalTestCase } from './localTestCase.mjs';
 import { ApiSession } from './iamApiTest.mjs';
-import { RemoteIdentityGateway } from '../identity/index.mjs';
 
 export class MfaSignInTest extends LocalTestCase {
   static PORT = 5088;
@@ -163,29 +160,12 @@ export class MfaSignInTest extends LocalTestCase {
     this.assertLocalTarget();
     console.log('MFA sign-in test (local scratch database; identity over HTTP with an MFA key)\n');
     await this.resetDatabase();
-    const make = (name) =>
-      userAuthService.createUser(name, `${name}@example.test`, MfaSignInTest.PASSWORD);
-    const root = await make('mfa_fc_root');
-    await userAuthService.makeFirstAdmin(root.user_id);
-    await make('mfa_fc_plain');
-
-    const secret = crypto.randomBytes(32).toString('hex');
-    const iamServer = new IamServer({
-      port: MfaSignInTest.IAM_PORT,
-      routerOptions: {
-        credentials: new ApplicationCredentials({
-          [ApplicationCredentials.envName('flashcards')]: secret,
-        }),
-        mfa: new MfaService(this.identityDatabase, {
-          key: new MfaKey({ key: crypto.randomBytes(MfaKey.KEY_BYTES).toString('base64') }),
-        }),
-      },
-    });
-    await iamServer.start();
-    const identity = new RemoteIdentityGateway({
-      baseUrl: `http://127.0.0.1:${MfaSignInTest.IAM_PORT}`,
-      clientSecret: secret,
-    });
+    // The service reads its MFA key from the environment (as on Render); a random one for this run.
+    const previousKey = process.env[MfaKey.ENV];
+    process.env[MfaKey.ENV] = crypto.randomBytes(MfaKey.KEY_BYTES).toString('base64');
+    const identity = await this.startIam();
+    await this.registerUser('mfa_fc_root');
+    await this.registerUser('mfa_fc_plain');
     const server = new Server({ env: 'development', port: MfaSignInTest.PORT, identity });
     await server.start();
     try {
@@ -195,8 +175,12 @@ export class MfaSignInTest extends LocalTestCase {
       await this.checkPlainUser();
     } finally {
       await new Promise((resolve) => server.httpServer.close(resolve));
-      await identity.stop();
-      await iamServer.stop();
+      await this.stopIam();
+      if (previousKey === undefined) {
+        delete process.env[MfaKey.ENV];
+      } else {
+        process.env[MfaKey.ENV] = previousKey;
+      }
     }
     return this.summary();
   }

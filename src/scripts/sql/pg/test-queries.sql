@@ -17,9 +17,9 @@ CREATE SCHEMA public;
 -- As in a standard database (initdb's public schema): every login may use it, none may create in it.
 GRANT USAGE ON SCHEMA public TO PUBLIC;
 
--- Query: count_users
--- StartupTest: proves a read-only server wrote nothing.
-SELECT COUNT(*)::int AS count FROM iam.users;
+-- Query: count_sessions
+-- StartupTest: proves a read-only server wrote nothing (FlashCards' own session table).
+SELECT COUNT(*)::int AS count FROM flashcards.session;
 
 -- SchemaCleanupTest: leftover copies in public, as an old server would have created them.
 

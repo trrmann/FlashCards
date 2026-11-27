@@ -283,8 +283,8 @@ Templates use `{{placeholders}}` for dynamic filter clauses; values are always b
   columns (before 3.1) become `user_settings` rows.
 - Times without a time zone are exported as clock-time text, so a restore on a machine in another time zone doesn't
   shift them (platform-db `TableBackup`).
-- The automated round-trip test (`npm run test:roundtrip`, and `test:roundtrip:remote` through the IAM service; both
-  run by `deploy.sh -preview`) proves a wipe → bootstrap → re-created admin → import rebuilds every table and media
+- The automated round-trip test (`npm run test:roundtrip`, through an IAM service the test starts; run by
+  `deploy.sh -preview`) proves a wipe → bootstrap → re-created admin → import rebuilds every table and media
   item.
 - Render: free-tier databases expire (`DB_PG_EXPIRE` drives the header warning). Take an in-app backup before expiry.
 - Manual: `pg_dump "$DB_PG_EXTERNAL_URL" > backup.sql`.

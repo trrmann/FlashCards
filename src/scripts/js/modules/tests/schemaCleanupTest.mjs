@@ -4,13 +4,15 @@
  * hold rows or that something outside public references. Also the phase 3c moves: on a
  * database from before them, the bootstrap copies FlashCards' per-user settings out of
  * iam.users and the live sessions out of iam.session, once; a later start copies nothing
- * (a signed-out session must not come back). Local scratch database only.
+ * (a signed-out session must not come back). Local scratch database only; the user is
+ * registered through the IAM service over HTTP.
  */
 
-import { userAuthService } from 'iam-service/services';
 import { LocalTestCase } from './localTestCase.mjs';
 
 export class SchemaCleanupTest extends LocalTestCase {
+  static IAM_PORT = 5096;
+
   async exists(table) {
     const q = LocalTestCase.testQueries;
     return (await this.database.query(q.public_table_exists, [table])).rows[0].exists;
@@ -52,11 +54,7 @@ export class SchemaCleanupTest extends LocalTestCase {
   async checkPhase3cMoves() {
     console.log('\nPhase 3c moves (user settings, sessions)');
     const q = LocalTestCase.testQueries;
-    const user = await userAuthService.createUser(
-      'move_alice',
-      'move_alice@example.test',
-      'Move#2026x'
-    );
+    const user = await this.registerUser('move_alice');
     await this.database.query(q.move_recreate_old_iam_data);
     await this.database.query(q.move_set_iam_user_settings, [user.user_id, 4096, '/quiz']);
     await this.database.query(q.move_insert_iam_session, ['live-session', '1 day']);
@@ -103,11 +101,13 @@ export class SchemaCleanupTest extends LocalTestCase {
     this.assertLocalTarget();
     console.log('Schema clean-up test (local scratch database)\n');
     await this.resetDatabase();
+    await this.startIam();
     try {
       await this.checkCleanup();
       await this.checkPhase3cMoves();
       await this.checkUserForeignKeysDropped();
     } finally {
+      await this.stopIam();
       const q = LocalTestCase.testQueries;
       await this.database.query(q.outside_reference_drop);
       await this.database.query(q.leftover_drop_remaining);

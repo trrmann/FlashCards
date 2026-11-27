@@ -3,16 +3,15 @@
  */
 
 import { IdentityGateway, IdentityError } from './identityGateway.mjs';
-import { LocalIdentityGateway } from './localIdentityGateway.mjs';
 import { RemoteIdentityGateway } from './remoteIdentityGateway.mjs';
 
 /**
- * Remote (the IAM service over HTTP) when IAM_URL is set, else local (in-process).
+ * The gateway to the IAM service over HTTP at IAM_URL (there is no in-process IAM; iam-service MIGRATION.md L3).
  * @param {object} [env=process.env]
  */
 export function createIdentityGateway(env = process.env) {
   if (!env.IAM_URL) {
-    return new LocalIdentityGateway();
+    throw new Error('IAM_URL is not set; FlashCards signs users in through the IAM service');
   }
   if (!env.IAM_CLIENT_SECRET) {
     throw new Error('IAM_URL is set but IAM_CLIENT_SECRET is not');
@@ -24,4 +23,4 @@ export function createIdentityGateway(env = process.env) {
   });
 }
 
-export { IdentityGateway, IdentityError, LocalIdentityGateway, RemoteIdentityGateway };
+export { IdentityGateway, IdentityError, RemoteIdentityGateway };

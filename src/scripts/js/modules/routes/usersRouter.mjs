@@ -1,7 +1,7 @@
 /**
  * User Profile Routes
  * The signed-in user's profile, password and directory visibility, and the share
- * directory, through the identity gateway (in-process IAM or the IAM service).
+ * directory, through the identity gateway (the IAM service).
  */
 
 import express from 'express';

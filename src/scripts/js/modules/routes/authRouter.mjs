@@ -1,7 +1,7 @@
 /**
  * Authentication Routes
  * Registration, sign-in, sign-out and the current user, through the identity gateway
- * (in-process IAM or the IAM service). The gateway validates; these routes add the
+ * (the IAM service). The gateway validates; these routes add the
  * FlashCards parts: the password confirmation, the session, and the post-login page.
  */
 
