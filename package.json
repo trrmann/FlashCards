@@ -50,7 +50,7 @@
     "iam-service": "git+https://github.com/trrmann/iam-service.git#v0.18.0",
     "node-fetch": "^3.3.2",
     "pg": "^8.23.1",
-    "platform-db": "git+https://github.com/trrmann/platform-db.git#v0.10.2"
+    "platform-db": "git+https://github.com/trrmann/platform-db.git#v0.10.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
