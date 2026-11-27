@@ -207,7 +207,6 @@ export class Server {
       `✅ Session Config: secure=${sessionConfig.cookie.secure}, sameSite=${sessionConfig.cookie.sameSite}`
     );
     this.app.use(session(sessionConfig));
-    this.app.use(this.identity.sessionMiddleware());
 
     // Parse JSON request bodies for API endpoints. The limit accommodates
     // base64 media payloads (card images/audio) and backup imports.

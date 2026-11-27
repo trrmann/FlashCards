@@ -80,11 +80,6 @@ export class IdentityGateway {
 
   async stop() {}
 
-  /** Express middleware run on every request after the session (default: nothing). */
-  sessionMiddleware() {
-    return (req, res, next) => next();
-  }
-
   // ----- App tokens: service accounts (backups; iam-service MIGRATION.md L12) -----
 
   /** The request's app token (`Authorization: Bearer iamsa_…`), or null. */

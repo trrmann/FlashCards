@@ -142,20 +142,6 @@ export class RemoteIdentityGatewayTest {
     );
   }
 
-  checkLegacySession() {
-    console.log('\nSessions from in-process mode');
-    const { gateway } = this.gateway();
-    const legacy = this.constructor.request({ userId: 'u1', username: 'alice' });
-    const current = this.constructor.request({ userId: 'u2', iamTokens: { access_token: 'a' } });
-    const middleware = gateway.sessionMiddleware();
-    middleware(legacy, {}, () => {});
-    middleware(current, {}, () => {});
-    this.check(
-      'a session without tokens is signed out; one with tokens is kept',
-      !legacy.session.userId && current.session.userId === 'u2'
-    );
-  }
-
   async checkCaching() {
     console.log('\nCaching');
     const { client, gateway } = this.gateway();
@@ -271,7 +257,6 @@ export class RemoteIdentityGatewayTest {
   async execute() {
     console.log('RemoteIdentityGateway test (stand-in IAM client)\n');
     await this.checkRefresh();
-    this.checkLegacySession();
     await this.checkCaching();
     await this.checkPassThroughAllowlist();
     await this.checkErrors();
